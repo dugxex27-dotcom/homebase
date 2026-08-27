@@ -11,11 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
 import { 
   Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, 
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
-  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User, Home as HomeIcon
+  Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User, Home as HomeIcon,
+  RefreshCw, KeyRound
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -49,9 +50,18 @@ interface CrmIntegration {
   platform: string;
   platformName: string;
   webhookUrl: string;
-  webhookSecret: string;
+  webhookSecret: string | null;
   isActive: boolean;
   createdAt: string;
+}
+
+interface CsvImportResult {
+  success: boolean;
+  message: string;
+  totalRows: number;
+  imported: number;
+  failed: number;
+  errors: Array<{ row: number; error: string }>;
 }
 
 interface CrmClient {
@@ -371,6 +381,14 @@ export default function ContractorCRMPage() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [deleteIntegrationConfirmOpen, setDeleteIntegrationConfirmOpen] = useState(false);
   const [integrationToDelete, setIntegrationToDelete] = useState<CrmIntegration | null>(null);
+  // Secrets are only ever real/copyable immediately after create or regenerate, in this
+  // client-side map — every other render shows the server's masked value. Once the user
+  // navigates away and comes back, the real value is gone for good (by design).
+  const [revealedSecrets, setRevealedSecrets] = useState<Record<string, string>>({});
+  const [regenerateSecretConfirmOpen, setRegenerateSecretConfirmOpen] = useState(false);
+  const [integrationToRegenerate, setIntegrationToRegenerate] = useState<CrmIntegration | null>(null);
+  const [csvImportType, setCsvImportType] = useState<"leads" | "clients">("leads");
+  const [csvImportResult, setCsvImportResult] = useState<CsvImportResult | null>(null);
 
   // Pro tier state
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
@@ -500,16 +518,64 @@ export default function ContractorCRMPage() {
 
   // Integration mutations
   const createIntegrationMutation = useMutation({
-    mutationFn: async (data: { platform: string; platformName: string }) => {
-      return await apiRequest('/api/crm/integrations', 'POST', data);
+    mutationFn: async (data: { platform: string; platformName: string }): Promise<CrmIntegration> => {
+      const res = await apiRequest('/api/crm/integrations', 'POST', data);
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: CrmIntegration) => {
+      // The create response is the only other place (besides regenerate) the real secret is
+      // ever returned unmasked — capture it now, before the list refetch overwrites it with
+      // the masked value from the server.
+      const secret = data?.webhookSecret;
+      if (data?.id && secret) {
+        setRevealedSecrets(prev => ({ ...prev, [data.id]: secret }));
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/crm/integrations'] });
       setIsAddIntegrationOpen(false);
-      toast({ title: "Integration created", description: "Your webhook integration has been set up successfully." });
+      toast({ title: "Integration created", description: "Copy your webhook secret now — you won't be able to view it again." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create integration", variant: "destructive" });
+    },
+  });
+
+  const regenerateSecretMutation = useMutation({
+    mutationFn: async (integrationId: string): Promise<CrmIntegration> => {
+      const res = await apiRequest(`/api/crm/integrations/${integrationId}/regenerate-secret`, 'POST');
+      return await res.json();
+    },
+    onSuccess: (data: CrmIntegration) => {
+      const secret = data?.webhookSecret;
+      if (data?.id && secret) {
+        setRevealedSecrets(prev => ({ ...prev, [data.id]: secret }));
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/crm/integrations'] });
+      toast({ title: "Secret regenerated", description: "Copy your new webhook secret now — the old one no longer works and this one won't be shown again." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to regenerate secret", variant: "destructive" });
+    },
+  });
+
+  const csvImportMutation = useMutation({
+    mutationFn: async ({ type, file }: { type: "leads" | "clients"; file: File }): Promise<CsvImportResult> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiFileUpload(`/api/crm/${type}/import`, formData);
+      return await res.json();
+    },
+    onSuccess: (data: CsvImportResult, variables) => {
+      setCsvImportResult(data);
+      queryClient.invalidateQueries({ queryKey: [`/api/crm/${variables.type}`] });
+      toast({
+        title: data.failed > 0 ? "Import completed with errors" : "Import complete",
+        description: data.message,
+        variant: data.failed > 0 && data.imported === 0 ? "destructive" : "default",
+      });
+    },
+    onError: (error: any) => {
+      setCsvImportResult(null);
+      toast({ title: "Error", description: error.message || "Failed to import CSV", variant: "destructive" });
     },
   });
 
@@ -1363,12 +1429,38 @@ export default function ContractorCRMPage() {
                     </div>
                     <div>
                       <label className="text-sm font-medium mb-2 block">Webhook Secret</label>
-                      <div className="flex gap-2">
-                        <Input value={integration.webhookSecret} readOnly type="password" className="font-mono text-sm" data-testid={`input-webhook-secret-${integration.id}`} />
-                        <Button variant="outline" size="icon" onClick={() => copyToClipboard(integration.webhookSecret, "Webhook Secret")} data-testid={`button-copy-webhook-secret-${integration.id}`}>
-                          {copiedField === "Webhook Secret" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        </Button>
-                      </div>
+                      {revealedSecrets[integration.id] ? (
+                        <>
+                          <div className="flex gap-2">
+                            <Input value={revealedSecrets[integration.id]} readOnly className="font-mono text-sm" data-testid={`input-webhook-secret-${integration.id}`} />
+                            <Button variant="outline" size="icon" onClick={() => copyToClipboard(revealedSecrets[integration.id], "Webhook Secret")} data-testid={`button-copy-webhook-secret-${integration.id}`}>
+                              {copiedField === "Webhook Secret" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-amber-600 dark:text-amber-500 mt-1.5 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3" />
+                            Copy this now — it won't be shown again after you leave this page.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <Input value={integration.webhookSecret ?? "No secret configured"} readOnly className="font-mono text-sm text-muted-foreground" data-testid={`input-webhook-secret-${integration.id}`} />
+                            <Button
+                              variant="outline"
+                              onClick={() => { setIntegrationToRegenerate(integration); setRegenerateSecretConfirmOpen(true); }}
+                              disabled={regenerateSecretMutation.isPending}
+                              data-testid={`button-regenerate-secret-${integration.id}`}
+                            >
+                              <RefreshCw className="h-4 w-4 mr-2" />Regenerate
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                            <KeyRound className="h-3 w-3" />
+                            This is hidden for security — regenerate to get a new secret you can copy.
+                          </p>
+                        </>
+                      )}
                     </div>
                     <div className="flex justify-end">
                       <Button variant="destructive" size="sm" onClick={() => { setIntegrationToDelete(integration); setDeleteIntegrationConfirmOpen(true); }}
@@ -1499,6 +1591,84 @@ export default function ContractorCRMPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* CSV Import Section — leads and clients only. Jobs/quotes/invoices stay on
+              the JSON importer above since they need nested line items and client
+              relationship resolution that don't map onto a flat spreadsheet row. */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Import Leads or Clients from CSV
+              </CardTitle>
+              <CardDescription>
+                Upload a spreadsheet export from another CRM. Column headers like "First Name", "first_name", or "Email Address" are matched automatically — each row is imported independently, so a few bad rows won't block the rest.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Import as</label>
+                  <Select value={csvImportType} onValueChange={(v) => { setCsvImportType(v as "leads" | "clients"); setCsvImportResult(null); }}>
+                    <SelectTrigger className="w-40" data-testid="select-csv-import-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="leads">Leads</SelectItem>
+                      <SelectItem value="clients">Clients</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  id="crm-csv-import-file"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setCsvImportResult(null);
+                    csvImportMutation.mutate({ type: csvImportType, file });
+                    e.target.value = '';
+                  }}
+                />
+                <Button
+                  onClick={() => document.getElementById('crm-csv-import-file')?.click()}
+                  disabled={csvImportMutation.isPending}
+                  data-testid="button-upload-csv-import"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {csvImportMutation.isPending ? "Importing..." : `Upload ${csvImportType === "leads" ? "Leads" : "Clients"} CSV`}
+                </Button>
+              </div>
+
+              {csvImportResult && (
+                <div className="border rounded-lg p-4 space-y-3" data-testid="csv-import-result">
+                  <div className="flex items-center gap-4 text-sm">
+                    <span className="flex items-center gap-1.5 text-green-600 dark:text-green-500 font-medium">
+                      <CheckCircle className="h-4 w-4" />{csvImportResult.imported} imported
+                    </span>
+                    {csvImportResult.failed > 0 && (
+                      <span className="flex items-center gap-1.5 text-red-600 dark:text-red-500 font-medium">
+                        <XCircle className="h-4 w-4" />{csvImportResult.failed} failed
+                      </span>
+                    )}
+                    <span className="text-muted-foreground">of {csvImportResult.totalRows} rows</span>
+                  </div>
+                  {csvImportResult.errors.length > 0 && (
+                    <div className="max-h-56 overflow-y-auto space-y-1 border-t pt-3">
+                      {csvImportResult.errors.map((e, idx) => (
+                        <div key={idx} className="text-xs text-muted-foreground flex gap-2" data-testid={`csv-import-error-${idx}`}>
+                          <span className="font-mono font-medium shrink-0">Row {e.row}:</span>
+                          <span>{e.error}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -2670,6 +2840,17 @@ export default function ContractorCRMPage() {
         confirmText="Delete"
         cancelText="Cancel"
         onConfirm={() => { if (integrationToDelete) deleteIntegrationMutation.mutate(integrationToDelete.id); setDeleteIntegrationConfirmOpen(false); setIntegrationToDelete(null); }}
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={regenerateSecretConfirmOpen}
+        onOpenChange={setRegenerateSecretConfirmOpen}
+        title="Regenerate Webhook Secret?"
+        description={`This will immediately invalidate the current webhook secret for the ${integrationToRegenerate?.platformName} integration. Any external system still using the old secret will start getting rejected until you update it with the new one.`}
+        confirmText="Regenerate"
+        cancelText="Cancel"
+        onConfirm={() => { if (integrationToRegenerate) regenerateSecretMutation.mutate(integrationToRegenerate.id); setRegenerateSecretConfirmOpen(false); setIntegrationToRegenerate(null); }}
         variant="destructive"
       />
 

@@ -7334,14 +7334,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.user.companyId
       );
       
-      // Don't expose sensitive tokens in response
+      // Don't expose sensitive tokens in response. The webhook secret gets a
+      // partial mask (last 4 chars) instead of a flat '***' so the UI can be
+      // honest about "this is a masked value, not something to copy" while
+      // still letting a contractor recognize which secret is configured.
       const sanitized = integrations.map(i => ({
         ...i,
         accessToken: i.accessToken ? '***' : null,
         refreshToken: i.refreshToken ? '***' : null,
         apiKey: i.apiKey ? '***' : null,
         apiSecret: i.apiSecret ? '***' : null,
-        webhookSecret: i.webhookSecret ? '***' : null,
+        webhookSecret: i.webhookSecret ? `••••${i.webhookSecret.slice(-4)}` : null,
       }));
       
       res.json(sanitized);
@@ -7419,6 +7422,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting CRM integration:", error);
       res.status(500).json({ message: "Failed to delete integration" });
+    }
+  });
+
+  // POST /api/crm/integrations/:id/regenerate-secret - Rotate a webhook integration's secret.
+  // The old secret stops working immediately (webhookSecret is overwritten in place), and the
+  // new secret is returned in full exactly once in this response — every subsequent GET only
+  // ever returns the masked form, matching the create-time reveal-once behavior.
+  app.post('/api/crm/integrations/:id/regenerate-secret', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can manage CRM integrations" });
+      }
+
+      const integration = await storage.getCrmIntegration(req.params.id);
+
+      if (!integration) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+
+      // Check ownership
+      const userCompanyId = req.session.user.companyId;
+      const canManage = integration.contractorUserId === req.session.user.id ||
+        (userCompanyId && integration.companyId === userCompanyId);
+
+      if (!canManage) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (integration.platform !== 'webhook' && integration.platform !== 'custom') {
+        return res.status(400).json({ message: "This integration type does not use a webhook secret" });
+      }
+
+      const webhookSecret = randomBytes(32).toString('hex');
+      const updated = await storage.updateCrmIntegration(req.params.id, { webhookSecret });
+
+      if (!updated) {
+        return res.status(404).json({ message: "Integration not found" });
+      }
+
+      // Return the real secret once (same reveal-once pattern as creation); everything else stays masked.
+      res.json({
+        ...updated,
+        accessToken: updated.accessToken ? '***' : null,
+        refreshToken: updated.refreshToken ? '***' : null,
+        apiKey: updated.apiKey ? '***' : null,
+        apiSecret: updated.apiSecret ? '***' : null,
+        webhookSecret,
+      });
+    } catch (error) {
+      console.error("Error regenerating CRM integration secret:", error);
+      res.status(500).json({ message: "Failed to regenerate secret" });
     }
   });
 
@@ -9364,6 +9418,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating import template:", error);
       res.status(500).json({ message: "Failed to generate import template" });
+    }
+  });
+
+  // ─── CSV import for CRM leads & clients ──────────────────────────────────
+  // The JSON importer above stays as the path for a full CRM migration (jobs
+  // and quotes/invoices need nested line items and client relationship
+  // resolution that don't map cleanly onto flat CSV rows). Leads and clients,
+  // by contrast, are exactly what most other CRMs/spreadsheets export as a
+  // flat table, so CSV is the natural format for them — and unlike the JSON
+  // importer, leads had no import path at all before this.
+  //
+  // Header matching is deliberately forgiving: "First Name", "first_name",
+  // "firstname", and "first-name" (from a ServiceTitan/Jobber/HubSpot export,
+  // a hand-built spreadsheet, etc.) should all resolve to the same field, so
+  // headers are normalized by lowercasing and stripping spaces/underscores/
+  // dashes before matching against a list of known aliases per field — the
+  // same spirit as the webhook receiver's first_name/firstName fallback
+  // chain, generalized to arbitrary header text instead of two fixed casings.
+  const normalizeHeaderKey = (k: string): string => k.toLowerCase().replace(/[\s_-]+/g, '');
+
+  const buildNormalizedRow = (row: Record<string, string>): Record<string, string> => {
+    const normalized: Record<string, string> = {};
+    for (const [k, v] of Object.entries(row)) {
+      normalized[normalizeHeaderKey(k)] = v;
+    }
+    return normalized;
+  };
+
+  const pickCsvField = (normalizedRow: Record<string, string>, ...aliases: string[]): string | undefined => {
+    for (const alias of aliases) {
+      const v = normalizedRow[normalizeHeaderKey(alias)];
+      if (v !== undefined && v.trim() !== '') return v.trim();
+    }
+    return undefined;
+  };
+
+  const MAX_CRM_CSV_ROWS = 500;
+
+  // POST /api/crm/leads/import - CSV import for leads, with per-row success/error reporting
+  app.post('/api/crm/leads/import', isAuthenticated, requireNotSuspended(), upload.single('file'), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+      }
+      if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
+      if (!req.file.mimetype.includes('csv') && !req.file.originalname.toLowerCase().endsWith('.csv')) {
+        return res.status(400).json({ message: 'Only CSV files are accepted' });
+      }
+
+      let rows: Array<Record<string, string>>;
+      try {
+        rows = parseCsvRows(req.file.buffer.toString('utf-8'));
+      } catch (parseErr: any) {
+        const detail = parseErr instanceof CsvError ? parseErr.message : 'Unable to parse CSV file';
+        return res.status(400).json({ message: `Invalid CSV format: ${detail}` });
+      }
+      if (rows.length === 0) return res.status(400).json({ message: 'CSV is empty or has no data rows' });
+      if (rows.length > MAX_CRM_CSV_ROWS) return res.status(400).json({ message: `CSV exceeds ${MAX_CRM_CSV_ROWS}-row limit per import` });
+
+      const userId = req.session.user.id;
+      const companyId = req.session.user.companyId || null;
+      const errors: Array<{ row: number; error: string }> = [];
+      let imported = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const rowNum = i + 2; // +1 for 0-index, +1 for the header row
+        const normalized = buildNormalizedRow(rows[i]);
+        try {
+          const nameParts = pickCsvField(normalized, 'name', 'full name', 'contact name', 'contact')?.split(/\s+/);
+          const firstName = pickCsvField(normalized, 'first name', 'fname', 'given name') || nameParts?.[0];
+          const lastName = pickCsvField(normalized, 'last name', 'lname', 'surname', 'family name') || nameParts?.slice(1).join(' ');
+
+          if (!firstName) {
+            errors.push({ row: rowNum, error: 'Missing name (expected a "First Name"/"Last Name" pair or a single "Name" column)' });
+            continue;
+          }
+
+          const leadData = {
+            contractorUserId: userId,
+            companyId,
+            firstName,
+            lastName: lastName || '',
+            email: pickCsvField(normalized, 'email', 'email address', 'e-mail') || null,
+            phone: pickCsvField(normalized, 'phone', 'phone number', 'mobile', 'cell', 'telephone') || null,
+            address: pickCsvField(normalized, 'address', 'street address', 'street') || null,
+            city: pickCsvField(normalized, 'city') || null,
+            state: pickCsvField(normalized, 'state', 'region', 'province') || null,
+            postalCode: pickCsvField(normalized, 'zip', 'zip code', 'postal code', 'postalcode') || null,
+            source: pickCsvField(normalized, 'source', 'lead source') || 'other',
+            status: pickCsvField(normalized, 'status') || 'new',
+            priority: pickCsvField(normalized, 'priority') || 'medium',
+            projectType: pickCsvField(normalized, 'project type', 'service', 'service type') || null,
+            estimatedValue: pickCsvField(normalized, 'estimated value', 'value', 'budget')?.replace(/[^0-9.-]/g, '') || null,
+          };
+
+          const validationResult = insertCrmLeadSchema.safeParse(leadData);
+          if (!validationResult.success) {
+            errors.push({ row: rowNum, error: validationResult.error.issues[0]?.message || 'Invalid row data' });
+            continue;
+          }
+
+          await storage.createCrmLead(validationResult.data);
+          imported++;
+        } catch (rowErr: any) {
+          errors.push({ row: rowNum, error: rowErr.message || 'Failed to import row' });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Import completed: ${imported} lead${imported === 1 ? '' : 's'} imported, ${errors.length} failed`,
+        totalRows: rows.length,
+        imported,
+        failed: errors.length,
+        errors,
+      });
+    } catch (error) {
+      console.error("Error importing CRM leads CSV:", error);
+      res.status(500).json({ message: "Failed to import leads" });
+    }
+  });
+
+  // POST /api/crm/clients/import - CSV import for clients, with per-row success/error reporting
+  app.post('/api/crm/clients/import', isAuthenticated, requireNotSuspended(), upload.single('file'), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+      }
+      if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
+      if (!req.file.mimetype.includes('csv') && !req.file.originalname.toLowerCase().endsWith('.csv')) {
+        return res.status(400).json({ message: 'Only CSV files are accepted' });
+      }
+
+      let rows: Array<Record<string, string>>;
+      try {
+        rows = parseCsvRows(req.file.buffer.toString('utf-8'));
+      } catch (parseErr: any) {
+        const detail = parseErr instanceof CsvError ? parseErr.message : 'Unable to parse CSV file';
+        return res.status(400).json({ message: `Invalid CSV format: ${detail}` });
+      }
+      if (rows.length === 0) return res.status(400).json({ message: 'CSV is empty or has no data rows' });
+      if (rows.length > MAX_CRM_CSV_ROWS) return res.status(400).json({ message: `CSV exceeds ${MAX_CRM_CSV_ROWS}-row limit per import` });
+
+      const userId = req.session.user.id;
+      const companyId = req.session.user.companyId || null;
+      const errors: Array<{ row: number; error: string }> = [];
+      let imported = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const rowNum = i + 2;
+        const normalized = buildNormalizedRow(rows[i]);
+        try {
+          const nameParts = pickCsvField(normalized, 'name', 'full name', 'contact name', 'contact')?.split(/\s+/);
+          const firstName = pickCsvField(normalized, 'first name', 'fname', 'given name') || nameParts?.[0];
+          const lastName = pickCsvField(normalized, 'last name', 'lname', 'surname', 'family name') || nameParts?.slice(1).join(' ');
+
+          if (!firstName) {
+            errors.push({ row: rowNum, error: 'Missing name (expected a "First Name"/"Last Name" pair or a single "Name" column)' });
+            continue;
+          }
+
+          const clientData = {
+            contractorUserId: userId,
+            companyId,
+            firstName,
+            lastName: lastName || '',
+            email: pickCsvField(normalized, 'email', 'email address', 'e-mail') || null,
+            phone: pickCsvField(normalized, 'phone', 'phone number', 'mobile', 'cell', 'telephone') || null,
+            secondaryPhone: pickCsvField(normalized, 'secondary phone', 'alternate phone', 'home phone') || null,
+            address: pickCsvField(normalized, 'address', 'street address', 'street') || null,
+            city: pickCsvField(normalized, 'city') || null,
+            state: pickCsvField(normalized, 'state', 'region', 'province') || null,
+            postalCode: pickCsvField(normalized, 'zip', 'zip code', 'postal code', 'postalcode') || null,
+            notes: pickCsvField(normalized, 'notes', 'note', 'comments') || null,
+            preferredContactMethod: pickCsvField(normalized, 'preferred contact method', 'preferred contact', 'contact method') || 'phone',
+            isActive: true,
+            totalJobsCompleted: 0,
+            totalRevenue: "0.00",
+          };
+
+          const validationResult = insertCrmClientSchema.safeParse(clientData);
+          if (!validationResult.success) {
+            errors.push({ row: rowNum, error: validationResult.error.issues[0]?.message || 'Invalid row data' });
+            continue;
+          }
+
+          await storage.createCrmClient(validationResult.data);
+          imported++;
+        } catch (rowErr: any) {
+          errors.push({ row: rowNum, error: rowErr.message || 'Failed to import row' });
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Import completed: ${imported} client${imported === 1 ? '' : 's'} imported, ${errors.length} failed`,
+        totalRows: rows.length,
+        imported,
+        failed: errors.length,
+        errors,
+      });
+    } catch (error) {
+      console.error("Error importing CRM clients CSV:", error);
+      res.status(500).json({ message: "Failed to import clients" });
     }
   });
 
