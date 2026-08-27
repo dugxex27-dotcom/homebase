@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
+import { apiRequest, apiFileUpload, queryClient, API_BASE } from "@/lib/queryClient";
 import { 
   Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, 
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
@@ -389,6 +389,7 @@ export default function ContractorCRMPage() {
   const [integrationToRegenerate, setIntegrationToRegenerate] = useState<CrmIntegration | null>(null);
   const [csvImportType, setCsvImportType] = useState<"leads" | "clients">("leads");
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResult | null>(null);
+  const [exportingType, setExportingType] = useState<"leads" | "clients" | "quotes" | "invoices" | null>(null);
 
   // Pro tier state
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
@@ -1669,6 +1670,61 @@ export default function ContractorCRMPage() {
                   )}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Export Section — baseline "download my data" only, no outbound webhook/push. */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Export Your Data
+              </CardTitle>
+              <CardDescription>
+                Download a CSV of your own leads, clients, quotes, or invoices — useful for backups or moving to another tool. Only your data is included.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {([
+                  { type: "leads" as const, label: "Leads", icon: Users },
+                  { type: "clients" as const, label: "Clients", icon: Users },
+                  { type: "quotes" as const, label: "Quotes", icon: FileText },
+                  { type: "invoices" as const, label: "Invoices", icon: Receipt },
+                ]).map(({ type, label, icon: Icon }) => (
+                  <Button
+                    key={type}
+                    variant="outline"
+                    disabled={exportingType === type}
+                    data-testid={`button-export-${type}`}
+                    onClick={async () => {
+                      setExportingType(type);
+                      try {
+                        const response = await fetch(`${API_BASE}/api/crm/export/${type}`, { credentials: 'include' });
+                        if (!response.ok) {
+                          const body = await response.json().catch(() => ({ message: `Failed to export ${type}` }));
+                          throw new Error(body.message || `Failed to export ${type}`);
+                        }
+                        const blob = await response.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${type}-export.csv`;
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast({ title: "Export ready", description: `Your ${label.toLowerCase()} CSV has been downloaded.` });
+                      } catch (error: any) {
+                        toast({ title: "Error", description: error.message || `Failed to export ${type}`, variant: "destructive" });
+                      } finally {
+                        setExportingType(null);
+                      }
+                    }}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {exportingType === type ? "Exporting..." : `Export ${label}`}
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

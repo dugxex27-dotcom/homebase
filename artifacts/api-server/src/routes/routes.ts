@@ -9633,6 +9633,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── CSV export for CRM leads/clients/quotes/invoices ───────────────────
+  // Baseline "download my data" export — deliberately NOT an outbound
+  // webhook/push integration (that's a separate, larger stretch goal). Each
+  // endpoint reuses the exact same storage lookups as the corresponding GET
+  // list route, so a contractor's export always matches what the CRM UI
+  // itself shows them (including company-shared records), never anyone
+  // else's data.
+  const csvEscapeCell = (value: unknown): string => {
+    if (value === null || value === undefined) return '';
+    let str: string;
+    if (value instanceof Date) {
+      str = value.toISOString();
+    } else if (typeof value === 'object') {
+      str = JSON.stringify(value);
+    } else {
+      str = String(value);
+    }
+    // RFC 4180: quote any field containing a comma, quote, or newline; double up embedded quotes.
+    if (/[",\n\r]/.test(str)) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const rowsToCsv = (rows: Array<Record<string, unknown>>, columns: Array<{ key: string; header: string }>): string => {
+    const headerLine = columns.map(c => csvEscapeCell(c.header)).join(',');
+    const dataLines = rows.map(row => columns.map(c => csvEscapeCell(row[c.key])).join(','));
+    // Leading UTF-8 BOM so Excel (which otherwise guesses the wrong encoding
+    // for non-ASCII characters like curly quotes or accented names) opens
+    // this as UTF-8 instead of the system default codepage.
+    return '\uFEFF' + [headerLine, ...dataLines].join('\r\n') + '\r\n';
+  };
+
+  const sendCsvDownload = (res: any, filename: string, rows: Array<Record<string, unknown>>, columns: Array<{ key: string; header: string }>) => {
+    const csv = rowsToCsv(rows, columns);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  };
+
+  // GET /api/crm/export/leads - CSV download of the requesting contractor's own leads
+  app.get('/api/crm/export/leads', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const leads = await storage.getCrmLeads(req.session.user.id);
+      sendCsvDownload(res, 'leads-export.csv', leads as any, [
+        { key: 'id', header: 'ID' },
+        { key: 'firstName', header: 'First Name' },
+        { key: 'lastName', header: 'Last Name' },
+        { key: 'email', header: 'Email' },
+        { key: 'phone', header: 'Phone' },
+        { key: 'address', header: 'Address' },
+        { key: 'city', header: 'City' },
+        { key: 'state', header: 'State' },
+        { key: 'postalCode', header: 'Postal Code' },
+        { key: 'source', header: 'Source' },
+        { key: 'status', header: 'Status' },
+        { key: 'priority', header: 'Priority' },
+        { key: 'projectType', header: 'Project Type' },
+        { key: 'estimatedValue', header: 'Estimated Value' },
+        { key: 'followUpDate', header: 'Follow-Up Date' },
+        { key: 'lastContactedAt', header: 'Last Contacted' },
+        { key: 'wonAt', header: 'Won At' },
+        { key: 'lostAt', header: 'Lost At' },
+        { key: 'lostReason', header: 'Lost Reason' },
+        { key: 'tags', header: 'Tags' },
+        { key: 'createdAt', header: 'Created At' },
+      ]);
+    } catch (error) {
+      console.error("Error exporting CRM leads:", error);
+      res.status(500).json({ message: "Failed to export leads" });
+    }
+  });
+
+  // GET /api/crm/export/clients - CSV download of the requesting contractor's own clients
+  app.get('/api/crm/export/clients', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+      }
+      const clients = await storage.getCrmClients(req.session.user.id);
+      sendCsvDownload(res, 'clients-export.csv', clients as any, [
+        { key: 'id', header: 'ID' },
+        { key: 'firstName', header: 'First Name' },
+        { key: 'lastName', header: 'Last Name' },
+        { key: 'email', header: 'Email' },
+        { key: 'phone', header: 'Phone' },
+        { key: 'secondaryPhone', header: 'Secondary Phone' },
+        { key: 'address', header: 'Address' },
+        { key: 'city', header: 'City' },
+        { key: 'state', header: 'State' },
+        { key: 'postalCode', header: 'Postal Code' },
+        { key: 'notes', header: 'Notes' },
+        { key: 'tags', header: 'Tags' },
+        { key: 'preferredContactMethod', header: 'Preferred Contact Method' },
+        { key: 'isActive', header: 'Active' },
+        { key: 'totalJobsCompleted', header: 'Total Jobs Completed' },
+        { key: 'totalRevenue', header: 'Total Revenue' },
+        { key: 'lastServiceDate', header: 'Last Service Date' },
+        { key: 'createdAt', header: 'Created At' },
+      ]);
+    } catch (error) {
+      console.error("Error exporting CRM clients:", error);
+      res.status(500).json({ message: "Failed to export clients" });
+    }
+  });
+
+  // GET /api/crm/export/quotes - CSV download of the requesting contractor's own quotes
+  app.get('/api/crm/export/quotes', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+      }
+      const quotes = await storage.getCrmQuotes(req.session.user.id);
+      // Line items are a nested array (description/quantity/unitPrice/total per item) that
+      // don't have a natural flat-CSV column; they're preserved as JSON in one cell rather
+      // than silently dropped, matching how estimatedValue-style single-scalar fields export.
+      sendCsvDownload(res, 'quotes-export.csv', quotes as any, [
+        { key: 'id', header: 'ID' },
+        { key: 'quoteNumber', header: 'Quote Number' },
+        { key: 'clientId', header: 'Client ID' },
+        { key: 'title', header: 'Title' },
+        { key: 'description', header: 'Description' },
+        { key: 'serviceType', header: 'Service Type' },
+        { key: 'lineItems', header: 'Line Items (JSON)' },
+        { key: 'subtotal', header: 'Subtotal' },
+        { key: 'taxRate', header: 'Tax Rate' },
+        { key: 'taxAmount', header: 'Tax Amount' },
+        { key: 'total', header: 'Total' },
+        { key: 'status', header: 'Status' },
+        { key: 'validUntil', header: 'Valid Until' },
+        { key: 'sentAt', header: 'Sent At' },
+        { key: 'viewedAt', header: 'Viewed At' },
+        { key: 'acceptedAt', header: 'Accepted At' },
+        { key: 'declinedAt', header: 'Declined At' },
+        { key: 'createdAt', header: 'Created At' },
+      ]);
+    } catch (error) {
+      console.error("Error exporting CRM quotes:", error);
+      res.status(500).json({ message: "Failed to export quotes" });
+    }
+  });
+
+  // GET /api/crm/export/invoices - CSV download of the requesting contractor's own invoices
+  app.get('/api/crm/export/invoices', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+      }
+      const invoices = await storage.getCrmInvoices(req.session.user.id);
+      sendCsvDownload(res, 'invoices-export.csv', invoices as any, [
+        { key: 'id', header: 'ID' },
+        { key: 'invoiceNumber', header: 'Invoice Number' },
+        { key: 'clientId', header: 'Client ID' },
+        { key: 'jobId', header: 'Job ID' },
+        { key: 'title', header: 'Title' },
+        { key: 'description', header: 'Description' },
+        { key: 'lineItems', header: 'Line Items (JSON)' },
+        { key: 'subtotal', header: 'Subtotal' },
+        { key: 'taxRate', header: 'Tax Rate' },
+        { key: 'taxAmount', header: 'Tax Amount' },
+        { key: 'total', header: 'Total' },
+        { key: 'amountPaid', header: 'Amount Paid' },
+        { key: 'amountDue', header: 'Amount Due' },
+        { key: 'status', header: 'Status' },
+        { key: 'dueDate', header: 'Due Date' },
+        { key: 'paidAt', header: 'Paid At' },
+        { key: 'createdAt', header: 'Created At' },
+      ]);
+    } catch (error) {
+      console.error("Error exporting CRM invoices:", error);
+      res.status(500).json({ message: "Failed to export invoices" });
+    }
+  });
+
   // Error Tracking routes - For logging and monitoring errors
   app.post('/api/errors', async (req: any, res: any) => {
     try {
