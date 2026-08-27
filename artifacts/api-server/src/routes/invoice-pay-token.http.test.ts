@@ -25,6 +25,7 @@ const {
   mockGetUser,
   mockGetCompany,
   mockCheckoutSessionsCreate,
+  mockClaimInvoiceCheckoutSession,
 } = vi.hoisted(() => ({
   INVOICE_ID: "inv-token-001",
   HOMEOWNER_ID: "homeowner-token-001",
@@ -35,6 +36,10 @@ const {
   mockGetUser: vi.fn(),
   mockGetCompany: vi.fn(),
   mockCheckoutSessionsCreate: vi.fn(),
+  // Checkout-session idempotency claim — default to "claimed" so this
+  // file's existing tests exercise the normal (uncontested) path, same as
+  // before the idempotency guard existed.
+  mockClaimInvoiceCheckoutSession: vi.fn().mockResolvedValue({ outcome: "claimed" }),
 }));
 
 // A valid SHA-256 token stored on the invoice (computed from a known raw value)
@@ -196,6 +201,7 @@ vi.mock("../storage", async () => {
       getCrmClient: mockGetCrmClient,
       getUser: mockGetUser,
       getCompany: mockGetCompany,
+      claimInvoiceCheckoutSession: mockClaimInvoiceCheckoutSession,
     }),
   };
 });

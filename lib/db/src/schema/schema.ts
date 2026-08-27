@@ -2112,6 +2112,19 @@ export const crmInvoices = pgTable("crm_invoices", {
   // ever sent in the payment-link URL and never persisted.
   paymentToken: varchar("payment_token", { length: 64 }),
   paymentTokenExpiresAt: timestamp("payment_token_expires_at"),
+  // Idempotency guard for Stripe Checkout session creation. Concurrent
+  // payment-link/checkout requests for the same invoice (from either the
+  // contractor "send payment link" endpoint or the homeowner-facing
+  // checkout endpoint) atomically claim this slot before calling Stripe, so
+  // only one real Checkout Session is ever created per invoice+amount at a
+  // time. `stripeCheckoutSessionId` holds the sentinel value 'pending'
+  // while a creation is in flight, then the real Stripe session id once
+  // created. `stripeCheckoutSessionAmount` records which dollar amount the
+  // held/created session covers, so an edited (re-priced) invoice is
+  // treated as needing a fresh session rather than reusing a stale one.
+  stripeCheckoutSessionId: varchar("stripe_checkout_session_id"),
+  stripeCheckoutSessionAmount: decimal("stripe_checkout_session_amount", { precision: 10, scale: 2 }),
+  stripeCheckoutSessionExpiresAt: timestamp("stripe_checkout_session_expires_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

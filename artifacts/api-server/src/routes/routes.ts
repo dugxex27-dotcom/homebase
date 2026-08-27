@@ -2872,43 +2872,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
       const amountInCents = Math.round(parseFloat(invoice.total as string) * 100);
+      const invoiceAmount = invoice.total as string;
 
-      // Create Checkout Session with connected account
-      const session = await stripe!.checkout.sessions.create({
-        mode: 'payment',
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: invoice.title,
-                description: `Invoice ${invoice.invoiceNumber}`,
+      // Idempotency guard: atomically claim the invoice's Checkout-session
+      // slot before calling Stripe. Concurrent requests for the same
+      // invoice+amount (double-clicks, or a race with the homeowner-facing
+      // /api/pay/invoice/:invoiceId/checkout endpoint) must not each create
+      // their own real Stripe session.
+      let claim = await storage.claimInvoiceCheckoutSession(invoiceId, invoiceAmount, 30_000);
+      if (claim.outcome === 'existing') {
+        try {
+          const existingSession = await stripe!.checkout.sessions.retrieve(claim.sessionId);
+          if (existingSession.status === 'open' && existingSession.url) {
+            return res.json({ paymentUrl: existingSession.url, sessionId: existingSession.id });
+          }
+        } catch (retrieveErr) {
+          console.warn('[STRIPE CONNECT] Could not retrieve existing checkout session, will create a new one:', retrieveErr);
+        }
+        // The held session is no longer usable (expired/completed/not found) —
+        // release the stale claim and try to claim a fresh slot.
+        await storage.releaseInvoiceCheckoutClaim(invoiceId, claim.sessionId);
+        claim = await storage.claimInvoiceCheckoutSession(invoiceId, invoiceAmount, 30_000);
+      }
+      if (claim.outcome !== 'claimed') {
+        return res.status(409).json({ error: 'A payment link for this invoice is already being generated. Please try again in a few seconds.' });
+      }
+
+      let session;
+      try {
+        // Create Checkout Session with connected account
+        session = await stripe!.checkout.sessions.create({
+          mode: 'payment',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: invoice.title,
+                  description: `Invoice ${invoice.invoiceNumber}`,
+                },
+                unit_amount: amountInCents,
               },
-              unit_amount: amountInCents,
+              quantity: 1,
             },
-            quantity: 1,
+          ],
+          payment_intent_data: {
+            transfer_data: {
+              destination: company.stripeConnectAccountId,
+            },
+            metadata: {
+              invoiceId: invoice.id,
+              companyId: company.id,
+              clientId: client.id,
+            },
           },
-        ],
-        payment_intent_data: {
-          transfer_data: {
-            destination: company.stripeConnectAccountId,
-          },
+          customer_email: client.email || undefined,
+          success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${baseUrl}/pay/cancelled?invoice=${invoiceId}`,
           metadata: {
             invoiceId: invoice.id,
             companyId: company.id,
             clientId: client.id,
+            type: 'crm_invoice_payment',
           },
-        },
-        customer_email: client.email || undefined,
-        success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/pay/cancelled?invoice=${invoiceId}`,
-        metadata: {
-          invoiceId: invoice.id,
-          companyId: company.id,
-          clientId: client.id,
-          type: 'crm_invoice_payment',
-        },
-      });
+        }, {
+          // Stable idempotency key derived from the invoice ID and amount:
+          // a network retry of this exact call (or a true concurrent race
+          // that slips past the claim above) can't create a second real
+          // session. Amount is included so a re-priced invoice gets a fresh
+          // key rather than replaying a stale session for the old total.
+          idempotencyKey: `crm-invoice-payment-link-${invoiceId}-${amountInCents}`,
+        });
+      } catch (stripeErr) {
+        // Release the claim on failure so a legitimate retry isn't blocked forever.
+        await storage.releaseInvoiceCheckoutClaim(invoiceId, 'pending');
+        throw stripeErr;
+      }
+
+      await storage.finalizeInvoiceCheckoutSession(
+        invoiceId,
+        session.id,
+        invoiceAmount,
+        session.expires_at ? new Date(session.expires_at * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+      );
 
       // Update invoice with payment link
       await storage.updateCrmInvoice(invoiceId, {
@@ -3024,42 +3070,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await storage.getCrmClient(invoice.clientId);
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
       const amountInCents = Math.round(parseFloat(invoice.total as string) * 100);
+      const invoiceAmount = invoice.total as string;
 
-      const session = await stripe!.checkout.sessions.create({
-        mode: 'payment',
-        line_items: [
-          {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: invoice.title,
-                description: `Invoice ${invoice.invoiceNumber}`,
+      // Idempotency guard — see the matching comment on the
+      // /api/crm/invoices/:invoiceId/payment-link handler. Shares the same
+      // per-invoice claim slot so a contractor resending the link and a
+      // homeowner clicking "Pay" at nearly the same moment can't each spin
+      // up their own Stripe Checkout Session for the same invoice.
+      let claim = await storage.claimInvoiceCheckoutSession(invoiceId, invoiceAmount, 30_000);
+      if (claim.outcome === 'existing') {
+        try {
+          const existingSession = await stripe!.checkout.sessions.retrieve(claim.sessionId);
+          if (existingSession.status === 'open' && existingSession.url) {
+            return res.json({ url: existingSession.url, sessionId: existingSession.id });
+          }
+        } catch (retrieveErr) {
+          console.warn('[PAYMENT] Could not retrieve existing checkout session, will create a new one:', retrieveErr);
+        }
+        await storage.releaseInvoiceCheckoutClaim(invoiceId, claim.sessionId);
+        claim = await storage.claimInvoiceCheckoutSession(invoiceId, invoiceAmount, 30_000);
+      }
+      if (claim.outcome !== 'claimed') {
+        return res.status(409).json({ error: 'A checkout session for this invoice is already being generated. Please try again in a few seconds.' });
+      }
+
+      let session;
+      try {
+        session = await stripe!.checkout.sessions.create({
+          mode: 'payment',
+          line_items: [
+            {
+              price_data: {
+                currency: 'usd',
+                product_data: {
+                  name: invoice.title,
+                  description: `Invoice ${invoice.invoiceNumber}`,
+                },
+                unit_amount: amountInCents,
               },
-              unit_amount: amountInCents,
+              quantity: 1,
             },
-            quantity: 1,
+          ],
+          payment_intent_data: {
+            transfer_data: {
+              destination: company.stripeConnectAccountId,
+            },
+            metadata: {
+              invoiceId: invoice.id,
+              companyId: company.id,
+              clientId: client?.id || '',
+            },
           },
-        ],
-        payment_intent_data: {
-          transfer_data: {
-            destination: company.stripeConnectAccountId,
-          },
+          customer_email: customerEmail || client?.email || undefined,
+          success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${baseUrl}/pay/invoice/${invoiceId}`,
           metadata: {
             invoiceId: invoice.id,
             companyId: company.id,
             clientId: client?.id || '',
+            type: 'crm_invoice_payment',
           },
-        },
-        customer_email: customerEmail || client?.email || undefined,
-        success_url: `${baseUrl}/pay/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/pay/invoice/${invoiceId}`,
-        metadata: {
-          invoiceId: invoice.id,
-          companyId: company.id,
-          clientId: client?.id || '',
-          type: 'crm_invoice_payment',
-        },
-      });
+        }, {
+          idempotencyKey: `crm-invoice-checkout-${invoiceId}-${amountInCents}`,
+        });
+      } catch (stripeErr) {
+        await storage.releaseInvoiceCheckoutClaim(invoiceId, 'pending');
+        throw stripeErr;
+      }
+
+      await storage.finalizeInvoiceCheckoutSession(
+        invoiceId,
+        session.id,
+        invoiceAmount,
+        session.expires_at ? new Date(session.expires_at * 1000) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+      );
 
       res.json({ url: session.url, sessionId: session.id });
     } catch (error: any) {

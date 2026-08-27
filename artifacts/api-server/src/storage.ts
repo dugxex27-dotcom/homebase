@@ -4,7 +4,7 @@ import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, ins
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
 // DEMO DATA PROTECTION SYSTEM
@@ -612,6 +612,23 @@ export interface IStorage {
   createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice>;
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
   deleteCrmInvoice(id: string): Promise<boolean>;
+  // Atomic claim of the Stripe Checkout session slot for an invoice+amount —
+  // see the schema comment on crmInvoices.stripeCheckoutSessionId. Prevents
+  // concurrent payment-link / checkout requests (from either endpoint, and
+  // across server instances) from creating more than one live Checkout
+  // Session for the same invoice at a time.
+  claimInvoiceCheckoutSession(invoiceId: string, amount: string, claimTtlMs: number): Promise<
+    | { outcome: "claimed" }
+    | { outcome: "existing"; sessionId: string }
+    | { outcome: "pending" }
+  >;
+  finalizeInvoiceCheckoutSession(invoiceId: string, sessionId: string, amount: string, expiresAt: Date): Promise<void>;
+  // Clears the claim/session slot only if it still holds `expectedSessionId`
+  // — either the 'pending' sentinel this caller itself claimed (crash /
+  // Stripe-call-failure recovery), or a specific stale session id this
+  // caller just confirmed via Stripe is no longer open. Never clobbers a
+  // different value another request may have since written.
+  releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void>;
   getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
   markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean>;
   markAllInvoicesViewed(homeownerId: string): Promise<void>;
@@ -6739,6 +6756,56 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async claimInvoiceCheckoutSession(invoiceId: string, amount: string, claimTtlMs: number): Promise<
+    | { outcome: "claimed" }
+    | { outcome: "existing"; sessionId: string }
+    | { outcome: "pending" }
+  > {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing) return { outcome: "claimed" }; // let the caller's own not-found check handle this
+    const now = new Date();
+    const currentSessionId = (existing as any).stripeCheckoutSessionId as string | null | undefined;
+    const currentAmount = (existing as any).stripeCheckoutSessionAmount as string | null | undefined;
+    const currentExpiresAt = (existing as any).stripeCheckoutSessionExpiresAt as Date | null | undefined;
+    const isReclaimable =
+      !currentSessionId ||
+      (currentExpiresAt && currentExpiresAt < now) ||
+      currentAmount !== amount;
+
+    if (!isReclaimable) {
+      if (currentSessionId && currentSessionId !== 'pending') {
+        return { outcome: "existing", sessionId: currentSessionId };
+      }
+      return { outcome: "pending" };
+    }
+
+    (existing as any).stripeCheckoutSessionId = 'pending';
+    (existing as any).stripeCheckoutSessionAmount = amount;
+    (existing as any).stripeCheckoutSessionExpiresAt = new Date(now.getTime() + claimTtlMs);
+    this.crmInvoicesMap.set(invoiceId, existing);
+    return { outcome: "claimed" };
+  }
+
+  async finalizeInvoiceCheckoutSession(invoiceId: string, sessionId: string, amount: string, expiresAt: Date): Promise<void> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing) return;
+    (existing as any).stripeCheckoutSessionId = sessionId;
+    (existing as any).stripeCheckoutSessionAmount = amount;
+    (existing as any).stripeCheckoutSessionExpiresAt = expiresAt;
+    this.crmInvoicesMap.set(invoiceId, existing);
+  }
+
+  async releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing) return;
+    if ((existing as any).stripeCheckoutSessionId === expectedSessionId) {
+      (existing as any).stripeCheckoutSessionId = null;
+      (existing as any).stripeCheckoutSessionAmount = null;
+      (existing as any).stripeCheckoutSessionExpiresAt = null;
+      this.crmInvoicesMap.set(invoiceId, existing);
+    }
+  }
+
   async deleteCrmInvoice(id: string): Promise<boolean> {
     return this.crmInvoicesMap.delete(id);
   }
@@ -10422,6 +10489,84 @@ class DbStorage implements IStorage {
   async deleteCrmInvoice(id: string): Promise<boolean> {
     const result = await db.delete(crmInvoices).where(eq(crmInvoices.id, id)).returning();
     return result.length > 0;
+  }
+
+  async claimInvoiceCheckoutSession(invoiceId: string, amount: string, claimTtlMs: number): Promise<
+    | { outcome: "claimed" }
+    | { outcome: "existing"; sessionId: string }
+    | { outcome: "pending" }
+  > {
+    const now = new Date();
+    const claimExpiresAt = new Date(now.getTime() + claimTtlMs);
+
+    // Atomically claim the slot only if nothing currently holds a live one
+    // for this exact invoice+amount — a fresh row (never claimed), an
+    // expired/stale claim, or a stale session left over from a different
+    // (e.g. edited) invoice amount all qualify for reclaiming.
+    const claimResult = await db
+      .update(crmInvoices)
+      .set({
+        stripeCheckoutSessionId: 'pending',
+        stripeCheckoutSessionAmount: amount,
+        stripeCheckoutSessionExpiresAt: claimExpiresAt,
+      })
+      .where(
+        and(
+          eq(crmInvoices.id, invoiceId),
+          or(
+            isNull(crmInvoices.stripeCheckoutSessionId),
+            lt(crmInvoices.stripeCheckoutSessionExpiresAt, now),
+            ne(crmInvoices.stripeCheckoutSessionAmount, amount),
+          ),
+        ),
+      )
+      .returning({ id: crmInvoices.id });
+
+    if (claimResult.length > 0) {
+      return { outcome: "claimed" };
+    }
+
+    // Someone else holds the slot — report what they hold so the caller can
+    // reuse an existing session or tell the client a creation is in flight.
+    const [row] = await db
+      .select({ sessionId: crmInvoices.stripeCheckoutSessionId })
+      .from(crmInvoices)
+      .where(eq(crmInvoices.id, invoiceId));
+
+    if (row?.sessionId && row.sessionId !== 'pending') {
+      return { outcome: "existing", sessionId: row.sessionId };
+    }
+    return { outcome: "pending" };
+  }
+
+  async finalizeInvoiceCheckoutSession(invoiceId: string, sessionId: string, amount: string, expiresAt: Date): Promise<void> {
+    await db
+      .update(crmInvoices)
+      .set({
+        stripeCheckoutSessionId: sessionId,
+        stripeCheckoutSessionAmount: amount,
+        stripeCheckoutSessionExpiresAt: expiresAt,
+      })
+      .where(eq(crmInvoices.id, invoiceId));
+  }
+
+  async releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void> {
+    // Only clear the slot if it still holds exactly what the caller
+    // expects — never clobber a different value another request may have
+    // since written.
+    await db
+      .update(crmInvoices)
+      .set({
+        stripeCheckoutSessionId: null,
+        stripeCheckoutSessionAmount: null,
+        stripeCheckoutSessionExpiresAt: null,
+      })
+      .where(
+        and(
+          eq(crmInvoices.id, invoiceId),
+          eq(crmInvoices.stripeCheckoutSessionId, expectedSessionId),
+        ),
+      );
   }
 
   // CRM Dashboard Stats — DATABASE BACKED for persistence
