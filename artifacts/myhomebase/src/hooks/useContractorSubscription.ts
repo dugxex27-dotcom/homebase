@@ -19,7 +19,7 @@ export interface ContractorSubscriptionStatus {
   trialExpired: boolean;
   trialDaysRemaining: number;
   trialEndsAt: string | null;
-  currentPlan: 'none' | 'basic' | 'pro' | 'business' | 'enterprise';
+  currentPlan: 'none' | 'basic' | 'pro' | 'business';
   hasCrmAccess: boolean;
   subscriptionStatus: string;
   monthlyPrice: number;
@@ -32,8 +32,6 @@ export interface ContractorSubscriptionStatus {
   divisionCount: number;
   hasDivisions: boolean;
   hasBulkImport: boolean;
-  hasApiAccess: boolean;
-  hasSSO: boolean;
 }
 
 const DEFAULT_SEAT_INFO: SeatInfo = {
@@ -77,8 +75,6 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
       divisionCount: 0,
       hasDivisions: false,
       hasBulkImport: false,
-      hasApiAccess: false,
-      hasSSO: false,
     };
   }
 
@@ -106,20 +102,12 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
       divisionCount: 0,
       hasDivisions: false,
       hasBulkImport: false,
-      hasApiAccess: false,
-      hasSSO: false,
     };
   }
 
   const tier = data.companyTier as string | null ?? null;
   const hasDivisions = data.hasDivisions ?? ['business', 'contractor_business'].includes(tier ?? '');
   const hasBulkImport = data.bulkImportEnabled ?? hasDivisions;
-  // API access (and the SSO it gates) is no longer tied to a plan tier — the
-  // `contractor_enterprise` placeholder plan was removed with no real Stripe
-  // billing behind it. It is now purely the explicit apiAccessEnabled flag,
-  // set for manually negotiated custom/enterprise arrangements.
-  const hasApiAccess = data.apiAccessEnabled ?? false;
-  const hasSSO = (data.ssoEnabled ?? false) && hasApiAccess;
 
   return {
     isLoading: false,
@@ -141,7 +129,5 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
     divisionCount: data.divisionCount ?? 0,
     hasDivisions,
     hasBulkImport,
-    hasApiAccess,
-    hasSSO,
   };
 }

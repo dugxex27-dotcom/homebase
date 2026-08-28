@@ -6,8 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Mail, Loader2, X, Rocket } from "lucide-react";
+import { Lock, Sparkles, Check, Users, Calendar, FileText, CreditCard, Download, BarChart3, Clock, AlertTriangle, Loader2, X, Rocket } from "lucide-react";
 import { useLocation } from "wouter";
 import { format } from "date-fns";
 import { isNativePlatform, openExternalUrl } from "@/lib/nativeBrowser";
@@ -22,7 +21,7 @@ import {
 
 interface ContractorFeatureGateProps {
   children: React.ReactNode;
-  feature: 'crm' | 'clients' | 'jobs' | 'quotes' | 'invoices' | 'payments' | 'team' | 'imports' | 'analytics' | 'divisions' | 'bulk_import' | 'sso' | 'api_access';
+  feature: 'crm' | 'clients' | 'jobs' | 'quotes' | 'invoices' | 'payments' | 'team' | 'imports' | 'analytics' | 'divisions' | 'bulk_import';
   fallback?: React.ReactNode;
 }
 
@@ -36,55 +35,12 @@ const featureLabels: Record<string, { label: string; icon: React.ReactNode; desc
   team: { label: 'Team Management', icon: <Users className="h-5 w-5" />, description: 'Manage your team members' },
   imports: { label: 'Data Import', icon: <Download className="h-5 w-5" />, description: 'Import from other CRMs' },
   analytics: { label: 'Business Analytics', icon: <BarChart3 className="h-5 w-5" />, description: 'Detailed business insights' },
-  divisions: { label: 'Division Management', icon: <Users className="h-5 w-5" />, description: 'Organize your team into divisions', upgradeTier: 'Business' },
-  bulk_import: { label: 'Bulk Import', icon: <Download className="h-5 w-5" />, description: 'Bulk import team members via CSV', upgradeTier: 'Business' },
-  sso: { label: 'Single Sign-On', icon: <Lock className="h-5 w-5" />, description: 'SSO is available on Enterprise. Contact sales to upgrade.', upgradeTier: 'Enterprise' },
-  api_access: { label: 'API Access', icon: <BarChart3 className="h-5 w-5" />, description: 'Programmatic API access for integrations', upgradeTier: 'Enterprise' },
+  divisions: { label: 'Division Management', icon: <Users className="h-5 w-5" />, description: 'Organize your team into divisions' },
+  bulk_import: { label: 'Bulk Import', icon: <Download className="h-5 w-5" />, description: 'Bulk import team members via CSV' },
 };
 
-export function EnterpriseContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Interested in Enterprise?</DialogTitle>
-          <DialogDescription>
-            Get unlimited seats, SSO, API access, and a dedicated customer success manager.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2 py-2">
-          {[
-            'Unlimited team members',
-            'SSO / SAML integration',
-            'API access for integrations',
-            'Dedicated customer success manager',
-            'Custom onboarding & SLA support',
-          ].map(f => (
-            <div key={f} className="flex items-center gap-2 text-sm">
-              <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-              {f}
-            </div>
-          ))}
-        </div>
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
-          <a
-            href="mailto:Doug@gotohomebase.com?subject=Enterprise+Plan+Inquiry"
-            className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 rounded-md text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
-          >
-            <Mail className="h-4 w-4" />
-            Email Doug@gotohomebase.com
-          </a>
-          <Button variant="ghost" className="w-full" onClick={onClose}>Close</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export function ContractorFeatureGate({ children, feature, fallback }: ContractorFeatureGateProps) {
-  const { hasCrmAccess, hasDivisions, hasBulkImport, hasSSO, hasApiAccess, isLoading } = useContractorSubscription();
-  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
+  const { hasCrmAccess, hasDivisions, hasBulkImport, isLoading } = useContractorSubscription();
 
   if (isLoading) {
     return <div className="animate-pulse bg-muted h-32 rounded-lg" />;
@@ -94,8 +50,6 @@ export function ContractorFeatureGate({ children, feature, fallback }: Contracto
     switch (feature) {
       case 'divisions': return hasDivisions;
       case 'bulk_import': return hasBulkImport;
-      case 'sso': return hasSSO;
-      case 'api_access': return hasApiAccess;
       default: return hasCrmAccess;
     }
   })();
@@ -106,33 +60,6 @@ export function ContractorFeatureGate({ children, feature, fallback }: Contracto
 
   if (fallback) {
     return <>{fallback}</>;
-  }
-
-  // Enterprise-tier features use the contact modal instead of a self-serve upgrade
-  if (feature === 'sso' || feature === 'api_access') {
-    const featureInfo = featureLabels[feature];
-    return (
-      <>
-        <EnterpriseContactModal open={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} />
-        <Card className="border-2 border-dashed" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
-          <CardHeader className="text-center pb-2">
-            <div className="mx-auto mb-3 p-3 rounded-full w-fit" style={{ background: 'var(--theme-fill)' }}>
-              <Lock className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
-            </div>
-            <CardTitle className="text-lg">{featureInfo.label}</CardTitle>
-            <CardDescription>Available on the Enterprise plan.</CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button
-              onClick={() => setEnterpriseOpen(true)}
-              style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
-            >
-              Contact Enterprise Sales →
-            </Button>
-          </CardContent>
-        </Card>
-      </>
-    );
   }
 
   return <ContractorUpgradePrompt feature={feature} />;

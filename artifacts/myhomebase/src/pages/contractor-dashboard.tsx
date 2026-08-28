@@ -1030,7 +1030,7 @@ export default function ContractorDashboard() {
     return <ContractorTrialExpiredPaywall />;
   }
 
-  // Enterprise tech role — show stripped dashboard (no CRM, billing, referrals, team)
+  // Company tech role — show stripped dashboard (no CRM, billing, referrals, team)
   const companyRole = (typedUser as any)?.companyRole;
   const techStatus = (typedUser as any)?.status;
   if (companyRole === 'tech') {
@@ -1158,7 +1158,7 @@ export default function ContractorDashboard() {
       {isInTrial && <ContractorTrialBanner />}
       <ContractorNoPlanBanner />
 
-      {/* ── Enterprise admin tab navigation ── */}
+      {/* ── Company admin tab navigation ── */}
       {isAdminRole && (
         <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 16px' }}>
           {(['overview', 'team', 'invoices'] as const).map(tab => (
@@ -1497,7 +1497,7 @@ export default function ContractorDashboard() {
             </div>
           )}
 
-          {/* 4.3 — Divisions sub-section (Business / Enterprise only) */}
+          {/* 4.3 — Divisions sub-section */}
           {hasDivisions && (
             <div style={{ marginTop: 16 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>

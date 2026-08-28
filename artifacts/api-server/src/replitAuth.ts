@@ -309,7 +309,7 @@ export const requireRole = (role: 'homeowner' | 'contractor'): RequestHandler =>
   };
 };
 
-// ─── Enterprise contractor role helpers ───────────────────────────────────────
+// ─── Contractor company role helpers ──────────────────────────────────────────
 
 // ─── LRU cache implementation ─────────────────────────────────────────────────
 
@@ -654,7 +654,7 @@ export const requireDivisionAccess = (req: any, res: any, next: any) => {
   next();
 };
 
-// Gates routes that require the Business bulk-import feature.
+// Gates routes that require bulk import to be enabled for the company.
 export const requireBulkImport = async (req: any, res: any, next: any) => {
   if (!req.session?.isAuthenticated || !req.session?.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -668,29 +668,6 @@ export const requireBulkImport = async (req: any, res: any, next: any) => {
       company?.bulkImportEnabled === true ||
       company?.tier === 'contractor_business';
     if (!allowed) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
-    next();
-  } catch {
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
-// Gates routes that require API access. The `contractor_enterprise` plan
-// tier (removed — see Contractor Scale-Up seat-billing work) used to grant
-// this automatically; API access is now purely the explicit
-// `apiAccessEnabled` flag set on a company (e.g. via a manually negotiated
-// custom/enterprise arrangement — see EnterpriseContactModal's contact-sales
-// flow, which is unrelated to the removed plan literal).
-export const requireApiAccess = async (req: any, res: any, next: any) => {
-  if (!req.session?.isAuthenticated || !req.session?.user) {
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-  const companyId = req.session.user.companyId;
-  if (!companyId) return res.status(403).json({ code: 'API_ACCESS_NOT_AVAILABLE' });
-  try {
-    const { storage } = await import('./storage');
-    const company = await (storage as any).getCompany(companyId);
-    const allowed = company?.apiAccessEnabled === true;
-    if (!allowed) return res.status(403).json({ code: 'API_ACCESS_NOT_AVAILABLE' });
     next();
   } catch {
     return res.status(500).json({ message: 'Internal server error' });

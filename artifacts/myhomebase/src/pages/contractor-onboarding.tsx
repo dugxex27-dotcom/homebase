@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Briefcase, Wrench, Shield, Rocket, ChevronRight, ChevronLeft, Plus, X } from "lucide-react";
-import { EnterpriseContactModal } from "@/components/contractor-feature-gate";
 import "./home.css";
 
 const C = {
@@ -53,7 +52,20 @@ const STEPS = [
   { icon: Rocket,    label: "Done!" },
 ];
 
-type TeamSizeOption = '' | 'just_me' | '2_10' | '11_99' | '100_plus';
+type TeamSizeOption = '' | 'just_me' | '2_10' | '11_25' | '26_50';
+
+export const CONTRACTOR_TEAM_SIZE_OPTIONS: Array<{
+  value: Exclude<TeamSizeOption, ''>;
+  label: string;
+  sub: string;
+  tier: string;
+  tierColor: string;
+}> = [
+  { value: 'just_me', label: 'Just me', sub: 'Solo operator', tier: 'Standard plan', tierColor: '#1560A2' },
+  { value: '2_10', label: '2–10 people', sub: 'Small team', tier: 'Per-seat pricing', tierColor: '#7c3aed' },
+  { value: '11_25', label: '11–25 people', sub: 'Growing team', tier: 'Per-seat pricing', tierColor: '#7c3aed' },
+  { value: '26_50', label: '26–50 people', sub: 'Larger team', tier: 'Per-seat pricing', tierColor: '#7c3aed' },
+];
 
 type FormState = {
   company: string;
@@ -75,7 +87,6 @@ export default function ContractorOnboarding() {
   const [step, setStep] = useState(1);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [enterpriseOpen, setEnterpriseOpen] = useState(false);
 
   // When arriving from the Google OAuth contractor flow, send the user to
   // pricing after onboarding so they can complete checkout.
@@ -184,8 +195,6 @@ export default function ContractorOnboarding() {
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: '#f4f6f9', fontFamily: "'Inter', system-ui, sans-serif" }}>
-
-      <EnterpriseContactModal open={enterpriseOpen} onClose={() => setEnterpriseOpen(false)} />
 
       {/* ── HEADER ─────────────────────────── */}
       <div className="dash-header" style={{ background: `linear-gradient(135deg, ${C.deep} 0%, ${C.primary} 100%)` }}>
@@ -302,20 +311,16 @@ export default function ContractorOnboarding() {
             <span className="dash-section-label" style={{ marginTop: 8 }}>Team size</span>
             <div className="dash-light-card" style={{ marginBottom: 12 }}>
               {(() => {
-                const options: { value: TeamSizeOption; label: string; sub: string; tier: string; tierColor: string }[] = [
-                  { value: 'just_me',   label: 'Just me',      sub: 'Solo operator',                      tier: 'Basic or Pro',     tierColor: '#1560A2' },
-                  { value: '2_10',      label: '2–10 people',  sub: 'Small team',                         tier: 'Pro required',     tierColor: '#7c3aed' },
-                  { value: '11_99',     label: '11–99 people', sub: 'Growing business',                   tier: 'Business plan',    tierColor: '#d97706' },
-                  { value: '100_plus',  label: '100+ people',  sub: "Enterprise — we'll reach out",       tier: 'Enterprise',       tierColor: '#dc2626' },
-                ];
                 return (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {options.map(opt => {
+                    {CONTRACTOR_TEAM_SIZE_OPTIONS.map(opt => {
                       const selected = form.teamSizeSelection === opt.value;
                       return (
                         <button
+                          type="button"
                           key={opt.value}
                           onClick={() => set('teamSizeSelection', opt.value)}
+                          data-testid={`team-size-${opt.value}`}
                           style={{
                             all: 'unset', cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -345,7 +350,7 @@ export default function ContractorOnboarding() {
               {/* Contextual messaging */}
               {form.teamSizeSelection === 'just_me' && (
                 <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#eff6ff', fontSize: 12, color: C.primary }}>
-                  ✓ Start on Basic — upgrade to Pro anytime to unlock CRM and lead tools.
+                  ✓ Start with the standard contractor plan. Add team members later with straightforward per-seat pricing.
                 </div>
               )}
               {form.teamSizeSelection === '2_10' && (
@@ -353,20 +358,9 @@ export default function ContractorOnboarding() {
                   ✓ Includes the owner plus 2 accepted team members and full CRM access. Additional accepted members are $5/month each.
                 </div>
               )}
-              {form.teamSizeSelection === '11_99' && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fcd34d', fontSize: 12, color: '#92400e' }}>
-                  ✓ Looks like you need the Business plan — divisions, bulk import, and per-seat billing.
-                </div>
-              )}
-              {form.teamSizeSelection === '100_plus' && (
-                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 12, color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                  <span>✓ Enterprise plan — custom pricing for large teams.</span>
-                  <button
-                    onClick={() => setEnterpriseOpen(true)}
-                    style={{ all: 'unset', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#b91c1c', textDecoration: 'underline', whiteSpace: 'nowrap' }}
-                  >
-                    Contact us →
-                  </button>
+              {(form.teamSizeSelection === '11_25' || form.teamSizeSelection === '26_50') && (
+                <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 8, background: '#f5f3ff', fontSize: 12, color: '#7c3aed' }}>
+                  ✓ The standard contractor plan scales with your team. Additional accepted members are $5/month each.
                 </div>
               )}
             </div>

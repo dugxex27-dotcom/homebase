@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireApiAccess, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
@@ -1547,14 +1547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ],
       sortOrder: 1
     }
-    // contractor_enterprise removed: it was a placeholder plan literal
-    // ("unlimited seats", $0 price) with no real Stripe product behind it and
-    // no code path that ever treated its null seat fields as "unlimited" —
-    // The unified 50-person ceiling is applied in the team routes below.
-    // that no company.tier, user.subscriptionStatus, or user.subscriptionPlanId
-    // referenced it before removal. True custom/negotiated enterprise deals
-    // are still handled manually (see EnterpriseContactModal's "contact
-    // sales" flow), independent of this plan-literal seeding.
+    // The retired contractor_enterprise placeholder is not seeded as an
+    // active plan. The unified 50-person ceiling is enforced in team routes.
   ];
 
   // Get all subscription plans
@@ -5175,7 +5169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // Block suspended enterprise tech accounts
+      // Block suspended contractor company members
       if (['suspended', 'removed'].includes((user as any).status) || suspendedUserIds.has(user.id)) {
         return res.status(401).json({ message: "Account suspended. Please contact your company administrator." });
       }
@@ -5203,7 +5197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       req.session.user = user;
       req.session.isAuthenticated = true;
 
-      // Update lastLoginAt for enterprise team management tracking (non-blocking)
+      // Update lastLoginAt for contractor team management tracking (non-blocking)
       db.update(users).set({ lastLoginAt: new Date() } as any).where(eq(users.id, user.id)).catch(() => {});
 
       // Log successful login (non-blocking - don't fail login if audit fails)
@@ -16247,11 +16241,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       // If trial expired and no paid subscription, they need to pay - contractors have NO free features after trial
       const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
 
-      // Determine current plan tier
-      // Note: 'enterprise' plan tier removed — 'contractor_enterprise' was a
-      // placeholder plan literal with no real Stripe product; the type is
-      // kept so custom/negotiated enterprise deals (set manually) still display.
-      let currentPlan: 'none' | 'basic' | 'pro' | 'business' | 'enterprise' = 'none';
+      // Determine the current plan tier. Historical company-tier values remain
+      // readable for compatibility even though they are not offered for sale.
+      let currentPlan: 'none' | 'basic' | 'pro' | 'business' = 'none';
       if (plan) {
         if (plan.tierName === 'contractor_business') currentPlan = 'business';
         else if (plan.tierName === 'contractor_pro') currentPlan = 'pro';
@@ -16376,10 +16368,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         });
       }
 
-      // Note: the 'contractor_enterprise' target tier was removed — it was a
-      // placeholder plan with no real Stripe product and no caller ever sent
-      // it. True enterprise deals go through the manual "contact sales" flow
-      // (EnterpriseContactModal), not this pricing-preview endpoint.
+      // Historical plan identifiers are not valid upgrade targets.
 
       return res.status(400).json({ message: 'Unsupported target tier' });
     } catch (error) {
@@ -16717,28 +16706,6 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
       const updatedProfile = await storage.updateContractorProfile(contractorId, profileData);
       req.log?.info({ contractorId, teamSizeRange: profileData.teamSizeRange }, '[ONBOARDING] Profile updated');
-
-      // Phase 5: Enterprise lead notification for 100+ team size selection
-      if (profileData.teamSizeRange === '100_plus') {
-        const adminEmailsRaw = process.env.ADMIN_EMAILS || '';
-        const adminEmails = adminEmailsRaw.split(',').map((e: string) => e.trim()).filter(Boolean);
-        if (adminEmails.length > 0) {
-          try {
-            const contractorEmail = currentUser?.email || '';
-            const contractorName = profileData.name as string || [currentUser?.firstName, currentUser?.lastName].filter(Boolean).join(' ') || contractorEmail;
-            const companyName = profileData.company as string || 'Unknown';
-            await sendEmail({
-              to: adminEmails[0],
-              subject: `[Enterprise Lead] ${companyName} — 100+ team size`,
-              text: `New enterprise contractor lead:\n\nName: ${contractorName}\nEmail: ${contractorEmail}\nCompany: ${companyName}\nTeam size: 100+\n\nFollow up within 1 business day.`,
-              html: `<p><strong>New enterprise contractor lead</strong></p><p>Name: ${contractorName}<br>Email: ${contractorEmail}<br>Company: ${companyName}<br>Team size: 100+</p><p>Follow up within 1 business day.</p>`,
-            });
-            req.log?.info({ contractorEmail, companyName }, '[ONBOARDING] Enterprise lead email sent');
-          } catch (emailErr) {
-            req.log?.warn({ emailErr }, '[ONBOARDING] Failed to send enterprise lead email');
-          }
-        }
-      }
 
       // Return the profile with companyId so frontend can update
       res.json({ ...updatedProfile, companyId: currentUser?.companyId });
@@ -21894,13 +21861,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Enterprise Contractor Team Management
+  // Contractor Company Team Management
       // Owner/admin can invite and manage company team members.
   // Tech role has restricted access (no CRM, billing, referrals, team tabs).
   // ─────────────────────────────────────────────────────────────────────────────
 
   // Validate invite token (public — returns company info for the invite UI)
-  // ─── Enterprise Contractor Team & Invoice Routes ─────────────────────────────
+  // ─── Contractor Company Team & Invoice Routes ────────────────────────────────
 
   // Validate invite token (public — linked from invite email)
   app.get('/api/contractor/validate-token', async (req: any, res: any) => {
@@ -21941,7 +21908,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         expiresAt: invitedUser.inviteExpiresAt,
       });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error validating invite token');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error validating invite token');
       res.status(500).json({ message: "Failed to validate invite token" });
     }
   });
@@ -22034,7 +22001,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Account activated successfully", user: updatedUser });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error accepting invite');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error accepting invite');
       res.status(500).json({ message: "Failed to accept invite" });
     }
   });
@@ -22161,7 +22128,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Invite sent successfully", inviteUrl });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error inviting team member');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error inviting team member');
       res.status(500).json({ message: "Failed to send invite" });
     }
   };
@@ -22221,7 +22188,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Invite resent successfully", inviteUrl });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error resending tech invite');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error resending tech invite');
       res.status(500).json({ message: "Failed to resend invite" });
     }
   });
@@ -22293,7 +22260,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
       });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching team');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching team');
       res.status(500).json({ message: "Failed to fetch team members" });
     }
   });
@@ -22344,7 +22311,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       });
       res.json({ message: "Team member suspended" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error suspending team member');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error suspending team member');
       res.status(500).json({ message: "Failed to suspend team member" });
     }
   });
@@ -22393,7 +22360,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       });
       res.json({ message: "Team member reactivated" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error reactivating team member');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error reactivating team member');
       res.status(500).json({ message: "Failed to reactivate team member" });
     }
   });
@@ -22436,7 +22403,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json({ message: "Invite cancelled" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error cancelling invite');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error cancelling invite');
       res.status(500).json({ message: "Failed to cancel invite" });
     }
   });
@@ -22502,7 +22469,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await db.update(users).set(updates).where(eq(users.id, userId));
       res.json({ message: "Team member updated" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error updating team member');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error updating team member');
       res.status(500).json({ message: "Failed to update team member" });
     }
   });
@@ -22571,7 +22538,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       });
       res.json({ message: "Team member removed from company" });
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error removing team member');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error removing team member');
       res.status(500).json({ message: "Failed to remove team member" });
     }
   });
@@ -22614,7 +22581,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         createdAt: l.createdAt,
       })));
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching company-wide team audit log');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching company-wide team audit log');
       res.status(500).json({ message: "Failed to fetch audit log" });
     }
   });
@@ -22658,14 +22625,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         createdAt: l.createdAt,
       })));
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching team audit log');
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching team audit log');
       res.status(500).json({ message: "Failed to fetch audit log" });
     }
   });
 
-  // ─── Phase 3.1 — Division Management (Business/Enterprise) ───────────────────
+  // ─── Phase 3.1 — Division Management ─────────────────────────────────────────
 
-  // Helper: ensure caller belongs to a business/enterprise tier
+  // Historical compatibility check for accounts with division access.
   const requireDivisionTier = async (req: any, res: any): Promise<boolean> => {
     const companyId = req.session?.user?.companyId;
     if (!companyId) { res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE' }); return false; }
@@ -22673,7 +22640,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     // Note: 'contractor_enterprise' removed from this list — placeholder plan,
     // never had a real company; 'enterprise' (manual/negotiated deals) kept.
     if (!co || !['business', 'contractor_business', 'enterprise'].includes(co.tier ?? '')) {
-      res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE', message: 'Division management requires Business or Enterprise tier' });
+      res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE', message: 'Division management is not available for this account' });
       return false;
     }
     return true;
@@ -23037,10 +23004,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // ─── Phase 3.4 — Enterprise SSO Config (stubs) ───────────────────────────────
+  // ─── SSO configuration ───────────────────────────────────────────────────────
 
   // GET /api/contractor/sso — fetch SSO configuration for this company
-  app.get('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res: any) => {
+  app.get('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       const companyId = req.session.user.companyId;
       if (!companyId) return res.status(403).json({ message: 'No company found' });
@@ -23057,7 +23024,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         ssoEnabled: co.ssoEnabled ?? false,
         ssoProvider: co.ssoProvider ?? null,
         ssoDomain: co.ssoDomain ?? null,
-        note: 'SSO configuration is managed by your account manager. Contact support to enable or change your SSO provider.',
+        note: 'Company owners can update these settings for their contractor account.',
       });
     } catch (err) {
       req.log?.error({ err }, '[SSO] get error');
@@ -23065,14 +23032,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // PATCH /api/contractor/sso — update SSO config (Enterprise only; owner only)
-  // Stub: real SAML/OIDC wiring is deferred to Phase 5. This endpoint records intent and notifies CS.
-  app.patch('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), requireApiAccess, async (req: any, res: any) => {
+  // PATCH /api/contractor/sso — update SSO config (owner only)
+  app.patch('/api/contractor/sso', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       const companyId = req.session.user.companyId;
       if (!companyId) return res.status(403).json({ message: 'No company found' });
 
       const schema = z.object({
+        ssoEnabled: z.boolean().optional(),
         ssoProvider: z.enum(['okta', 'google_workspace', 'azure_ad', 'saml']).nullable().optional(),
         ssoDomain: z.string().max(253).nullable().optional(),
       });
@@ -23080,16 +23047,17 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (!parsed.success) return res.status(400).json({ message: 'Invalid data', errors: parsed.error.flatten() });
 
       await db.update(companies).set({
+        ssoEnabled: parsed.data.ssoEnabled,
         ssoProvider: parsed.data.ssoProvider ?? undefined,
         ssoDomain: parsed.data.ssoDomain ?? undefined,
         updatedAt: new Date(),
       } as any).where(eq(companies.id, companyId));
 
       res.json({
-        message: 'SSO intent recorded. Your account manager will contact you within 1 business day to complete SSO setup.',
+        message: 'SSO settings saved.',
+        ssoEnabled: parsed.data.ssoEnabled,
         ssoProvider: parsed.data.ssoProvider ?? null,
         ssoDomain: parsed.data.ssoDomain ?? null,
-        status: 'pending_cs_activation',
       });
     } catch (err) {
       req.log?.error({ err }, '[SSO] update error');
@@ -23119,7 +23087,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .orderBy(users.firstName);
       res.json(homeowners);
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching company homeowners');
+      req.log?.error({ error }, '[CONTRACTOR_COMPANY] Error fetching company homeowners');
       res.status(500).json({ message: "Failed to fetch homeowners" });
     }
   });
@@ -23199,7 +23167,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.status(201).json(invoice);
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error uploading invoice');
+      req.log?.error({ error }, '[CONTRACTOR_INVOICE] Error uploading invoice');
       res.status(500).json({ message: "Failed to upload invoice" });
     }
   });
@@ -23250,7 +23218,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json(invoiceList);
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching invoices');
+      req.log?.error({ error }, '[CONTRACTOR_INVOICE] Error fetching invoices');
       res.status(500).json({ message: "Failed to fetch invoices" });
     }
   });
@@ -23293,7 +23261,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       res.json(invoice);
     } catch (error) {
-      req.log?.error({ error }, '[ENTERPRISE] Error fetching invoice');
+      req.log?.error({ error }, '[CONTRACTOR_INVOICE] Error fetching invoice');
       res.status(500).json({ message: "Failed to fetch invoice" });
     }
   });

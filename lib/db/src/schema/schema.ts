@@ -165,15 +165,16 @@ export const companies = pgTable("companies", {
   stripePayoutsEnabled: boolean("stripe_payouts_enabled").default(false),
   stripeDefaultCurrency: varchar("stripe_default_currency", { length: 3 }).default("usd"),
   subscriptionTier: text("subscription_tier").default("individual"), // "individual" | "enterprise"
-  // Scale-Up Plan: tier model. Legacy role-specific seat-limit columns remain
+  // Legacy scale-up tier model. Historical values remain for compatibility;
+  // current contractor pricing is handled through the subscription plan.
   // in the database for compatibility but are intentionally not part of the
   // application schema; admission uses one role-agnostic policy constant.
-  tier: varchar("tier").notNull().default("solo"), // "solo" | "pro" | "business" | "enterprise"
+  tier: varchar("tier").notNull().default("solo"), // Historical company tier value
   ssoEnabled: boolean("sso_enabled").default(false),
   ssoProvider: varchar("sso_provider"), // e.g. 'okta', 'google_workspace'
   ssoDomain: varchar("sso_domain"), // verified domain for SSO
-  customPricingNotes: text("custom_pricing_notes"), // Enterprise custom deal notes
-  accountManagerEmail: varchar("account_manager_email"), // CSM assignment for Enterprise
+  customPricingNotes: text("custom_pricing_notes"), // Historical custom-deal notes
+  accountManagerEmail: varchar("account_manager_email"), // Historical account-manager assignment
   apiAccessEnabled: boolean("api_access_enabled").default(false),
   bulkImportEnabled: boolean("bulk_import_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
@@ -196,7 +197,7 @@ export const companyInviteCodes = pgTable("company_invite_codes", {
   index("IDX_company_invite_codes_code").on(table.code),
 ]);
 
-// Divisions for Business/Enterprise companies (e.g. "HVAC Team", "Electrical")
+// Divisions for contractor companies (e.g. "HVAC Team", "Electrical")
 export const companyDivisions = pgTable("company_divisions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
@@ -237,7 +238,7 @@ export const users = pgTable("users", {
   companyId: varchar("company_id").references(() => companies.id, { onDelete: 'set null' }),
   companyRole: text("company_role"), // 'owner' | 'admin' | 'tech' | 'manager' | 'dispatcher' (nullable for homeowners)
   divisionId: varchar("division_id"), // nullable; set for 'manager' and 'dispatcher' roles (FK to company_divisions.id — forward ref)
-  status: text("company_status").default("active"), // "active" | "suspended" | "pending_invite" | "removed" (enterprise tech status)
+  status: text("company_status").default("active"), // "active" | "suspended" | "pending_invite" | "removed"
   inviteToken: varchar("invite_token").unique(),
   inviteExpiresAt: timestamp("invite_expires_at"),
   deletedAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
@@ -399,7 +400,7 @@ export const contractors = pgTable("contractors", {
   insuranceInfo: text("insurance_info"), // JSON string of insurance details by region
   postalCode: text("postal_code"), // For international address support
   
-  teamSizeRange: varchar("team_size_range"), // onboarding selection: 'just_me' | '2_10' | '11_99' | '100_plus'
+  teamSizeRange: varchar("team_size_range"), // onboarding selection: 'just_me' | '2_10' | '11_25' | '26_50'
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -2682,7 +2683,7 @@ export const insertDemoLeadSchema = createInsertSchema(demoLeads).omit({ id: tru
 export type InsertDemoLead = z.infer<typeof insertDemoLeadSchema>;
 export type DemoLead = typeof demoLeads.$inferSelect;
 
-// ─── Enterprise Contractor Tech Invoices ─────────────────────────────────────
+// ─── Contractor Team Invoice Uploads ──────────────────────────────────────────
 // Techs and admins upload proof-of-work invoices scoped to their company.
 // Admins can see all company invoices; techs can only see their own.
 
@@ -2709,7 +2710,7 @@ export const insertContractorInvoiceUploadSchema = createInsertSchema(contractor
 export type InsertContractorInvoiceUpload = z.infer<typeof insertContractorInvoiceUploadSchema>;
 export type ContractorInvoiceUpload = typeof contractorInvoiceUploads.$inferSelect;
 
-// Bulk tech import records for Business/Enterprise teams
+// Bulk tech import records for contractor teams
 export const companyBulkImports = pgTable("company_bulk_imports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
