@@ -35,6 +35,8 @@ import {
   withDbAdvisoryLock,
   seatUpdateLocks,
   withSeatUpdateLock,
+  previewContractorUpgrade,
+  CURRENT_CONTRACTOR_TIER,
 } from "./routes";
 import { refreshUserSessionRole } from "../replitAuth";
 
@@ -102,6 +104,61 @@ describe("calcBilledSeats", () => {
     const result = calcBilledSeats(1000);
     expect(result).toBe(997);
     expect(result).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("previewContractorUpgrade", () => {
+  it("rejects the retired contractor_business target without returning a quote", () => {
+    const result = previewContractorUpgrade("contractor_business", 10);
+
+    expect(result.status).toBe(400);
+    expect(result.body).toEqual({
+      message: "Unsupported target tier",
+      code: "UNSUPPORTED_TARGET_TIER",
+    });
+    expect(JSON.stringify(result.body)).not.toContain("60");
+    expect(JSON.stringify(result.body)).not.toContain("8");
+  });
+
+  it("rejects missing, inactive, and unknown target tiers", () => {
+    for (const targetTier of [undefined, "contractor_pro", "unknown"]) {
+      expect(previewContractorUpgrade(targetTier, 10)).toEqual({
+        status: 400,
+        body: {
+          message: "Unsupported target tier",
+          code: "UNSUPPORTED_TARGET_TIER",
+        },
+      });
+    }
+  });
+
+  it("quotes the current contractor_basic plan at the unified per-seat price", () => {
+    const result = previewContractorUpgrade(CURRENT_CONTRACTOR_TIER, 5);
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      tier: CURRENT_CONTRACTOR_TIER,
+      totalSeats: 5,
+      includedSeats: 3,
+      additionalSeats: 2,
+      basePriceMonthly: 20,
+      perSeatPriceMonthly: 5,
+      additionalCostMonthly: 10,
+      monthlyTotal: 30,
+    });
+    expect(result.body.breakdown).toBe("$20/mo base + 2 extra seats × $5 = $30/mo");
+  });
+
+  it("charges only the current base price through the included-seat threshold", () => {
+    const result = previewContractorUpgrade(CURRENT_CONTRACTOR_TIER, 3);
+
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      totalSeats: 3,
+      additionalSeats: 0,
+      additionalCostMonthly: 0,
+      monthlyTotal: 20,
+    });
   });
 });
 

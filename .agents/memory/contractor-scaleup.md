@@ -16,6 +16,14 @@ Multi-phase plan to expand contractor billing/CRM. Status as of the last session
 - **Compatibility rule**: historical company-tier values, legacy plan identifiers, and explicit SSO/API
   access fields may still exist for stored-data compatibility. They do not gate normal contractor access;
   do not delete or migrate the stored fields without explicit product confirmation and a compatibility plan.
+- **Quote-target rule**: historical contractor plan identifiers are compatibility data only and must never
+  produce a new price quote. Only the current unified contractor plan is a valid quote target.
+
+  **Why:** returning a price for a retired identifier makes an obsolete plan appear purchasable even when
+  no current UI links to it.
+
+  **How to apply:** reject missing, retired, inactive, and unknown contractor quote targets with a clear
+  unsupported-target error; quote the current plan using the unified base and additional-seat pricing.
 - **Pricing clarification**: the intended model is 1 owner + 2 additional people free (3 total), then
   every additional company member is $5/month regardless of role. The billing counter already counts
   owner, admin, tech, manager, dispatcher, and pending/suspended non-removed members together, but its

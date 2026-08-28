@@ -53,6 +53,50 @@ const stripe = process.env.STRIPE_SECRET_KEY
 export const BOOST_PRICE_DOLLARS = 49;
 
 // ---------------------------------------------------------------------------
+// Current contractor upgrade preview — unified flat per-seat pricing.
+// Retired plan identifiers must never produce a quote.
+// ---------------------------------------------------------------------------
+export const CURRENT_CONTRACTOR_TIER = 'contractor_basic';
+const CONTRACTOR_BASE_PRICE_MONTHLY = 20;
+const CONTRACTOR_ADDITIONAL_SEAT_PRICE_MONTHLY = 5;
+const CONTRACTOR_INCLUDED_SEATS = 3;
+
+export function previewContractorUpgrade(
+  targetTier: unknown,
+  totalSeats: unknown,
+): { status: number; body: Record<string, unknown> } {
+  if (targetTier !== CURRENT_CONTRACTOR_TIER) {
+    return {
+      status: 400,
+      body: {
+        message: 'Unsupported target tier',
+        code: 'UNSUPPORTED_TARGET_TIER',
+      },
+    };
+  }
+
+  const seats = Math.max(1, parseInt(String(totalSeats ?? 1), 10) || 1);
+  const additionalSeats = Math.max(0, seats - CONTRACTOR_INCLUDED_SEATS);
+  const additionalCost = additionalSeats * CONTRACTOR_ADDITIONAL_SEAT_PRICE_MONTHLY;
+  const monthlyTotal = CONTRACTOR_BASE_PRICE_MONTHLY + additionalCost;
+
+  return {
+    status: 200,
+    body: {
+      tier: CURRENT_CONTRACTOR_TIER,
+      totalSeats: seats,
+      includedSeats: CONTRACTOR_INCLUDED_SEATS,
+      additionalSeats,
+      basePriceMonthly: CONTRACTOR_BASE_PRICE_MONTHLY,
+      perSeatPriceMonthly: CONTRACTOR_ADDITIONAL_SEAT_PRICE_MONTHLY,
+      additionalCostMonthly: additionalCost,
+      monthlyTotal,
+      breakdown: `$${CONTRACTOR_BASE_PRICE_MONTHLY}/mo base + ${additionalSeats} extra seat${additionalSeats !== 1 ? 's' : ''} × $${CONTRACTOR_ADDITIONAL_SEAT_PRICE_MONTHLY} = $${monthlyTotal}/mo`,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Invoice payment-link tokens
 // A short-lived signed token is embedded in the payment-link URL so that
 // homeowners who haven't logged in can still view and pay an invoice.
@@ -16337,7 +16381,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  // Phase 6 — Preview upgrade cost breakdown (Business tier per-seat pricing)
+  // Phase 6 — Preview upgrade cost breakdown for the current contractor plan
   app.post('/api/contractor/subscription/preview-upgrade', isAuthenticated, async (req: any, res: any) => {
     try {
       if (!req.session?.isAuthenticated || req.session?.user?.role !== 'contractor') {
@@ -16347,31 +16391,8 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       if (!user) return res.status(401).json({ message: 'User not found' });
 
       const { targetTier, totalSeats } = req.body as { targetTier?: string; totalSeats?: number };
-      const seats = Math.max(1, parseInt(String(totalSeats ?? 1)) || 1);
-
-      if (targetTier === 'contractor_business' || !targetTier) {
-        const BASE_PRICE = 60;          // $60/mo base covers up to 5 members
-        const PER_SEAT_PRICE = 8;       // $8/seat/mo beyond 5
-        const INCLUDED_SEATS = 5;
-        const additionalSeats = Math.max(0, seats - INCLUDED_SEATS);
-        const additionalCost = additionalSeats * PER_SEAT_PRICE;
-        const monthlyTotal = BASE_PRICE + additionalCost;
-        return res.json({
-          tier: 'contractor_business',
-          totalSeats: seats,
-          includedSeats: INCLUDED_SEATS,
-          additionalSeats,
-          basePriceMonthly: BASE_PRICE,
-          perSeatPriceMonthly: PER_SEAT_PRICE,
-          additionalCostMonthly: additionalCost,
-          monthlyTotal,
-          breakdown: `$${BASE_PRICE}/mo base + ${additionalSeats} extra seat${additionalSeats !== 1 ? 's' : ''} × $${PER_SEAT_PRICE} = $${monthlyTotal}/mo`,
-        });
-      }
-
-      // Historical plan identifiers are not valid upgrade targets.
-
-      return res.status(400).json({ message: 'Unsupported target tier' });
+      const preview = previewContractorUpgrade(targetTier, totalSeats);
+      return res.status(preview.status).json(preview.body);
     } catch (error) {
       req.log?.error({ error }, '[PHASE6] Error previewing upgrade');
       res.status(500).json({ message: 'Failed to preview upgrade' });
