@@ -517,6 +517,7 @@ function Router() {
             <Route path="/contractor-dashboard" component={ContractorDashboard} />
             <Route path="/contractor/proposals/:id/contract" component={ContractorContractDetail} />
             <Route path="/calendar" component={ContractorCalendar} />
+            <Route path="/billing" component={Billing} />
           </>
         )}
         {/* Contractor admin/owner routes — tech users are excluded */}

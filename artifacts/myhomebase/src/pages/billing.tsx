@@ -171,6 +171,7 @@ export default function Billing() {
   const hasActiveSubscription = userData?.subscriptionStatus === 'active';
 
   const isContractor = userData?.role === 'contractor';
+  const hasStripeCustomer = Boolean(userData?.stripeCustomerId);
 
   // Determine current plan
   const getCurrentPlan = (): Plan => {
@@ -253,6 +254,28 @@ export default function Billing() {
           </Alert>
         )}
 
+        {isContractor && !hasStripeCustomer && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50" data-testid="contractor-billing-no-customer">
+            <CreditCard className="h-4 w-4 text-blue-700" />
+            <AlertDescription className="text-blue-900">
+              <strong>Payment management is not set up yet.</strong>{' '}
+              {hasActiveSubscription
+                ? 'Your contractor access is active, but this account does not have a Stripe billing account connected.'
+                : 'Complete contractor checkout to create your billing account and manage payment methods here.'}
+              {!hasActiveSubscription && (
+                <Button
+                  variant="link"
+                  className="h-auto p-0 ml-1 text-blue-800 font-semibold align-baseline"
+                  onClick={() => setLocation('/contractor/checkout?plan=basic&onboarding=true')}
+                  data-testid="button-start-contractor-checkout"
+                >
+                  Complete checkout
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Session-loss recovery banner — shown after a native purchase fails with a 401 */}
         {purchaseFailedOnce && isNativePlatform && !hasActiveSubscription && (
           <div
@@ -327,7 +350,7 @@ export default function Billing() {
             next charge date, and invoice history/downloads. Only shown for accounts with a
             real Stripe customer; Grandfathered/trial/never-subscribed accounts have nothing
             for Stripe's portal to manage. */}
-        {userData?.stripeCustomerId && (
+        {hasStripeCustomer && (
           <div className="flex justify-center mb-6 sm:mb-8">
             <Button
               variant="outline"
