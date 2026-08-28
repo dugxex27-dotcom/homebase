@@ -73,10 +73,9 @@ export default function FAQ() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600 space-y-3">
-                      <p>Contractors can choose from two professional plans:</p>
+                      <p>Contractors use one straightforward plan:</p>
                       <ul className="list-disc pl-6 space-y-2">
-                        <li><strong>Basic:</strong> $20/month - Get found by homeowners, messaging, send proposals, reviews and ratings profile. Earn up to $20/month in referral credits.</li>
-                        <li><strong>Pro:</strong> $40/month - Everything in Basic plus full CRM with client management, job scheduling & tracking, quotes & invoices, accept payments via Stripe Connect, team management, import from Jobber/ServiceTitan, and business analytics dashboard. Earn up to $40/month in referral credits.</li>
+                        <li><strong>Basic:</strong> $20/month - Get found by homeowners, message homeowners, send proposals, manage clients and jobs, create quotes and invoices, accept payments, and manage your team. Three accepted people are included, then each additional accepted person is $5/month. Earn up to $20/month in referral credits.</li>
                       </ul>
                       <p>New contractors start with a 14-day free trial. A card is required at signup but not charged until the trial ends. After the trial expires, an active subscription is required to continue using the platform.</p>
                     </AccordionContent>
@@ -96,7 +95,7 @@ export default function FAQ() {
                       </ul>
                       <p className="mt-2 text-sm">Note: Home management features (maintenance tracking, home health score, service records) require a paid subscription starting at $5/month.</p>
                       <p className="mt-3"><strong>Contractors:</strong></p>
-                      <p>Contractors receive a 14-day free trial with full access. A card is required at signup but not charged until the trial ends. After the trial expires, an active subscription ($20/month Basic or $40/month Pro) is required to continue using the platform.</p>
+                      <p>Contractors receive a 14-day free trial with full access. A card is required at signup but not charged until the trial ends. After the trial expires, an active Basic subscription ($20/month with three accepted people included, then $5/month per additional person) is required to continue using the platform.</p>
                     </AccordionContent>
                   </AccordionItem>
 

@@ -192,9 +192,9 @@ export function ProFeatureGate({ children, featureName, featureIcon: FeatureIcon
                 <Button 
                   variant="ghost" 
                   onClick={() => setShowBenefitsDialog(true)}
-                  data-testid="button-see-pro-benefits"
+                  data-testid="button-see-contractor-plan-benefits"
                 >
-                  See all Pro features
+                  See all Contractor Plan features
                 </Button>
               </div>
             </CardContent>

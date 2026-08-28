@@ -1620,13 +1620,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       isActive: false, // hidden from new sign-ups; existing subscribers unaffected
       sortOrder: 99
     },
-    // Business tier — adds divisions, manager/dispatcher roles, bulk import, analytics.
-    // Per-seat pricing mirrors base plan: $20 base + $5/team member beyond 3.
+    // contractor_business is retired as a purchasable plan. Keep the row
+    // inactive for legacy references; current sign-ups use contractor_basic.
     {
       tierName: 'contractor_business',
-      displayName: 'Contractor Business',
-      description: 'Division management, bulk import, and advanced analytics for larger teams.',
-      monthlyPrice: '20.00', // same base; Business unlocks features, not a higher flat fee
+      displayName: 'Contractor Business (legacy)',
+      description: 'Retired — existing records remain readable. New sign-ups use Contractor plan.',
+      monthlyPrice: '20.00',
       minHouses: 0,
       maxHouses: 1,
       planType: 'contractor',
@@ -1634,6 +1634,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       hasCrmAccess: true,
       includedTeamSeats: 3,
       additionalTeamSeatPrice: '5.00',
+      isActive: false,
       features: [
         'Everything in Contractor',
         'Up to 50 total team members',
@@ -1649,6 +1650,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // The retired contractor_enterprise placeholder is not seeded as an
     // active plan. The unified 50-person ceiling is enforced in team routes.
   ];
+
+  const currentContractorPlans = <T extends { tierName: string; isActive?: boolean | null }>(
+    plans: T[],
+  ): T[] => plans.filter(
+    (plan) => plan.tierName === CURRENT_CONTRACTOR_TIER && plan.isActive !== false,
+  );
 
   // Get all subscription plans
   app.get('/api/plans', async (_req, res) => {
@@ -1674,7 +1681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/plans/contractor', async (_req, res) => {
     try {
       const plans = await storage.getSubscriptionPlansByType('contractor');
-      res.json(plans);
+      res.json(currentContractorPlans(plans));
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch contractor plans' });
     }

@@ -43,7 +43,7 @@ The module covers:
 - **Profile & Discovery** — public-facing listing, reviews, ratings
 - **Lead Capture** — homeowner messaging, proposals, connection codes
 - **Team Management** — invite/suspend/remove techs; seat limits enforced server-side
-- **CRM (Pro only)** — clients, jobs, quotes, invoices, Stripe payment links
+- **CRM (Contractor Plan)** — clients, jobs, quotes, invoices, Stripe payment links
 - **Stripe Connect** — direct payout onboarding; charges-enabled check before invoicing
 - **Boost** — paid geo-radius visibility boosts (Stripe charge at purchase)
 - **Personal Home** — contractors may track one personal property
@@ -225,7 +225,7 @@ pages/contractor-crm.tsx                         — 2627 lines — Full CRM UI
 pages/contractor-onboarding.tsx                  — 572 lines — 4-step registration wizard
 components/proposals.tsx                         — 873 lines — Proposal CRUD + e-signature
 components/stripe-connect-onboarding.tsx         — 293 lines — Stripe Connect setup
-components/contractor-feature-gate.tsx           — 338 lines — Pro-tier paywall gate
+components/contractor-feature-gate.tsx           — 338 lines — contractor-plan paywall gate
 ```
 
 ## 5. Frontend Architecture

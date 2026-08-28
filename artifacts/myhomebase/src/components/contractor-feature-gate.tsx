@@ -471,14 +471,15 @@ export function ContractorTrialExpiredPaywall() {
       name: 'Basic',
       price: '$20',
       period: '/month',
-      features: ['Get found by homeowners', 'Receive and respond to messages', 'Send proposals', 'Reviews profile', '$20/month referral credit cap'],
-      recommended: false
-    },
-    {
-      name: 'Pro',
-      price: '$40',
-      period: '/month',
-      features: ['Everything in Basic', 'Full CRM with client management', 'Job scheduling', 'Quotes & invoices', 'Accept payments', 'Team management', '$40/month referral credit cap'],
+      features: [
+        'Get found by homeowners',
+        'Receive and respond to messages',
+        'Send proposals',
+        'Full CRM with clients, jobs, quotes & invoices',
+        'Accept payments',
+        'Three accepted people included, then $5/month per additional person',
+        '$20/month referral credit cap',
+      ],
       recommended: true
     }
   ];
@@ -498,7 +499,7 @@ export function ContractorTrialExpiredPaywall() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <div className="max-w-xl mx-auto mb-8">
             {plans.map((plan) => (
               <Card 
                 key={plan.name} 
@@ -506,7 +507,7 @@ export function ContractorTrialExpiredPaywall() {
               >
                 {plan.recommended && (
                   <div className="absolute top-0 right-0 bg-blue-500 text-white text-xs px-3 py-1 rounded-bl-lg">
-                    RECOMMENDED
+                    CURRENT PLAN
                   </div>
                 )}
                 <CardHeader className="pb-2">
