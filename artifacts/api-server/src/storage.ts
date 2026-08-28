@@ -2675,8 +2675,10 @@ export class MemStorage implements IStorage {
       contractFilePath: proposalData.contractFilePath || null,
       contractSignedAt: proposalData.contractSignedAt || null,
       customerSignature: proposalData.customerSignature || null,
+      customerSignerName: proposalData.customerSignerName || null,
       contractorSignature: proposalData.contractorSignature || null,
       signatureIpAddress: proposalData.signatureIpAddress || null,
+      rejectionReason: proposalData.rejectionReason || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

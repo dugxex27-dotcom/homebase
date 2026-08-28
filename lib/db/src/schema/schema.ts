@@ -877,8 +877,10 @@ export const proposals = pgTable("proposals", {
   contractFilePath: text("contract_file_path"), // path to uploaded contract file
   contractSignedAt: timestamp("contract_signed_at"), // when customer signed the contract
   customerSignature: text("customer_signature"), // customer's e-signature data
+  customerSignerName: text("customer_signer_name"), // typed legal name captured during acceptance
   contractorSignature: text("contractor_signature"), // contractor's signature
   signatureIpAddress: text("signature_ip_address"), // IP address when signed for legal purposes
+  rejectionReason: text("rejection_reason"), // optional homeowner-provided reason
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -28,7 +28,7 @@ import OpenAI from "openai";
 import multer from "multer";
 import Stripe from "stripe";
 import { geocodeAddress, calculateDistance } from "../geocoding-service";
-import { auditLogger, sessionManager, AuditEventTypes } from "../security-audit";
+import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-service";
@@ -13264,60 +13264,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // E-signature route for proposals
-  app.post("/api/proposals/:id/sign", isAuthenticated, async (req: any, res: any) => {
-    try {
-      const proposalId = req.params.id;
-      const userId = req.session.user.id;
-      const { signature, signerName, signedAt, ipAddress } = req.body;
+  const acceptAndSignProposalSchema = z
+    .object({
+      signerName: z.string().trim().min(1).max(200),
+      agreementConfirmed: z.boolean().refine((value) => value === true, {
+        message: "You must agree to the proposal terms",
+      }),
+    })
+    .strict();
 
-      if (!signature || !signerName || !signedAt) {
-        return res.status(400).json({ message: "Missing required signature data" });
-      }
+  const rejectProposalSchema = z
+    .object({
+      rejectionReason: z.string().trim().max(2000).optional(),
+    })
+    .strict();
 
-      // Get the proposal and verify the user has permission to sign it
-      const proposal = await storage.getProposal(proposalId);
-      if (!proposal) {
-        return res.status(404).json({ message: "Proposal not found" });
-      }
+  const notifyContractorOfProposalOutcome = async (
+    proposal: any,
+    outcome: "accepted" | "rejected",
+  ) => {
+    const homeowner = proposal.homeownerId
+      ? await storage.getUser(proposal.homeownerId)
+      : null;
+    const homeownerName =
+      homeowner &&
+      `${homeowner.firstName || ""} ${homeowner.lastName || ""}`.trim();
+    const actorName = homeownerName || "The homeowner";
 
-      // Check if user is the homeowner for this proposal
-      if (proposal.homeownerId !== userId) {
-        return res.status(403).json({ message: "Only the homeowner can sign this proposal" });
-      }
+    await createNotificationSafely(
+      storage,
+      createImmediateNotification({
+        homeownerId: proposal.contractorId,
+        type: "proposal",
+        category: notificationCategories.proposal,
+        title:
+          outcome === "accepted"
+            ? "Proposal Accepted and Signed"
+            : "Proposal Rejected",
+        message:
+          outcome === "accepted"
+            ? `${actorName} accepted and signed your proposal: ${proposal.title}`
+            : `${actorName} rejected your proposal: ${proposal.title}`,
+        actionUrl: "/contractor-dashboard",
+        priority: "high",
+      }),
+      `contractor notification for ${outcome} proposal ${proposal.id}`,
+    );
+  };
 
-      // Atomic conditional update: only apply the signature if the proposal's
-      // status is still what we just read. This closes the race where two
-      // concurrent /sign submissions for the same proposal (e.g. a
-      // double-click or double-submit) both read the same prior status and
-      // would otherwise both write a signature and both fire duplicate
-      // "achievement unlocked" notifications — only the request whose UPDATE
-      // actually matches a row applies its signature.
-      const updatedProposal = await storage.updateProposalIfStatusMatches(proposalId, proposal.status, {
-        customerSignature: signature,
-        contractSignedAt: new Date(signedAt),
-        signatureIpAddress: ipAddress,
-        status: "accepted"
-      });
-      if (!updatedProposal) {
-        return res.status(409).json({ message: "This proposal was just updated (it may already be signed). Please refresh and try again." });
-      }
-
+  app.post(
+    "/api/proposals/:id/accept-and-sign",
+    isAuthenticated,
+    async (req: any, res: any) => {
       try {
-        const newAchievements = await storage.checkAndUnlockContractorHiringAchievements(userId);
-        if (newAchievements.length > 0) {
-          res.json({ ...updatedProposal, newAchievements });
-          return;
-        }
-      } catch (achievementError) {
-        console.error("Error unlocking contractor hiring achievement:", achievementError);
-      }
+        const proposalId = req.params.id;
+        const userId = req.session.user.id;
+        const { signerName } = acceptAndSignProposalSchema.parse(req.body);
 
-      res.json(updatedProposal);
-    } catch (error) {
-      console.error("Error signing proposal:", error);
-      res.status(500).json({ message: "Failed to sign proposal" });
-    }
+        const proposal = await storage.getProposal(proposalId);
+        if (!proposal) {
+          return res.status(404).json({ message: "Proposal not found" });
+        }
+        if (proposal.homeownerId !== userId) {
+          return res
+            .status(403)
+            .json({ message: "Only the proposal homeowner can accept and sign" });
+        }
+        if (proposal.status !== "sent") {
+          return res.status(409).json({
+            message: `Proposal cannot be accepted and signed while its status is "${proposal.status}". Only sent proposals can be accepted.`,
+          });
+        }
+
+        const contractSignedAt = new Date();
+        const signatureIpAddress =
+          getClientIP(req) || req.ip || req.socket?.remoteAddress || "unknown";
+        const customerSignature = JSON.stringify({
+          type: "typed-name-agreement",
+          signerName,
+          agreementConfirmed: true,
+        });
+
+        const updatedProposal =
+          await storage.updateProposalIfStatusMatches(proposalId, "sent", {
+            status: "accepted",
+            customerSignature,
+            customerSignerName: signerName,
+            contractSignedAt,
+            signatureIpAddress,
+            rejectionReason: null,
+          });
+        if (!updatedProposal) {
+          return res.status(409).json({
+            message:
+              "This proposal was already updated. Refresh before trying again.",
+          });
+        }
+
+        await notifyContractorOfProposalOutcome(updatedProposal, "accepted");
+
+        try {
+          const newAchievements =
+            await storage.checkAndUnlockContractorHiringAchievements(userId);
+          if (newAchievements.length > 0) {
+            return res.json({ ...updatedProposal, newAchievements });
+          }
+        } catch (achievementError) {
+          console.error(
+            "Error unlocking contractor hiring achievement:",
+            achievementError,
+          );
+        }
+
+        return res.json(updatedProposal);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid acceptance data",
+            errors: error.issues,
+          });
+        }
+        console.error("Error accepting and signing proposal:", error);
+        return res
+          .status(500)
+          .json({ message: "Failed to accept and sign proposal" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/proposals/:id/reject",
+    isAuthenticated,
+    async (req: any, res: any) => {
+      try {
+        const proposalId = req.params.id;
+        const userId = req.session.user.id;
+        const { rejectionReason } = rejectProposalSchema.parse(req.body ?? {});
+
+        const proposal = await storage.getProposal(proposalId);
+        if (!proposal) {
+          return res.status(404).json({ message: "Proposal not found" });
+        }
+        if (proposal.homeownerId !== userId) {
+          return res
+            .status(403)
+            .json({ message: "Only the proposal homeowner can reject" });
+        }
+        if (proposal.status !== "sent") {
+          return res.status(409).json({
+            message: `Proposal cannot be rejected while its status is "${proposal.status}". Only sent proposals can be rejected.`,
+          });
+        }
+
+        const updatedProposal =
+          await storage.updateProposalIfStatusMatches(proposalId, "sent", {
+            status: "rejected",
+            rejectionReason: rejectionReason || null,
+          });
+        if (!updatedProposal) {
+          return res.status(409).json({
+            message:
+              "This proposal was already updated. Refresh before trying again.",
+          });
+        }
+
+        await notifyContractorOfProposalOutcome(updatedProposal, "rejected");
+        return res.json(updatedProposal);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: "Invalid rejection data",
+            errors: error.issues,
+          });
+        }
+        console.error("Error rejecting proposal:", error);
+        return res.status(500).json({ message: "Failed to reject proposal" });
+      }
+    },
+  );
+
+  // The legacy endpoint trusted client-supplied signing timestamps and IPs.
+  // Keep a clear compatibility response instead of leaving a bypass around
+  // the explicit agreement and sent-status checks above.
+  app.post("/api/proposals/:id/sign", isAuthenticated, (_req: any, res: any) => {
+    return res.status(410).json({
+      message:
+        "This signing endpoint has been retired. Use /api/proposals/:id/accept-and-sign.",
+    });
   });
 
   // Upload contract file for proposal

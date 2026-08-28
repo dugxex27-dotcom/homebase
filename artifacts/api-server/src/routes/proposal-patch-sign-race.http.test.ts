@@ -120,7 +120,11 @@ vi.mock("../security-audit", () => ({
   },
   sessionManager: { createSession: vi.fn(), validateSession: vi.fn(), invalidateSession: vi.fn(), trackRequest: vi.fn() },
   userRateLimiter: { check: vi.fn().mockResolvedValue(true) },
-  getClientIP: vi.fn().mockReturnValue("127.0.0.1"),
+  getClientIP: vi.fn().mockImplementation((req: any) =>
+    req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "127.0.0.1"
+  ),
 }));
 
 import express from "express";
@@ -313,42 +317,247 @@ describe("PATCH /api/proposals/:id — race condition", () => {
   });
 });
 
-describe("POST /api/proposals/:id/sign — race condition", () => {
-  it("signs a normal sent proposal once and checks achievements once", async () => {
+describe("POST /api/proposals/:id/accept-and-sign", () => {
+  it("accepts and signs a sent proposal with server-derived audit fields", async () => {
     const state: ProposalState = {
       id: PROPOSAL_ID, contractorId: CONTRACTOR_ID, homeownerId: HOMEOWNER_ID, status: "sent", title: "Roof repair",
     };
     wireProposalMocks(state);
     const app = await buildApp({ id: HOMEOWNER_ID });
+    const before = Date.now();
 
-    const res = await request(app).post(`/api/proposals/${PROPOSAL_ID}/sign`).send({
-      signature: "data:sig", signerName: "Homer Owner", signedAt: new Date().toISOString(), ipAddress: "1.2.3.4",
-    });
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .set("x-forwarded-for", "198.51.100.24")
+      .send({
+        signerName: "Homer Owner",
+        agreementConfirmed: true,
+      });
 
     expect(res.status).toBe(200);
     expect(state.status).toBe("accepted");
+    expect(state.customerSignerName).toBe("Homer Owner");
+    expect(state.signatureIpAddress).toBe("198.51.100.24");
+    expect(state.contractSignedAt).toBeInstanceOf(Date);
+    expect(state.contractSignedAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(JSON.parse(state.customerSignature)).toEqual({
+      type: "typed-name-agreement",
+      signerName: "Homer Owner",
+      agreementConfirmed: true,
+    });
     expect(mockCheckAchievements).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotificationSafely.mock.calls[0][1]).toMatchObject({
+      homeownerId: CONTRACTOR_ID,
+      type: "proposal",
+      title: "Proposal Accepted and Signed",
+      actionUrl: "/contractor-dashboard",
+    });
   });
 
-  it("never lets two concurrent /sign submissions both apply a signature or both check achievements twice", async () => {
+  it.each([
+    [{ signerName: "", agreementConfirmed: true }, "signer name"],
+    [{ signerName: "Homer Owner", agreementConfirmed: false }, "agreement"],
+    [{ signerName: "Homer Owner" }, "missing agreement"],
+  ])("rejects invalid acceptance data: %s", async (body, _caseLabel) => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send(body);
+
+    expect(res.status).toBe(400);
+    expect(state.status).toBe("sent");
+    expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+  });
+
+  it("rejects client-supplied signing timestamp and IP fields", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send({
+        signerName: "Homer Owner",
+        agreementConfirmed: true,
+        signedAt: "2000-01-01T00:00:00.000Z",
+        ipAddress: "1.2.3.4",
+      });
+
+    expect(res.status).toBe(400);
+    expect(state.status).toBe("sent");
+  });
+
+  it.each(["draft", "expired", "accepted", "rejected"])(
+    "rejects acceptance when the proposal status is %s",
+    async (status) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status,
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: HOMEOWNER_ID });
+
+      const res = await request(app)
+        .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+        .send({
+          signerName: "Homer Owner",
+          agreementConfirmed: true,
+        });
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain("Only sent proposals");
+      expect(state.status).toBe(status);
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects an unrelated homeowner", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: "unrelated-homeowner" });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send({
+        signerName: "Wrong Homeowner",
+        agreementConfirmed: true,
+      });
+
+    expect(res.status).toBe(403);
+    expect(state.status).toBe("sent");
+  });
+
+  it("never lets two concurrent acceptance requests both apply or notify", async () => {
     const state: ProposalState = {
       id: PROPOSAL_ID, contractorId: CONTRACTOR_ID, homeownerId: HOMEOWNER_ID, status: "sent", title: "Roof repair",
     };
     wireProposalMocks(state, 2);
     const app = await buildApp({ id: HOMEOWNER_ID });
 
-    const body = { signature: "data:sig", signerName: "Homer Owner", signedAt: new Date().toISOString(), ipAddress: "1.2.3.4" };
+    const body = { signerName: "Homer Owner", agreementConfirmed: true };
     const [res1, res2] = await Promise.all([
-      request(app).post(`/api/proposals/${PROPOSAL_ID}/sign`).send(body),
-      request(app).post(`/api/proposals/${PROPOSAL_ID}/sign`).send(body),
+      request(app).post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`).send(body),
+      request(app).post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`).send(body),
     ]);
 
     const statuses = [res1.status, res2.status];
     expect(statuses.filter((s) => s === 200)).toHaveLength(1);
     expect(statuses.filter((s) => s === 409)).toHaveLength(1);
     expect(state.status).toBe("accepted");
-    // Achievement check (and its downstream notifications) must run for the
-    // single winning signature only, never twice.
     expect(mockCheckAchievements).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
+  });
+
+  it("retires the legacy client-trusting sign endpoint", async () => {
+    const app = await buildApp({ id: HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/sign`)
+      .send({
+        signature: "data:sig",
+        signerName: "Homer Owner",
+        signedAt: "2000-01-01T00:00:00.000Z",
+        ipAddress: "1.2.3.4",
+      });
+
+    expect(res.status).toBe(410);
+    expect(res.body.message).toContain("accept-and-sign");
+  });
+});
+
+describe("POST /api/proposals/:id/reject", () => {
+  it("rejects a sent proposal, stores the optional reason, and notifies the contractor", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/reject`)
+      .send({ rejectionReason: "The timing no longer works." });
+
+    expect(res.status).toBe(200);
+    expect(state.status).toBe("rejected");
+    expect(state.rejectionReason).toBe("The timing no longer works.");
+    expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
+    expect(mockCreateNotificationSafely.mock.calls[0][1]).toMatchObject({
+      homeownerId: CONTRACTOR_ID,
+      type: "proposal",
+      title: "Proposal Rejected",
+      actionUrl: "/contractor-dashboard",
+    });
+  });
+
+  it.each(["draft", "expired", "accepted", "rejected"])(
+    "rejects rejection when the proposal status is %s",
+    async (status) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status,
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: HOMEOWNER_ID });
+
+      const res = await request(app)
+        .post(`/api/proposals/${PROPOSAL_ID}/reject`)
+        .send({});
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain("Only sent proposals");
+      expect(state.status).toBe(status);
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects an unrelated homeowner", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: "unrelated-homeowner" });
+
+    const res = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/reject`)
+      .send({ rejectionReason: "Not my proposal" });
+
+    expect(res.status).toBe(403);
+    expect(state.status).toBe("sent");
   });
 });
