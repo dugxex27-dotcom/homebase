@@ -13330,6 +13330,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .status(403)
             .json({ message: "Only the proposal homeowner can accept and sign" });
         }
+        const customerSignature = JSON.stringify({
+          type: "typed-name-agreement",
+          signerName,
+          agreementConfirmed: true,
+        });
+        if (proposal.status === "accepted") {
+          const existingContract =
+            await storage.getContractByProposalId(proposalId);
+          if (
+            existingContract &&
+            existingContract.customerSignature === customerSignature &&
+            existingContract.customerSignerName === signerName
+          ) {
+            return res.json({
+              ...proposal,
+              contract: existingContract,
+              idempotent: true,
+            });
+          }
+        }
         if (proposal.status !== "sent") {
           return res.status(409).json({
             message: `Proposal cannot be accepted and signed while its status is "${proposal.status}". Only sent proposals can be accepted.`,
@@ -13339,35 +13359,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const contractSignedAt = new Date();
         const signatureIpAddress =
           getClientIP(req) || req.ip || req.socket?.remoteAddress || "unknown";
-        const customerSignature = JSON.stringify({
-          type: "typed-name-agreement",
-          signerName,
-          agreementConfirmed: true,
-        });
 
-        const updatedProposal =
-          await storage.updateProposalIfStatusMatches(proposalId, "sent", {
-            status: "accepted",
-            customerSignature,
-            customerSignerName: signerName,
+        const acceptance =
+          await storage.acceptProposalAndCreateContractIfSent(
+            proposalId,
             contractSignedAt,
+            customerSignature,
+            signerName,
             signatureIpAddress,
-            rejectionReason: null,
-          });
-        if (!updatedProposal) {
+          );
+        if (!acceptance) {
           return res.status(409).json({
             message:
               "This proposal was already updated. Refresh before trying again.",
           });
         }
 
+        const { proposal: updatedProposal, contract } = acceptance;
         await notifyContractorOfProposalOutcome(updatedProposal, "accepted");
 
         try {
           const newAchievements =
             await storage.checkAndUnlockContractorHiringAchievements(userId);
           if (newAchievements.length > 0) {
-            return res.json({ ...updatedProposal, newAchievements });
+            return res.json({
+              ...updatedProposal,
+              contract,
+              newAchievements,
+            });
           }
         } catch (achievementError) {
           console.error(
@@ -13376,7 +13395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
         }
 
-        return res.json(updatedProposal);
+        return res.json({ ...updatedProposal, contract });
       } catch (error) {
         if (error instanceof z.ZodError) {
           return res.status(400).json({

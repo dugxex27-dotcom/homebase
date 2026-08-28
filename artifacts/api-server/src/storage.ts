@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs, invoiceAnalyses } from "@workspace/db";
+import { contracts, type Contract, type InsertContract } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
@@ -239,6 +240,14 @@ export interface IStorage {
   // a duplicate transition notification. Returns undefined (no write applied)
   // if the status no longer matches.
   updateProposalIfStatusMatches(id: string, expectedStatus: string, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
+  getContractByProposalId(proposalId: string): Promise<Contract | undefined>;
+  acceptProposalAndCreateContractIfSent(
+    proposalId: string,
+    acceptedAt: Date,
+    customerSignature: string,
+    customerSignerName: string,
+    signatureIpAddress: string,
+  ): Promise<{ proposal: Proposal; contract: Contract } | undefined>;
   deleteProposal(id: string): Promise<boolean>;
 
   // Home system operations
@@ -721,6 +730,7 @@ export class MemStorage implements IStorage {
   private contractorReviews: Map<string, ContractorReview>;
   private reviewFlags: Map<string, ReviewFlag>;
   private proposals: Map<string, Proposal>;
+  private contracts: Map<string, Contract>;
   private homeSystems: Map<string, HomeSystem>;
   private pushSubscriptions: Map<string, PushSubscription>;
   private contractorBoosts: Map<string, ContractorBoost>;
@@ -785,6 +795,7 @@ export class MemStorage implements IStorage {
     this.contractorReviews = new Map();
     this.reviewFlags = new Map();
     this.proposals = new Map();
+    this.contracts = new Map();
     this.homeSystems = new Map();
     this.pushSubscriptions = new Map();
     this.contractorBoosts = new Map();
@@ -2713,6 +2724,60 @@ export class MemStorage implements IStorage {
     };
     this.proposals.set(id, updated);
     return updated;
+  }
+
+  async getContractByProposalId(proposalId: string): Promise<Contract | undefined> {
+    return this.contracts.get(proposalId);
+  }
+
+  async acceptProposalAndCreateContractIfSent(
+    proposalId: string,
+    acceptedAt: Date,
+    customerSignature: string,
+    customerSignerName: string,
+    signatureIpAddress: string,
+  ): Promise<{ proposal: Proposal; contract: Contract } | undefined> {
+    const existing = this.proposals.get(proposalId);
+    if (!existing || existing.status !== "sent" || !existing.homeownerId) {
+      return undefined;
+    }
+
+    const acceptedProposal: Proposal = {
+      ...existing,
+      status: "accepted",
+      customerSignature,
+      customerSignerName,
+      contractSignedAt: acceptedAt,
+      signatureIpAddress,
+      rejectionReason: null,
+      updatedAt: new Date(),
+    };
+
+    const contract: Contract = this.contracts.get(proposalId) || {
+      id: randomUUID(),
+      proposalId,
+      homeownerId: existing.homeownerId,
+      contractorId: existing.contractorId,
+      companyId: existing.companyId || null,
+      title: existing.title,
+      description: existing.description,
+      serviceType: existing.serviceType,
+      estimatedCost: existing.estimatedCost,
+      scope: existing.scope,
+      materials: [...(existing.materials || [])],
+      warrantyPeriod: existing.warrantyPeriod || null,
+      status: "active",
+      createdAt: new Date(),
+      acceptedAt,
+      customerSignature,
+      customerSignerName,
+      customerSignedAt: acceptedAt,
+      contractFilePath: existing.contractFilePath || null,
+    };
+
+    this.proposals.set(proposalId, acceptedProposal);
+    this.contracts.set(proposalId, contract);
+    return { proposal: acceptedProposal, contract };
   }
 
   async deleteProposal(id: string): Promise<boolean> {
@@ -9426,6 +9491,78 @@ class DbStorage implements IStorage {
       .where(and(eq(proposals.id, id), eq(proposals.status, expectedStatus)))
       .returning();
     return result[0];
+  }
+
+  async getContractByProposalId(proposalId: string): Promise<Contract | undefined> {
+    const result = await db.select().from(contracts).where(eq(contracts.proposalId, proposalId));
+    return result[0];
+  }
+
+  async acceptProposalAndCreateContractIfSent(
+    proposalId: string,
+    acceptedAt: Date,
+    customerSignature: string,
+    customerSignerName: string,
+    signatureIpAddress: string,
+  ): Promise<{ proposal: Proposal; contract: Contract } | undefined> {
+    return await db.transaction(async (tx) => {
+      const acceptedRows = await tx
+        .update(proposals)
+        .set({
+          status: "accepted",
+          customerSignature,
+          customerSignerName,
+          contractSignedAt: acceptedAt,
+          signatureIpAddress,
+          rejectionReason: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(proposals.id, proposalId), eq(proposals.status, "sent")))
+        .returning();
+      const acceptedProposal = acceptedRows[0];
+      if (!acceptedProposal || !acceptedProposal.homeownerId) {
+        return undefined;
+      }
+
+      const contractData: InsertContract = {
+        proposalId: acceptedProposal.id,
+        homeownerId: acceptedProposal.homeownerId,
+        contractorId: acceptedProposal.contractorId,
+        companyId: acceptedProposal.companyId,
+        title: acceptedProposal.title,
+        description: acceptedProposal.description,
+        serviceType: acceptedProposal.serviceType,
+        estimatedCost: acceptedProposal.estimatedCost,
+        scope: acceptedProposal.scope,
+        materials: [...(acceptedProposal.materials || [])],
+        warrantyPeriod: acceptedProposal.warrantyPeriod,
+        status: "active",
+        acceptedAt,
+        customerSignature,
+        customerSignerName,
+        customerSignedAt: acceptedAt,
+        contractFilePath: acceptedProposal.contractFilePath,
+      };
+
+      const insertedContracts = await tx
+        .insert(contracts)
+        .values(contractData)
+        .onConflictDoNothing({ target: contracts.proposalId })
+        .returning();
+      let contract = insertedContracts[0];
+      if (!contract) {
+        const existingContracts = await tx
+          .select()
+          .from(contracts)
+          .where(eq(contracts.proposalId, proposalId));
+        contract = existingContracts[0];
+      }
+      if (!contract) {
+        throw new Error(`Contract creation failed for accepted proposal ${proposalId}`);
+      }
+
+      return { proposal: acceptedProposal, contract };
+    });
   }
 
   async deleteProposal(id: string): Promise<boolean> {

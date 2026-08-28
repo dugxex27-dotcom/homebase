@@ -24,6 +24,8 @@ const {
   PROPOSAL_ID,
   mockGetProposal,
   mockUpdateProposalIfStatusMatches,
+  mockGetContractByProposalId,
+  mockAcceptProposalAndCreateContractIfSent,
   mockCheckAchievements,
   mockCreateNotificationSafely,
 } = vi.hoisted(() => ({
@@ -32,6 +34,8 @@ const {
   PROPOSAL_ID: "proposal-001",
   mockGetProposal: vi.fn(),
   mockUpdateProposalIfStatusMatches: vi.fn(),
+  mockGetContractByProposalId: vi.fn(),
+  mockAcceptProposalAndCreateContractIfSent: vi.fn(),
   mockCheckAchievements: vi.fn(),
   mockCreateNotificationSafely: vi.fn().mockResolvedValue(undefined),
 }));
@@ -47,6 +51,8 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getProposal: mockGetProposal,
       updateProposalIfStatusMatches: mockUpdateProposalIfStatusMatches,
+      getContractByProposalId: mockGetContractByProposalId,
+      acceptProposalAndCreateContractIfSent: mockAcceptProposalAndCreateContractIfSent,
       checkAndUnlockContractorHiringAchievements: mockCheckAchievements,
       getUser: vi.fn().mockResolvedValue({ id: CONTRACTOR_ID, firstName: "Cara", lastName: "Contractor", companyId: null }),
       getCompany: vi.fn().mockResolvedValue(null),
@@ -187,6 +193,8 @@ function makeArrivalBarrier(n: number) {
  */
 function wireProposalMocks(state: ProposalState, raceReaders = 1) {
   const arrive = makeArrivalBarrier(raceReaders);
+  let contract: Record<string, any> | undefined;
+  let contractCreations = 0;
   mockGetProposal.mockImplementation(async (id: string) => {
     const snapshot = id === state.id ? { ...state } : undefined;
     await arrive();
@@ -199,6 +207,64 @@ function wireProposalMocks(state: ProposalState, raceReaders = 1) {
     Object.assign(state, patch);
     return { ...state };
   });
+  mockGetContractByProposalId.mockImplementation(async (proposalId: string) =>
+    proposalId === state.id && contract ? { ...contract } : undefined,
+  );
+  mockAcceptProposalAndCreateContractIfSent.mockImplementation(
+    async (
+      proposalId: string,
+      acceptedAt: Date,
+      customerSignature: string,
+      customerSignerName: string,
+      signatureIpAddress: string,
+    ) => {
+      if (
+        proposalId !== state.id ||
+        state.status !== "sent" ||
+        !state.homeownerId
+      ) {
+        return undefined;
+      }
+
+      const acceptedTerms = { ...state };
+      Object.assign(state, {
+        status: "accepted",
+        customerSignature,
+        customerSignerName,
+        contractSignedAt: acceptedAt,
+        signatureIpAddress,
+        rejectionReason: null,
+      });
+      contract = {
+        id: "contract-001",
+        proposalId,
+        homeownerId: acceptedTerms.homeownerId,
+        contractorId: acceptedTerms.contractorId,
+        companyId: acceptedTerms.companyId ?? null,
+        title: acceptedTerms.title,
+        description: acceptedTerms.description ?? "Repair description",
+        serviceType: acceptedTerms.serviceType ?? "Roofing",
+        estimatedCost: acceptedTerms.estimatedCost ?? "1234.50",
+        scope: acceptedTerms.scope ?? "Replace damaged roofing",
+        materials: [...(acceptedTerms.materials ?? ["Shingles"])],
+        warrantyPeriod: acceptedTerms.warrantyPeriod ?? null,
+        status: "active",
+        createdAt: acceptedAt,
+        acceptedAt,
+        customerSignature,
+        customerSignerName,
+        customerSignedAt: acceptedAt,
+        contractFilePath: acceptedTerms.contractFilePath ?? null,
+      };
+      contractCreations += 1;
+      return { proposal: { ...state }, contract: { ...contract } };
+    },
+  );
+
+  return {
+    getContract: () => contract && { ...contract },
+    getContractCreations: () => contractCreations,
+  };
 }
 
 beforeEach(() => {
@@ -320,9 +386,21 @@ describe("PATCH /api/proposals/:id — race condition", () => {
 describe("POST /api/proposals/:id/accept-and-sign", () => {
   it("accepts and signs a sent proposal with server-derived audit fields", async () => {
     const state: ProposalState = {
-      id: PROPOSAL_ID, contractorId: CONTRACTOR_ID, homeownerId: HOMEOWNER_ID, status: "sent", title: "Roof repair",
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      companyId: "company-001",
+      status: "sent",
+      title: "Roof repair",
+      description: "Replace storm-damaged roof",
+      serviceType: "Roofing",
+      estimatedCost: "8450.25",
+      scope: "Remove old roof and install new shingles",
+      materials: ["Architectural shingles", "Underlayment"],
+      warrantyPeriod: "10 years",
+      contractFilePath: "/contracts/source.pdf",
     };
-    wireProposalMocks(state);
+    const harness = wireProposalMocks(state);
     const app = await buildApp({ id: HOMEOWNER_ID });
     const before = Date.now();
 
@@ -345,6 +423,25 @@ describe("POST /api/proposals/:id/accept-and-sign", () => {
       signerName: "Homer Owner",
       agreementConfirmed: true,
     });
+    expect(harness.getContractCreations()).toBe(1);
+    expect(res.body.contract).toMatchObject({
+      id: "contract-001",
+      proposalId: PROPOSAL_ID,
+      homeownerId: HOMEOWNER_ID,
+      contractorId: CONTRACTOR_ID,
+      companyId: "company-001",
+      title: "Roof repair",
+      description: "Replace storm-damaged roof",
+      serviceType: "Roofing",
+      estimatedCost: "8450.25",
+      scope: "Remove old roof and install new shingles",
+      materials: ["Architectural shingles", "Underlayment"],
+      warrantyPeriod: "10 years",
+      status: "active",
+      customerSignerName: "Homer Owner",
+      contractFilePath: "/contracts/source.pdf",
+    });
+    expect(res.body.contract.acceptedAt).toBe(res.body.contract.customerSignedAt);
     expect(mockCheckAchievements).toHaveBeenCalledTimes(1);
     expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
     expect(mockCreateNotificationSafely.mock.calls[0][1]).toMatchObject({
@@ -352,6 +449,83 @@ describe("POST /api/proposals/:id/accept-and-sign", () => {
       type: "proposal",
       title: "Proposal Accepted and Signed",
       actionUrl: "/contractor-dashboard",
+    });
+  });
+
+  it("returns the existing contract on an identical retry without duplicating side effects", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+      description: "Original description",
+      serviceType: "Roofing",
+      estimatedCost: "1200.00",
+      scope: "Original scope",
+      materials: ["Original material"],
+      warrantyPeriod: "1 year",
+    };
+    const harness = wireProposalMocks(state);
+    const app = await buildApp({ id: HOMEOWNER_ID });
+    const body = { signerName: "Homer Owner", agreementConfirmed: true };
+
+    const first = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send(body);
+    const retry = await request(app)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send(body);
+
+    expect(first.status).toBe(200);
+    expect(retry.status).toBe(200);
+    expect(retry.body.idempotent).toBe(true);
+    expect(retry.body.contract.id).toBe(first.body.contract.id);
+    expect(harness.getContractCreations()).toBe(1);
+    expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
+    expect(mockCheckAchievements).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the accepted contract snapshot unchanged after later proposal edits", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Original title",
+      description: "Original description",
+      serviceType: "Roofing",
+      estimatedCost: "2500.00",
+      scope: "Original scope",
+      materials: ["Original material"],
+      warrantyPeriod: "5 years",
+    };
+    const harness = wireProposalMocks(state);
+    const homeownerApp = await buildApp({ id: HOMEOWNER_ID });
+
+    const accepted = await request(homeownerApp)
+      .post(`/api/proposals/${PROPOSAL_ID}/accept-and-sign`)
+      .send({ signerName: "Homer Owner", agreementConfirmed: true });
+    expect(accepted.status).toBe(200);
+
+    const originalContract = harness.getContract();
+    Object.assign(state, {
+      title: "Edited proposal title",
+      description: "Edited proposal description",
+      estimatedCost: "9999.99",
+      scope: "Edited scope",
+      materials: ["Edited material"],
+      warrantyPeriod: "No warranty",
+    });
+
+    expect(harness.getContract()).toEqual(originalContract);
+    expect(harness.getContract()).toMatchObject({
+      title: "Original title",
+      description: "Original description",
+      estimatedCost: "2500.00",
+      scope: "Original scope",
+      materials: ["Original material"],
+      warrantyPeriod: "5 years",
     });
   });
 
@@ -456,7 +630,7 @@ describe("POST /api/proposals/:id/accept-and-sign", () => {
     const state: ProposalState = {
       id: PROPOSAL_ID, contractorId: CONTRACTOR_ID, homeownerId: HOMEOWNER_ID, status: "sent", title: "Roof repair",
     };
-    wireProposalMocks(state, 2);
+    const harness = wireProposalMocks(state, 2);
     const app = await buildApp({ id: HOMEOWNER_ID });
 
     const body = { signerName: "Homer Owner", agreementConfirmed: true };
@@ -469,6 +643,8 @@ describe("POST /api/proposals/:id/accept-and-sign", () => {
     expect(statuses.filter((s) => s === 200)).toHaveLength(1);
     expect(statuses.filter((s) => s === 409)).toHaveLength(1);
     expect(state.status).toBe("accepted");
+    expect(harness.getContractCreations()).toBe(1);
+    expect(harness.getContract()?.proposalId).toBe(PROPOSAL_ID);
     expect(mockCheckAchievements).toHaveBeenCalledTimes(1);
     expect(mockCreateNotificationSafely).toHaveBeenCalledTimes(1);
   });

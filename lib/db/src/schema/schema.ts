@@ -885,6 +885,28 @@ export const proposals = pgTable("proposals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const contracts = pgTable("contracts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  proposalId: varchar("proposal_id").notNull().unique(),
+  homeownerId: text("homeowner_id").notNull(),
+  contractorId: text("contractor_id").notNull(),
+  companyId: varchar("company_id").references(() => companies.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  serviceType: text("service_type").notNull(),
+  estimatedCost: decimal("estimated_cost", { precision: 10, scale: 2 }).notNull(),
+  scope: text("scope").notNull(),
+  materials: text("materials").array().notNull().default(sql`'{}'::text[]`),
+  warrantyPeriod: text("warranty_period"),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  acceptedAt: timestamp("accepted_at").notNull(),
+  customerSignature: text("customer_signature").notNull(),
+  customerSignerName: text("customer_signer_name").notNull(),
+  customerSignedAt: timestamp("customer_signed_at").notNull(),
+  contractFilePath: text("contract_file_path"),
+});
+
 export const homeSystems = pgTable("home_systems", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
@@ -1268,6 +1290,11 @@ export const insertProposalSchema = createInsertSchema(proposals).omit({
   updatedAt: true,
 });
 
+export const insertContractSchema = createInsertSchema(contracts).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertCustomMaintenanceTaskSchema = createInsertSchema(customMaintenanceTasks).omit({
   id: true,
   createdAt: true,
@@ -1505,6 +1532,8 @@ export type InsertCustomMaintenanceTask = z.infer<typeof insertCustomMaintenance
 export type CustomMaintenanceTask = typeof customMaintenanceTasks.$inferSelect;
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
 export type Proposal = typeof proposals.$inferSelect;
+export type InsertContract = z.infer<typeof insertContractSchema>;
+export type Contract = typeof contracts.$inferSelect;
 export type InsertHomeSystem = z.infer<typeof insertHomeSystemSchema>;
 export type HomeSystem = typeof homeSystems.$inferSelect;
 export type InsertContractorLicense = z.infer<typeof insertContractorLicenseSchema>;
