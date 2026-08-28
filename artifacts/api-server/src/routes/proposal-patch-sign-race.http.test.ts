@@ -22,7 +22,11 @@ const {
   HOMEOWNER_ID,
   CONTRACTOR_ID,
   PROPOSAL_ID,
+  mockGetProposals,
   mockGetProposal,
+  mockGetConversations,
+  mockCreateProposal,
+  mockDeleteProposal,
   mockUpdateProposalIfStatusMatches,
   mockGetContractByProposalId,
   mockAcceptProposalAndCreateContractIfSent,
@@ -32,7 +36,11 @@ const {
   HOMEOWNER_ID: "homeowner-001",
   CONTRACTOR_ID: "contractor-001",
   PROPOSAL_ID: "proposal-001",
+  mockGetProposals: vi.fn(),
   mockGetProposal: vi.fn(),
+  mockGetConversations: vi.fn(),
+  mockCreateProposal: vi.fn(),
+  mockDeleteProposal: vi.fn(),
   mockUpdateProposalIfStatusMatches: vi.fn(),
   mockGetContractByProposalId: vi.fn(),
   mockAcceptProposalAndCreateContractIfSent: vi.fn(),
@@ -49,7 +57,11 @@ vi.mock("../storage", async () => {
   const { createStorageMock } = await import("../test-helpers/storage-mock");
   return {
     storage: createStorageMock({
+      getProposals: mockGetProposals,
       getProposal: mockGetProposal,
+      getConversations: mockGetConversations,
+      createProposal: mockCreateProposal,
+      deleteProposal: mockDeleteProposal,
       updateProposalIfStatusMatches: mockUpdateProposalIfStatusMatches,
       getContractByProposalId: mockGetContractByProposalId,
       acceptProposalAndCreateContractIfSent: mockAcceptProposalAndCreateContractIfSent,
@@ -141,7 +153,14 @@ async function buildApp(sessionUser: Record<string, unknown>) {
   const app = express();
   app.use(express.json());
   app.use((req: any, _res, next) => {
-    req.session = { isAuthenticated: true, user: sessionUser, save: (cb: (err?: any) => void) => cb() };
+    const role =
+      sessionUser.role ??
+      (sessionUser.id === CONTRACTOR_ID ? "contractor" : "homeowner");
+    req.session = {
+      isAuthenticated: true,
+      user: { role, ...sessionUser },
+      save: (cb: (err?: any) => void) => cb(),
+    };
     next();
   });
   await registerRoutes(app);
@@ -245,9 +264,11 @@ function wireProposalMocks(state: ProposalState, raceReaders = 1) {
         description: acceptedTerms.description ?? "Repair description",
         serviceType: acceptedTerms.serviceType ?? "Roofing",
         estimatedCost: acceptedTerms.estimatedCost ?? "1234.50",
+        estimatedDuration: acceptedTerms.estimatedDuration ?? "2 days",
         scope: acceptedTerms.scope ?? "Replace damaged roofing",
         materials: [...(acceptedTerms.materials ?? ["Shingles"])],
         warrantyPeriod: acceptedTerms.warrantyPeriod ?? null,
+        validUntil: acceptedTerms.validUntil ?? "2026-12-31",
         status: "active",
         createdAt: acceptedAt,
         acceptedAt,
@@ -269,6 +290,22 @@ function wireProposalMocks(state: ProposalState, raceReaders = 1) {
 
 beforeEach(() => {
   mockCheckAchievements.mockResolvedValue([]);
+  mockGetConversations.mockResolvedValue([
+    {
+      id: "conversation-001",
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      subject: "Roof repair",
+      status: "active",
+      otherPartyName: "Home Owner",
+      unreadCount: 0,
+    },
+  ]);
+  mockCreateProposal.mockImplementation(async (proposal) => ({
+    id: PROPOSAL_ID,
+    ...proposal,
+  }));
+  mockDeleteProposal.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -322,7 +359,7 @@ describe("PATCH /api/proposals/:id — race condition", () => {
         id: PROPOSAL_ID,
         contractorId: CONTRACTOR_ID,
         homeownerId: HOMEOWNER_ID,
-        status: "sent",
+        status: "draft",
         title: "Roof repair",
       };
       wireProposalMocks(state);
@@ -334,7 +371,7 @@ describe("PATCH /api/proposals/:id — race condition", () => {
 
       expect(res.status).toBe(403);
       expect(res.body.message).toContain("only update customer notes");
-      expect(state.status).toBe("sent");
+      expect(state.status).toBe("draft");
       expect(state.customerSignature).toBeUndefined();
       expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
     },
@@ -380,6 +417,307 @@ describe("PATCH /api/proposals/:id — race condition", () => {
 
     expect(res.status).toBe(200);
     expect(state.status).toBe("sent");
+  });
+
+  it.each([
+    ["status", "accepted"],
+    ["status", "rejected"],
+    ["customerSignature", "forged-signature"],
+    ["customerSignerName", "Forged Signer"],
+    ["contractSignedAt", new Date().toISOString()],
+    ["signatureIpAddress", "203.0.113.10"],
+    ["rejectionReason", "forged-reason"],
+  ])(
+    "rejects a contractor PATCH attempting to change server-managed %s",
+    async (field, value) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status: "draft",
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: CONTRACTOR_ID });
+
+      const res = await request(app)
+        .patch(`/api/proposals/${PROPOSAL_ID}`)
+        .send({ [field]: value });
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toContain("dedicated homeowner response");
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+      expect(state.status).toBe("draft");
+    },
+  );
+
+  it.each(["sent", "accepted", "rejected", "expired"])(
+    "rejects contractor term edits after a proposal reaches %s",
+    async (status) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status,
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: CONTRACTOR_ID });
+
+      const res = await request(app)
+        .patch(`/api/proposals/${PROPOSAL_ID}`)
+        .send({ title: "Changed after sending" });
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain("Only draft proposals");
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+      expect(state.title).toBe("Roof repair");
+    },
+  );
+
+  it.each(["homeownerId", "contractorId", "companyId", "createdBy"])(
+    "rejects contractor reassignment of immutable party field %s",
+    async (field) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status: "draft",
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: CONTRACTOR_ID });
+
+      const res = await request(app)
+        .patch(`/api/proposals/${PROPOSAL_ID}`)
+        .send({ [field]: "other-party" });
+
+      expect(res.status).toBe(403);
+      expect(mockUpdateProposalIfStatusMatches).not.toHaveBeenCalled();
+    },
+  );
+});
+
+describe("POST /api/proposals — contractor and signing authorization", () => {
+  const validProposal = {
+    homeownerId: HOMEOWNER_ID,
+    title: "Roof repair",
+    description: "Replace damaged roofing",
+    serviceType: "roofing",
+    estimatedCost: "1234.50",
+    estimatedDuration: "2 days",
+    scope: "Remove and replace shingles",
+    materials: ["Shingles"],
+    warrantyPeriod: "5 years",
+    validUntil: "2026-12-31",
+    status: "sent",
+  };
+
+  it("allows a contractor to send a proposal to a homeowner in an existing conversation", async () => {
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app).post("/api/proposals").send(validProposal);
+
+    expect(res.status).toBe(201);
+    expect(mockCreateProposal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status: "sent",
+      }),
+    );
+  });
+
+  it("rejects proposal creation by a non-contractor", async () => {
+    const app = await buildApp({ id: HOMEOWNER_ID, role: "homeowner" });
+
+    const res = await request(app).post("/api/proposals").send(validProposal);
+
+    expect(res.status).toBe(403);
+    expect(mockCreateProposal).not.toHaveBeenCalled();
+  });
+
+  it("rejects a proposal for a homeowner with no contractor conversation", async () => {
+    mockGetConversations.mockResolvedValue([]);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app).post("/api/proposals").send(validProposal);
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toContain("existing conversation");
+    expect(mockCreateProposal).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["status", "accepted"],
+    ["status", "rejected"],
+    ["customerSignature", "forged-signature"],
+    ["customerSignerName", "Forged Signer"],
+    ["contractSignedAt", new Date().toISOString()],
+    ["signatureIpAddress", "203.0.113.10"],
+    ["rejectionReason", "forged-reason"],
+  ])("rejects create attempts that set server-managed %s", async (field, value) => {
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app)
+      .post("/api/proposals")
+      .send({ ...validProposal, [field]: value });
+
+    expect(res.status).toBe(403);
+    expect(mockCreateProposal).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /api/proposals — authenticated role scoping", () => {
+  it("uses only the contractor filter when a contractor requests their list", async () => {
+    mockGetProposals.mockResolvedValue([]);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app)
+      .get("/api/proposals")
+      .query({ contractorId: CONTRACTOR_ID });
+
+    expect(res.status).toBe(200);
+    expect(mockGetProposals).toHaveBeenCalledWith(CONTRACTOR_ID, undefined);
+  });
+
+  it("rejects a contractor filter for a different user", async () => {
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app)
+      .get("/api/proposals")
+      .query({ contractorId: "other-contractor" });
+
+    expect(res.status).toBe(403);
+    expect(mockGetProposals).not.toHaveBeenCalled();
+  });
+
+  it("uses OR-party scoping when no role filter is supplied", async () => {
+    mockGetProposals.mockResolvedValue([]);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app).get("/api/proposals");
+
+    expect(res.status).toBe(200);
+    expect(mockGetProposals).toHaveBeenCalledWith(CONTRACTOR_ID, CONTRACTOR_ID);
+  });
+});
+
+describe("DELETE /api/proposals/:id — immutable outcome retention", () => {
+  it.each(["accepted", "rejected"])(
+    "retains a contractor-owned %s proposal",
+    async (status) => {
+      const state: ProposalState = {
+        id: PROPOSAL_ID,
+        contractorId: CONTRACTOR_ID,
+        homeownerId: HOMEOWNER_ID,
+        status,
+        title: "Roof repair",
+      };
+      wireProposalMocks(state);
+      const app = await buildApp({ id: CONTRACTOR_ID });
+
+      const res = await request(app).delete(`/api/proposals/${PROPOSAL_ID}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toContain("immutable records");
+      expect(mockDeleteProposal).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still allows the contractor to delete a non-terminal proposal", async () => {
+    const state: ProposalState = {
+      id: PROPOSAL_ID,
+      contractorId: CONTRACTOR_ID,
+      homeownerId: HOMEOWNER_ID,
+      status: "sent",
+      title: "Roof repair",
+    };
+    wireProposalMocks(state);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app).delete(`/api/proposals/${PROPOSAL_ID}`);
+
+    expect(res.status).toBe(204);
+    expect(mockDeleteProposal).toHaveBeenCalledWith(PROPOSAL_ID);
+  });
+});
+
+describe("GET /api/proposals/:id/contract", () => {
+  const proposal = {
+    id: PROPOSAL_ID,
+    contractorId: CONTRACTOR_ID,
+    homeownerId: HOMEOWNER_ID,
+    status: "accepted",
+    title: "Roof repair",
+  };
+  const contract = {
+    id: "contract-001",
+    proposalId: PROPOSAL_ID,
+    homeownerId: HOMEOWNER_ID,
+    contractorId: CONTRACTOR_ID,
+    title: "Roof repair",
+    description: "Replace the roof",
+    serviceType: "roofing",
+    estimatedCost: "8450.25",
+    estimatedDuration: "3 days",
+    scope: "Remove and replace shingles",
+    materials: ["Shingles", "Underlayment"],
+    warrantyPeriod: "10 years",
+    validUntil: "2026-10-31",
+    status: "active",
+    acceptedAt: new Date("2026-08-28T12:00:00.000Z"),
+    customerSignerName: "Homer Owner",
+    customerSignedAt: new Date("2026-08-28T12:00:00.000Z"),
+    contractFilePath: "/objects/contract.pdf",
+  };
+
+  it.each([CONTRACTOR_ID, HOMEOWNER_ID])(
+    "returns the immutable snapshot to an authorized proposal party (%s)",
+    async (userId) => {
+      mockGetProposal.mockResolvedValue(proposal);
+      mockGetContractByProposalId.mockResolvedValue(contract);
+      const app = await buildApp({ id: userId });
+
+      const res = await request(app).get(
+        `/api/proposals/${PROPOSAL_ID}/contract`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({
+        proposalId: PROPOSAL_ID,
+        estimatedDuration: "3 days",
+        validUntil: "2026-10-31",
+        customerSignerName: "Homer Owner",
+        scope: "Remove and replace shingles",
+      });
+    },
+  );
+
+  it("rejects an unrelated authenticated user", async () => {
+    mockGetProposal.mockResolvedValue(proposal);
+    mockGetContractByProposalId.mockResolvedValue(contract);
+    const app = await buildApp({ id: "unrelated-user" });
+
+    const res = await request(app).get(
+      `/api/proposals/${PROPOSAL_ID}/contract`,
+    );
+
+    expect(res.status).toBe(403);
+    expect(mockGetContractByProposalId).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when an accepted proposal has no contract snapshot", async () => {
+    mockGetProposal.mockResolvedValue(proposal);
+    mockGetContractByProposalId.mockResolvedValue(undefined);
+    const app = await buildApp({ id: CONTRACTOR_ID });
+
+    const res = await request(app).get(
+      `/api/proposals/${PROPOSAL_ID}/contract`,
+    );
+
+    expect(res.status).toBe(404);
+    expect(res.body.message).toBe("Contract not found");
   });
 });
 

@@ -13102,8 +13102,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // When an explicit role filter is supplied it has already been
       // validated to match userId above, so pass it through directly.
       const proposals = await storage.getProposals(
-        contractorId ?? userId,
-        homeownerId ?? userId
+        contractorId ?? (homeownerId ? undefined : userId),
+        homeownerId ?? (contractorId ? undefined : userId),
       );
       res.json(proposals);
     } catch (error) {
@@ -13127,12 +13127,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/proposals/:id/contract", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      const proposal = await storage.getProposal(req.params.id);
+      if (!proposal) {
+        return res.status(404).json({ message: "Proposal not found" });
+      }
+      if (proposal.contractorId !== userId && proposal.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const contract = await storage.getContractByProposalId(proposal.id);
+      if (!contract) {
+        return res.status(404).json({ message: "Contract not found" });
+      }
+      if (contract.contractorId !== userId && contract.homeownerId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      return res.json(contract);
+    } catch (error) {
+      console.error("Error fetching proposal contract:", error);
+      return res.status(500).json({ message: "Failed to fetch contract" });
+    }
+  });
+
   app.post("/api/proposals", isAuthenticated, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
+      if (req.session.user.role !== "contractor") {
+        return res.status(403).json({ message: "Only contractors may create proposals" });
+      }
+
+      const requestedStatus = req.body?.status ?? "draft";
+      if (requestedStatus !== "draft" && requestedStatus !== "sent") {
+        return res.status(403).json({
+          message: "Proposal acceptance or rejection must use the dedicated homeowner response endpoint",
+        });
+      }
+
+      const serverManagedFields = new Set([
+        "customerSignature",
+        "customerSignerName",
+        "contractorSignature",
+        "contractSignedAt",
+        "signatureIpAddress",
+        "rejectionReason",
+      ]);
+      const blockedFields = Object.keys(req.body ?? {}).filter((field) =>
+        serverManagedFields.has(field),
+      );
+      if (blockedFields.length > 0) {
+        return res.status(403).json({
+          message: "Signing and response metadata is server-managed",
+          blockedFields,
+        });
+      }
+
+      const homeownerId = req.body?.homeownerId;
+      if (homeownerId) {
+        const conversations = await storage.getConversations(userId, "contractor");
+        const hasConversation = conversations.some(
+          (conversation) => conversation.homeownerId === homeownerId,
+        );
+        if (!hasConversation) {
+          return res.status(403).json({
+            message: "A proposal may only be created for a homeowner in an existing conversation",
+          });
+        }
+      } else if (requestedStatus === "sent") {
+        return res.status(400).json({
+          message: "A sent proposal must identify a homeowner",
+        });
+      }
+
       const proposalData = insertProposalSchema.parse({
         ...req.body,
-        contractorId: userId
+        contractorId: userId,
+        status: requestedStatus,
       });
       const proposal = await storage.createProposal(proposalData);
       
@@ -13199,6 +13272,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message:
               "Homeowners may only update customer notes through this endpoint",
             blockedFields,
+          });
+        }
+      } else {
+        if (oldProposal.status !== "draft") {
+          return res.status(409).json({
+            message:
+              "Only draft proposals can be edited; sent and final proposal terms are immutable",
+          });
+        }
+
+        const contractorBlockedFields = new Set([
+          "contractorId",
+          "homeownerId",
+          "companyId",
+          "createdBy",
+          "customerSignature",
+          "customerSignerName",
+          "contractorSignature",
+          "contractSignedAt",
+          "signatureIpAddress",
+          "rejectionReason",
+        ]);
+        const requestedFields = Object.keys(req.body ?? {});
+        const blockedFields = requestedFields.filter((field) =>
+          contractorBlockedFields.has(field),
+        );
+        const requestedStatus = req.body?.status;
+        if (
+          requestedStatus !== undefined &&
+          requestedStatus !== "draft" &&
+          requestedStatus !== "sent"
+        ) {
+          blockedFields.push("status");
+        }
+        if (blockedFields.length > 0) {
+          return res.status(403).json({
+            message:
+              "Acceptance, rejection, and signing metadata must use the dedicated homeowner response endpoints",
+            blockedFields: Array.from(new Set(blockedFields)),
           });
         }
       }
@@ -13520,6 +13632,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only the contractor who created the proposal can delete it
       if (proposal.contractorId !== userId) {
         return res.status(403).json({ message: "Only the proposal creator can delete it" });
+      }
+
+      if (proposal.status === "accepted" || proposal.status === "rejected") {
+        return res.status(409).json({
+          message: "Accepted and rejected proposals are retained as immutable records",
+        });
       }
       
       const deleted = await storage.deleteProposal(req.params.id);

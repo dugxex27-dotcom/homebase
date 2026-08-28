@@ -878,6 +878,42 @@ export default function Messages() {
                                   </FormItem>
                                 )}
                               />
+
+                              <FormField
+                                control={proposalForm.control}
+                                name="description"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Description *</FormLabel>
+                                    <FormControl>
+                                      <Textarea
+                                        {...field}
+                                        placeholder="Summarize the work and expected result"
+                                        data-testid="textarea-proposal-description"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={proposalForm.control}
+                                name="scope"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Scope of Work *</FormLabel>
+                                    <FormControl>
+                                      <Textarea
+                                        {...field}
+                                        placeholder="List the work, deliverables, and exclusions"
+                                        data-testid="textarea-proposal-scope"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                               
                               <FormField
                                 control={proposalForm.control}
@@ -933,6 +969,44 @@ export default function Messages() {
                                   </FormItem>
                                 )}
                               />
+
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <FormField
+                                  control={proposalForm.control}
+                                  name="materials"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Materials</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          {...field}
+                                          placeholder="Comma-separated materials"
+                                          data-testid="input-proposal-materials"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                <FormField
+                                  control={proposalForm.control}
+                                  name="warrantyPeriod"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel>Warranty</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          {...field}
+                                          placeholder="1 year, 5 years, etc."
+                                          data-testid="input-proposal-warranty"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
                               
                               <FormField
                                 control={proposalForm.control}

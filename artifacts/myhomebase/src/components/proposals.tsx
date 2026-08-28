@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -15,9 +15,10 @@ import { z } from "zod/v4";
 import { insertProposalSchema, type Proposal } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, FileText, Calendar, DollarSign, Clock, Edit, Trash2, Upload, Download, PenTool, ImageIcon } from "lucide-react";
+import { Plus, FileText, Calendar, DollarSign, Clock, Edit, Trash2, Upload, Download, ImageIcon, CheckCircle } from "lucide-react";
+import { Link } from "wouter";
+import { format } from "date-fns";
 import { ObjectUploader } from "./ObjectUploader";
-import { ESignature } from "./ESignature";
 
 const proposalFormSchema = insertProposalSchema.extend({
   materials: z.string(),
@@ -42,8 +43,6 @@ export function Proposals({ contractorId }: ProposalsProps) {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
-  const [showSignature, setShowSignature] = useState(false);
-  const [signingProposal, setSigningProposal] = useState<Proposal | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [deleteProposalConfirmOpen, setDeleteProposalConfirmOpen] = useState(false);
   const [proposalToDelete, setProposalToDelete] = useState<Proposal | null>(null);
@@ -177,29 +176,6 @@ export function Proposals({ contractorId }: ProposalsProps) {
     },
   });
 
-  const signatureMutation = useMutation({
-    mutationFn: ({ proposalId, signatureData }: { 
-      proposalId: string; 
-      signatureData: { signature: string; signerName: string; signedAt: string; ipAddress?: string } 
-    }) => apiRequest(`/api/proposals/${proposalId}/sign`, "POST", signatureData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/proposals"] });
-      setShowSignature(false);
-      setSigningProposal(null);
-      toast({
-        title: "Success",
-        description: "Contract signed successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to sign contract",
-        variant: "destructive",
-      });
-    },
-  });
-
   const uploadContractMutation = useMutation({
     mutationFn: ({ proposalId, contractFilePath }: { proposalId: string; contractFilePath: string }) => 
       apiRequest(`/api/proposals/${proposalId}/contract`, "POST", { contractFilePath }),
@@ -253,24 +229,11 @@ export function Proposals({ contractorId }: ProposalsProps) {
     }
   };
 
-  const handleSignContract = (proposalId: string, proposal: Proposal) => {
-    setSigningProposal(proposal);
-    setShowSignature(true);
-  };
-
-  const handleSignatureComplete = (signatureData: any) => {
-    if (signingProposal) {
-      signatureMutation.mutate({
-        proposalId: signingProposal.id,
-        signatureData
-      });
-    }
-  };
-
   const handleEdit = (proposal: Proposal) => {
     setEditingProposal(proposal);
     form.reset({
       contractorId: proposal.contractorId,
+      homeownerId: proposal.homeownerId || "",
       title: proposal.title,
       description: proposal.description,
       serviceType: proposal.serviceType,
@@ -706,9 +669,39 @@ export function Proposals({ contractorId }: ProposalsProps) {
                         {proposal.title}
                       </h3>
                       <Badge variant={getStatusColor(proposal.status)} data-testid={`proposal-status-${proposal.id}`}>
-                        {proposal.status}
+                        {proposal.status.charAt(0).toUpperCase() + proposal.status.slice(1)}
                       </Badge>
                     </div>
+                    {proposal.status === 'accepted' && (
+                      <div className="mb-4 mt-2 p-3 bg-green-50 border border-green-100 rounded-md">
+                        <div className="flex items-center gap-2 text-sm text-green-900 font-medium" data-testid={`proposal-contract-created-${proposal.id}`}>
+                          <CheckCircle className="h-4 w-4" />
+                          Accepted — contract created
+                        </div>
+                        {proposal.customerSignerName && (
+                          <div className="text-sm text-green-800 mt-1" data-testid={`proposal-signer-${proposal.id}`}>
+                            Signed by {proposal.customerSignerName} on {proposal.contractSignedAt ? format(new Date(proposal.contractSignedAt), "MMM d, yyyy") : "Unknown"}
+                          </div>
+                        )}
+                        <div className="mt-3">
+                          <Link
+                            href={`/contractor/proposals/${proposal.id}/contract`}
+                            data-testid={`link-view-contract-${proposal.id}`}
+                            className={buttonVariants({ variant: "outline", size: "sm" }) + " bg-white hover:bg-green-50 text-green-700 border-green-200"}
+                          >
+                            View Contract
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+                    {proposal.status === 'rejected' && proposal.rejectionReason && (
+                      <div className="mb-4 mt-2 p-3 bg-red-50 border border-red-100 rounded-md">
+                        <div className="text-sm text-red-900 font-medium">Declined Proposal</div>
+                        <div className="text-sm text-red-800 mt-1" data-testid={`proposal-rejection-reason-${proposal.id}`}>
+                          Reason: {proposal.rejectionReason}
+                        </div>
+                      </div>
+                    )}
                     <p className="text-sm text-muted-foreground mb-3" data-testid={`proposal-description-${proposal.id}`}>
                       {proposal.description}
                     </p>
@@ -757,26 +750,30 @@ export function Proposals({ contractorId }: ProposalsProps) {
                     </div>
                   </div>
                   <div className="flex items-center flex-wrap gap-2 ml-4">
-                    <Button
-                      size="sm"
-                      onClick={() => handleEdit(proposal)}
-                      data-testid={`button-edit-proposal-${proposal.id}`}
-                      className="h-8 px-3 text-xs"
-                      style={{ backgroundColor: '#1560a2', color: 'white' }}
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => handleDelete(proposal)}
-                      data-testid={`button-delete-proposal-${proposal.id}`}
-                      className="h-8 px-3 text-xs"
-                      style={{ backgroundColor: '#1560a2', color: 'white' }}
-                    >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
-                    </Button>
+                    {proposal.status === 'draft' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleEdit(proposal)}
+                        data-testid={`button-edit-proposal-${proposal.id}`}
+                        className="h-8 px-3 text-xs"
+                        style={{ backgroundColor: '#1560a2', color: 'white' }}
+                      >
+                        <Edit className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    )}
+                    {proposal.status !== 'accepted' && proposal.status !== 'rejected' && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleDelete(proposal)}
+                        data-testid={`button-delete-proposal-${proposal.id}`}
+                        className="h-8 px-3 text-xs"
+                        style={{ backgroundColor: '#1560a2', color: 'white' }}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
+                    )}
                     
                     {/* File Upload for Proposals */}
                     <ObjectUploader
@@ -817,20 +814,6 @@ export function Proposals({ contractorId }: ProposalsProps) {
                       </Button>
                     )}
 
-                    {/* Contract Signing (homeowner only) */}
-                    {proposal.contractFilePath && !proposal.customerSignature && proposal.homeownerId && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        onClick={() => handleSignContract(proposal.id, proposal)}
-                        data-testid={`button-sign-${proposal.id}`}
-                        className="h-8 px-3 text-xs bg-green-600 hover:bg-green-700"
-                      >
-                        <PenTool className="w-3 h-3 mr-1" />
-                        Sign
-                      </Button>
-                    )}
-
                     {/* Show signature status if signed */}
                     {proposal.customerSignature && (
                       <Badge variant="outline" className="border-green-500 text-green-700">
@@ -844,18 +827,6 @@ export function Proposals({ contractorId }: ProposalsProps) {
           </div>
         )}
         
-        {/* E-Signature Modal */}
-        <ESignature
-          isOpen={showSignature}
-          onSignature={handleSignatureComplete}
-          onCancel={() => {
-            setShowSignature(false);
-            setSigningProposal(null);
-          }}
-          documentTitle={signingProposal?.title || "Contract"}
-          signerName=""
-        />
-
         {/* Delete Confirmation Dialog */}
         <ConfirmDialog
           open={deleteProposalConfirmOpen}

@@ -210,6 +210,7 @@ const ResaleReport = lazy(() => import("./pages/resale-report"));
 
 // Lazy-loaded pages - Contractor
 const ContractorDashboard = lazy(() => import("./pages/contractor-dashboard"));
+const ContractorContractDetail = lazy(() => import("./pages/contractor-contract-detail"));
 const ContractorOnboarding = lazy(() => import("./pages/contractor-onboarding"));
 const ContractorProfile = lazy(() => import("./pages/contractor-profile"));
 const ContractorReferral = lazy(() => import("./pages/contractor-referral"));
@@ -504,6 +505,7 @@ function Router() {
         {typedUser?.role === 'contractor' && (
           <>
             <Route path="/contractor-dashboard" component={ContractorDashboard} />
+            <Route path="/contractor/proposals/:id/contract" component={ContractorContractDetail} />
             <Route path="/calendar" component={ContractorCalendar} />
           </>
         )}

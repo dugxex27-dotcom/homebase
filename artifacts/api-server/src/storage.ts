@@ -2656,11 +2656,15 @@ export class MemStorage implements IStorage {
   async getProposals(contractorId?: string, homeownerId?: string): Promise<Proposal[]> {
     let proposals = Array.from(this.proposals.values());
     
-    if (contractorId) {
+    if (contractorId && homeownerId) {
+      proposals = proposals.filter(
+        proposal =>
+          proposal.contractorId === contractorId ||
+          proposal.homeownerId === homeownerId,
+      );
+    } else if (contractorId) {
       proposals = proposals.filter(proposal => proposal.contractorId === contractorId);
-    }
-    
-    if (homeownerId) {
+    } else if (homeownerId) {
       proposals = proposals.filter(proposal => proposal.homeownerId === homeownerId);
     }
     
@@ -2763,9 +2767,11 @@ export class MemStorage implements IStorage {
       description: existing.description,
       serviceType: existing.serviceType,
       estimatedCost: existing.estimatedCost,
+      estimatedDuration: existing.estimatedDuration,
       scope: existing.scope,
       materials: [...(existing.materials || [])],
       warrantyPeriod: existing.warrantyPeriod || null,
+      validUntil: existing.validUntil,
       status: "active",
       createdAt: new Date(),
       acceptedAt,
@@ -9533,9 +9539,11 @@ class DbStorage implements IStorage {
         description: acceptedProposal.description,
         serviceType: acceptedProposal.serviceType,
         estimatedCost: acceptedProposal.estimatedCost,
+        estimatedDuration: acceptedProposal.estimatedDuration,
         scope: acceptedProposal.scope,
         materials: [...(acceptedProposal.materials || [])],
         warrantyPeriod: acceptedProposal.warrantyPeriod,
+        validUntil: acceptedProposal.validUntil,
         status: "active",
         acceptedAt,
         customerSignature,
