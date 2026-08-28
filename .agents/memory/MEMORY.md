@@ -34,3 +34,4 @@
 - [Seat/quota limit fallback reconciliation](seat-limit-fallback-reconciliation.md) — before unifying two routes' "limit ?? default" chains, check each hardcoded fallback constant individually; don't assume a null/undefined column means "unlimited" unless another code path actually sets it that way
 - [Quantity-based team-seat billing](quantity-based-seat-billing.md) — 3 accepted people included, then $5 each via Stripe item quantity; pending invites reserve the 50-person ceiling but are unbilled
 - [routes.test.ts pool mock needs .query](seat-mock-query-import-side-effect.md) — pg-rate-limit-store.ts calls pool.query at import time; vi.mock("../db") must stub pool.query directly or the whole test file fails to load
+- [Billing tests and demo access](billing-tests-demo-bypass.md) — contractor demo access masks real subscription states; disable the demo flag after login when testing billing gates
