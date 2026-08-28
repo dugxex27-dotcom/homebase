@@ -817,8 +817,45 @@ export function isStaleSubscriptionEvent(
   return incomingEventCreatedAt.getTime() < lastProcessedEventAt.getTime();
 }
 
+/**
+ * Converts Stripe's subscription status vocabulary into the values stored by
+ * HomeBase. Unknown values must never grant paid access.
+ */
+export function normalizeStripeSubscriptionStatus(status: string): string {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+    case 'past_due':
+    case 'incomplete':
+    case 'unpaid':
+    case 'paused':
+      return status;
+    case 'canceled':
+    case 'incomplete_expired':
+      return 'cancelled';
+    default:
+      return 'inactive';
+  }
+}
+
+export function getContractorSubscriptionAccess(
+  subscriptionStatus: string | null | undefined,
+  isInTrial: boolean,
+): { hasActiveSubscription: boolean; needsSubscription: boolean } {
+  const hasActiveSubscription =
+    subscriptionStatus === 'active' ||
+    subscriptionStatus === 'contractor_business' ||
+    isInTrial;
+
+  return {
+    hasActiveSubscription,
+    needsSubscription: !hasActiveSubscription,
+  };
+}
+
 // ---------------------------------------------------------------------------
-// resolveBilledSeatCount — pure: billing stops on cancellation / past_due
+// resolveBilledSeatCount — pure: seats bill only while the base subscription
+// is active or trialing
 // (renamed from resolveMeteredSeatCount — logic is unchanged and remains
 // billing-model-agnostic)
 // ---------------------------------------------------------------------------
@@ -827,7 +864,7 @@ export function resolveBilledSeatCount(
   status: string,
   totalSeats: number,
 ): number {
-  if (status === 'canceled' || status === 'past_due') return 0;
+  if (status !== 'active' && status !== 'trialing') return 0;
   return calcBilledSeats(totalSeats);
 }
 
@@ -972,6 +1009,7 @@ export async function recoverPendingSeatSyncs(
   storageInstance: Pick<IStorage, "getPendingSeatSyncs" | "upsertPendingSeatSync" | "deletePendingSeatSync"> = storage,
   stripeClient: any = stripe,
   dbInstance: any = db,
+  pgPool: PgPoolLike = pool,
 ): Promise<{ recovered: string[]; failed: Array<{ companyId: string; error: string }> }> {
   const companyIds = await storageInstance.getPendingSeatSyncs();
   if (companyIds.length === 0) return { recovered: [], failed: [] };
@@ -986,6 +1024,7 @@ export async function recoverPendingSeatSyncs(
         dbInstance,
         (cid) => countActiveCompanySeats(cid, dbInstance),
         storageInstance,
+        pgPool,
       );
     } catch (err: any) {
       errors.set(companyId, err?.message ?? String(err));
@@ -1044,7 +1083,7 @@ export async function syncSeatQuantityForSubscription(
   const status: string = subscription.status;
   const seatCount = resolveBilledSeatCount(
     status,
-    status === 'canceled' || status === 'past_due'
+    status !== 'active' && status !== 'trialing'
       ? 0
       : await countActiveCompanySeats(companyId, dbInstance ?? db),
   );
@@ -2065,6 +2104,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  async function applyStripeSubscriptionState(
+    event: Stripe.Event,
+    subscription: Stripe.Subscription,
+    knownUser?: any,
+    trackEventOrdering: boolean = true,
+    afterStateApplied?: (lockedUser: any, status: string) => Promise<void>,
+  ): Promise<{ user: any; status: string; applied: boolean } | null> {
+    const customerId = typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer?.id;
+    const user = knownUser ?? (customerId
+      ? await storage.getUserByStripeCustomerId(customerId)
+      : null);
+
+    if (!user) {
+      console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+      return null;
+    }
+
+    let effectiveSubscription = subscription;
+    const stateResult = await withDbAdvisoryLock(
+      companyIdToAdvisoryLockKey(`subscription-state:${user.id}`),
+      pool,
+      async () => {
+        // Re-read after acquiring the cross-instance lock. Every subscription
+        // webhook path uses this same lock, so the stale check and both writes
+        // act as one serialized state transition.
+        const lockedUser = await storage.getUser(user.id) ?? user;
+        const eventAt = new Date(event.created * 1000);
+        const lastEventAt = lockedUser.stripeSubscriptionEventAt
+          ? new Date(lockedUser.stripeSubscriptionEventAt)
+          : null;
+        const sameTimestamp = !!lastEventAt && eventAt.getTime() === lastEventAt.getTime();
+
+        // A checkout snapshot is retrieved before entering this lock. If a
+        // subscription event advanced the watermark while retrieval was in
+        // flight, that event wins and checkout must not overwrite it.
+        const knownWatermark = knownUser?.stripeSubscriptionEventAt
+          ? new Date(knownUser.stripeSubscriptionEventAt).getTime()
+          : null;
+        const lockedWatermark = lastEventAt?.getTime() ?? null;
+        const checkoutSnapshotLostRace =
+          !trackEventOrdering && knownWatermark !== lockedWatermark;
+
+        const staleEvent = trackEventOrdering && (
+          isStaleSubscriptionEvent(eventAt, lastEventAt) ||
+          // Equal-second precedence: deleted > updated > created, and an
+          // already-applied active update wins over payment_failed.
+          (sameTimestamp && event.type === 'customer.subscription.created') ||
+          (sameTimestamp &&
+            event.type === 'customer.subscription.updated' &&
+            lockedUser.subscriptionStatus === 'cancelled')
+        );
+        if (staleEvent || checkoutSnapshotLostRace) {
+          console.warn(
+            `[STRIPE WEBHOOK] Ignoring out-of-order ${event.type} for user ${lockedUser.email}: ` +
+            `event ${event.id} (subscription=${subscription.id}) did not win the serialized state transition`
+          );
+          return {
+            user: lockedUser,
+            status: lockedUser.subscriptionStatus ?? 'inactive',
+            applied: false,
+          };
+        }
+
+        if (
+          trackEventOrdering &&
+          sameTimestamp &&
+          event.type === 'customer.subscription.updated' &&
+          stripe
+        ) {
+          // Stripe timestamps have second precision. Reconcile an ambiguous
+          // equal-second update from Stripe's current object instead of trusting
+          // whichever webhook payload happened to arrive last.
+          effectiveSubscription = await stripe.subscriptions.retrieve(subscription.id);
+        }
+
+        const priceId = effectiveSubscription.items.data[0]?.price.id;
+        const status = normalizeStripeSubscriptionStatus(effectiveSubscription.status);
+        await storage.applyUserStripeSubscriptionState(
+          lockedUser.id,
+          effectiveSubscription.id,
+          priceId || '',
+          status,
+          trackEventOrdering ? eventAt : undefined,
+        );
+        await afterStateApplied?.(lockedUser, status);
+
+        return { user: lockedUser, status, applied: true };
+      },
+    );
+
+    if (!stateResult.applied) return stateResult;
+
+    if (stateResult.user.companyId && stripe) {
+      try {
+        await syncSeatQuantityForSubscription(
+          effectiveSubscription,
+          stateResult.user.companyId,
+          stripe,
+          db,
+          undefined,
+          event.id,
+          storage,
+          pool,
+        );
+      } catch (seatErr) {
+        console.error('[STRIPE WEBHOOK] Failed to sync team-seat quantity:', seatErr);
+        try {
+          // syncSeatQuantityForSubscription checkpoints before its Stripe call,
+          // but explicitly upsert here too so failures before that checkpoint
+          // (for example, while counting seats) are still recoverable.
+          await storage.upsertPendingSeatSync(stateResult.user.companyId);
+          console.warn(
+            `[STRIPE WEBHOOK] Queued team-seat reconciliation for company ${stateResult.user.companyId} after ${event.type} failure`
+          );
+        } catch (queueErr) {
+          console.error('[STRIPE WEBHOOK] Failed to queue team-seat reconciliation:', queueErr);
+          // If neither the Stripe update nor the durable queue succeeds, fail
+          // the webhook so Stripe retries the event instead of losing the sync.
+          throw queueErr;
+        }
+      }
+    }
+
+    return stateResult;
+  }
+
   // ── Stripe event side-effects ─────────────────────────────────────────────
   // Extracted so recoverIncompleteStripeEvents can re-run them and so tests
   // can assert they fire exactly once per event ID.
@@ -2521,79 +2688,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // event should not stomp on a newer status already applied by a
           // later event (e.g. the subscription already recovered).
           const paymentFailedEventAt = new Date(event.created * 1000);
-          if (isStaleSubscriptionEvent(paymentFailedEventAt, user.stripeSubscriptionEventAt)) {
-            console.warn(
-              `[STRIPE WEBHOOK] Ignoring out-of-order invoice.payment_failed for user ${user.email}: ` +
-              `event ${event.id} created ${paymentFailedEventAt.toISOString()} is older than last-processed ` +
-              `subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()}. Skipping status update.`
-            );
-            break;
+          const paymentFailureApplied = await withDbAdvisoryLock(
+            companyIdToAdvisoryLockKey(`subscription-state:${user.id}`),
+            pool,
+            async () => {
+              const lockedUser = await storage.getUser(user.id) ?? user;
+              const lastEventAt = lockedUser.stripeSubscriptionEventAt
+                ? new Date(lockedUser.stripeSubscriptionEventAt)
+                : null;
+              if (
+                isStaleSubscriptionEvent(paymentFailedEventAt, lastEventAt) ||
+                (!!lastEventAt && paymentFailedEventAt.getTime() === lastEventAt.getTime())
+              ) {
+                console.warn(
+                  `[STRIPE WEBHOOK] Ignoring out-of-order invoice.payment_failed for user ${lockedUser.email}`
+                );
+                return false;
+              }
+              await storage.updateUserSubscriptionStatus(lockedUser.id, 'past_due', paymentFailedEventAt);
+              return true;
+            },
+          );
+          if (!paymentFailureApplied) break;
+          if (user.email) {
+            const amountDue = (invoice.amount_due / 100).toFixed(2);
+            const sent = await sendEmail({
+              to: user.email,
+              subject: 'Action needed: your HomeBase subscription payment failed',
+              text:
+                `We could not process your HomeBase subscription payment of $${amountDue}. ` +
+                'Please sign in to HomeBase, open Subscription & Billing, and update your payment method to restore full access.',
+              html: `
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#1f2937;">
+                  <h2 style="color:#b91c1c;">Subscription payment failed</h2>
+                  <p>We could not process your HomeBase subscription payment of <strong>$${amountDue}</strong>.</p>
+                  <p>Please sign in to HomeBase, open <strong>Subscription &amp; Billing</strong>, and update your payment method to restore full access.</p>
+                  <p>If you recently updated your payment method, no further action may be needed.</p>
+                </div>
+              `,
+            });
+            if (!sent) {
+              console.error('[STRIPE WEBHOOK] Payment-failure email could not be delivered for user:', user.email);
+            }
           }
-
-          await storage.updateUserSubscriptionStatus(user.id, 'past_due', paymentFailedEventAt);
           console.log('[STRIPE WEBHOOK] Payment failed processed for user:', user.email);
           break;
         }
 
+        case 'customer.subscription.created':
         case 'customer.subscription.updated': {
           const subscription = event.data.object as Stripe.Subscription;
-          const customerId = subscription.customer as string;
-
-          const user = await storage.getUserByStripeCustomerId(customerId);
-          if (!user) {
-            console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
-            break;
-          }
-
-          // Out-of-order webhook guard: reject events older than the last one
-          // successfully applied for this user, regardless of subscription ID —
-          // a stale event for a since-replaced subscription is just as dangerous
-          // as a same-subscription redelivery. A newer event (including one for
-          // a brand-new subscription from a legitimate resubscribe/upgrade) always
-          // wins and establishes a new baseline.
-          const subscriptionUpdatedEventAt = new Date(event.created * 1000);
-          if (isStaleSubscriptionEvent(subscriptionUpdatedEventAt, user.stripeSubscriptionEventAt)) {
-            console.warn(
-              `[STRIPE WEBHOOK] Ignoring out-of-order customer.subscription.updated for user ${user.email}: ` +
-              `event ${event.id} (subscription=${subscription.id}) created ${subscriptionUpdatedEventAt.toISOString()} ` +
-              `is older than last-processed subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()} ` +
-              `(current subscription on file=${user.stripeSubscriptionId}). Skipping to avoid overwriting newer state.`
+          const result = await applyStripeSubscriptionState(event, subscription);
+          if (result?.applied) {
+            console.log(
+              `[STRIPE WEBHOOK] Subscription ${event.type === 'customer.subscription.created' ? 'created' : 'updated'} ` +
+              `for user: ${result.user.email}, Status: ${result.status}`
             );
-            break;
           }
-
-          const priceId = subscription.items.data[0]?.price.id;
-          await storage.updateUserStripeSubscription(user.id, subscription.id, priceId || '', subscriptionUpdatedEventAt);
-          
-          let status = 'active';
-          if (subscription.status === 'canceled') status = 'cancelled';
-          else if (subscription.status === 'past_due') status = 'past_due';
-          else if (subscription.status === 'trialing') status = 'trialing';
-          else if (subscription.status === 'incomplete_expired') status = 'cancelled';
-          
-          await storage.updateUserSubscriptionStatus(user.id, status, subscriptionUpdatedEventAt);
-
-          // Recalculate the quantity-based team-seat subscription item so it
-          // always reflects current accepted headcount and current subscription
-          // status (billing stops immediately on cancellation/past_due).
-          // See syncSeatQuantityForSubscription for the quantity-based design.
-          if (user.companyId && stripe) {
-            try {
-              await syncSeatQuantityForSubscription(
-                subscription,
-                user.companyId,
-                stripe,
-                db,
-                undefined,
-                event.id,
-                storage,
-              );
-            } catch (seatErr) {
-              console.error('[STRIPE WEBHOOK] Failed to sync team-seat quantity:', seatErr);
-            }
-          }
-
-          console.log('[STRIPE WEBHOOK] Subscription updated for user:', user.email, 'Status:', status);
           break;
         }
 
@@ -2607,19 +2758,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             break;
           }
 
-          // Out-of-order webhook guard — see customer.subscription.updated above.
+          // Deleted wins equal-second races with created/updated events.
           const subscriptionDeletedEventAt = new Date(event.created * 1000);
-          if (isStaleSubscriptionEvent(subscriptionDeletedEventAt, user.stripeSubscriptionEventAt)) {
-            console.warn(
-              `[STRIPE WEBHOOK] Ignoring out-of-order customer.subscription.deleted for user ${user.email}: ` +
-              `event ${event.id} (subscription=${subscription.id}) created ${subscriptionDeletedEventAt.toISOString()} ` +
-              `is older than last-processed subscription event at ${new Date(user.stripeSubscriptionEventAt as any).toISOString()} ` +
-              `(current subscription on file=${user.stripeSubscriptionId}). Skipping to avoid overwriting newer state.`
-            );
-            break;
-          }
-
-          await storage.updateUserSubscriptionStatus(user.id, 'cancelled', subscriptionDeletedEventAt);
+          const deletionApplied = await withDbAdvisoryLock(
+            companyIdToAdvisoryLockKey(`subscription-state:${user.id}`),
+            pool,
+            async () => {
+              const lockedUser = await storage.getUser(user.id) ?? user;
+              if (isStaleSubscriptionEvent(
+                subscriptionDeletedEventAt,
+                lockedUser.stripeSubscriptionEventAt,
+              )) {
+                console.warn(
+                  `[STRIPE WEBHOOK] Ignoring out-of-order customer.subscription.deleted for user ${lockedUser.email}`
+                );
+                return false;
+              }
+              await storage.updateUserSubscriptionStatus(
+                lockedUser.id,
+                'cancelled',
+                subscriptionDeletedEventAt,
+              );
+              return true;
+            },
+          );
+          if (!deletionApplied) break;
           console.log('[STRIPE WEBHOOK] Subscription deleted for user:', user.email);
           // In the monthly credit model, credits are only issued on invoice.payment_succeeded.
           // A cancelled subscriber no longer pays, so Stripe will fire no further payment events —
@@ -2640,30 +2803,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             const user = await storage.getUser(userId);
             if (user) {
-              // Update user subscription status
-              const subscriptionId = session.subscription as string;
-              await storage.updateUserStripeSubscription(userId, subscriptionId, '');
-              await storage.updateUserSubscriptionStatus(userId, 'active');
-              
-              // Update max houses for homeowners
-              if (maxHouses && user.role === 'homeowner') {
-                await storage.upsertUser({
-                  ...user,
-                  maxHousesAllowed: maxHouses === 999 ? null : maxHouses, // null = unlimited
-                  subscriptionStatus: 'active',
-                });
+              const expandedSubscription =
+                typeof session.subscription === 'object' && session.subscription
+                  ? session.subscription as Stripe.Subscription
+                  : null;
+              const subscriptionId = expandedSubscription?.id ?? session.subscription as string | null;
+              if (!subscriptionId) {
+                throw new Error(`Subscription checkout ${session.id} completed without a subscription ID`);
               }
-              
-              // Update contractor tier
-              if (user.role === 'contractor') {
-                await storage.upsertUser({
-                  ...user,
-                  subscriptionStatus: 'active',
-                  subscriptionTier: plan === 'pro' ? 'contractor_pro' : 'contractor_basic',
-                } as any);
+              if (!expandedSubscription && !stripe) {
+                throw new Error(`Cannot retrieve subscription ${subscriptionId}: Stripe is not configured`);
               }
+
+              // Checkout completion does not guarantee that payment has settled:
+              // the underlying subscription may be trialing, incomplete, or
+              // past_due. Retrieve it and persist Stripe's real current status.
+              const subscription = expandedSubscription ??
+                await stripe!.subscriptions.retrieve(subscriptionId);
+              const applied = await applyStripeSubscriptionState(
+                event,
+                subscription,
+                user,
+                false,
+                async (lockedUser) => {
+                  if (maxHouses && lockedUser.role === 'homeowner') {
+                    await storage.updateUserMaxHousesAllowed(
+                      lockedUser.id,
+                      maxHouses === 999 ? null : maxHouses,
+                    );
+                  }
+                },
+              );
+              if (!applied?.applied) break;
+              const subscriptionStatus = applied.status;
               
-              console.log(`[STRIPE WEBHOOK] Subscription activated for user: ${user.email}, plan: ${plan}`);
+              console.log(
+                `[STRIPE WEBHOOK] Subscription checkout completed for user: ${applied.user.email}, ` +
+                `plan: ${plan}, status: ${subscriptionStatus}`
+              );
             }
           }
           
@@ -16294,13 +16471,12 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         ? Math.ceil((effectiveTrialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
         : 0;
       
-      // Has active access if: paid subscription active (any tier), OR still in trial period
-      // Note: 'contractor_enterprise' removed — placeholder plan, never had a real user.
-      const PAID_STATUSES = ['active', 'contractor_business'];
-      const hasActiveSubscription = PAID_STATUSES.includes(user.subscriptionStatus ?? '') || !!isInTrial;
-
-      // If trial expired and no paid subscription, they need to pay - contractors have NO free features after trial
-      const needsSubscription = trialExpired || (user.subscriptionStatus === 'inactive' && !isInTrial);
+      // Contractors have paid/trial access only while the subscription is
+      // active or the local trial is still valid. Every other state — including
+      // past_due, cancelled, incomplete, unpaid, paused, and missing — requires
+      // the subscription issue to be resolved.
+      const { hasActiveSubscription, needsSubscription } =
+        getContractorSubscriptionAccess(user.subscriptionStatus, !!isInTrial);
 
       // Determine the current plan tier. Historical company-tier values remain
       // readable for compatibility even though they are not offered for sale.

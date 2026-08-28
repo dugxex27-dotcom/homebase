@@ -1,5 +1,5 @@
 - [Pre-existing typecheck errors](preexisting-errors.md) — do not fix these across api-server and myhomebase; they were present before Scale-Up work
-- [Stripe subscription webhook out-of-order guard](stripe-webhook-event-ordering.md) — reject stale updated/deleted/payment_failed events by per-user last-event timestamp, not subscription-ID match
+- [Stripe subscription event ordering](stripe-webhook-event-ordering.md) — serialize state per user; use timestamps plus explicit equal-second precedence
 - [Invoice checkout session idempotency](invoice-checkout-idempotency.md) — DB claim slot + per-endpoint Stripe idempotencyKey stop duplicate Checkout Sessions across two different invoice-payment routes
 - [Contractor Scale-Up Plan phases](contractor-scaleup.md) — 7-phase expansion; Phases 1-4 complete + pricing simplification done; Phase 5+ pending
 - [drizzle-kit push workaround](db-migrations.md) — use executeSql for migrations instead of drizzle-kit push (interactive prompt blocks CI)

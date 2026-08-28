@@ -222,6 +222,28 @@ app.get("/info/*path", proxyToSquarespace);
   } catch (err) {
     logger.warn({ err }, '[SeatRecovery] Startup seat-sync recovery failed — continuing');
   }
+
+  // Retry durable seat-sync checkpoints during normal uptime as well as on
+  // startup. PostgreSQL advisory locks inside recoverPendingSeatSyncs prevent
+  // multiple API instances from updating the same company's Stripe items at
+  // the same time.
+  const seatRecoveryInterval = setInterval(async () => {
+    try {
+      const seatRecovery = await recoverPendingSeatSyncs();
+      if (seatRecovery.recovered.length > 0) {
+        logger.info(seatRecovery, '[SeatRecovery] Reconciled pending seat syncs');
+      }
+      if (seatRecovery.failed.length > 0) {
+        logger.error(
+          { failed: seatRecovery.failed },
+          '[SeatRecovery] Pending seat syncs still need reconciliation',
+        );
+      }
+    } catch (err) {
+      logger.warn({ err }, '[SeatRecovery] Periodic seat-sync recovery failed');
+    }
+  }, 5 * 60 * 1000);
+  seatRecoveryInterval.unref();
   // ONE-TIME: Delete old Apple review test accounts (replaced by homeowner1/contractor1).
   // Remove this block after next successful deployment.
   try {

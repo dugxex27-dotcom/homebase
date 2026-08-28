@@ -35,6 +35,13 @@ const {
   mockUpdateUserSubscriptionStatus2,
   mockUpsertUser,
   mockGetUserByStripeCustomerId2,
+  mockApplyUserStripeSubscriptionState,
+  mockUpdateUserMaxHousesAllowed,
+  mockSubscriptionsRetrieve,
+  mockPricesList,
+  mockUpsertPendingSeatSync,
+  mockDeletePendingSeatSync,
+  mockSendEmail,
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockEventsRetrieve: vi.fn(),
@@ -55,7 +62,32 @@ const {
   mockUpdateUserSubscriptionStatus2: vi.fn().mockResolvedValue(undefined),
   mockUpsertUser: vi.fn().mockResolvedValue(undefined),
   mockGetUserByStripeCustomerId2: vi.fn().mockResolvedValue(null),
+  mockApplyUserStripeSubscriptionState: vi.fn().mockResolvedValue(undefined),
+  mockUpdateUserMaxHousesAllowed: vi.fn().mockResolvedValue(undefined),
+  mockSubscriptionsRetrieve: vi.fn().mockResolvedValue({
+    id: "sub_test_checkout_01",
+    customer: "cus_test_checkout_01",
+    status: "active",
+    items: { data: [{ price: { id: "price_test_monthly_01" } }] },
+  }),
+  mockPricesList: vi.fn().mockResolvedValue({ data: [] }),
+  mockUpsertPendingSeatSync: vi.fn().mockResolvedValue(undefined),
+  mockDeletePendingSeatSync: vi.fn().mockResolvedValue(undefined),
+  mockSendEmail: vi.fn().mockResolvedValue(true),
 }));
+
+mockApplyUserStripeSubscriptionState.mockImplementation(
+  async (
+    userId: string,
+    subscriptionId: string,
+    priceId: string,
+    status: string,
+    eventAt?: Date,
+  ) => {
+    await mockUpdateUserStripeSubscription(userId, subscriptionId, priceId, eventAt);
+    await mockUpdateUserSubscriptionStatus2(userId, status, eventAt);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Module mocks — hoisted before all imports by Vitest
@@ -66,6 +98,20 @@ vi.mock("stripe", () => {
   function MockStripe(this: any) {
     this.webhooks = { constructEvent: mockConstructEvent };
     this.events = { retrieve: mockEventsRetrieve };
+    this.subscriptions = { retrieve: mockSubscriptionsRetrieve };
+    this.prices = {
+      list: mockPricesList,
+      create: vi.fn().mockResolvedValue({ id: "price_test_seat" }),
+    };
+    this.products = {
+      create: vi.fn().mockResolvedValue({ id: "prod_test_seat" }),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+    this.subscriptionItems = {
+      create: vi.fn().mockResolvedValue({}),
+      update: vi.fn().mockResolvedValue({}),
+      del: vi.fn().mockResolvedValue({}),
+    };
     this.accounts = {
       retrieve: vi.fn().mockResolvedValue({
         id: "acct_test",
@@ -98,6 +144,10 @@ vi.mock("../storage", async () => {
       getUser: mockGetUser,
       updateUserStripeSubscription: mockUpdateUserStripeSubscription,
       upsertUser: mockUpsertUser,
+      applyUserStripeSubscriptionState: mockApplyUserStripeSubscriptionState,
+      updateUserMaxHousesAllowed: mockUpdateUserMaxHousesAllowed,
+      upsertPendingSeatSync: mockUpsertPendingSeatSync,
+      deletePendingSeatSync: mockDeletePendingSeatSync,
     }),
   };
 });
@@ -166,7 +216,7 @@ vi.mock("../notification-orchestrator", () => ({
 
 // Email / SMS
 vi.mock("../email-service", () => ({
-  sendEmail: vi.fn().mockResolvedValue(undefined),
+  sendEmail: mockSendEmail,
   emailService: { send: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock("../sms-service", () => ({
@@ -200,7 +250,14 @@ vi.mock("../objectStorage", () => ({
 // pool.query must return a Promise (not undefined) because pg-rate-limit-store.ts
 // calls pool.query(INIT_SQL).catch(...) at module init time.
 vi.mock("../db", () => ({
-  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
+  pool: {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    }),
+    end: vi.fn(),
+  },
   db: {
     insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) }) }),
     select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) }),
@@ -262,6 +319,7 @@ import {
   registerRoutes,
   recoverIncompleteStripeEvents,
   startStripeEventLease,
+  resetSeatPriceCache,
 } from "./routes";
 
 // ---------------------------------------------------------------------------
@@ -775,7 +833,14 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     mockUpdateUserStripeSubscription.mockReset().mockResolvedValue(undefined);
     mockUpdateUserSubscriptionStatus2.mockReset().mockResolvedValue(undefined);
     mockUpsertUser.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserMaxHousesAllowed.mockReset().mockResolvedValue(undefined);
     mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(null);
+    mockSubscriptionsRetrieve.mockReset().mockResolvedValue({
+      id: "sub_test_checkout_01",
+      customer: "cus_test_checkout_01",
+      status: "active",
+      items: { data: [{ price: { id: "price_test_monthly_01" } }] },
+    });
 
     app = express();
     await registerRoutes(app);
@@ -815,7 +880,9 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     expect(first.body.duplicate).toBeUndefined();
 
     // Side-effect calls must have fired exactly once
-    expect(mockGetUser).toHaveBeenCalledOnce();
+    // Initial checkout lookup plus a serialized re-read inside the
+    // cross-instance subscription-state lock.
+    expect(mockGetUser).toHaveBeenCalledTimes(2);
     expect(mockGetUser).toHaveBeenCalledWith("user_test_checkout_01");
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
@@ -834,7 +901,7 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     expect(second.body).toMatchObject({ received: true, duplicate: true });
 
     // No additional side-effect calls — counts must remain at 1
-    expect(mockGetUser).toHaveBeenCalledOnce();
+    expect(mockGetUser).toHaveBeenCalledTimes(2);
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
@@ -896,7 +963,7 @@ describe("Stripe webhook idempotency — event-type specific (checkout.session.c
     const firstResponse = await firstRequest;
 
     expect(firstResponse.status).toBe(200);
-    expect(mockGetUser).toHaveBeenCalledOnce();
+    expect(mockGetUser).toHaveBeenCalledTimes(2);
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
@@ -1081,7 +1148,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(retry.body.duplicate).toBeUndefined();
 
     // Side effects now fire exactly once (never doubled across the crash + retry).
-    expect(mockGetUser).toHaveBeenCalledOnce();
+    expect(mockGetUser).toHaveBeenCalledTimes(2);
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
@@ -1106,7 +1173,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
 
     // Still exactly one total call each — no duplication introduced by the
     // extra retry hitting the DB fallback path.
-    expect(mockGetUser).toHaveBeenCalledOnce();
+    expect(mockGetUser).toHaveBeenCalledTimes(2);
     expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
     expect(mockClaimStripeEvent).toHaveBeenCalledTimes(2);
@@ -1684,6 +1751,47 @@ describe("Stripe webhook — subscription event ordering guard (out-of-order / s
     expect(currentUser.subscriptionStatus).toBe("past_due");
   });
 
+  it("customer.subscription.created cannot roll back an updated snapshot from the same Stripe timestamp", async () => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const updatedEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_same_second_updated_001",
+      "active",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    );
+    const createdEvent = makeSubscriptionUpdatedEventWithCreated(
+      "evt_order_same_second_created_001",
+      "trialing",
+      nowSeconds,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+    ) as any;
+    createdEvent.type = "customer.subscription.created";
+
+    mockConstructEvent.mockReset().mockReturnValueOnce(updatedEvent);
+    await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(updatedEvent));
+    expect(currentUser.subscriptionStatus).toBe("active");
+
+    mockUpdateUserSubscriptionStatus2.mockClear();
+    mockUpdateUserStripeSubscription.mockClear();
+    mockConstructEvent.mockReset().mockReturnValueOnce(createdEvent);
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(createdEvent));
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
+    expect(mockUpdateUserStripeSubscription).not.toHaveBeenCalled();
+    expect(currentUser.subscriptionStatus).toBe("active");
+  });
+
   it("customer.subscription.deleted: a stale cancellation event does not overwrite a newer status", async () => {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const newerEvent = makeSubscriptionUpdatedEventWithCreated(
@@ -1760,5 +1868,234 @@ describe("Stripe webhook — subscription event ordering guard (out-of-order / s
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
     // Must remain 'active' — the stale payment-failure must not mark it past_due.
     expect(currentUser.subscriptionStatus).toBe("active");
+  });
+});
+
+describe("Stripe webhook — contractor billing state reconciliation", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    resetSeatPriceCache();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockGetUser.mockReset().mockResolvedValue(null);
+    mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(null);
+    mockUpdateUserStripeSubscription.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserSubscriptionStatus2.mockReset().mockResolvedValue(undefined);
+    mockUpsertUser.mockReset().mockResolvedValue(undefined);
+    mockSubscriptionsRetrieve.mockReset().mockResolvedValue({
+      id: "sub_test_checkout_01",
+      customer: "cus_test_checkout_01",
+      status: "active",
+      items: { data: [{ price: { id: "price_test_monthly_01" } }] },
+    });
+    mockPricesList.mockReset().mockResolvedValue({ data: [] });
+    mockUpsertPendingSeatSync.mockReset().mockResolvedValue(undefined);
+    mockDeletePendingSeatSync.mockReset().mockResolvedValue(undefined);
+    mockSendEmail.mockReset().mockResolvedValue(true);
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("customer.subscription.created persists the subscription, price, and real trialing status", async () => {
+    const event = makeSubscriptionUpdatedEvent("evt_subscription_created_phase3") as any;
+    event.type = "customer.subscription.created";
+    event.data.object.status = "trialing";
+    event.data.object.customer = "cus_phase3_created";
+    event.data.object.id = "sub_phase3_created";
+    event.data.object.items.data[0].price.id = "price_phase3_basic";
+
+    mockGetUserByStripeCustomerId2.mockResolvedValue({
+      id: "contractor_phase3_created",
+      email: "contractor-created@example.com",
+      role: "contractor",
+      companyId: null,
+      stripeSubscriptionEventAt: null,
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledWith(
+      "contractor_phase3_created",
+      "sub_phase3_created",
+      "price_phase3_basic",
+      expect.any(Date),
+    );
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      "contractor_phase3_created",
+      "trialing",
+      expect.any(Date),
+    );
+  });
+
+  it("checkout.session.completed retrieves and stores trialing instead of assuming active", async () => {
+    const event = makeCheckoutSessionCompletedEvent("evt_checkout_trialing_phase3");
+    mockGetUser.mockResolvedValue({
+      id: "user_test_checkout_01",
+      email: "checkout-trialing@example.com",
+      role: "contractor",
+      companyId: null,
+      stripeSubscriptionEventAt: null,
+    });
+    mockSubscriptionsRetrieve.mockResolvedValue({
+      id: "sub_test_checkout_01",
+      customer: "cus_checkout_trialing",
+      status: "trialing",
+      items: { data: [{ price: { id: "price_phase3_basic" } }] },
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(mockSubscriptionsRetrieve).toHaveBeenCalledWith("sub_test_checkout_01");
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      "user_test_checkout_01",
+      "trialing",
+      undefined,
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      "user_test_checkout_01",
+      "active",
+    );
+    // Contractor checkout no longer performs a second broad upsert that could
+    // race and overwrite the serialized subscription status.
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("homeowner unlimited checkout preserves the new Stripe state and stores a null house limit", async () => {
+    const event = makeCheckoutSessionCompletedEvent("evt_checkout_homeowner_unlimited_phase3") as any;
+    event.data.object.metadata.maxHouses = "999";
+    event.data.object.metadata.plan = "premium_plus";
+    mockGetUser.mockResolvedValue({
+      id: "user_test_checkout_01",
+      email: "homeowner-renewal@example.com",
+      role: "homeowner",
+      companyId: null,
+      stripeSubscriptionId: "sub_old_homeowner",
+      stripePriceId: "price_old_homeowner",
+      stripeSubscriptionEventAt: null,
+    });
+    mockSubscriptionsRetrieve.mockResolvedValue({
+      id: "sub_new_homeowner",
+      customer: "cus_homeowner_renewal",
+      status: "active",
+      items: { data: [{ price: { id: "price_new_homeowner" } }] },
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(mockApplyUserStripeSubscriptionState).toHaveBeenCalledWith(
+      "user_test_checkout_01",
+      "sub_new_homeowner",
+      "price_new_homeowner",
+      "active",
+      undefined,
+    );
+    expect(mockUpdateUserMaxHousesAllowed).toHaveBeenCalledWith(
+      "user_test_checkout_01",
+      null,
+    );
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("queues a pending seat reconciliation when webhook seat sync fails", async () => {
+    const event = makeSubscriptionUpdatedEvent("evt_seat_sync_failure_phase3") as any;
+    event.data.object.status = "past_due";
+    event.data.object.customer = "cus_phase3_seat_failure";
+
+    mockGetUserByStripeCustomerId2.mockResolvedValue({
+      id: "contractor_phase3_seat_failure",
+      email: "seat-failure@example.com",
+      role: "contractor",
+      companyId: "company_phase3_seat_failure",
+      stripeSubscriptionEventAt: null,
+    });
+    mockPricesList.mockRejectedValue(new Error("simulated transient Stripe failure"));
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      "contractor_phase3_seat_failure",
+      "past_due",
+      expect.any(Date),
+    );
+    expect(mockUpsertPendingSeatSync).toHaveBeenCalledWith("company_phase3_seat_failure");
+    expect(mockDeletePendingSeatSync).not.toHaveBeenCalled();
+  });
+
+  it("invoice.payment_failed attempts the contractor payment-failure email with actionable content", async () => {
+    const event = makeInvoicePaymentFailedEventWithCreated(
+      "evt_payment_failed_email_phase3",
+      Math.floor(Date.now() / 1000),
+      "sub_phase3_payment_failed",
+      "cus_phase3_payment_failed",
+    );
+    mockGetUserByStripeCustomerId2.mockResolvedValue({
+      id: "contractor_phase3_payment_failed",
+      email: "billing-owner@example.com",
+      role: "contractor",
+      companyId: "company_phase3_payment_failed",
+      stripeSubscriptionEventAt: null,
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      "contractor_phase3_payment_failed",
+      "past_due",
+      expect.any(Date),
+    );
+    expect(mockSendEmail).toHaveBeenCalledOnce();
+    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "billing-owner@example.com",
+      subject: expect.stringContaining("payment failed"),
+      text: expect.stringContaining("Subscription & Billing"),
+      html: expect.stringContaining("update your payment method"),
+    }));
   });
 });

@@ -74,6 +74,14 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   updateUserSubscriptionStatus(userId: string, status: string, eventAt?: Date): Promise<User | undefined>;
   updateUserStripeSubscription(userId: string, subscriptionId: string, priceId: string, eventAt?: Date): Promise<User | undefined>;
+  applyUserStripeSubscriptionState(
+    userId: string,
+    subscriptionId: string,
+    priceId: string,
+    status: string,
+    eventAt?: Date,
+  ): Promise<User | undefined>;
+  updateUserMaxHousesAllowed(userId: string, maxHousesAllowed: number | null): Promise<User | undefined>;
   
   // Contractor methods
   getContractors(filters?: {
@@ -985,6 +993,42 @@ export class MemStorage implements IStorage {
     };
     this.users.set(user.id, user);
     return user;
+  }
+
+  async applyUserStripeSubscriptionState(
+    userId: string,
+    subscriptionId: string,
+    priceId: string,
+    status: string,
+    eventAt?: Date,
+  ): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    const updatedUser = {
+      ...existingUser,
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      subscriptionStatus: status,
+      ...(eventAt ? { stripeSubscriptionEventAt: eventAt } : {}),
+      updatedAt: new Date(),
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserMaxHousesAllowed(
+    userId: string,
+    maxHousesAllowed: number | null,
+  ): Promise<User | undefined> {
+    const existingUser = this.users.get(userId);
+    if (!existingUser) return undefined;
+    const updatedUser = {
+      ...existingUser,
+      maxHousesAllowed,
+      updatedAt: new Date(),
+    };
+    this.users.set(userId, updatedUser);
+    return updatedUser;
   }
 
   private seedData() {
@@ -8288,6 +8332,34 @@ class DbStorage implements IStorage {
       ...(eventAt ? { stripeSubscriptionEventAt: eventAt } : {}),
     }).where(eq(users.id, userId));
     return this.getUser(userId);
+  }
+
+  async applyUserStripeSubscriptionState(
+    userId: string,
+    subscriptionId: string,
+    priceId: string,
+    status: string,
+    eventAt?: Date,
+  ): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({
+      stripeSubscriptionId: subscriptionId,
+      stripePriceId: priceId,
+      subscriptionStatus: status,
+      updatedAt: new Date(),
+      ...(eventAt ? { stripeSubscriptionEventAt: eventAt } : {}),
+    }).where(eq(users.id, userId)).returning();
+    return updated;
+  }
+
+  async updateUserMaxHousesAllowed(
+    userId: string,
+    maxHousesAllowed: number | null,
+  ): Promise<User | undefined> {
+    const [updated] = await db.update(users).set({
+      maxHousesAllowed,
+      updatedAt: new Date(),
+    }).where(eq(users.id, userId)).returning();
+    return updated;
   }
 
   async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {

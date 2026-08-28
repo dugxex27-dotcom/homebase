@@ -38,6 +38,8 @@ import {
   previewContractorUpgrade,
   CURRENT_CONTRACTOR_TIER,
   validateContractorCheckoutPlan,
+  normalizeStripeSubscriptionStatus,
+  getContractorSubscriptionAccess,
 } from "./routes";
 import { refreshUserSessionRole } from "../replitAuth";
 
@@ -105,6 +107,44 @@ describe("calcBilledSeats", () => {
     const result = calcBilledSeats(1000);
     expect(result).toBe(997);
     expect(result).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("contractor subscription access policy", () => {
+  it.each([
+    ["past_due", false],
+    ["cancelled", false],
+    ["incomplete", false],
+    ["unpaid", false],
+    ["paused", false],
+    [null, false],
+  ])("requires subscription resolution for %s", (status, isInTrial) => {
+    expect(getContractorSubscriptionAccess(status, isInTrial)).toEqual({
+      hasActiveSubscription: false,
+      needsSubscription: true,
+    });
+  });
+
+  it("does not require subscription resolution for active access or a valid trial", () => {
+    expect(getContractorSubscriptionAccess("active", false)).toEqual({
+      hasActiveSubscription: true,
+      needsSubscription: false,
+    });
+    expect(getContractorSubscriptionAccess("trialing", true)).toEqual({
+      hasActiveSubscription: true,
+      needsSubscription: false,
+    });
+  });
+});
+
+describe("Stripe subscription status normalization", () => {
+  it("preserves trialing and payment-problem states without granting unknown states active status", () => {
+    expect(normalizeStripeSubscriptionStatus("trialing")).toBe("trialing");
+    expect(normalizeStripeSubscriptionStatus("past_due")).toBe("past_due");
+    expect(normalizeStripeSubscriptionStatus("incomplete")).toBe("incomplete");
+    expect(normalizeStripeSubscriptionStatus("canceled")).toBe("cancelled");
+    expect(normalizeStripeSubscriptionStatus("incomplete_expired")).toBe("cancelled");
+    expect(normalizeStripeSubscriptionStatus("future_unknown_status")).toBe("inactive");
   });
 });
 
@@ -1262,6 +1302,13 @@ describe("resolveBilledSeatCount — billing stops immediately on company cancel
   it("returns 0 when subscription is past_due with a minimal team", () => {
     expect(resolveBilledSeatCount("past_due", 1)).toBe(0);
   });
+
+  it.each(["unpaid", "paused", "incomplete", "incomplete_expired"])(
+    "returns 0 when subscription is %s",
+    (status) => {
+      expect(resolveBilledSeatCount(status, 10)).toBe(0);
+    },
+  );
 
   it("applies normal seat billing (N-3) for an active subscription", () => {
     // 5 accepted people → 2 billed (5 - 3 included)
