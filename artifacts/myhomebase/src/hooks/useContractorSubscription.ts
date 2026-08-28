@@ -100,13 +100,14 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
       companyTier: null,
       seatInfo: DEFAULT_SEAT_INFO,
       divisionCount: 0,
-      hasDivisions: false,
+      hasDivisions: true,
       hasBulkImport: false,
     };
   }
 
   const tier = data.companyTier as string | null ?? null;
-  const hasDivisions = data.hasDivisions ?? ['business', 'contractor_business'].includes(tier ?? '');
+  const hasDivisions = data.hasDivisions
+    ?? ((data.hasActiveSubscription ?? false) && !(data.needsSubscription ?? false));
   const hasBulkImport = data.bulkImportEnabled ?? hasDivisions;
 
   return {

@@ -16294,6 +16294,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         tierName: plan?.tierName ?? null,
         // Phase 3.5 — Scale-Up fields
         companyTier: companyData?.tier ?? null,
+        hasDivisions: hasActiveSubscription,
         seatInfo: {
           includedTeamSeats,
           additionalTeamSeatPrice,
@@ -22632,24 +22633,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // ─── Phase 3.1 — Division Management ─────────────────────────────────────────
 
-  // Historical compatibility check for accounts with division access.
-  const requireDivisionTier = async (req: any, res: any): Promise<boolean> => {
-    const companyId = req.session?.user?.companyId;
-    if (!companyId) { res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE' }); return false; }
-    const [co] = await db.select({ tier: companies.tier }).from(companies).where(eq(companies.id, companyId)).limit(1);
-    // Note: 'contractor_enterprise' removed from this list — placeholder plan,
-    // never had a real company; 'enterprise' (manual/negotiated deals) kept.
-    if (!co || !['business', 'contractor_business', 'enterprise'].includes(co.tier ?? '')) {
-      res.status(403).json({ code: 'DIVISION_NOT_AVAILABLE', message: 'Division management is not available for this account' });
-      return false;
-    }
-    return true;
-  };
-
   // GET /api/contractor/divisions — list all divisions for this company
-  app.get('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
+  app.get('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const rows = await db.select({
         id: companyDivisions.id,
@@ -22676,9 +22662,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/contractor/divisions — create a division
-  app.post('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
+  app.post('/api/contractor/divisions', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const schema = z.object({ name: z.string().min(1).max(100) });
       const parsed = schema.safeParse(req.body);
@@ -22698,9 +22683,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/contractor/divisions/:id — single division detail
-  app.get('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
+  app.get('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin', 'manager'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const { id } = req.params;
       const [div] = await db.select().from(companyDivisions)
@@ -22719,9 +22703,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // PATCH /api/contractor/divisions/:id — rename a division
-  app.patch('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
+  app.patch('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const { id } = req.params;
       const schema = z.object({ name: z.string().min(1).max(100) });
@@ -22745,9 +22728,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // DELETE /api/contractor/divisions/:id — delete a division (owner only; unassigns members first)
-  app.delete('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
+  app.delete('/api/contractor/divisions/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const { id } = req.params;
       const [existing] = await db.select({ id: companyDivisions.id }).from(companyDivisions)
@@ -22766,9 +22748,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/contractor/divisions/:id/assign-manager — assign a manager to a division
-  app.post('/api/contractor/divisions/:id/assign-manager', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
+  app.post('/api/contractor/divisions/:id/assign-manager', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin'), async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const { id } = req.params;
       const schema = z.object({ userId: z.string().uuid().nullable() });
@@ -22800,9 +22781,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // GET /api/contractor/divisions/:id/members — list members in a division
-  app.get('/api/contractor/divisions/:id/members', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin', 'manager'), requireDivisionAccess, async (req: any, res: any) => {
+  app.get('/api/contractor/divisions/:id/members', isAuthenticated, requireNotSuspended(), requireContractorSubscription, requireCompanyRoleAny('owner', 'admin', 'manager'), requireDivisionAccess, async (req: any, res: any) => {
     try {
-      if (!await requireDivisionTier(req, res)) return;
       const companyId = req.session.user.companyId;
       const { id } = req.params;
       // Manager scoping: if req.divisionFilter is set and doesn't match, deny
