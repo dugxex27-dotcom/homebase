@@ -2160,7 +2160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           (sameTimestamp && event.type === 'customer.subscription.created') ||
           (sameTimestamp &&
             event.type === 'customer.subscription.updated' &&
-            lockedUser.subscriptionStatus === 'cancelled')
+            lockedUser.subscriptionStatus === 'cancelled') ||
+          (sameTimestamp &&
+            event.type === 'invoice.paid' &&
+            ['cancelled', 'past_due'].includes(lockedUser.subscriptionStatus ?? ''))
         );
         if (staleEvent || checkoutSnapshotLostRace) {
           console.warn(
@@ -2244,7 +2247,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     switch (event.type) {
       case 'invoice.paid': {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = ((invoice as any).subscription ?? (invoice as any).subscriptionId) as string;
+          const invoiceSubscription =
+            (invoice as any).subscription ?? (invoice as any).subscriptionId;
+          const subscriptionId = typeof invoiceSubscription === 'string'
+            ? invoiceSubscription
+            : invoiceSubscription?.id;
           const customerId = invoice.customer as string;
 
           const user = await storage.getUserByStripeCustomerId(customerId);
@@ -2252,6 +2259,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
             break;
           }
+          if (!subscriptionId) {
+            console.warn(`[STRIPE WEBHOOK] Invoice ${invoice.id} paid without a subscription; skipping subscription activation`);
+            break;
+          }
+
+          // A paid invoice confirms payment, but it is not authoritative if a
+          // newer subscription transition has already been applied. Retrieve
+          // Stripe's current subscription snapshot and apply it through the
+          // shared serialized state path so an older invoice cannot resurrect
+          // access after cancellation or a later payment failure.
+          const subscription = await stripe!.subscriptions.retrieve(subscriptionId);
+          const subscriptionState = await applyStripeSubscriptionState(
+            event,
+            subscription,
+            user,
+          );
+          if (!subscriptionState?.applied) break;
 
           await storage.createSubscriptionCycleEvent({
             userId: user.id,
@@ -2263,8 +2287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             amount: (invoice.amount_paid / 100).toFixed(2),
           });
 
-          await storage.updateUserSubscriptionStatus(user.id, 'active');
-          console.log('[STRIPE WEBHOOK] Invoice paid processed for user:', user.email);
+          console.log(
+            `[STRIPE WEBHOOK] Invoice paid processed for user: ${user.email}, ` +
+            `subscription status: ${subscriptionState.status}`
+          );
 
           // Check if this user was referred by an agent and update consecutive months
           try {

@@ -31,6 +31,7 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 const {
   mockConstructEvent,
+  mockSubscriptionsRetrieve,
   mockClaimStripeEvent,
   mockMarkStripeEventCommitted,
   mockGetUserByStripeCustomerId,
@@ -134,6 +135,7 @@ const {
 
   return {
     mockConstructEvent: vi.fn(),
+    mockSubscriptionsRetrieve: vi.fn(),
     mockClaimStripeEvent: vi.fn().mockResolvedValue("claimed"),
     mockMarkStripeEventCommitted: vi.fn().mockResolvedValue(true),
     mockGetUserByStripeCustomerId: vi.fn(),
@@ -164,6 +166,7 @@ vi.mock("stripe", () => {
   function MockStripe(this: any) {
     this.webhooks = { constructEvent: mockConstructEvent };
     this.events = { retrieve: vi.fn() };
+    this.subscriptions = { retrieve: mockSubscriptionsRetrieve };
     this.transfers = { create: mockTransfersCreate };
     this.accounts = {
       retrieve: vi.fn().mockResolvedValue({
@@ -272,7 +275,14 @@ vi.mock("../objectStorage", () => ({
   ObjectNotFoundError: class ObjectNotFoundError extends Error {},
 }));
 vi.mock("../db", () => ({
-  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
+  pool: {
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    connect: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    }),
+    end: vi.fn(),
+  },
   db: {
     insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined) }) }),
     select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }) }),
@@ -380,6 +390,12 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
     mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
     mockGetUserByStripeCustomerId.mockReset().mockResolvedValue(REFERRED_USER);
+    mockSubscriptionsRetrieve.mockReset().mockResolvedValue({
+      id: "sub_test_referred_001",
+      customer: REFERRED_USER.stripeCustomerId,
+      status: "active",
+      items: { data: [{ price: { id: "price_test_referred_monthly" } }] },
+    });
     mockGetAgentProfile.mockReset().mockResolvedValue(AGENT_PROFILE_WITH_STRIPE_CONNECT);
     mockTransfersCreate.mockReset().mockImplementation(async () => ({ id: `tr_${Math.random().toString(36).slice(2)}` }));
 
