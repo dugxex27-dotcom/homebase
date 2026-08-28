@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, HardHat, Sparkles, X, ClipboardList, HelpCircle } from "lucide-react";
+import { Home, FileText, User, LayoutDashboard, MessageCircle, Users, Gift, Grid2x2, Trophy, HardHat, Sparkles, X, ClipboardList, HelpCircle, FileSignature } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType } from "@shared/schema";
@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from "react";
 
 const homeownerToolsItems = [
   { href: "/service-records",     icon: FileText,       label: "Service Records",      description: "View your home service history" },
+  { href: "/proposals",           icon: FileSignature,  label: "Proposals",            description: "Review contractor proposals" },
   { href: "/documents",           icon: ClipboardList,  label: "Documents",            description: "Documents & disclosure wizard" },
   { href: "/contractors",         icon: HardHat,        label: "Find Contractor",      description: "Search local professionals" },
   { href: "/achievements",        icon: Trophy,         label: "Explore Achievements", description: "Earn badges & rewards" },

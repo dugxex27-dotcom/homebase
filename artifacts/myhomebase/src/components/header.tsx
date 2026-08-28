@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   Calendar, Crown, LogOut, Wrench, Building2, MessageCircle,
   Trophy, Gift, User as UserIcon, FileText, LayoutDashboard,
-  Users, Download, Shield, Home
+  Users, Download, Shield, Home, FileSignature
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Notifications } from "@/components/notifications";
@@ -44,6 +44,9 @@ function TabletNav({ role, location }: { role: string; location: string }) {
       </Link>
       <Link href="/service-records" className={itemClass(['/service-records', '/documents'])}>
         <FileText className="w-4 h-4" />Records
+      </Link>
+      <Link href="/proposals" className={itemClass(['/proposals'])}>
+        <FileSignature className="w-4 h-4" />Proposals
       </Link>
       <Link href="/contractors" className={itemClass(['/contractors', '/find-contractors'])}>
         <Building2 className="w-4 h-4" />Contractors

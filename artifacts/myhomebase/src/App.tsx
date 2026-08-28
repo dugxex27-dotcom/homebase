@@ -198,6 +198,8 @@ const ContractorDetail = lazy(() => import("./pages/contractor-detail"));
 const HomeownerServiceRecords = lazy(() => import("./pages/homeowner-service-records"));
 const HomeownerAccount = lazy(() => import("./pages/homeowner-account"));
 const HomeownerReferral = lazy(() => import("./pages/homeowner-referral"));
+const HomeownerProposals = lazy(() => import("./pages/homeowner-proposals"));
+const HomeownerProposalDetail = lazy(() => import("./pages/homeowner-proposal-detail"));
 const HomeownerPricing = lazy(() => import("./pages/homeowner-pricing"));
 const Achievements = lazy(() => import("./pages/achievements"));
 const MhbInfo = lazy(() => import("./pages/mhb-info"));
@@ -484,6 +486,8 @@ function Router() {
             <Route path="/products" component={Products} />
             <Route path="/service-records" component={HomeownerServiceRecords} />
             <Route path="/account" component={HomeownerAccount} />
+            <Route path="/proposals" component={HomeownerProposals} />
+            <Route path="/proposals/:id" component={HomeownerProposalDetail} />
             <Route path="/homeowner-referral" component={HomeownerReferral} />
             <Route path="/homeowner-pricing" component={HomeownerPricing} />
             <Route path="/achievements" component={Achievements} />

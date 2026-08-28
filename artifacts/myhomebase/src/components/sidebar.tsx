@@ -2,7 +2,7 @@ import { Link, useLocation, useSearch } from "wouter";
 import {
   Wrench, Building2, FileText, Package, MessageCircle, Trophy, Gift,
   User as UserIcon, HelpCircle, LogOut, Download, Shield, LayoutDashboard,
-  Users, Info, FolderOpen, Home
+  Users, Info, FolderOpen, Home, FileSignature
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
@@ -191,6 +191,7 @@ export default function Sidebar() {
             <NavItem href="/" icon={Home} label="Home" testId="nav-home" />
             <NavItem href="/maintenance" icon={Wrench} label="Tasks" badge={hasNotif('maintenance')} testId="nav-maintenance" />
             <NavItem href="/service-records" icon={FileText} label="Service Records" testId="nav-service-records" />
+            <NavItem href="/proposals" icon={FileSignature} label="Proposals" testId="nav-proposals" />
             <NavItem href="/contractors" paths={['/contractors', '/find-contractors']} icon={Building2} label="Contractors" testId="nav-contractors" />
             <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
             <NavItem href="/achievements" icon={Trophy} label="Achievements" testId="nav-achievements" />

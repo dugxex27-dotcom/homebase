@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { Bell, X, Clock, Calendar, User, Building2, Wrench, AlertTriangle, CheckCircle, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,6 +20,7 @@ interface NotificationsProps {
 
 export function Notifications({ homeownerId }: NotificationsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
@@ -223,9 +225,11 @@ export function Notifications({ homeownerId }: NotificationsProps) {
                                   size="sm"
                                   variant="ghost"
                                   className="h-6 px-2 text-xs"
+                                  data-testid={`button-view-notification-${notification.id}`}
                                   onClick={() => {
-                                    window.location.href = notification.actionUrl!;
                                     handleMarkAsRead(notification.id);
+                                    setIsOpen(false);
+                                    setLocation(notification.actionUrl!);
                                   }}
                                 >
                                   View
