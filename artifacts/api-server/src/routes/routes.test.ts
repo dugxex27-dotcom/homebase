@@ -37,6 +37,7 @@ import {
   withSeatUpdateLock,
   previewContractorUpgrade,
   CURRENT_CONTRACTOR_TIER,
+  validateContractorCheckoutPlan,
 } from "./routes";
 import { refreshUserSessionRole } from "../replitAuth";
 
@@ -159,6 +160,34 @@ describe("previewContractorUpgrade", () => {
       additionalCostMonthly: 0,
       monthlyTotal: 20,
     });
+  });
+});
+
+describe("validateContractorCheckoutPlan", () => {
+  it("accepts only the current unified Basic checkout plan", () => {
+    expect(validateContractorCheckoutPlan("basic")).toBeNull();
+  });
+
+  it("rejects retired Pro before a Stripe Checkout Session can be created", () => {
+    expect(validateContractorCheckoutPlan("pro")).toEqual({
+      status: 400,
+      body: {
+        message: "Unsupported target tier",
+        code: "UNSUPPORTED_TARGET_TIER",
+      },
+    });
+  });
+
+  it("rejects missing and unknown contractor checkout plans consistently", () => {
+    for (const plan of [undefined, "contractor_pro", "unknown"]) {
+      expect(validateContractorCheckoutPlan(plan)).toEqual({
+        status: 400,
+        body: {
+          message: "Unsupported target tier",
+          code: "UNSUPPORTED_TARGET_TIER",
+        },
+      });
+    }
   });
 });
 

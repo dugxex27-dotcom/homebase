@@ -181,8 +181,7 @@ export default function FAQ() {
                       </ul>
                       <p className="font-medium mt-3">Contractors:</p>
                       <ul className="list-disc pl-6 space-y-1">
-                        <li><strong>Basic ($20/month):</strong> Up to $20/month (20 referrals = free subscription)</li>
-                        <li><strong>Pro ($40/month):</strong> Up to $40/month (40 referrals = free subscription)</li>
+                        <li><strong>Contractor Plan ($20/month):</strong> Up to $20/month (20 referrals = free subscription)</li>
                       </ul>
                       <p className="font-medium mt-3">Real Estate Agents:</p>
                       <ul className="list-disc pl-6 space-y-1">

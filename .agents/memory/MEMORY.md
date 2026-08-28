@@ -35,3 +35,4 @@
 - [Quantity-based team-seat billing](quantity-based-seat-billing.md) — 3 accepted people included, then $5 each via Stripe item quantity; pending invites reserve the 50-person ceiling but are unbilled
 - [routes.test.ts pool mock needs .query](seat-mock-query-import-side-effect.md) — pg-rate-limit-store.ts calls pool.query at import time; vi.mock("../db") must stub pool.query directly or the whole test file fails to load
 - [Billing tests and demo access](billing-tests-demo-bypass.md) — contractor demo access masks real subscription states; disable the demo flag after login when testing billing gates
+- [Static landing route rewrites](static-landing-route-rewrites.md) — exact-match public landing rewrites so nested SPA routes are not intercepted before React

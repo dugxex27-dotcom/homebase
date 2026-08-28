@@ -5,8 +5,8 @@ export default function ContractorUpgrade() {
   return (
     <>
       <Helmet>
-        <title>Upgrade to Pro | Home Base</title>
-        <meta name="description" content="Upgrade to Contractor Pro for full CRM features including client management, job scheduling, quotes, invoices, and payment processing." />
+        <title>Contractor Plan | Home Base</title>
+        <meta name="description" content="Subscribe to the Home Base contractor plan for $20 per month, including three accepted people and full business management features." />
       </Helmet>
       <ContractorCRMUpgradePage />
     </>

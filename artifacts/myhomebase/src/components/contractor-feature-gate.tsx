@@ -16,7 +16,6 @@ import {
   restoreNativePurchases,
   onNativePurchaseVerified,
   onNativePurchaseFailed,
-  isNativePurchaseSupported,
 } from "@/lib/nativePurchase";
 
 interface ContractorFeatureGateProps {
@@ -72,7 +71,6 @@ interface ContractorUpgradePromptProps {
 function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
   const [, setLocation] = useLocation();
   const featureInfo = featureLabels[feature] || { label: feature, icon: <Lock className="h-5 w-5" />, description: '' };
-  const tier = featureInfo.upgradeTier ?? 'Pro';
 
   return (
     <Card className="border-2 border-dashed" style={{ borderColor: 'var(--theme-border)', background: 'var(--theme-fill)' }}>
@@ -80,7 +78,7 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
         <div className="mx-auto mb-3 p-3 rounded-full w-fit" style={{ background: 'var(--theme-fill)' }}>
           <Lock className="h-6 w-6" style={{ color: 'var(--theme-accent)' }} />
         </div>
-        <CardTitle className="text-lg">Upgrade to {tier}</CardTitle>
+        <CardTitle className="text-lg">Subscribe to the Contractor Plan</CardTitle>
         <CardDescription>
           {featureInfo.description}
         </CardDescription>
@@ -89,15 +87,15 @@ function ContractorUpgradePrompt({ feature }: ContractorUpgradePromptProps) {
         <div className="flex items-center justify-center gap-2">
           <Badge variant="secondary" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
             <Sparkles className="h-3 w-3 mr-1" />
-            {tier} Feature
+            Included Feature
           </Badge>
         </div>
         <Button 
           onClick={() => setLocation('/contractor/upgrade')}
           style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
-          data-testid="button-upgrade-pro"
+          data-testid="button-view-contractor-plan"
         >
-          Upgrade to {tier}
+          View Contractor Plan
         </Button>
       </CardContent>
     </Card>
@@ -134,7 +132,7 @@ export function ContractorCRMUpgradePage() {
         await queryClient.refetchQueries({ queryKey: ['/api/contractor/subscription'] });
       } catch {}
       setIsPurchasing(false);
-      toast({ title: "Subscription Activated", description: `Your Contractor ${plan === 'contractor_basic' ? 'Basic' : plan} subscription is now active.` });
+      toast({ title: "Subscription Activated", description: "Your contractor subscription is now active." });
       setLocation('/contractor-dashboard');
     });
     const unsubFailed = onNativePurchaseFailed(({ message }) => {
@@ -153,21 +151,6 @@ export function ContractorCRMUpgradePage() {
     setIsPurchasing(true);
     try {
       await purchaseNativePlan('contractor_basic', userId);
-    } catch (err) {
-      setIsPurchasing(false);
-      toast({ title: "Purchase Failed", description: err instanceof Error ? err.message : "Could not start purchase. Please try again.", variant: "destructive" });
-    }
-  };
-
-  const handleNativeProPurchase = async () => {
-    const userId = (user as { id?: string } | undefined)?.id;
-    if (!userId) {
-      toast({ title: "Sign in required", description: "Please sign in to purchase a subscription.", variant: "destructive" });
-      return;
-    }
-    setIsPurchasing(true);
-    try {
-      await purchaseNativePlan('contractor_pro', userId);
     } catch (err) {
       setIsPurchasing(false);
       toast({ title: "Purchase Failed", description: err instanceof Error ? err.message : "Could not start purchase. Please try again.", variant: "destructive" });
@@ -194,7 +177,7 @@ export function ContractorCRMUpgradePage() {
     }
   };
 
-  const proFeatures = [
+  const planFeatures = [
     { icon: <Users className="h-5 w-5" />, title: 'Client Management', description: 'Full customer database with contact info, service history, and notes' },
     { icon: <Calendar className="h-5 w-5" />, title: 'Job Scheduling', description: 'Schedule jobs, assign team members, track progress' },
     { icon: <FileText className="h-5 w-5" />, title: 'Quotes & Invoices', description: 'Professional quotes and invoices with line items' },
@@ -207,6 +190,8 @@ export function ContractorCRMUpgradePage() {
   const needsCheckout =
     typedUser?.subscriptionStatus === 'inactive' &&
     !typedUser?.stripeCustomerId;
+  const hasCurrentContractorPlan =
+    currentPlan === 'basic' || currentPlan === 'pro' || currentPlan === 'business';
 
   return (
     <div>
@@ -242,51 +227,48 @@ export function ContractorCRMUpgradePage() {
       <div className="text-center mb-8">
         <Badge className="mb-4" style={{ background: 'var(--theme-fill)', color: 'var(--theme-accent)' }}>
           <Sparkles className="h-3 w-3 mr-1" />
-          Upgrade Your Business
+          One Simple Contractor Plan
         </Badge>
-        <h1 className="text-3xl font-bold mb-2">Contractor Pro</h1>
+        <h1 className="text-3xl font-bold mb-2">Home Base Contractor Plan</h1>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Everything you need to run your contracting business efficiently
+          $20 per month includes three accepted people, then $5 per month for each additional accepted person.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <Card className="border-2 border-muted">
+      <div className="max-w-2xl mx-auto mb-8">
+        <Card className="border-2" style={{ borderColor: 'var(--theme-accent)' }}>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Basic
-              {currentPlan === 'basic' && (
+              Contractor Plan
+              {hasCurrentContractorPlan && (
                 <Badge variant="outline">Current Plan</Badge>
               )}
             </CardTitle>
             <div className="text-3xl font-bold">$20<span className="text-base font-normal text-muted-foreground">/month</span></div>
+            <CardDescription>Three accepted people included · $5/month per additional accepted person</CardDescription>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500" />
-                Get found by homeowners
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500" />
-                Receive and respond to messages
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500" />
-                Send proposals to homeowners
-              </li>
-              <li className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500" />
-                Reviews and ratings profile
-              </li>
+              {[
+                'Full CRM with client management',
+                'Job scheduling and tracking',
+                'Quotes, invoices, and payments',
+                'Team and division management',
+                'Three accepted people included',
+              ].map((benefit) => (
+                <li key={benefit} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-green-500" />
+                  {benefit}
+                </li>
+              ))}
             </ul>
-            {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+            {isNativePlatform && !hasCurrentContractorPlan && (
               <div className="mt-3 space-y-1">
                 <p className="text-sm font-semibold text-gray-900 text-center">$20.00/month · Auto-renews</p>
                 <p className="text-xs text-muted-foreground text-center">Try free for 14 days · card required at signup</p>
               </div>
             )}
-            {isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+            {isNativePlatform && !hasCurrentContractorPlan && (
               <Button
                 className="w-full mt-3"
                 style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
@@ -294,90 +276,26 @@ export function ContractorCRMUpgradePage() {
                 disabled={isPurchasing}
                 data-testid="button-subscribe-basic-native"
               >
-                {isPurchasing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</> : 'Subscribe to Basic'}
+                {isPurchasing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</> : 'Subscribe to Contractor Plan'}
               </Button>
             )}
-            {!isNativePlatform && currentPlan !== 'basic' && currentPlan !== 'pro' && (
+            {!isNativePlatform && !hasCurrentContractorPlan && (
               <Button
                 className="w-full mt-4"
                 variant="outline"
                 onClick={() => setLocation('/contractor/checkout?plan=basic')}
                 data-testid="button-subscribe-basic"
               >
-                Subscribe to Basic
+                Subscribe to Contractor Plan
               </Button>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="border-2 relative overflow-hidden" style={{ borderColor: 'var(--theme-accent)' }}>
-          <div className="absolute top-0 right-0 text-white text-xs px-3 py-1 rounded-bl-lg" style={{ background: 'var(--theme-accent)' }}>
-            RECOMMENDED
-          </div>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Pro
-              {currentPlan === 'pro' && (
-                <Badge style={{ background: 'var(--theme-accent)', color: '#fff' }}>Current Plan</Badge>
-              )}
-            </CardTitle>
-            <div className="text-3xl font-bold">$40<span className="text-base font-normal text-muted-foreground">/month</span></div>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              <li className="flex items-center gap-2 text-sm">
-                <Check className="h-4 w-4 text-green-500" />
-                Everything in Basic
-              </li>
-              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
-                <Sparkles className="h-4 w-4" />
-                Full CRM with client management
-              </li>
-              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
-                <Sparkles className="h-4 w-4" />
-                Job scheduling & tracking
-              </li>
-              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
-                <Sparkles className="h-4 w-4" />
-                Quotes, invoices & payments
-              </li>
-              <li className="flex items-center gap-2 text-sm font-medium" style={{ color: 'var(--theme-accent)' }}>
-                <Sparkles className="h-4 w-4" />
-                Team management
-              </li>
-            </ul>
-            {currentPlan !== 'pro' && !isNativePlatform && (
-              <Button 
-                className="w-full mt-4"
-                style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
-                onClick={() => setLocation('/contractor/checkout?plan=pro')}
-                data-testid="button-upgrade-to-pro"
-              >
-                Upgrade to Pro
-              </Button>
-            )}
-            {currentPlan !== 'pro' && isNativePlatform && (
-              <div className="mt-3 space-y-1">
-                <p className="text-sm font-semibold text-gray-900 text-center">$40.00/month · Auto-renews</p>
-                <p className="text-xs text-muted-foreground text-center">Try free for 14 days · card required at signup</p>
-                <Button
-                  className="w-full mt-2"
-                  style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }}
-                  onClick={handleNativeProPurchase}
-                  disabled={isPurchasing}
-                  data-testid="button-subscribe-pro-native"
-                >
-                  {isPurchasing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processing...</> : 'Upgrade to Pro'}
-                </Button>
-              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <h2 className="text-xl font-semibold mb-4 text-center">Pro Features Include</h2>
+      <h2 className="text-xl font-semibold mb-4 text-center">Everything Included</h2>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {proFeatures.map((feature, index) => (
+        {planFeatures.map((feature, index) => (
           <Card key={index} className="bg-muted/30">
             <CardContent className="pt-4">
               <div className="flex items-start gap-3">
@@ -399,9 +317,9 @@ export function ContractorCRMUpgradePage() {
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2" data-testid="contractor-native-subscription-disclosure">
             <p className="text-sm font-semibold text-gray-800">Subscription Terms</p>
             <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-              <li>Contractor Basic is <strong>$20.00/month</strong>, billed monthly. Auto-renews unless cancelled.</li>
-              <li>Contractor Pro is <strong>$40.00/month</strong>, billed monthly. Auto-renews unless cancelled.</li>
-              <li>Both plans include a <strong>14-day free trial</strong> for new subscribers.</li>
+              <li>The Contractor Plan is <strong>$20.00/month</strong>, billed monthly, with three accepted people included.</li>
+              <li>Each additional accepted person is <strong>$5.00/month</strong>.</li>
+              <li>The plan includes a <strong>14-day free trial</strong> for new subscribers.</li>
               <li>After the trial, payment is charged to your Apple ID.</li>
               <li>Cancel anytime in <strong>Settings → Apple ID → Subscriptions</strong>.</li>
             </ul>

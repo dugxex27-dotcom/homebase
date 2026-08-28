@@ -46,23 +46,14 @@ const PLAN_SUMMARY: Record<string, PlanSummaryInfo> = {
     ],
   },
   basic: {
-    name: "Contractor Basic",
+    name: "Contractor Plan",
     price: "$20",
     period: "/month",
     benefits: [
-      "Get discovered by homeowners",
-      "Messaging, proposals & reviews",
-      "Up to $20/mo in referral credits",
-    ],
-  },
-  pro: {
-    name: "Contractor Pro",
-    price: "$40",
-    period: "/month",
-    benefits: [
+      "Three accepted people included",
+      "$5/month per additional accepted person",
       "Full CRM, scheduling & invoicing",
-      "Accept payments via Stripe Connect",
-      "Team management & analytics",
+      "Up to $20/mo in referral credits",
     ],
   },
 };

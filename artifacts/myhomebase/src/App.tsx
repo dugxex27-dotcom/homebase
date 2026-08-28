@@ -432,6 +432,16 @@ function Router() {
           <Route path="/contractor/:id" component={ContractorDetail} />
         )}
 
+        {/* Specific contractor purchase routes must precede /contractor because
+            Wouter otherwise matches the generic route first. */}
+        {typedUser?.role === 'contractor' && typedUser?.companyRole !== 'tech' && (
+          <>
+            <Route path="/contractor/upgrade" component={ContractorUpgrade} />
+            <Route path="/contractor/pricing" component={ContractorUpgrade} />
+            <Route path="/contractor/checkout" component={ContractorCheckout} />
+          </>
+        )}
+
         {/* Home route */}
         <Route path="/" component={Home} />
         <Route path="/homeowner" component={Home} />
@@ -513,10 +523,7 @@ function Router() {
         {typedUser?.role === 'contractor' && typedUser?.companyRole !== 'tech' && (
           <>
             <Route path="/contractor-onboarding" component={ContractorOnboarding} />
-            <Route path="/contractor/upgrade" component={ContractorUpgrade} />
-            <Route path="/contractor/pricing" component={ContractorUpgrade} />
             <Route path="/contractor-pricing" component={ContractorUpgrade} />
-            <Route path="/contractor/checkout" component={ContractorCheckout} />
             <Route path="/crm/leads/:id" component={CrmLeadDetail} />
             <Route path="/crm" component={ContractorCRM} />
             <Route path="/contractor-profile" component={ContractorProfile} />

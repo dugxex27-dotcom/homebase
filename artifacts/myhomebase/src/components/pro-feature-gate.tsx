@@ -74,7 +74,7 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
               <Crown className="h-8 w-8 text-white" />
             </div>
           </div>
-          <DialogTitle>Upgrade to Contractor Pro</DialogTitle>
+          <DialogTitle>Subscribe to the Contractor Plan</DialogTitle>
           <DialogDescription className="text-base">
             Unlock powerful CRM tools to grow your business and save hours every week
           </DialogDescription>
@@ -113,13 +113,13 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="h-4 w-4" style={{ color: 'var(--theme-accent)' }} />
-                <span className="font-semibold">Contractor Pro</span>
+                <span className="font-semibold">Contractor Plan</span>
               </div>
               <p className="text-sm text-muted-foreground">Everything you need to run your business</p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">$40<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
-              <p className="text-xs text-muted-foreground">Double the referral credits ($40/mo cap)</p>
+              <div className="text-2xl font-bold">$20<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
+              <p className="text-xs text-muted-foreground">Three accepted people included, then $5/person</p>
             </div>
           </div>
         </div>
@@ -131,7 +131,7 @@ export function ProBenefitsDialog({ open, onOpenChange }: ProBenefitsDialogProps
           <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }} data-testid="button-upgrade-pro-dialog">
             <Link href="/contractor/upgrade">
               <Crown className="h-4 w-4 mr-2" />
-              Upgrade to Pro
+              View Contractor Plan
             </Link>
           </Button>
         </DialogFooter>
@@ -180,13 +180,13 @@ export function ProFeatureGate({ children, featureName, featureIcon: FeatureIcon
               </div>
               <h3 className="text-xl font-bold mb-2">Unlock {featureName}</h3>
               <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-                Upgrade to Contractor Pro to access {featureName.toLowerCase()} and other powerful business tools.
+                Subscribe to the Contractor Plan to access {featureName.toLowerCase()} and other powerful business tools.
               </p>
               <div className="flex flex-col gap-3">
                 <Button asChild size="lg" style={{ background: 'linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%)' }} data-testid="button-upgrade-gate">
                   <Link href="/contractor/upgrade">
                     <Crown className="h-4 w-4 mr-2" />
-                    Upgrade to Pro - $40/mo
+                    View Contractor Plan - $20/mo
                   </Link>
                 </Button>
                 <Button 
@@ -220,7 +220,7 @@ export function ProUpgradeBanner({ onShowBenefits }: { onShowBenefits: () => voi
             <Crown className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h4 className="font-semibold">Upgrade to Contractor Pro</h4>
+            <h4 className="font-semibold">Subscribe to the Contractor Plan</h4>
             <p className="text-sm text-muted-foreground">Get access to Client Management, Jobs, Quotes, Invoices & Dashboard</p>
           </div>
         </div>

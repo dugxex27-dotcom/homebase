@@ -35,8 +35,6 @@ export default function ContractorReferral() {
   const earnedCredits = (referralData as any)?.earnedCredits || 0;
   const referralCreditCap = (referralData as any)?.referralCreditCap || 20;
   const currentCredits = (referralData as any)?.currentCredits || 0;
-  const tierName = (referralData as any)?.tierName || 'contractor';
-  const isPro = tierName === 'contractor_pro';
   const creditProgress = (earnedCredits / referralCreditCap) * 100;
   
   const shareMessage = `Join me on MyHomeBase™! Use my referral code ${referralCode} and I get $1 off when you subscribe. You'll get the full MyHomeBase™ experience at regular price while helping me save money! Perfect for contractors! Sign up here: ${referralLink}`;
@@ -135,12 +133,6 @@ export default function ContractorReferral() {
               <CardTitle className="flex items-center gap-2 text-gray-900">
                 <TrendingUp className="w-5 h-5 text-blue-600" />
                 Your Referral Stats
-                {isPro && (
-                  <Badge className="ml-2 bg-blue-600 text-white">
-                    <Crown className="w-3 h-3 mr-1" />
-                    Pro
-                  </Badge>
-                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

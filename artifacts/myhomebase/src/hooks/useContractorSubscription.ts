@@ -80,7 +80,7 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
 
   const data = subscriptionData as any;
 
-  // Demo accounts get full Pro access - never show subscription prompts
+  // Demo accounts represent the current unified Contractor Basic plan.
   if (data.isDemoAccount) {
     return {
       isLoading: false,
@@ -90,13 +90,13 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
       trialExpired: false,
       trialDaysRemaining: 0,
       trialEndsAt: null,
-      currentPlan: 'pro',
+      currentPlan: 'basic',
       hasCrmAccess: true,
       subscriptionStatus: 'active',
       monthlyPrice: 0,
       features: data.features ?? [],
       needsUpgrade: false,
-      planName: data.planName ?? 'Pro (Demo Account)',
+      planName: data.planName ?? 'Contractor Basic (Demo Account)',
       companyTier: null,
       seatInfo: DEFAULT_SEAT_INFO,
       divisionCount: 0,

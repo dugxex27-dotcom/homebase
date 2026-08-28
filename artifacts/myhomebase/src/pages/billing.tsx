@@ -294,8 +294,7 @@ export default function Billing() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2" style={{ color: isContractor ? '#b91c1c' : 'var(--purple-deep)' }}>
                 {currentPlan === 'grandfathered' && <Crown className="h-5 w-5 text-yellow-600" />}
-                {currentPlan === 'contractor_pro' && <Crown className="h-5 w-5 text-red-600" />}
-                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor_pro' ? 'Contractor Pro' : currentPlan === 'contractor' ? 'Contractor Basic' : currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Base'}
+                Current Plan: {currentPlan === 'grandfathered' ? 'Grandfathered' : currentPlan === 'contractor_pro' || currentPlan === 'contractor' ? 'Contractor Plan' : currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Base'}
               </CardTitle>
               <CardDescription>
                 {currentPlan === 'grandfathered' && (isContractor 
@@ -305,8 +304,7 @@ export default function Billing() {
                 {currentPlan === 'premium_plus' && "You're on the Premium Plus plan with access to 7+ properties."}
                 {currentPlan === 'premium' && "You're on the Premium plan with access to 3-6 properties."}
                 {currentPlan === 'base' && "You're on the Base plan with access to up to 2 properties."}
-                {currentPlan === 'contractor' && "You're subscribed to Contractor Basic ($20/month)."}
-                {currentPlan === 'contractor_pro' && "You're subscribed to Contractor Pro ($40/month) with full CRM access."}
+                {(currentPlan === 'contractor' || currentPlan === 'contractor_pro') && "You're on the current contractor plan: $20/month with three accepted people included, then $5/month per additional person."}
               </CardDescription>
             </CardHeader>
           </Card>

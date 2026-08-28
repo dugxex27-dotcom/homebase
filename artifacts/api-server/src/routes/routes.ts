@@ -61,6 +61,22 @@ const CONTRACTOR_BASE_PRICE_MONTHLY = 20;
 const CONTRACTOR_ADDITIONAL_SEAT_PRICE_MONTHLY = 5;
 const CONTRACTOR_INCLUDED_SEATS = 3;
 
+export function validateContractorCheckoutPlan(
+  plan: unknown,
+): { status: number; body: Record<string, unknown> } | null {
+  if (plan !== 'basic') {
+    return {
+      status: 400,
+      body: {
+        message: 'Unsupported target tier',
+        code: 'UNSUPPORTED_TARGET_TIER',
+      },
+    };
+  }
+
+  return null;
+}
+
 export function previewContractorUpgrade(
   targetTier: unknown,
   totalSeats: unknown,
@@ -3767,13 +3783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate plan
       const validHomeownerPlans = ['base', 'premium', 'premium_plus'];
-      const validContractorPlans = ['basic', 'pro'];
       
       if (userRole === 'homeowner' && !validHomeownerPlans.includes(plan)) {
         return res.status(400).json({ message: "Invalid plan for homeowner" });
       }
-      if (userRole === 'contractor' && !validContractorPlans.includes(plan)) {
-        return res.status(400).json({ message: "Invalid plan for contractor" });
+      if (userRole === 'contractor') {
+        const validationError = validateContractorCheckoutPlan(plan);
+        if (validationError) {
+          return res.status(validationError.status).json(validationError.body);
+        }
       }
 
       const user = await storage.getUser(userId);
@@ -3787,7 +3805,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         premium: { price: 2000, name: 'HomeBase Premium Plan', maxHouses: 6 },
         premium_plus: { price: 4000, name: 'HomeBase Premium Plus Plan', maxHouses: 999 },
         basic: { price: 2000, name: 'HomeBase Contractor Basic Plan' },
-        pro: { price: 4000, name: 'HomeBase Contractor Pro Plan' },
       };
 
       const selectedPlan = pricing[plan];
@@ -16207,7 +16224,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         return res.status(403).json({ message: 'Not a contractor account' });
       }
       
-      // Demo contractor accounts get full Pro access - never expires.
+      // Demo contractor accounts get full current-plan access and never expire.
       // Matched only by the immutable isDemoAccount DB flag.
       if (user.isDemoAccount) {
         return res.json({
@@ -16217,13 +16234,13 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
           trialExpired: false,
           trialDaysRemaining: 0,
           trialEndsAt: null,
-          currentPlan: 'pro',
+          currentPlan: 'basic',
           hasCrmAccess: true,
           subscriptionStatus: 'active',
           monthlyPrice: 0,
           features: ['Lead management', 'Client management', 'Job scheduling', 'Quotes and invoices', 'Dashboard analytics', 'Referral program'],
-          planName: 'Pro (Demo Account)',
-          tierName: 'contractor_pro',
+          planName: 'Contractor Basic (Demo Account)',
+          tierName: CURRENT_CONTRACTOR_TIER,
           isDemoAccount: true,
         });
       }
