@@ -364,11 +364,9 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
       return next();
     }
     
-    // Check if active subscription (any paid tier passes)
-    // Note: 'contractor_enterprise' removed — the plan tier was a placeholder
-    // with no real Stripe product and no user ever had this status.
-    const ACTIVE_STATUSES = ['active', 'contractor_business'];
-    if (ACTIVE_STATUSES.includes(user.subscriptionStatus ?? '')) {
+    // Only a real active subscription grants paid access. Legacy plan/tier
+    // identifiers such as contractor_business must never grant access.
+    if (user.subscriptionStatus === 'active') {
       return next();
     }
 
@@ -844,7 +842,7 @@ export function getContractorSubscriptionAccess(
 ): { hasActiveSubscription: boolean; needsSubscription: boolean } {
   const hasActiveSubscription =
     subscriptionStatus === 'active' ||
-    subscriptionStatus === 'contractor_business' ||
+    subscriptionStatus === 'grandfathered' ||
     isInTrial;
 
   return {

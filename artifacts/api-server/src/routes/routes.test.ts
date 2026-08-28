@@ -112,6 +112,7 @@ describe("calcBilledSeats", () => {
 
 describe("contractor subscription access policy", () => {
   it.each([
+    ["contractor_business", false],
     ["past_due", false],
     ["cancelled", false],
     ["incomplete", false],
@@ -131,6 +132,10 @@ describe("contractor subscription access policy", () => {
       needsSubscription: false,
     });
     expect(getContractorSubscriptionAccess("trialing", true)).toEqual({
+      hasActiveSubscription: true,
+      needsSubscription: false,
+    });
+    expect(getContractorSubscriptionAccess("grandfathered", false)).toEqual({
       hasActiveSubscription: true,
       needsSubscription: false,
     });
