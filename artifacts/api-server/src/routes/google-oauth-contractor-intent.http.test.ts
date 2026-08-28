@@ -160,7 +160,7 @@ describe("/auth/google/callback — contractor intent routing", () => {
     expect(res.headers.location).toBe("/complete-profile?intent=contractor");
   });
 
-  it("upgrades an existing homeowner (has zipCode) to contractor and redirects to /contractor-onboarding?fromOAuth=true", async () => {
+  it("does not promote an existing homeowner through a replayed contractor intent", async () => {
     const homeowner: UserFixture = {
       id: "google_hw001",
       email: "homeowner@example.com",
@@ -177,12 +177,8 @@ describe("/auth/google/callback — contractor intent routing", () => {
     const res = await request(app).get("/auth/google/callback");
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe(
-      "/contractor-onboarding?fromOAuth=true",
-    );
-    expect(mockUpsertUser).toHaveBeenCalledWith(
-      expect.objectContaining({ role: "contractor" }),
-    );
+    expect(res.headers.location).toBe("/dashboard");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
   it("redirects an existing contractor without a company to /contractor-onboarding?fromOAuth=true", async () => {

@@ -4,6 +4,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
+import { isConversationParticipant } from "./conversation-access";
 import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
@@ -2899,8 +2900,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (session.metadata?.type === 'boost_renewal') {
             const { boostId, contractorId } = session.metadata;
             if (boostId && contractorId) {
+              if (
+                session.payment_status !== 'paid' ||
+                session.amount_total !== BOOST_PRICE_DOLLARS * 100 ||
+                session.currency !== 'usd'
+              ) {
+                console.log(`[STRIPE WEBHOOK] Boost renewal blocked — checkout ${session.id} is not fully paid`);
+                break;
+              }
               const contractor = await storage.getUser(contractorId);
-              if (!contractor || (['suspended', 'removed'] as string[]).includes(contractor.status || '')) {
+              if (
+                !contractor ||
+                (['suspended', 'removed'] as string[]).includes(contractor.status || '') ||
+                (['suspended', 'cancelled', 'deleted'] as string[]).includes(contractor.accountStatus || '')
+              ) {
                 console.log(`[STRIPE WEBHOOK] Boost renewal blocked — contractor ${contractorId} is suspended or not found`);
                 break;
               }
@@ -2910,6 +2923,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 const paymentIntentId = typeof session.payment_intent === 'string'
                   ? session.payment_intent
                   : (session.payment_intent as any)?.id ?? null;
+                if (
+                  !paymentIntentId ||
+                  boosts.some(existing => existing.stripePaymentIntentId === paymentIntentId)
+                ) {
+                  console.log(`[STRIPE WEBHOOK] Boost renewal blocked — missing or already-used payment intent`);
+                  break;
+                }
                 const now = new Date();
                 const currentEnd = new Date(boost.endDate);
                 const renewalStart = currentEnd > now ? currentEnd : now;
@@ -5677,13 +5697,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid role" });
       }
 
-      // Validate contractor company requirements - must create a company
-      if (role === 'contractor') {
-        if (!companyName || !companyPhone) {
-          return res.status(400).json({ message: "Company name and phone are required for contractors" });
-        }
-      }
-
       const userId = req.session.user.id;
       let currentUser = await storage.getUser(userId);
       
@@ -5691,15 +5704,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Update user with zip code and role
+      // The account role is assigned by the trusted registration/OAuth intent
+      // flow. Profile fields must never be able to promote an existing user.
+      if (role !== currentUser.role) {
+        return res.status(403).json({
+          message: "Account role cannot be changed during profile completion",
+          code: "ROLE_CHANGE_NOT_ALLOWED",
+        });
+      }
+
+      const trustedRole = currentUser.role as 'homeowner' | 'contractor' | 'agent';
+
+      // Validate contractor company requirements - must create a company
+      if (trustedRole === 'contractor') {
+        if (!companyName || !companyPhone) {
+          return res.status(400).json({ message: "Company name and phone are required for contractors" });
+        }
+      }
+
+      // Update profile data while preserving the server-assigned role.
       currentUser = await storage.upsertUser({
         ...currentUser,
         zipCode,
-        role: role as 'homeowner' | 'contractor' | 'agent'
+        role: trustedRole,
       });
 
       // Handle contractor company setup - always create a new company
-      if (role === 'contractor') {
+      if (trustedRole === 'contractor') {
         // Create new company
         const company = await storage.createCompany({
           name: companyName,
@@ -11118,15 +11149,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only contractors can create boosts" });
       }
 
-      // Coerce string dates to Date objects before Zod validation.
-      // JSON bodies always deliver dates as strings, but the schema expects Date.
+      const paymentIntentId = typeof req.body.stripePaymentIntentId === 'string'
+        ? req.body.stripePaymentIntentId.trim()
+        : '';
+      if (!paymentIntentId) {
+        return res.status(402).json({ message: "Payment required: a successful payment intent is required" });
+      }
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment service unavailable" });
+      }
+
+      let paymentIntent: Stripe.PaymentIntent;
+      try {
+        paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+      } catch {
+        return res.status(402).json({ message: "Payment required: payment intent not found or invalid" });
+      }
+
+      const expectedAmount = BOOST_PRICE_DOLLARS * 100;
+      const paidAmount = paymentIntent.amount_received || paymentIntent.amount;
+      if (paymentIntent.status !== 'succeeded' || paidAmount !== expectedAmount || paymentIntent.currency !== 'usd') {
+        return res.status(402).json({ message: "Payment required: the full boost price has not been collected" });
+      }
+      if (
+        paymentIntent.metadata?.type !== 'contractor_boost' ||
+        paymentIntent.metadata?.contractorId !== userId
+      ) {
+        return res.status(402).json({ message: "Payment required: payment intent does not belong to this boost" });
+      }
+
+      const existingBoosts = await storage.getContractorBoosts(userId as string);
+      if (existingBoosts.some(existing => existing.stripePaymentIntentId === paymentIntentId)) {
+        return res.status(409).json({ message: "This payment has already been used for a boost" });
+      }
+
+      // Dates, price and activation state are server-owned. One successful
+      // payment purchases exactly one 30-day active boost.
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 30);
       const rawBoost = {
         ...req.body,
         contractorId: userId,
-        // Always use the server-side price; ignore any client-supplied amount.
         amount: BOOST_PRICE_DOLLARS.toString(),
-        startDate: req.body.startDate ? new Date(req.body.startDate) : undefined,
-        endDate: req.body.endDate ? new Date(req.body.endDate) : undefined,
+        startDate,
+        endDate,
+        status: 'active',
+        isActive: true,
+        stripePaymentIntentId: paymentIntentId,
       };
       const boostData = insertContractorBoostSchema.parse(rawBoost);
 
@@ -11262,14 +11332,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(402).json({ message: "Payment required: payment intent not found or invalid" });
       }
 
-      if (paymentIntent.status !== "succeeded") {
-        return res.status(402).json({ message: "Payment required: payment intent has not been collected" });
+      const paidAmount = paymentIntent.amount_received || paymentIntent.amount;
+      if (
+        paymentIntent.status !== "succeeded" ||
+        paidAmount !== BOOST_PRICE_DOLLARS * 100 ||
+        paymentIntent.currency !== "usd"
+      ) {
+        return res.status(402).json({ message: "Payment required: the full boost price has not been collected" });
       }
-
-      if (paymentIntent.metadata?.contractorId !== userId) {
-        return res.status(402).json({ message: "Payment required: payment intent does not belong to this contractor" });
-      }
-      // ─────────────────────────────────────────────────────────────────────
 
       const userBoosts = await storage.getContractorBoosts(userId as string);
       const boost = userBoosts.find(b => b.id === req.params.boostId);
@@ -11278,11 +11348,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Boost not found or access denied" });
       }
 
+      if (
+        paymentIntent.metadata?.type !== "boost_renewal" ||
+        paymentIntent.metadata?.contractorId !== userId ||
+        paymentIntent.metadata?.boostId !== boost.id
+      ) {
+        return res.status(402).json({ message: "Payment required: payment intent does not belong to this renewal" });
+      }
+      if (userBoosts.some(existing => existing.stripePaymentIntentId === paymentIntent.id)) {
+        return res.status(409).json({ message: "This payment has already been used for a boost" });
+      }
+      // ─────────────────────────────────────────────────────────────────────
+
       const now = new Date();
       const currentEnd = new Date(boost.endDate);
       const renewalStart = currentEnd > now ? currentEnd : now;
       const renewalEnd = new Date(renewalStart);
-      renewalEnd.setDate(renewalEnd.getDate() + parsed.data.durationDays);
+      renewalEnd.setDate(renewalEnd.getDate() + 30);
 
       const renewedBoost = await storage.createContractorBoost({
         contractorId: userId as string,
@@ -17765,10 +17847,21 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Messaging API endpoints
+  const getMessagingPrincipal = (req: any): { id: string; role: string } | null => {
+    const principal = req.session?.user ?? req.user;
+    const id = principal?.id ?? principal?.claims?.sub;
+    const role = principal?.role;
+    return id && role ? { id, role } : null;
+  };
+
   app.get('/api/conversations', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
+      if (userType !== 'homeowner' && userType !== 'contractor') {
+        return res.status(403).json({ message: "Access denied" });
+      }
       const conversations = await storage.getConversations(userId, userType);
       res.json(conversations);
     } catch (error) {
@@ -17803,13 +17896,11 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       }
       
       // Check if user has access to this conversation
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       
-      if (userType === 'homeowner' && conversation.homeownerId !== userId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      if (userType === 'contractor' && conversation.contractorId !== userId) {
+      if (!isConversationParticipant(conversation, userId, userType)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -17822,8 +17913,12 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   app.post('/api/conversations', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
+      if (userType !== 'homeowner' && userType !== 'contractor') {
+        return res.status(403).json({ message: "Access denied" });
+      }
       
       const conversationData = insertConversationSchema.parse({
         ...req.body,
@@ -17862,8 +17957,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   // Bulk message sending - create conversations with multiple contractors
   app.post('/api/conversations/bulk', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       
       if (userType !== 'homeowner') {
         return res.status(403).json({ message: "Only homeowners can send bulk messages" });
@@ -17929,7 +18025,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   app.get('/api/conversations/:id/messages', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
-      const userId = req.session.user.id;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       
       // Verify user has access to this conversation
       const conversation = await storage.getConversation(conversationId);
@@ -17944,11 +18042,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
          return res.status(404).json({ message: "Conversation not found" });
        }
       
-      const userType = req.session.user.role;
-      if (userType === 'homeowner' && conversation.homeownerId !== userId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      if (userType === 'contractor' && conversation.contractorId !== userId) {
+      if (!isConversationParticipant(conversation, userId, userType)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -17967,8 +18061,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   app.post('/api/conversations/:id/messages', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const conversationId = req.params.id;
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       
       // Verify user has access to this conversation
       const conversation = await storage.getConversation(conversationId);
@@ -17983,10 +18078,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
          return res.status(403).json({ message: "QA accounts cannot be contacted", code: "QA_TARGET_NOT_ALLOWED" });
        }
       
-      if (userType === 'homeowner' && conversation.homeownerId !== userId) {
-        return res.status(403).json({ message: "Access denied" });
-      }
-      if (userType === 'contractor' && conversation.contractorId !== userId) {
+      if (!isConversationParticipant(conversation, userId, userType)) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -18152,8 +18244,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   app.get('/api/contractors/:id/can-review', isAuthenticated, async (req: any, res: any) => {
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       const contractorId = req.params.id;
 
       if (userType !== 'homeowner') {
@@ -18244,8 +18337,9 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
   app.post('/api/contractors/:id/reviews', isAuthenticated, upload.single("photo"), async (req: any, res: any) => {
     try {
-      const userId = req.session.user.id;
-      const userType = req.session.user.role;
+      const principal = getMessagingPrincipal(req);
+      if (!principal) return res.status(401).json({ message: "Unauthorized" });
+      const { id: userId, role: userType } = principal;
       const contractorId = req.params.id;
 
       if (userType !== 'homeowner') {
@@ -23670,7 +23764,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
   
   // Store active WebSocket connections with user info
-  const clients = new Map<string, { userId: string; ws: WebSocket; conversations: Set<string> }>();
+  const clients = new Map<string, { userId: string; userRole: string; ws: WebSocket; conversations: Set<string> }>();
   
   // Handle WebSocket upgrade with session validation
   httpServer.on('upgrade', (request, socket, head) => {
@@ -23682,7 +23776,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     
     // Parse session from the request
     const sessionParser = app.get('sessionParser');
-    sessionParser(request, {} as any, () => {
+    sessionParser(request, {} as any, async () => {
       const session = (request as any).session;
       
       // Validate authenticated session
@@ -23694,12 +23788,22 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       
       const authenticatedUserId = session.user.id;
+      const authenticatedUserRole = session.user.role;
+      if (
+        !['homeowner', 'contractor'].includes(authenticatedUserRole) ||
+        await isOAuthUserSuspended(authenticatedUserId)
+      ) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       console.log('[WebSocket] Authenticated connection for user:', authenticatedUserId);
       
       // Complete the WebSocket upgrade
       wss.handleUpgrade(request, socket, head, (ws) => {
         // Attach userId to the WebSocket for later use
         (ws as any).userId = authenticatedUserId;
+        (ws as any).userRole = authenticatedUserRole;
         wss.emit('connection', ws, request);
       });
     });
@@ -23720,9 +23824,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   wss.on('connection', (ws: WebSocket) => {
     // Get the authenticated userId from the WebSocket
     const userId = (ws as any).userId as string;
+    const userRole = (ws as any).userRole as string;
     const clientId = randomUUID();
     
-    clients.set(clientId, { userId, ws, conversations: new Set() });
+    clients.set(clientId, { userId, userRole, ws, conversations: new Set() });
     console.log(`[WebSocket] Client connected: userId=${userId}, clientId=${clientId}`);
     
     // Send auth success
@@ -23731,11 +23836,62 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     ws.on('message', async (data: Buffer) => {
       try {
         const message = JSON.parse(data.toString());
+        const conversationId =
+          typeof message.conversationId === 'string' ? message.conversationId : null;
+        const scopedEvent = ['new_message', 'typing', 'mark_read'].includes(message.type);
+        if (scopedEvent) {
+          const client = clients.get(clientId);
+          const conversation = conversationId
+            ? await storage.getConversation(conversationId)
+            : null;
+          if (
+            !client ||
+            !conversationId ||
+            !client.conversations.has(conversationId) ||
+            !conversation ||
+            !isConversationParticipant(conversation, userId, userRole) ||
+            await isOAuthUserSuspended(userId)
+          ) {
+            ws.send(JSON.stringify({ type: 'error', message: 'Access denied' }));
+            return;
+          }
+        }
+
+        const broadcastToAuthorizedParticipants = async (
+          targetConversationId: string,
+          payload: Record<string, unknown>,
+        ) => {
+          const conversation = await storage.getConversation(targetConversationId);
+          if (!conversation) return;
+          await Promise.all(Array.from(clients.entries()).map(async ([targetClientId, client]) => {
+            if (
+              client.userId === userId ||
+              !client.conversations.has(targetConversationId) ||
+              client.ws.readyState !== WebSocket.OPEN
+            ) return;
+            if (
+              await isOAuthUserSuspended(client.userId) ||
+              !isConversationParticipant(conversation, client.userId, client.userRole)
+            ) {
+              clients.delete(targetClientId);
+              client.ws.close(1008, 'Access revoked');
+              return;
+            }
+            client.ws.send(JSON.stringify(payload));
+          }));
+        };
         
         // Handle joining a conversation
         if (message.type === 'join_conversation') {
           if (clientId && clients.has(clientId)) {
             const client = clients.get(clientId)!;
+            const conversation = typeof message.conversationId === 'string'
+              ? await storage.getConversation(message.conversationId)
+              : null;
+            if (!conversation || !isConversationParticipant(conversation, userId, userRole)) {
+              ws.send(JSON.stringify({ type: 'error', message: 'Access denied' }));
+              return;
+            }
             client.conversations.add(message.conversationId);
             console.log(`[WebSocket] Client ${clientId} joined conversation ${message.conversationId}`);
             ws.send(JSON.stringify({ type: 'joined_conversation', conversationId: message.conversationId }));
@@ -23757,16 +23913,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         if (message.type === 'new_message') {
           const { conversationId, messageData } = message;
           console.log(`[WebSocket] Broadcasting new message in conversation ${conversationId}`);
-          
-          // Broadcast to all OTHER clients in this conversation (exclude the sender)
-          clients.forEach((client) => {
-            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
-              client.ws.send(JSON.stringify({
-                type: 'message_received',
-                conversationId,
-                message: messageData
-              }));
-            }
+          await broadcastToAuthorizedParticipants(conversationId, {
+            type: 'message_received',
+            conversationId,
+            message: messageData,
           });
         }
         
@@ -23774,16 +23924,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         if (message.type === 'typing') {
           const { conversationId, isTyping } = message;
           
-          // Broadcast typing status to other clients in the conversation
-          clients.forEach((client) => {
-            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
-              client.ws.send(JSON.stringify({
-                type: 'user_typing',
-                conversationId,
-                userId,
-                isTyping
-              }));
-            }
+          await broadcastToAuthorizedParticipants(conversationId, {
+            type: 'user_typing',
+            conversationId,
+            userId,
+            isTyping,
           });
         }
         
@@ -23792,16 +23937,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           const { conversationId, messageIds } = message;
           console.log(`[WebSocket] Marking messages as read in conversation ${conversationId}`);
           
-          // Broadcast read receipt to other clients
-          clients.forEach((client) => {
-            if (client.userId !== userId && client.conversations.has(conversationId) && client.ws.readyState === WebSocket.OPEN) {
-              client.ws.send(JSON.stringify({
-                type: 'messages_read',
-                conversationId,
-                messageIds,
-                readBy: userId
-              }));
-            }
+          await broadcastToAuthorizedParticipants(conversationId, {
+            type: 'messages_read',
+            conversationId,
+            messageIds,
+            readBy: userId,
           });
         }
         

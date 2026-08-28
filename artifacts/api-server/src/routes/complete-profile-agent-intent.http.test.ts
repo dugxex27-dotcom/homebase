@@ -11,8 +11,8 @@
  *   2. Missing zipCode                      → 400
  *   3. Missing role                         → 400
  *   4. Invalid role value                   → 400
- *   5. Valid agent intent (role='agent')    → role set to 'agent'; 200
- *   6. Role upgrade: homeowner → agent      → upsertUser called with role: 'agent'
+ *   5. Trusted agent intent completes without changing role
+ *   6. Client-requested homeowner → agent escalation is rejected
  *
  * Strategy
  * ────────
@@ -188,7 +188,7 @@ vi.mock("../storage", async () => {
 });
 
 vi.mock("../db", () => ({
-  pool: { query: vi.fn(), end: vi.fn() },
+  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
   db: {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -232,6 +232,11 @@ async function buildApp(): Promise<express.Express> {
 
   app.use((req: any, _res, next) => {
     if (req.headers?.["x-test-user"] === "agent") {
+      req.session = {
+        ...AUTHED_SESSION,
+        user: { ...BASE_USER, role: "agent" },
+      };
+    } else if (req.headers?.["x-test-user"] === "homeowner") {
       req.session = { ...AUTHED_SESSION };
     } else {
       req.session = { isAuthenticated: false, user: null };
@@ -303,9 +308,10 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
-  it("upgrades a homeowner to agent and redirects to /agent-dashboard on success", async () => {
-    const updatedUser = { ...BASE_USER, zipCode: "90210", role: "agent" as const };
-    mockGetUser.mockResolvedValue(BASE_USER);
+  it("preserves a trusted agent role and redirects to /agent-dashboard on success", async () => {
+    const agent = { ...BASE_USER, role: "agent" as const };
+    const updatedUser = { ...agent, zipCode: "90210" };
+    mockGetUser.mockResolvedValue(agent);
     mockUpsertUser.mockResolvedValue(updatedUser);
 
     const app = await buildApp();
@@ -327,24 +333,19 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     );
   });
 
-  it("sets role to 'agent' and returns /agent-dashboard regardless of the user's prior role", async () => {
+  it("rejects a client-requested homeowner to agent role escalation", async () => {
     const homeowner = { ...BASE_USER, role: "homeowner" as const, zipCode: null };
-    const upgraded = { ...homeowner, zipCode: "10001", role: "agent" as const };
     mockGetUser.mockResolvedValue(homeowner);
-    mockUpsertUser.mockResolvedValue(upgraded);
 
     const app = await buildApp();
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent")
+      .set("x-test-user", "homeowner")
       .send({ zipCode: "10001", role: "agent" });
 
-    expect(res.status).toBe(200);
-    expect(res.body.role).toBe("agent");
-    expect(res.body.redirectTo).toBe("/agent-dashboard");
-    expect(mockUpsertUser).toHaveBeenCalledWith(
-      expect.objectContaining({ role: "agent", zipCode: "10001" }),
-    );
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("ROLE_CHANGE_NOT_ALLOWED");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 });

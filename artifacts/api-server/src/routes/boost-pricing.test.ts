@@ -219,6 +219,18 @@ async function buildApp() {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/contractors/boost — server-side price enforcement", () => {
+  beforeEach(() => {
+    mockGetContractorBoosts.mockResolvedValue([]);
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "succeeded",
+      amount: BOOST_PRICE_DOLLARS * 100,
+      amount_received: BOOST_PRICE_DOLLARS * 100,
+      currency: "usd",
+      metadata: { contractorId: CONTRACTOR_ID, type: "contractor_boost" },
+    });
+  });
+
   afterEach(() => vi.clearAllMocks());
 
   it("stores BOOST_PRICE_DOLLARS even when the client sends a lower amount", async () => {
@@ -240,6 +252,7 @@ describe("POST /api/contractors/boost — server-side price enforcement", () => 
         amount: "0.01",                       // attacker-supplied cheap amount
         status: "active",
         isActive: true,
+        stripePaymentIntentId: VALID_PI_ID,
       });
 
     expect(res.status).toBe(200);
@@ -269,6 +282,7 @@ describe("POST /api/contractors/boost — server-side price enforcement", () => 
         amount: "999.99",                     // client claims premium price (no effect)
         status: "active",
         isActive: true,
+        stripePaymentIntentId: VALID_PI_ID,
       });
 
     const callArg = mockCreateContractorBoost.mock.calls[0]?.[0];
@@ -291,11 +305,73 @@ describe("POST /api/contractors/boost — server-side price enforcement", () => 
         endDate: new Date(Date.now() + 30 * 86_400_000).toISOString(),
         status: "active",
         isActive: true,
+        stripePaymentIntentId: VALID_PI_ID,
         // amount intentionally omitted
       });
 
     const callArg = mockCreateContractorBoost.mock.calls[0]?.[0];
     expect(parseFloat(callArg.amount)).toBe(BOOST_PRICE_DOLLARS);
+  });
+
+  it("rejects boost creation when no payment intent is supplied", async () => {
+    const app = await buildApp();
+    const res = await request(app)
+      .post("/api/contractors/boost")
+      .send({
+        serviceCategory: "plumbing",
+        businessAddress: "1 Test St",
+        businessLatitude: "39.78",
+        businessLongitude: "-89.65",
+        boostRadius: 10,
+      });
+
+    expect(res.status).toBe(402);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("rejects a succeeded payment intent owned by another contractor", async () => {
+    const app = await buildApp();
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      id: VALID_PI_ID,
+      status: "succeeded",
+      amount: BOOST_PRICE_DOLLARS * 100,
+      amount_received: BOOST_PRICE_DOLLARS * 100,
+      currency: "usd",
+      metadata: { contractorId: "other-contractor", type: "contractor_boost" },
+    });
+
+    const res = await request(app)
+      .post("/api/contractors/boost")
+      .send({
+        serviceCategory: "plumbing",
+        businessAddress: "1 Test St",
+        businessLatitude: "39.78",
+        businessLongitude: "-89.65",
+        boostRadius: 10,
+        stripePaymentIntentId: VALID_PI_ID,
+      });
+
+    expect(res.status).toBe(402);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("rejects reuse of a payment intent that already activated a boost", async () => {
+    const app = await buildApp();
+    mockGetContractorBoosts.mockResolvedValue([{ ...CHEAP_BOOST, stripePaymentIntentId: VALID_PI_ID }]);
+
+    const res = await request(app)
+      .post("/api/contractors/boost")
+      .send({
+        serviceCategory: "plumbing",
+        businessAddress: "1 Test St",
+        businessLatitude: "39.78",
+        businessLongitude: "-89.65",
+        boostRadius: 10,
+        stripePaymentIntentId: VALID_PI_ID,
+      });
+
+    expect(res.status).toBe(409);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
   });
 });
 
@@ -313,7 +389,14 @@ describe("POST /api/contractors/boost/:id/renew — renewed record uses server-s
     mockPaymentIntentsRetrieve.mockResolvedValue({
       id: VALID_PI_ID,
       status: "succeeded",
-      metadata: { contractorId: CONTRACTOR_ID, type: "contractor_boost" },
+      amount: BOOST_PRICE_DOLLARS * 100,
+      amount_received: BOOST_PRICE_DOLLARS * 100,
+      currency: "usd",
+      metadata: {
+        contractorId: CONTRACTOR_ID,
+        type: "boost_renewal",
+        boostId: BOOST_ID,
+      },
     });
     mockGetContractorBoosts.mockResolvedValue([CHEAP_BOOST]);
     mockCreateContractorBoost.mockResolvedValue({

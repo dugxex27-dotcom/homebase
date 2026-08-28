@@ -50,11 +50,11 @@ import {
 //   db.select(fields).from(table).where(cond).limit(1)
 // ---------------------------------------------------------------------------
 
-function makeStatusChain(status: string) {
+function makeStatusChain(status: string, accountStatus = "active") {
   return {
     from: vi.fn().mockReturnValue({
       where: vi.fn().mockReturnValue({
-        limit: vi.fn().mockResolvedValue([{ status }]),
+        limit: vi.fn().mockResolvedValue([{ status, accountStatus }]),
       }),
     }),
   };
@@ -217,6 +217,9 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
   });
 
   it("allows an active user through when not in the blocklist", async () => {
+    mockDbSelect
+      .mockReturnValueOnce(makeStatusChain("active"))
+      .mockReturnValueOnce(makeStatusChain("active"));
     const res = await request(buildApp(USER_ID)).get("/protected");
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
@@ -224,6 +227,9 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
 
   it("returns 401 immediately after user is added to suspendedUserIds (stale session path)", async () => {
     const app = buildApp(USER_ID);
+    mockDbSelect
+      .mockReturnValueOnce(makeStatusChain("active"))
+      .mockReturnValueOnce(makeStatusChain("active"));
 
     const before = await request(app).get("/protected");
     expect(before.status).toBe(200);
@@ -258,6 +264,36 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
     expect(res.body.message).toMatch(/suspended/i);
   });
 
+  it("returns 401 when accountStatus is suspended despite an active membership status", async () => {
+    mockDbSelect.mockReturnValueOnce(makeStatusChain("active", "suspended"));
+    const res = await request(buildApp(USER_ID)).get("/protected");
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("does not reuse a stale active status after another process suspends the account", async () => {
+    mockDbSelect
+      .mockReturnValueOnce(makeStatusChain("active", "active"))
+      .mockReturnValueOnce(makeStatusChain("active", "active"));
+    const app = buildApp(USER_ID);
+    const before = await request(app).get("/protected");
+    expect(before.status).toBe(200);
+
+    mockDbSelect.mockReturnValueOnce(makeStatusChain("active", "suspended"));
+    const after = await request(app).get("/protected");
+    expect(after.status).toBe(401);
+    expect(after.body.message).toMatch(/suspended/i);
+  });
+
+  it("fails closed when the authoritative status lookup is unavailable", async () => {
+    mockDbSelect.mockImplementation(() => {
+      throw new Error("status database unavailable");
+    });
+    const res = await request(buildApp(USER_ID)).get("/protected");
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
   it("restores access after removal from the blocklist (reactivate path)", async () => {
     suspendedUserIds.add(USER_ID);
     const app = buildApp(USER_ID);
@@ -268,6 +304,9 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
     suspendedUserIds.delete(USER_ID);
     evictStatusCache(USER_ID);
     __resetSuspensionRecheckCacheForTests();
+    mockDbSelect
+      .mockReturnValueOnce(makeStatusChain("active"))
+      .mockReturnValueOnce(makeStatusChain("active"));
 
     const allowed = await request(app).get("/protected");
     expect(allowed.status).toBe(200);

@@ -250,7 +250,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
     // suspended user is blocked on the very next request even with a valid session.
     const userId: string = req.session.user.id;
     const status = await getUserStatusCached(userId);
-    if (status !== null && ['suspended', 'removed', 'pending_invite'].includes(status)) {
+    if (status !== null && isBlockedAccessStatus(status)) {
       return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
     }
     return next();
@@ -265,7 +265,7 @@ export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
 
   // Block suspended OAuth users before any token refresh is attempted.
   const oauthUserId: string | undefined = user?.id || user?.claims?.sub;
-  if (oauthUserId && suspendedUserIds.has(oauthUserId)) {
+  if (oauthUserId && await isOAuthUserSuspended(oauthUserId)) {
     return res.status(401).json({ message: "Account suspended. Contact your company administrator." });
   }
 
@@ -417,7 +417,32 @@ interface StatusCacheEntry {
   expiresAt: number;
 }
 
-const USER_STATUS_TTL_MS = 30_000;
+const BLOCKED_MEMBERSHIP_STATUSES = ['suspended', 'removed', 'pending_invite'];
+const BLOCKED_ACCOUNT_STATUSES = ['suspended', 'cancelled', 'deleted'];
+const ACCESS_STATUS_UNAVAILABLE = 'access_status_unavailable';
+
+function resolveAccessStatus(
+  status: string | null | undefined,
+  accountStatus: string | null | undefined,
+): string {
+  if (BLOCKED_ACCOUNT_STATUSES.includes(accountStatus ?? '')) {
+    return accountStatus as string;
+  }
+  return status ?? 'removed';
+}
+
+function isBlockedAccessStatus(status: string): boolean {
+  return (
+    status === ACCESS_STATUS_UNAVAILABLE ||
+    BLOCKED_MEMBERSHIP_STATUSES.includes(status) ||
+    BLOCKED_ACCOUNT_STATUSES.includes(status)
+  );
+}
+
+// Do not positively cache account access. A suspension or cancellation written
+// by another server instance must take effect on the next protected request.
+// Blocked users are still held in suspendedUserIds for immediate local denial.
+const USER_STATUS_TTL_MS = 0;
 const ACTIVE_ACCOUNT_FRESH_TTL_MS = 30_000;
 
 export const userStatusCache = new LruCache<string, StatusCacheEntry>(5000);
@@ -475,8 +500,8 @@ export async function isOAuthUserSuspended(userId: string): Promise<boolean> {
 
   const now = Date.now();
   const cached = userStatusCache.get(userId);
-  if (cached && cached.expiresAt > now) {
-    return ['suspended', 'removed'].includes(cached.status);
+  if (cached && cached.expiresAt > now && isBlockedAccessStatus(cached.status)) {
+    return true;
   }
 
   try {
@@ -484,17 +509,19 @@ export async function isOAuthUserSuspended(userId: string): Promise<boolean> {
     const { users: usersTable } = await import('@workspace/db');
     const { eq: eqFn } = await import('drizzle-orm');
     const rows = await dbInst
-      .select({ status: usersTable.status })
+      .select({ status: usersTable.status, accountStatus: usersTable.accountStatus })
       .from(usersTable)
       .where(eqFn(usersTable.id, userId))
       .limit(1);
-    const status = rows[0]?.status ?? 'active';
-    userStatusCache.set(userId, { status, expiresAt: now + SUSPENSION_RECHECK_TTL_MS });
-    const isSuspended = ['suspended', 'removed'].includes(status);
-    if (isSuspended) suspendedUserIds.add(userId);
+    const status = resolveAccessStatus(rows[0]?.status, rows[0]?.accountStatus);
+    const isSuspended = isBlockedAccessStatus(status);
+    if (isSuspended) {
+      userStatusCache.set(userId, { status, expiresAt: now + SUSPENSION_RECHECK_TTL_MS });
+      suspendedUserIds.add(userId);
+    }
     return isSuspended;
   } catch {
-    return false; // fail open
+    return true;
   }
 }
 
@@ -506,15 +533,18 @@ async function getUserStatusCached(userId: string): Promise<string | null> {
     const { users } = await import('@workspace/db');
     const { eq } = await import('drizzle-orm');
     const rows = await db
-      .select({ status: (users as any).status })
+      .select({ status: (users as any).status, accountStatus: (users as any).accountStatus })
       .from(users)
       .where(eq((users as any).id, userId))
       .limit(1);
-    const status = (rows[0] as any)?.status ?? 'removed';
+    const status = resolveAccessStatus(
+      (rows[0] as any)?.status,
+      (rows[0] as any)?.accountStatus,
+    );
     userStatusCache.set(userId, { status, expiresAt: Date.now() + USER_STATUS_TTL_MS });
     return status;
   } catch {
-    return null;
+    return ACCESS_STATUS_UNAVAILABLE;
   }
 }
 
@@ -526,12 +556,15 @@ async function recheckSuspensionFromDb(userId: string): Promise<boolean> {
     const { users } = await import('@workspace/db');
     const { eq } = await import('drizzle-orm');
     const rows = await db
-      .select({ status: (users as any).status })
+      .select({ status: (users as any).status, accountStatus: (users as any).accountStatus })
       .from(users)
       .where(eq((users as any).id, userId))
       .limit(1);
-    const status = (rows[0] as any)?.status ?? 'active';
-    const blocked = ['suspended', 'removed', 'pending_invite'].includes(status);
+    const status = resolveAccessStatus(
+      (rows[0] as any)?.status,
+      (rows[0] as any)?.accountStatus,
+    );
+    const blocked = isBlockedAccessStatus(status);
     if (blocked) {
       suspendedUserIds.add(userId);
       return true;
@@ -539,7 +572,7 @@ async function recheckSuspensionFromDb(userId: string): Promise<boolean> {
     suspensionRecheckCache.set(userId, Date.now() + SUSPENSION_RECHECK_TTL_MS);
     return false;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -593,14 +626,14 @@ export const requireActiveAccountFresh = (): RequestHandler => {
       const { users: usersTable } = await import('@workspace/db');
       const { eq: eqFn } = await import('drizzle-orm');
       const rows = await dbInst
-        .select({ status: usersTable.status })
+        .select({ status: usersTable.status, accountStatus: usersTable.accountStatus })
         .from(usersTable)
         .where(eqFn(usersTable.id, userId))
         .limit(1);
-      const status = rows[0]?.status ?? 'removed';
+      const status = resolveAccessStatus(rows[0]?.status, rows[0]?.accountStatus);
       activeStatusCache.set(userId, { status, expiresAt: now + ACTIVE_STATUS_TTL_MS });
 
-      if (['suspended', 'removed', 'pending_invite'].includes(status)) {
+      if (isBlockedAccessStatus(status)) {
         suspendedUserIds.add(userId);
         try { req.session.destroy?.(); } catch {}
         return void res.status(403).json({ message: "Account suspended. Contact your company administrator." });
@@ -608,8 +641,7 @@ export const requireActiveAccountFresh = (): RequestHandler => {
 
       next();
     } catch {
-      // Fail open — the existing session guard still applies
-      next();
+      return void res.status(503).json({ message: "Account status temporarily unavailable" });
     }
   };
 };
@@ -703,7 +735,7 @@ export const requireNotSuspended = (): RequestHandler => {
 
     // Short-TTL DB-backed status check (catches suspensions made on this instance).
     const status = await getUserStatusCached(userId);
-    if (status !== null && ['suspended', 'removed', 'pending_invite'].includes(status)) {
+    if (status !== null && isBlockedAccessStatus(status)) {
       suspendedUserIds.add(userId);
       return void res.status(401).json({ message: "Account suspended. Contact your company administrator." });
     }

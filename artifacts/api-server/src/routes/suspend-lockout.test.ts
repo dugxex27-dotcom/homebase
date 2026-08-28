@@ -270,7 +270,7 @@ vi.mock("../storage", async () => {
   return { storage: createStorageMock() };
 });
 vi.mock("../db", () => ({
-  pool: { query: vi.fn(), end: vi.fn() },
+  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
   db: {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({

@@ -159,7 +159,7 @@ describe("/auth/google/callback — agent intent routing", () => {
     expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
-  it("upgrades an existing non-agent (has zipCode) to agent and redirects to /agent-dashboard", async () => {
+  it("does not promote an existing non-agent through a replayed agent intent", async () => {
     const homeowner: UserFixture = {
       id: "google_ag_hw001",
       email: "homeowner@example.com",
@@ -175,10 +175,8 @@ describe("/auth/google/callback — agent intent routing", () => {
     const res = await request(app).get("/auth/google/callback");
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("/agent-dashboard");
-    expect(mockUpsertUser).toHaveBeenCalledWith(
-      expect.objectContaining({ role: "agent" }),
-    );
+    expect(res.headers.location).toBe("/dashboard");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
   it("redirects an existing agent (has zipCode) to /agent-dashboard without re-upsert", async () => {

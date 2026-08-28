@@ -236,7 +236,7 @@ vi.mock("../storage", async () => {
 });
 
 vi.mock("../db", () => ({
-  pool: { query: vi.fn(), end: vi.fn() },
+  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
   db: {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
@@ -334,7 +334,14 @@ const ACTIVE_BOOST_FIXTURE = {
 const SUCCEEDED_PI = {
   id: VALID_PI_ID,
   status: "succeeded",
-  metadata: { contractorId: CONTRACTOR_A_ID, type: "contractor_boost" },
+  amount: 4900,
+  amount_received: 4900,
+  currency: "usd",
+  metadata: {
+    contractorId: CONTRACTOR_A_ID,
+    type: "boost_renewal",
+    boostId: BOOST_A_ID,
+  },
 };
 
 /** What storage.createContractorBoost resolves to */
@@ -431,8 +438,16 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
     mockPaymentIntentsRetrieve.mockResolvedValue({
       id: VALID_PI_ID,
       status: "succeeded",
-      metadata: { contractorId: CONTRACTOR_B_ID, type: "contractor_boost" },
+      amount: 4900,
+      amount_received: 4900,
+      currency: "usd",
+      metadata: {
+        contractorId: CONTRACTOR_B_ID,
+        type: "boost_renewal",
+        boostId: BOOST_A_ID,
+      },
     });
+    mockGetContractorBoosts.mockResolvedValue([BOOST_A_FIXTURE]);
 
     const res = await request(app)
       .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
@@ -514,7 +529,14 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
     mockPaymentIntentsRetrieve.mockResolvedValue({
       id: VALID_PI_ID,
       status: "succeeded",
-      metadata: { contractorId: CONTRACTOR_B_ID, type: "contractor_boost" },
+      amount: 4900,
+      amount_received: 4900,
+      currency: "usd",
+      metadata: {
+        contractorId: CONTRACTOR_B_ID,
+        type: "boost_renewal",
+        boostId: BOOST_A_ID,
+      },
     });
     // contractor B has no boosts of their own
     mockGetContractorBoosts.mockResolvedValue([]);
@@ -535,7 +557,13 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
 
   it("uses 'now' as renewal start when the existing boost is expired", async () => {
     // EXPIRED_BOOST_FIXTURE has endDate "2026-01-31" — well in the past
-    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
+    mockPaymentIntentsRetrieve.mockResolvedValue({
+      ...SUCCEEDED_PI,
+      metadata: {
+        ...SUCCEEDED_PI.metadata,
+        boostId: EXPIRED_BOOST_FIXTURE.id,
+      },
+    });
     mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
     mockCreateContractorBoost.mockResolvedValue({
       ...EXPIRED_BOOST_FIXTURE,

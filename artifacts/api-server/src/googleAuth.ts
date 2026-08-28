@@ -123,13 +123,25 @@ export async function setupGoogleAuth(app: Express) {
         // Detect new Google OAuth user (temp flag set in the verify callback)
         const isNewOAuthUser = !!(rawUser as any)._isNewOAuthUser;
         // Strip the temporary flag before storing in session
-        const { _isNewOAuthUser: _flag, ...user } = rawUser as any;
+        const { _isNewOAuthUser: _flag, ...rawPersistedUser } = rawUser as any;
+        let user = rawPersistedUser;
 
         // Consume and clear flags stored before the OAuth redirect.
         const oauthIntent: string | undefined = req.session.oauthIntent;
         const oauthRef: string | undefined = req.session.oauthRef as string | undefined;
         delete req.session.oauthIntent;
         delete req.session.oauthRef;
+
+        // A role intent may choose the role only for a brand-new account.
+        // Existing accounts can never be promoted by replaying a public OAuth
+        // URL with a different intent.
+        const trustedSignupRole =
+          isNewOAuthUser && ['contractor', 'agent'].includes(oauthIntent ?? '')
+            ? oauthIntent as 'contractor' | 'agent'
+            : null;
+        if (trustedSignupRole && user.role !== trustedSignupRole) {
+          user = await storage.upsertUser({ ...user, role: trustedSignupRole });
+        }
 
         // Create session in the same format as email/password login
         req.session.isAuthenticated = true;
@@ -164,16 +176,9 @@ export async function setupGoogleAuth(app: Express) {
               return goTo('/complete-profile?intent=contractor');
             }
 
-            // User has a zip code but is still a homeowner — upgrade role and
-            // send through contractor onboarding to collect company details.
+            // Existing accounts cannot change role by replaying an OAuth URL.
             if (user.role !== 'contractor') {
-              try {
-                const upgraded = await storage.upsertUser({ ...user, role: 'contractor' });
-                req.session.user = upgraded;
-              } catch (err) {
-                console.error('Failed to update user role to contractor:', err);
-              }
-              return goTo('/contractor-onboarding?fromOAuth=true');
+              return goTo(user.role === 'agent' ? '/agent-dashboard' : '/dashboard');
             }
 
             // User is already a contractor — send to onboarding if they have no
@@ -199,15 +204,9 @@ export async function setupGoogleAuth(app: Express) {
               return goTo('/complete-profile?intent=agent');
             }
 
-            // User has a zip code but is not yet an agent — upgrade role and
-            // send to the agent dashboard.
+            // Existing accounts cannot change role by replaying an OAuth URL.
             if (user.role !== 'agent') {
-              try {
-                const upgraded = await storage.upsertUser({ ...user, role: 'agent' });
-                req.session.user = upgraded;
-              } catch (err) {
-                console.error('Failed to update user role to agent:', err);
-              }
+              return goTo(user.role === 'contractor' ? '/contractor-dashboard' : '/dashboard');
             }
 
             return goTo('/agent-dashboard');
