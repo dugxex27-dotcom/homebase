@@ -26,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } from "@/components/homeowner-feature-gate";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { MaintenanceVerificationStatus } from "@/components/maintenance-verification-status";
 import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight, Camera, FileUp } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
@@ -1032,6 +1033,7 @@ interface TaskDetailDialogProps {
   taskOverrides: TaskOverride[] | undefined;
   selectedHouseId: string;
   houseName?: string;
+  verificationLog?: MaintenanceLog;
 }
 
 function TaskDetailDialog({
@@ -1058,6 +1060,7 @@ function TaskDetailDialog({
   taskOverrides,
   selectedHouseId,
   houseName,
+  verificationLog,
 }: TaskDetailDialogProps) {
   if (!task) return null;
 
@@ -1107,6 +1110,14 @@ function TaskDetailDialog({
               <h2 className="text-xl sm:text-2xl font-bold" style={{ color: 'var(--purple-deep)' }}>
                 {task.title}
               </h2>
+              {completed && (
+                <MaintenanceVerificationStatus
+                  verificationTier={verificationLog?.verificationTier}
+                  aiVerificationStatus={verificationLog?.aiVerificationStatus}
+                  verificationReasonCodes={verificationLog?.verificationReasonCodes}
+                  className="mt-3"
+                />
+              )}
             </div>
             <Button
               variant="ghost"
@@ -1450,6 +1461,7 @@ interface TaskCardProps {
   displayDescription: string;
   generateTaskId: (title: string) => string;
   onOpenDialog: () => void;
+  verificationLog?: MaintenanceLog;
 }
 
 function TaskCard({
@@ -1458,6 +1470,7 @@ function TaskCard({
   displayDescription,
   generateTaskId,
   onOpenDialog,
+  verificationLog,
 }: TaskCardProps) {
   const getPriorityBadge = () => {
     if (task.priority === 'high') {
@@ -1506,6 +1519,15 @@ function TaskCard({
         <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 line-clamp-2 mb-3">
           {task.actionSummary || displayDescription}
         </p>
+
+        {completed && (
+          <MaintenanceVerificationStatus
+            verificationTier={verificationLog?.verificationTier}
+            aiVerificationStatus={verificationLog?.aiVerificationStatus}
+            verificationReasonCodes={verificationLog?.verificationReasonCodes}
+            className="mb-3"
+          />
+        )}
         
         <div className="flex items-center justify-between text-sm text-gray-500">
           <div className="flex items-center gap-4">
@@ -2561,6 +2583,31 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     }
     
     return false;
+  };
+
+  // Match the persisted evidence record to the currently displayed task.
+  // Local-only completion state intentionally has no log and falls back to
+  // the component's self-reported/unverified presentation.
+  const getTaskVerificationLog = (task: MaintenanceTask): MaintenanceLog | undefined => {
+    if (!maintenanceLogs) return undefined;
+    const currentYear = new Date().getFullYear();
+
+    return maintenanceLogs
+      .filter((log) => {
+        const logDate = new Date(log.serviceDate);
+        return (
+          log.houseId === selectedHouseId &&
+          log.serviceType === task.title &&
+          logDate.getMonth() + 1 === selectedMonth &&
+          logDate.getFullYear() === currentYear &&
+          (log.completionMethod === "diy" || log.completionMethod === "contractor")
+        );
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.createdAt ?? a.serviceDate).getTime();
+        const bTime = new Date(b.createdAt ?? b.serviceDate).getTime();
+        return bTime - aTime;
+      })[0];
   };
 
   // Reset all tasks for current month/year
@@ -4329,6 +4376,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       completed={completed}
                       displayDescription={displayDescription}
                       generateTaskId={generateTaskId}
+                      verificationLog={completed ? getTaskVerificationLog(task) : undefined}
                       onOpenDialog={() => {
                         setSelectedTask(task);
                         setIsTaskDetailDialogOpen(true);
@@ -6213,6 +6261,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             taskOverrides={taskOverrides}
             selectedHouseId={selectedHouseId}
             houseName={houses.find((h: House) => h.id === selectedHouseId)?.name}
+            verificationLog={getTaskVerificationLog(selectedTask)}
           />
         )}
       </div>

@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FreeUserUpgradePrompt, HomeownerTrialBanner } from "@/components/homeowner-feature-gate";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { MaintenanceVerificationStatus } from "@/components/maintenance-verification-status";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
 import { apiRequest } from "@/lib/queryClient";
@@ -144,7 +145,7 @@ export default function HomeownerServiceRecords() {
     queryKey: ['/api/houses'],
   });
 
-  // Load confirmed invoice analyses to reliably power "Verified by AI" badges
+  // Load confirmed invoice analyses for the highlight flow from the maintenance page.
   const { data: confirmedAnalyses = [] } = useQuery<InvoiceAnalysis[]>({
     queryKey: ['/api/invoice-analyses'],
     queryFn: async () => {
@@ -153,12 +154,6 @@ export default function HomeownerServiceRecords() {
       return res.json();
     },
   });
-  const aiVerifiedLogIds = new Set(
-    confirmedAnalyses
-      .filter((a) => a.status === "confirmed" && a.maintenanceLogId)
-      .map((a) => a.maintenanceLogId!)
-  );
-
   // Read highlightAnalysis query param set by the Maintenance page "View existing record" button.
   // Resolves the analysisId → maintenanceLogId and triggers the scroll/highlight effect.
   useEffect(() => {
@@ -768,11 +763,12 @@ export default function HomeownerServiceRecords() {
                           <h4 style={{ fontWeight: 700, fontSize: 13, color: '#2C0F5B', lineHeight: 1.3 }}>
                             {log.serviceDescription}
                           </h4>
-                          {aiVerifiedLogIds.has(log.id) && (
-                            <Badge className="text-xs gap-1 font-medium" style={{ background: 'var(--purple-border)', color: 'var(--purple-deep)', borderColor: 'var(--purple-border)' }}>
-                              <CheckCircle2 className="w-3 h-3" /> Verified by AI
-                            </Badge>
-                          )}
+                          <MaintenanceVerificationStatus
+                            verificationTier={log.verificationTier}
+                            aiVerificationStatus={log.aiVerificationStatus}
+                            verificationReasonCodes={log.verificationReasonCodes}
+                            className="max-w-full"
+                          />
                         </div>
                         <div className="flex items-center flex-wrap gap-3" style={{ fontSize: 11, color: '#3C258E', marginTop: 3 }}>
                           <span className="flex items-center gap-1">
@@ -1178,7 +1174,7 @@ export default function HomeownerServiceRecords() {
                       <AlertCircle className="w-3 h-3" /> Low confidence — please fill in manually
                     </Badge>
                   )}
-                  <span className="text-xs text-muted-foreground ml-auto">Verified by AI</span>
+                  <span className="text-xs text-muted-foreground ml-auto">AI-assisted invoice extraction</span>
                 </div>
 
                 {aiAnalysis.aiNotes && (
