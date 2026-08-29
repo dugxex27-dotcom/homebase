@@ -120,10 +120,9 @@ function makeRes() {
   return res;
 }
 
-// By default, mock db.select() to resolve with no matching row (i.e. the
-// per-request DB re-check that requireNotSuspended performs finds nothing
-// and lets the request through). Individual tests override this when they
-// need to simulate a status returned by the DB.
+// Configure the DB status lookup chain for a test. A missing row is treated
+// as unavailable/removed by the fail-closed access checks, so tests that
+// expect access to continue must explicitly return an active status.
 function mockDbSelectResult(rows: Array<Record<string, any>>) {
   (db.select as any).mockReturnValue({
     from: vi.fn().mockReturnValue({
@@ -442,6 +441,8 @@ describe("isOAuthUserSuspended — shared helper used by blanket route guards", 
   });
 
   it("returns false for an active user absent from the blocklist", async () => {
+    mockDbSelectResult([{ status: "active" }]);
+
     const result = await isOAuthUserSuspended("oauth-helper-active");
 
     expect(result).toBe(false);
@@ -477,14 +478,14 @@ describe("isOAuthUserSuspended — shared helper used by blanket route guards", 
     expect(db.select).toHaveBeenCalledTimes(1);
   });
 
-  it("fails open (returns false) when the DB re-check throws", async () => {
+  it("fails closed (returns true) when the DB re-check throws", async () => {
     (db.select as any).mockImplementation(() => {
       throw new Error("DB unavailable");
     });
 
     const result = await isOAuthUserSuspended("oauth-helper-db-down");
 
-    expect(result).toBe(false);
+    expect(result).toBe(true);
   });
 });
 
@@ -561,12 +562,14 @@ describe("requireNotSuspended — cross-process staleness bound via DB re-check"
     const next2 = vi.fn();
     await requireNotSuspended()(req2, res2, next2);
 
-    // No additional DB calls — the second request lands within both TTL windows.
-    expect(db.select).toHaveBeenCalledTimes(2);
+    // The status cache intentionally has no positive TTL, so the second
+    // request performs the authoritative status lookup again. The separate
+    // suspension re-check remains cached.
+    expect(db.select).toHaveBeenCalledTimes(3);
     expect(next2).toHaveBeenCalled();
   });
 
-  it("fails open (calls next) when the DB re-check throws", async () => {
+  it("fails closed with 401 when the DB re-check throws", async () => {
     (db.select as any).mockImplementation(() => {
       throw new Error("DB unavailable");
     });
@@ -577,8 +580,11 @@ describe("requireNotSuspended — cross-process staleness bound via DB re-check"
 
     await requireNotSuspended()(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("suspended") })
+    );
+    expect(next).not.toHaveBeenCalled();
   });
 });
 
@@ -735,7 +741,7 @@ describe("requireActiveAccountFresh — per-request DB status re-check", () => {
     expect(next2).not.toHaveBeenCalled();
   });
 
-  it("degrades to next() when the DB query throws, instead of hard-failing the request", async () => {
+  it("returns 503 when the DB query throws, instead of allowing the request", async () => {
     (db.select as any).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -749,8 +755,11 @@ describe("requireActiveAccountFresh — per-request DB status re-check", () => {
 
     await requireActiveAccountFresh()(req, res, next);
 
-    expect(next).toHaveBeenCalled();
-    expect(res.status).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Account status temporarily unavailable" })
+    );
+    expect(next).not.toHaveBeenCalled();
   });
 });
 
@@ -805,6 +814,8 @@ describe("isAuthenticated — blocks suspended OAuth users before token refresh"
 
   it("still refreshes the token and calls next() for a non-suspended user with an expired token", async () => {
     const userId = "oauth-active-with-refresh-token";
+    mockDbSelectResult([{ status: "active" }]);
+
     (client.refreshTokenGrant as any).mockResolvedValue({
       claims: () => ({ sub: userId, exp: Math.floor(Date.now() / 1000) + 3600 }),
       access_token: "new-tok",
