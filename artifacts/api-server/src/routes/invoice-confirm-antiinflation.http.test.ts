@@ -403,15 +403,27 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     expect(insertedValues).toBeDefined();
     expect(insertedValues).toMatchObject({
       verificationTier: "self_reported",
-      verificationReasonCodes: ["duplicate_photo_hash", "review_needed"],
+      verificationReasonCodes: ["duplicate_photo_hash", "review_needed", "ai_fraud_risk"],
       aiVerificationStatus: "review_needed",
-      aiVerificationResponse: analysisWithVerificationAudit.aiVerificationResponse,
+      aiVerificationResponse: expect.objectContaining({
+        ...analysisWithVerificationAudit.aiVerificationResponse,
+        finalEvidenceDecision: expect.objectContaining({
+          outcome: "review_needed",
+          verificationTier: "self_reported",
+        }),
+      }),
     });
     expect(mockCreateMaintenanceLog).toHaveBeenCalledWith(expect.objectContaining({
       verificationTier: "self_reported",
-      verificationReasonCodes: ["duplicate_photo_hash", "review_needed"],
+      verificationReasonCodes: ["duplicate_photo_hash", "review_needed", "ai_fraud_risk"],
       aiVerificationStatus: "review_needed",
-      aiVerificationResponse: analysisWithVerificationAudit.aiVerificationResponse,
+      aiVerificationResponse: expect.objectContaining({
+        ...analysisWithVerificationAudit.aiVerificationResponse,
+        finalEvidenceDecision: expect.objectContaining({
+          outcome: "review_needed",
+          verificationTier: "self_reported",
+        }),
+      }),
       beforePhotoHashes: [photoHash],
       afterPhotoHashes: [],
     }));
@@ -426,6 +438,96 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     expect(completedAt).toBeInstanceOf(Date);
     const now = new Date();
     expect(Math.abs(completedAt.getTime() - now.getTime())).toBeLessThan(5000);
+  });
+
+  it("promotes clean approved DIY evidence to photo_verified on both persisted records", async () => {
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
+    mockCheckAchievements.mockResolvedValue([]);
+    const beforeHash = "a".repeat(64);
+    const afterHash = "b".repeat(64);
+    const cleanAnalysis = {
+      ...OLD_ANALYSIS_FIXTURE,
+      completionMethod: "diy",
+      diyVerified: true,
+      beforePhotoUrls: ["/public/invoices/before.png"],
+      afterPhotoUrls: ["/public/invoices/after.png"],
+      aiVerificationStatus: "verified",
+      aiVerificationResponse: {
+        verified: true,
+        confidence: "high",
+        fraudRiskFlag: false,
+        fraudRiskReasons: [],
+        verificationReasonCodes: [],
+        evidence: {
+          photoHashes: {
+            before: [beforeHash],
+            after: [afterHash],
+            receipt: [],
+            unavailableRoles: [],
+          },
+          duplicatePhotoMatches: [],
+          priorHashLookupUnavailable: false,
+        },
+      },
+    };
+
+    mockDbSelect
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([cleanAnalysis]) }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
+      });
+
+    const mockUpdateSet = vi.fn()
+      .mockReturnValueOnce({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: ANALYSIS_ID, status: "confirmed" }]),
+        }),
+      })
+      .mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(200);
+
+    const insertedValues = findTaskCompletionInsert(mockInsertValues);
+    expect(insertedValues).toMatchObject({
+      verificationTier: "photo_verified",
+      verificationReasonCodes: [],
+      aiVerificationStatus: "verified",
+      aiVerificationResponse: expect.objectContaining({
+        finalEvidenceDecision: {
+          outcome: "approved",
+          verificationTier: "photo_verified",
+          reasonCodes: [],
+          aiVerificationStatus: "verified",
+        },
+      }),
+    });
+    expect(mockCreateMaintenanceLog).toHaveBeenCalledWith(expect.objectContaining({
+      verificationTier: "photo_verified",
+      verificationReasonCodes: [],
+      aiVerificationStatus: "verified",
+      beforePhotoHashes: [beforeHash],
+      afterPhotoHashes: [afterHash],
+      aiVerificationResponse: expect.objectContaining({
+        finalEvidenceDecision: expect.objectContaining({
+          outcome: "approved",
+          verificationTier: "photo_verified",
+        }),
+      }),
+    }));
   });
 
   it("uses analysis.serviceDate when body omits serviceDate field", async () => {

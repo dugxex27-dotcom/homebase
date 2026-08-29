@@ -677,6 +677,10 @@ describe("POST /api/invoice-analyses/:id/diy-verify — AI approval (happy path)
     });
     expect(res.body.aiVerificationResponse.fraudRiskFlag).toBe(true);
     expect(res.body.aiVerificationResponse.fraudRiskReasons).toContain("duplicate_photo_hash");
+    expect(res.body.aiVerificationResponse.finalEvidenceDecision).toMatchObject({
+      outcome: "review_needed",
+      verificationTier: "self_reported",
+    });
   });
 });
 

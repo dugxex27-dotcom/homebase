@@ -396,7 +396,13 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     expect(logData.locationFlag).toBe(false);
     expect(Number(logData.distanceFromPropertyMiles)).toBeLessThanOrEqual(0.1);
     expect(Number(logData.timestampDeltaHours)).toBeLessThanOrEqual(0.1);
-    expect(logData.verificationReasonCodes).toEqual([]);
+    expect(logData.verificationTier).toBe("self_reported");
+    expect(logData.verificationReasonCodes).toEqual(["ai_ambiguous"]);
+    expect(logData.aiVerificationStatus).toBe("not_run");
+    expect(logData.aiVerificationResponse.finalEvidenceDecision).toMatchObject({
+      outcome: "ambiguous",
+      verificationTier: "self_reported",
+    });
 
     // EXIF GPS must be stored as the authoritative coordinates
     expect(parseFloat(logData.gpsLat)).toBeCloseTo(NEAR_LAT, 4);
@@ -439,6 +445,41 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
       "distance_from_property_exceeded",
       "timestamp_missing",
     ]));
+    expect(logData.verificationTier).toBe("self_reported");
+    expect(logData.aiVerificationResponse.finalEvidenceDecision).toMatchObject({
+      outcome: "rejected",
+      verificationTier: "self_reported",
+    });
+  });
+
+  it("preserves contractor_verified while persisting a rejected out-of-tolerance outcome", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-contractor-far" });
+    mockPhotoInStorage(Buffer.from("contractor-photo"));
+    mockExifrGps.mockResolvedValue({ latitude: FAR_LAT, longitude: FAR_LNG });
+    mockExifrParse.mockResolvedValue({ DateTimeOriginal: new Date() });
+
+    const res = await request(app)
+      .post("/api/maintenance-logs/complete-task")
+      .send({
+        ...BASE_BODY,
+        completionMethod: "contractor",
+        contractorBusinessName: "Trusted HVAC",
+        contractorJobDate: "2026-08-29",
+        invoiceRef: "invoice-proof-001",
+        afterPhotoUrls: [PHOTO_URL],
+      });
+
+    expect(res.status).toBe(201);
+    const logData = mockCreateMaintenanceLog.mock.calls[0][0];
+    expect(logData.verificationTier).toBe("contractor_verified");
+    expect(logData.verificationReasonCodes).toContain("distance_from_property_exceeded");
+    expect(logData.aiVerificationResponse.finalEvidenceDecision).toMatchObject({
+      outcome: "rejected",
+      verificationTier: "contractor_verified",
+    });
   });
 
   it("(c) No EXIF GPS in photo + client GPS near property → falls back to client, locationFlag = false", async () => {

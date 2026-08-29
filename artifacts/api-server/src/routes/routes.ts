@@ -38,6 +38,7 @@ import { verifyAndActivateAppleTransaction, handleAppleServerNotification, Apple
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
+import { decidePhotoEvidence, hasDuplicatePhotoHash } from "../photo-evidence-decision";
 import {
   normalizeServiceRecordMutationInput,
   ServiceRecordInputError,
@@ -697,6 +698,10 @@ export function normalizeDIYVerificationAudit(
   reasonCodes: string[];
   beforePhotoHashes: string[];
   afterPhotoHashes: string[];
+  verified: boolean | null;
+  confidence: string | null;
+  fraudRiskFlag: boolean;
+  duplicatePhotoHashDetected: boolean;
 } {
   const normalizedStatus =
     typeof status === "string" && ALLOWED_AI_VERIFICATION_STATUSES.has(status)
@@ -709,6 +714,10 @@ export function normalizeDIYVerificationAudit(
       reasonCodes: [],
       beforePhotoHashes: [],
       afterPhotoHashes: [],
+      verified: null,
+      confidence: null,
+      fraudRiskFlag: false,
+      duplicatePhotoHashDetected: false,
     };
   }
 
@@ -740,6 +749,15 @@ export function normalizeDIYVerificationAudit(
     reasonCodes: [...new Set(reasonCodes)],
     beforePhotoHashes: validHashes(photoHashes.before),
     afterPhotoHashes: validHashes(photoHashes.after),
+    verified: typeof structured.verified === "boolean" ? structured.verified : null,
+    confidence:
+      typeof structured.confidence === "string" && ["high", "medium", "low"].includes(structured.confidence)
+        ? structured.confidence
+        : null,
+    fraudRiskFlag: structured.fraudRiskFlag === true,
+    duplicatePhotoHashDetected:
+      Array.isArray(evidence.duplicatePhotoMatches)
+      && evidence.duplicatePhotoMatches.length > 0,
   };
 }
 
@@ -13304,12 +13322,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Determine verification tier
-      const verificationTier: string =
-        completionMethod === 'contractor' && contractorBusinessName && contractorJobDate
-          ? 'contractor_verified'
-          : 'self_reported';
-      
       // Verify house belongs to user
       const house = await storage.getHouse(houseId);
       if (!house || house.homeownerId !== req.session.user.id) {
@@ -13451,6 +13463,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (allPhotoUrls.length > 0) {
         verificationReasonCodes.push("timestamp_missing");
       }
+
+      const hasPhotoEvidence =
+        allPhotoUrls.length > 0
+        || (beforePhotoHashes?.length ?? 0) > 0
+        || (afterPhotoHashes?.length ?? 0) > 0;
+      const evidenceDecision = decidePhotoEvidence({
+        completionMethod,
+        hasPhotoEvidence,
+        aiRequired: true,
+        aiStatus: "not_run",
+        aiVerified: null,
+        locationRequired: hasPhotoEvidence,
+        timestampRequired: hasPhotoEvidence,
+        locationFlag,
+        timestampFlag,
+        distanceFromPropertyMiles,
+        timestampDeltaHours,
+        duplicatePhotoHashDetected: hasDuplicatePhotoHash([
+          ...(beforePhotoHashes ?? []),
+          ...(afterPhotoHashes ?? []),
+        ]),
+        existingReasonCodes: verificationReasonCodes,
+      });
+      const verificationTier = evidenceDecision.verificationTier;
+      const finalVerificationReasonCodes = evidenceDecision.reasonCodes;
+      const directCompletionAudit = {
+        finalEvidenceDecision: evidenceDecision,
+      };
       
       // Calculate DIY savings using shared helper function
       let diySavingsAmount: string | null = null;
@@ -13490,7 +13530,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestampFlag,
         distanceFromPropertyMiles: distanceFromPropertyMiles !== null ? distanceFromPropertyMiles.toFixed(2) : null,
         timestampDeltaHours: timestampDeltaHours !== null ? timestampDeltaHours.toFixed(2) : null,
-        verificationReasonCodes,
+        verificationReasonCodes: finalVerificationReasonCodes,
+        aiVerificationStatus: evidenceDecision.aiVerificationStatus,
+        aiVerificationResponse: directCompletionAudit,
         gpsLat: resolvedGpsLat != null ? String(resolvedGpsLat) : null,
         gpsLng: resolvedGpsLng != null ? String(resolvedGpsLng) : null,
         propertyLat: houseLatNum != null ? String(houseLatNum) : null,
@@ -13544,7 +13586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         verificationTier,
         distanceFromPropertyMiles: distanceFromPropertyMiles !== null ? distanceFromPropertyMiles.toFixed(2) : null,
         timestampDeltaHours: timestampDeltaHours !== null ? timestampDeltaHours.toFixed(2) : null,
-        verificationReasonCodes,
+        verificationReasonCodes: finalVerificationReasonCodes,
+        aiVerificationStatus: evidenceDecision.aiVerificationStatus,
+        aiVerificationResponse: directCompletionAudit,
       };
       
       await db.insert(taskCompletions).values(taskCompletionData);
@@ -22538,6 +22582,25 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             : fraudRiskFlag || hashEvidenceUnavailable
               ? "review_needed"
               : "verified";
+          const evidenceDecision = decidePhotoEvidence({
+            completionMethod: "diy",
+            hasPhotoEvidence:
+              photoHashSummary.before.length > 0
+              || photoHashSummary.after.length > 0
+              || photoHashSummary.receipt.length > 0,
+            aiRequired: true,
+            aiStatus: aiVerificationStatus,
+            aiVerified: diyVerified,
+            aiConfidence: verificationResult.confidence,
+            locationRequired: false,
+            timestampRequired: false,
+            fraudRiskFlag,
+            duplicatePhotoHashDetected: duplicatePhotoMatches.length > 0,
+            existingReasonCodes: verificationReasonCodes,
+          });
+          verificationReasonCodes = evidenceDecision.reasonCodes;
+          aiVerificationStatus =
+            evidenceDecision.aiVerificationStatus ?? aiVerificationStatus;
           aiVerificationResponse = {
             ...verificationResult,
             fraudRiskFlag,
@@ -22550,6 +22613,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
               priorHashLookupUnavailable,
             },
             verificationReasonCodes,
+            finalEvidenceDecision: evidenceDecision,
           };
         }
 
@@ -22657,6 +22721,27 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         analysis.aiVerificationStatus,
         analysis.aiVerificationResponse,
       );
+      const evidenceDecision = decidePhotoEvidence({
+        completionMethod: analysis.completionMethod,
+        hasPhotoEvidence:
+          (analysis.beforePhotoUrls?.length ?? 0) > 0
+          || (analysis.afterPhotoUrls?.length ?? 0) > 0
+          || verificationAudit.beforePhotoHashes.length > 0
+          || verificationAudit.afterPhotoHashes.length > 0,
+        aiRequired: analysis.completionMethod === "diy",
+        aiStatus: verificationAudit.status,
+        aiVerified: verificationAudit.verified,
+        aiConfidence: verificationAudit.confidence,
+        locationRequired: false,
+        timestampRequired: false,
+        fraudRiskFlag: verificationAudit.fraudRiskFlag,
+        duplicatePhotoHashDetected: verificationAudit.duplicatePhotoHashDetected,
+        existingReasonCodes: verificationAudit.reasonCodes,
+      });
+      const finalVerificationResponse = {
+        ...(verificationAudit.response ?? {}),
+        finalEvidenceDecision: evidenceDecision,
+      };
 
       // Create maintenance log (always — preserved for audit trail even on duplicates)
       const logData = {
@@ -22673,12 +22758,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         receiptUrls: [...(analysis.invoiceUrls || []), ...(analysis.receiptUrls || [])],
         beforePhotoUrls: analysis.beforePhotoUrls || [],
         afterPhotoUrls: analysis.afterPhotoUrls || [],
-        // Phase 1 evidence fields remain audit-only here. This phase does not
-        // promote the record to photo_verified or alter scoring.
-        verificationTier: "self_reported" as const,
-        verificationReasonCodes: verificationAudit.reasonCodes as any,
-        aiVerificationStatus: verificationAudit.status as any,
-        aiVerificationResponse: verificationAudit.response,
+        verificationTier: evidenceDecision.verificationTier,
+        verificationReasonCodes: evidenceDecision.reasonCodes,
+        aiVerificationStatus: evidenceDecision.aiVerificationStatus,
+        aiVerificationResponse: finalVerificationResponse,
         beforePhotoHashes: verificationAudit.beforePhotoHashes,
         afterPhotoHashes: verificationAudit.afterPhotoHashes,
       };
@@ -22714,10 +22797,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         costSavings: null,
         notes: null,
         documentsUploaded: (analysis.invoiceUrls?.length || 0) + (analysis.receiptUrls?.length || 0),
-        verificationTier: "self_reported",
-        verificationReasonCodes: verificationAudit.reasonCodes,
-        aiVerificationStatus: verificationAudit.status,
-        aiVerificationResponse: verificationAudit.response,
+        verificationTier: evidenceDecision.verificationTier,
+        verificationReasonCodes: evidenceDecision.reasonCodes,
+        aiVerificationStatus: evidenceDecision.aiVerificationStatus,
+        aiVerificationResponse: finalVerificationResponse,
       }).returning();
 
       // Update analysis record to confirmed, link both log and task completion
