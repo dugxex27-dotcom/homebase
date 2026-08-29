@@ -48,3 +48,6 @@ Thumbs.db
 .cache/
 .local/
 attached_assets/
+
+# Generated codebase snapshots; do not commit exports that may contain secrets.
+codebase_part*.txt
