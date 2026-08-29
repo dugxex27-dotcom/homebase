@@ -1,9 +1,47 @@
 // Geographic and seasonal maintenance recommendations for US regions
 import { CostEstimate } from './cost-baselines';
+import {
+  getDueTasksForMonth,
+  getTasksForMonth,
+  normalizeUsMaintenanceData,
+  type MaintenanceCompletionLike,
+} from './maintenance-task-recurrence';
+
+export type { MaintenanceCompletionLike } from './maintenance-task-recurrence';
+
+export type MaintenanceRecurrenceFrequency =
+  | 'monthly'
+  | 'quarterly'
+  | 'biannual'
+  | 'annual'
+  | 'every_3_years'
+  | 'every_10_years'
+  | 'one_time';
+
+export interface MaintenanceEventGuidance {
+  event: 'hailstorm' | 'dust_storm' | 'monsoon' | 'extended_dry_spell';
+  timing: string;
+  guidance: string;
+}
+
+export interface MaintenanceRecurrence {
+  frequency: MaintenanceRecurrenceFrequency;
+  /** Calendar months (1-12) when the task is presented. Omit for every month. */
+  months?: number[];
+  /** Event-only tasks stay out of calendar reminders and are surfaced by event-aware flows. */
+  eventOnly?: boolean;
+  /** Supplements the calendar cadence without creating random calendar reminders. */
+  eventGuidance?: MaintenanceEventGuidance[];
+  notes?: string;
+}
 
 export interface MaintenanceTaskItem {
+  id: string;
   title: string;
   description: string;
+  recurrence: MaintenanceRecurrence;
+  legacyTitles?: string[];
+  appliesWhen?: string[];
   priority?: 'high' | 'medium' | 'low'; // Task-specific priority (defaults to month priority if not set)
   actionSummary?: string; // Single sentence action summary (e.g., "Do these 3 quick checks to winterize your home")
   steps?: string[]; // Bullet point steps to complete the task
@@ -12,6 +50,11 @@ export interface MaintenanceTaskItem {
   impact?: string; // What happens if this task is not completed
   impactCost?: string; // Potential costs if task is not done
 }
+
+type MaintenanceTaskDraft = Omit<MaintenanceTaskItem, 'id' | 'recurrence'> & {
+  id?: string;
+  recurrence?: MaintenanceRecurrence;
+};
 
 export interface LocationMaintenanceData {
   region: string;
@@ -27,7 +70,21 @@ export interface LocationMaintenanceData {
   specialConsiderations: string[];
 }
 
-export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
+export interface RawLocationMaintenanceData {
+  region: string;
+  climateZone: string;
+  monthlyTasks: {
+    [month: number]: {
+      seasonal: MaintenanceTaskDraft[];
+      weatherSpecific: MaintenanceTaskDraft[];
+      priority: 'high' | 'medium' | 'low';
+    };
+  };
+  yearRoundTasks: MaintenanceTaskDraft[];
+  specialConsiderations: string[];
+}
+
+const RAW_US_MAINTENANCE_DATA = {
   'Northeast': {
     region: 'Northeast',
     climateZone: 'Cold/Humid Continental',
@@ -1950,6 +2007,11 @@ export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } = {
   }
 };
 
+export const US_MAINTENANCE_DATA: { [key: string]: LocationMaintenanceData } =
+  normalizeUsMaintenanceData(
+    RAW_US_MAINTENANCE_DATA as Record<string, RawLocationMaintenanceData>,
+  );
+
 // Helper function to determine region from climate zone
 export function getRegionFromClimateZone(climateZone: string): string {
   const regionMappings: { [key: string]: string } = {
@@ -1966,12 +2028,18 @@ export function getRegionFromClimateZone(climateZone: string): string {
   return regionMappings[climateZone] || 'Midwest';
 }
 
-// Helper function to get current month tasks
+// Project recurring/year-round tasks onto their explicit calendar cadence.
 export function getCurrentMonthTasks(region: string, month: number) {
-  const regionData = US_MAINTENANCE_DATA[region];
-  if (!regionData) return null;
-  
-  return regionData.monthlyTasks[month] || null;
+  return getTasksForMonth(US_MAINTENANCE_DATA, region, month);
+}
+
+// Completion-aware selection used by reminders and server-side recommendations.
+export function getDueMaintenanceTasks(
+  region: string,
+  date: Date,
+  completions: MaintenanceCompletionLike[] = [],
+) {
+  return getDueTasksForMonth(US_MAINTENANCE_DATA, region, date, completions);
 }
 
 // Helper function to get region-specific considerations

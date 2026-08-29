@@ -13592,7 +13592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body with Zod schema
       const validatedData = completeTaskSchema.parse(req.body);
       const {
-        houseId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
+        houseId, taskId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
         gpsLat, gpsLng, deviceTimestamp, beforePhotoHashes, afterPhotoHashes,
         beforePhotoUrls, afterPhotoUrls,
         contractorBusinessName, contractorLicenseNumber, contractorJobDate,
@@ -13885,7 +13885,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const taskCompletionData = {
         homeownerId: req.session.user.id,
         houseId,
-        taskId: null,
+        taskId: taskId ?? null,
         taskType: 'maintenance' as const,
         taskTitle,
         taskCategory: null,
@@ -15072,22 +15072,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const houses = await storage.getHousesByHomeowner(homeownerId);
         if (houses.length > 0) {
-          const { US_MAINTENANCE_DATA, getCurrentMonthTasks, getRegionFromClimateZone } = await import("../shared/location-maintenance-data");
+          const { US_MAINTENANCE_DATA, getDueMaintenanceTasks, getRegionFromClimateZone } = await import("../shared/location-maintenance-data");
           
           for (const house of houses) {
             const region = getRegionFromClimateZone(house.climateZone);
             const regionData = US_MAINTENANCE_DATA[region];
-            const currentMonth = new Date().getMonth() + 1;
-            const currentMonthTasks = regionData ? getCurrentMonthTasks(region, currentMonth) : null;
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const completions = await storage.getTaskCompletions(homeownerId, house.id);
+            const currentMonthTasks = regionData ? getDueMaintenanceTasks(region, now, completions) : null;
             
             if (regionData && currentMonthTasks) {
               // Create regional suggestions notifications
               const regionalNotifications: ImmediateNotificationInput[] = [];
               
               // Add seasonal tasks as notifications
-              currentMonthTasks.seasonal.forEach((task, index) => {
+              currentMonthTasks.seasonal.forEach((task) => {
                 regionalNotifications.push({
-                  id: `regional-seasonal-${homeownerId}-${currentMonth}-${index}`,
+                  id: `regional-seasonal-${house.id}-${now.getFullYear()}-${currentMonth}-${task.id}`,
                   homeownerId,
                   houseId: house.id,
                   type: "maintenance_task",
@@ -15101,9 +15103,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
               
               // Add weather-specific tasks
-              currentMonthTasks.weatherSpecific.forEach((task, index) => {
+              currentMonthTasks.weatherSpecific.forEach((task) => {
                 regionalNotifications.push({
-                  id: `regional-weather-${homeownerId}-${currentMonth}-${index}`,
+                  id: `regional-weather-${house.id}-${now.getFullYear()}-${currentMonth}-${task.id}`,
                   homeownerId,
                   houseId: house.id,
                   type: "maintenance_task",
@@ -16348,7 +16350,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         "pacific-northwest": "Pacific Northwest",
         "great-plains": "Midwest",
       };
-      const { US_MAINTENANCE_DATA } = await import("../shared/location-maintenance-data");
+      const { US_MAINTENANCE_DATA, getDueMaintenanceTasks } = await import("../shared/location-maintenance-data");
       const regionName = zoneToRegion[zone] ?? "Midwest";
       const regionData = US_MAINTENANCE_DATA[regionName];
 
@@ -16367,11 +16369,10 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
 
       if (regionData) {
         for (const offset of [-2, -1, 0, 1, 2]) {
-          let m = month + offset;
-          if (m < 1) m += 12;
-          if (m > 12) m -= 12;
+          const targetDate = new Date(currentYear, month - 1 + offset, 1);
+          const m = targetDate.getMonth() + 1;
           const status: "overdue" | "current" | "upcoming" = offset < 0 ? "overdue" : offset === 0 ? "current" : "upcoming";
-          const monthData = regionData.monthlyTasks[m];
+          const monthData = getDueMaintenanceTasks(regionName, targetDate, completedTaskRows);
           if (!monthData) continue;
           const allItems = [...(monthData.seasonal ?? []), ...(monthData.weatherSpecific ?? [])];
           for (const t of allItems) {
@@ -16387,10 +16388,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
               costHint,
             };
             if (offset === 0) {
-              // Exclude already-completed tasks from current month recommendations
-              if (!completedThisMonth.has(t.title)) {
-                currentMonthTasks.push(task);
-              }
+              currentMonthTasks.push(task);
             } else {
               if (contextTasks.length < 20) contextTasks.push(task);
             }
@@ -16586,28 +16584,22 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         "great-plains": "Midwest",
       };
       const currentMonthNum = new Date().getMonth() + 1;
-      const { US_MAINTENANCE_DATA } = await import("../shared/location-maintenance-data");
+      const { US_MAINTENANCE_DATA, getDueMaintenanceTasks } = await import("../shared/location-maintenance-data");
       const climateKey = (house.climateZone ?? "midwest").toLowerCase().replace(/\s+/g, "-");
       const regionName = zoneToRegion[climateKey] ?? "Midwest";
       const regionData = US_MAINTENANCE_DATA[regionName];
-
-      const completedTitlesThisYear = new Set(
-        completedTaskRows.filter(r => r.year === currentYear).map(r => r.taskTitle)
-      );
 
       interface OutstandingTask { title: string; priority: string; month: number }
       const outstandingTasks: OutstandingTask[] = [];
       if (regionData) {
         for (const offset of [-2, -1, 0]) {
-          let m = currentMonthNum + offset;
-          if (m < 1) m += 12;
-          const monthData = regionData.monthlyTasks[m];
+          const targetDate = new Date(currentYear, currentMonthNum - 1 + offset, 1);
+          const m = targetDate.getMonth() + 1;
+          const monthData = getDueMaintenanceTasks(regionName, targetDate, completedTaskRows);
           if (!monthData) continue;
           const items = [...(monthData.seasonal ?? []), ...(monthData.weatherSpecific ?? [])];
           for (const t of items) {
-            if (!completedTitlesThisYear.has(t.title)) {
-              outstandingTasks.push({ title: t.title, priority: t.priority ?? monthData.priority ?? "medium", month: m });
-            }
+            outstandingTasks.push({ title: t.title, priority: t.priority ?? monthData.priority ?? "medium", month: m });
           }
         }
       }
@@ -17598,10 +17590,11 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
 
       // Get maintenance tasks for current month based on house climate zone
       const currentMonth = new Date().getMonth() + 1;
-      const { getCurrentMonthTasks, getRegionFromClimateZone } = await import('../shared/location-maintenance-data');
+      const { getDueMaintenanceTasks, getRegionFromClimateZone } = await import('../shared/location-maintenance-data');
       
       const region = getRegionFromClimateZone(house.climateZone);
-      const tasks = getCurrentMonthTasks(region, currentMonth);
+      const completions = await storage.getTaskCompletions(contractorId, houseId);
+      const tasks = getDueMaintenanceTasks(region, new Date(), completions);
 
       res.json({
         house,

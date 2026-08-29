@@ -14,9 +14,9 @@
       "@/*": ["./src/*"],
       "@shared/schema": ["../../lib/db/src/schema/schema.ts"],
       "@shared/distance-utils": ["../../artifacts/api-server/src/shared/distance-utils.ts"],
-      "@shared/cost-baselines": ["../../.migration-backup/shared/cost-baselines.ts"],
-      "@shared/cost-helpers": ["../../.migration-backup/shared/cost-helpers.ts"],
-      "@shared/location-maintenance-data": ["../../.migration-backup/shared/location-maintenance-data.ts"]
+      "@shared/cost-baselines": ["../../artifacts/api-server/src/shared/cost-baselines.ts"],
+      "@shared/cost-helpers": ["../../artifacts/api-server/src/shared/cost-helpers.ts"],
+      "@shared/location-maintenance-data": ["../../artifacts/api-server/src/shared/location-maintenance-data.ts"]
     }
   },
   "references": [

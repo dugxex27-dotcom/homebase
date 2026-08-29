@@ -1,10 +1,9 @@
 import { db } from './db';
 import { users, notificationPreferences } from '@workspace/db';
-import type { TaskCompletion } from '@workspace/db';
 import { eq, and, isNotNull } from 'drizzle-orm';
 import { storage, isDemoId, IStorage } from './storage';
 import { sendWeeklyTaskReminderEmail } from './email-service';
-import { getCurrentMonthTasks, getRegionFromClimateZone } from './shared/location-maintenance-data';
+import { getDueMaintenanceTasks, getRegionFromClimateZone } from './shared/location-maintenance-data';
 
 const typedStorage = storage as unknown as IStorage;
 
@@ -55,7 +54,12 @@ async function getRemainingTasksForHouse(
     const region = getRegionFromClimateZone(climateZone);
     if (!region) return [];
     
-    const monthTasks = getCurrentMonthTasks(region, currentMonth);
+    const completions = await typedStorage.getTaskCompletions(homeownerId, houseId);
+    const monthTasks = getDueMaintenanceTasks(
+      region,
+      new Date(currentYear, currentMonth - 1, 1),
+      completions,
+    );
     if (!monthTasks) return [];
     
     const allTasks: RemainingTask[] = [];
@@ -78,14 +82,7 @@ async function getRemainingTasksForHouse(
       });
     }
     
-    const completions = await typedStorage.getTaskCompletionsByMonth(homeownerId, currentYear, currentMonth);
-    const completedTitles = new Set(
-      completions
-        .filter((c: TaskCompletion) => c.houseId === houseId)
-        .map((c: TaskCompletion) => c.taskTitle.toLowerCase())
-    );
-    
-    return allTasks.filter(task => !completedTitles.has(task.title.toLowerCase()));
+    return allTasks;
   } catch (error) {
     console.error('[WEEKLY-TASK-SCHEDULER] Error getting remaining tasks:', error);
     return [];

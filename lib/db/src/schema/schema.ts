@@ -1239,6 +1239,7 @@ export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).om
 // Schema for task completion endpoint
 export const completeTaskSchema = z.object({
   houseId: z.string().min(1, "House ID is required"),
+  taskId: z.string().min(1).optional(),
   taskTitle: z.string().min(1, "Task title is required"),
   completionMethod: z.enum(['diy', 'contractor']),
   costEstimate: z.object({

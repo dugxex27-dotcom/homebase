@@ -32,7 +32,7 @@ import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
 import "./home.css";
-import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getCurrentMonthTasks } from "@shared/location-maintenance-data";
+import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getDueMaintenanceTasks } from "@shared/location-maintenance-data";
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
 import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared/cost-baselines";
 
@@ -69,6 +69,15 @@ interface MaintenanceTask {
   costEstimate?: CostEstimate;
   impact?: string; // What happens if not completed
   impactCost?: string; // Potential costs if not done
+  legacyTitles?: string[];
+}
+
+interface TaskCompletionRecord {
+  taskId?: string | null;
+  taskTitle: string;
+  completedAt?: string | null;
+  month: number;
+  year: number;
 }
 
 
@@ -242,14 +251,30 @@ const generateTaskId = (title: string): string => {
 };
 
 // Helper function to get task override for a specific task
-const getTaskOverride = (taskTitle: string, overrides: TaskOverride[]): TaskOverride | undefined => {
-  const taskId = generateTaskId(taskTitle);
-  return overrides.find(override => override.taskId === taskId);
+const getTaskOverride = (
+  taskTitle: string,
+  overrides: TaskOverride[],
+  stableTaskId?: string,
+  legacyTitles: string[] = [],
+): TaskOverride | undefined => {
+  const candidateIds = [
+    stableTaskId,
+    generateTaskId(taskTitle),
+    ...legacyTitles.map(generateTaskId),
+  ].filter((value): value is string => Boolean(value));
+  return candidateIds
+    .map(candidateId => overrides.find(override => override.taskId === candidateId))
+    .find((override): override is TaskOverride => Boolean(override));
 };
 
 // Helper function to check if a task is enabled (default true unless disabled by override)
-const isTaskEnabled = (taskTitle: string, overrides: TaskOverride[]): boolean => {
-  const override = getTaskOverride(taskTitle, overrides);
+const isTaskEnabled = (
+  taskTitle: string,
+  overrides: TaskOverride[],
+  stableTaskId?: string,
+  legacyTitles: string[] = [],
+): boolean => {
+  const override = getTaskOverride(taskTitle, overrides, stableTaskId, legacyTitles);
   return override ? override.isEnabled : true;
 };
 
@@ -1023,8 +1048,8 @@ interface TaskDetailDialogProps {
   onDiyComplete: (task: MaintenanceTask) => void;
   showCustomizeTask: string | null;
   setShowCustomizeTask: (id: string | null) => void;
-  getTaskOverride: (taskTitle: string, overrides: TaskOverride[]) => TaskOverride | undefined;
-  isTaskEnabled: (taskTitle: string, overrides: TaskOverride[]) => boolean;
+  getTaskOverride: (taskTitle: string, overrides: TaskOverride[], stableTaskId?: string, legacyTitles?: string[]) => TaskOverride | undefined;
+  isTaskEnabled: (taskTitle: string, overrides: TaskOverride[], stableTaskId?: string, legacyTitles?: string[]) => boolean;
   generateTaskId: (title: string) => string;
   upsertTaskOverrideMutation: any;
   deleteTaskOverrideMutation: any;
@@ -1289,8 +1314,8 @@ function TaskDetailDialog({
                 <Collapsible open={showCustomizeTask === task.id}>
                   <CollapsibleContent>
                     {(() => {
-                      const currentOverride = getTaskOverride(task.title, taskOverrides || []);
-                      const taskId = generateTaskId(task.title);
+                      const currentOverride = getTaskOverride(task.title, taskOverrides || [], task.id, task.legacyTitles);
+                      const taskId = task.id;
                       
                       return (
                         <div className="space-y-4">
@@ -1298,7 +1323,7 @@ function TaskDetailDialog({
                             <div className="flex items-center space-x-2">
                               <Checkbox
                                 id={`dialog-enable-${taskId}`}
-                                checked={isTaskEnabled(task.title, taskOverrides || [])}
+                                checked={isTaskEnabled(task.title, taskOverrides || [], task.id, task.legacyTitles)}
                                 onCheckedChange={(checked) => {
                                   upsertTaskOverrideMutation.mutate({
                                     taskId,
@@ -1316,7 +1341,7 @@ function TaskDetailDialog({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => deleteTaskOverrideMutation.mutate(taskId)}
+                                onClick={() => deleteTaskOverrideMutation.mutate(currentOverride.taskId)}
                                 className="text-xs"
                               >
                                 Reset to Default
@@ -1333,12 +1358,12 @@ function TaskDetailDialog({
                               onValueChange={(value) => {
                                 if (value === 'default') {
                                   if (currentOverride) {
-                                    deleteTaskOverrideMutation.mutate(taskId);
+                                    deleteTaskOverrideMutation.mutate(currentOverride.taskId);
                                   }
                                 } else {
                                   upsertTaskOverrideMutation.mutate({
                                     taskId,
-                                    isEnabled: isTaskEnabled(task.title, taskOverrides || []),
+                                    isEnabled: isTaskEnabled(task.title, taskOverrides || [], task.id, task.legacyTitles),
                                     frequencyType: value,
                                     specificMonths: currentOverride?.specificMonths || undefined,
                                   });
@@ -1372,7 +1397,7 @@ function TaskDetailDialog({
                                 if (newDescription !== (currentOverride?.customDescription || '')) {
                                   upsertTaskOverrideMutation.mutate({
                                     taskId,
-                                    isEnabled: isTaskEnabled(task.title, taskOverrides || []),
+                                    isEnabled: isTaskEnabled(task.title, taskOverrides || [], task.id, task.legacyTitles),
                                     frequencyType: currentOverride?.frequencyType || undefined,
                                     specificMonths: currentOverride?.specificMonths || undefined,
                                     customDescription: newDescription || undefined,
@@ -1734,6 +1759,16 @@ export default function Maintenance() {
     enabled: isAuthenticated && !!homeownerId && !isContractor
   });
 
+  const { data: taskCompletionRows = [] } = useQuery<TaskCompletionRecord[]>({
+    queryKey: ['/api/task-completions', selectedHouseId],
+    queryFn: async () => {
+      const response = await fetch(`/api/task-completions?houseId=${encodeURIComponent(selectedHouseId)}`);
+      if (!response.ok) throw new Error('Failed to fetch task completions');
+      return response.json();
+    },
+    enabled: isAuthenticated && !!homeownerId && !!selectedHouseId && !isContractor,
+  });
+
   // Home systems queries (only for homeowners)
   const { data: homeSystemsData, isLoading: homeSystemsLoading } = useQuery<HomeSystem[]>({
     queryKey: ['/api/home-systems', { homeownerId, houseId: selectedHouseId }],
@@ -1995,6 +2030,7 @@ export default function Maintenance() {
   const completeTaskMutation = useMutation({
     mutationFn: async (data: { 
       houseId: string; 
+      taskId?: string;
       taskTitle: string; 
       completionMethod: 'diy' | 'contractor';
       costEstimate?: {
@@ -2026,6 +2062,7 @@ export default function Maintenance() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/task-completions', variables.houseId] });
       queryClient.invalidateQueries({ queryKey: ['/api/houses'] });
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'diy-savings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'health-score'] });
@@ -3127,6 +3164,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
       await completeTaskMutation.mutateAsync({
         houseId: selectedHouseId,
+        taskId: pendingDiyTask.id,
         taskTitle: pendingDiyTask.title,
         completionMethod: 'diy',
         costEstimate: pendingDiyTask.costEstimate,
@@ -3170,6 +3208,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
       await completeTaskMutation.mutateAsync({
         houseId: selectedHouseId,
+        taskId: pendingContractorTask.id,
         taskTitle: pendingContractorTask.title,
         completionMethod: 'contractor',
         costEstimate: pendingContractorTask.costEstimate,
@@ -3413,7 +3452,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       return tasks;
     }
     
-    const monthData = regionData.monthlyTasks[month];
+    const monthData = getDueMaintenanceTasks(
+      regionName,
+      new Date(new Date().getFullYear(), month - 1, 1),
+      taskCompletionRows,
+    );
     if (!monthData) {
       console.error(`No data found for month: ${month} in region: ${regionName}`);
       return tasks;
@@ -3427,7 +3470,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     // Convert seasonal tasks to MaintenanceTask objects
     enrichedSeasonalTasks.forEach((taskItem, index) => {
       tasks.push({
-        id: `seasonal-${month}-${index}`,
+        id: taskItem.id,
         title: taskItem.title,
         description: taskItem.description,
         actionSummary: taskItem.actionSummary,
@@ -3445,6 +3488,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         costEstimate: taskItem.costEstimate,
         impact: taskItem.impact,
         impactCost: taskItem.impactCost,
+        legacyTitles: taskItem.legacyTitles,
       });
     });
     
@@ -3454,7 +3498,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     // Convert weather-specific tasks to MaintenanceTask objects
     enrichedWeatherTasks.forEach((taskItem, index) => {
       tasks.push({
-        id: `weather-${month}-${index}`,
+        id: taskItem.id,
         title: taskItem.title,
         description: taskItem.description,
         actionSummary: taskItem.actionSummary,
@@ -3472,6 +3516,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         costEstimate: taskItem.costEstimate,
         impact: taskItem.impact,
         impactCost: taskItem.impactCost,
+        legacyTitles: taskItem.legacyTitles,
       });
     });
 
@@ -4361,7 +4406,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour-id="task-list">
               {filteredTasks.map((task, taskIdx) => {
                 const completed = isTaskCompleted(task.id);
-                const taskOverride = getTaskOverride(task.title, taskOverrides);
+                const taskOverride = getTaskOverride(task.title, taskOverrides, task.id, task.legacyTitles);
                 const displayDescription = taskOverride?.customDescription || task.description;
                 
                 return (
@@ -6243,9 +6288,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             }}
             completed={isTaskCompleted(selectedTask.id)}
             isCustomTask={selectedTask.id.startsWith('custom-')}
-            displayDescription={getTaskOverride(selectedTask.title, taskOverrides)?.customDescription || selectedTask.description}
+            displayDescription={getTaskOverride(selectedTask.title, taskOverrides, selectedTask.id, selectedTask.legacyTitles)?.customDescription || selectedTask.description}
             previousContractor={findPreviousContractor(selectedTask.category, selectedTask.title)}
-            taskOverride={getTaskOverride(selectedTask.title, taskOverrides)}
+            taskOverride={getTaskOverride(selectedTask.title, taskOverrides, selectedTask.id, selectedTask.legacyTitles)}
             onViewContractor={(id) => window.open(`/contractor-profile/${id}`, '_blank')}
             onContractorComplete={handleContractorCompletion}
             onDiyComplete={handleDiyCompletion}

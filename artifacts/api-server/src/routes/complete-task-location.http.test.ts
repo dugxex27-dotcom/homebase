@@ -31,6 +31,7 @@ const {
   mockExifrGps,
   mockExifrParse,
   mockResolvePropertyCoordinates,
+  mockDbInsertValues,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetHouse: vi.fn(),
@@ -45,6 +46,7 @@ const {
   // exifr module functions
   mockExifrGps: vi.fn(),
   mockExifrParse: vi.fn(),
+  mockDbInsertValues: vi.fn().mockResolvedValue(undefined),
   mockResolvePropertyCoordinates: vi.fn(async (house: {
     latitude?: string | number | null;
     longitude?: string | number | null;
@@ -249,7 +251,7 @@ vi.mock("../db", () => ({
       }),
     }),
     insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockResolvedValue(undefined),
+      values: mockDbInsertValues,
     }),
     update: vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({
@@ -368,6 +370,25 @@ function mockPhotoInStorage(imageBuffer: Buffer) {
 describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", () => {
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("persists the stable catalog task ID when the client provides it", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-stable-id", locationFlag: false });
+
+    const res = await request(app)
+      .post("/api/maintenance-logs/complete-task")
+      .send({
+        ...BASE_BODY,
+        taskId: "us-northeast-hvac-filter",
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockDbInsertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ taskId: "us-northeast-hvac-filter" }),
+    );
   });
 
   it("(a) EXIF GPS near property → locationFlag = false", async () => {

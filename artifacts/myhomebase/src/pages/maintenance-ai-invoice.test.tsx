@@ -94,7 +94,7 @@ vi.mock("@/components/ui/confirm-dialog", () => ({
 vi.mock("@shared/location-maintenance-data", () => ({
   US_MAINTENANCE_DATA: {},
   getRegionFromClimateZone: () => "national",
-  getCurrentMonthTasks: () => [],
+  getDueMaintenanceTasks: () => null,
 }));
 
 vi.mock("@shared/cost-helpers", () => ({
