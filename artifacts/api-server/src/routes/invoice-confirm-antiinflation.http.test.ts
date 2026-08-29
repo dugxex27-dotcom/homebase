@@ -1032,7 +1032,7 @@ describe("GET /api/houses/:id/health-score — old confirmed invoices do not inf
     mockDbSelect.mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([
-          { id: "tc-recent", houseId: HOUSE_ID, homeownerId: OWNER_ID, year: recentYear, month: recentMonth },
+          { id: "tc-recent", houseId: HOUSE_ID, homeownerId: OWNER_ID, year: recentYear, month: recentMonth, verificationTier: "photo_verified" },
           { id: "tc-old",    houseId: HOUSE_ID, homeownerId: OWNER_ID, year: 2020,       month: 3 },
         ]),
       }),

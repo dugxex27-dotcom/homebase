@@ -27,6 +27,10 @@ const {
   mockStorageGetHouse,
   mockStorageCreateLog,
   mockStorageCheckAchievements,
+  mockStorageGetCustomTasks,
+  mockStorageGetMaintenanceLogs,
+  mockStorageGetHomeSystems,
+  mockOpenAIChatCreate,
 } = vi.hoisted(() => {
   const mockDbInsertValues = vi.fn();
   return {
@@ -37,6 +41,10 @@ const {
     mockStorageGetHouse: vi.fn(),
     mockStorageCreateLog: vi.fn(),
     mockStorageCheckAchievements: vi.fn().mockResolvedValue([]),
+    mockStorageGetCustomTasks: vi.fn(),
+    mockStorageGetMaintenanceLogs: vi.fn(),
+    mockStorageGetHomeSystems: vi.fn(),
+    mockOpenAIChatCreate: vi.fn(),
   };
 });
 
@@ -76,6 +84,9 @@ vi.mock("../storage", async () => {
       getHouse: mockStorageGetHouse,
       createMaintenanceLog: mockStorageCreateLog,
       checkAndAwardAchievements: mockStorageCheckAchievements,
+      getCustomMaintenanceTasks: mockStorageGetCustomTasks,
+      getMaintenanceLogs: mockStorageGetMaintenanceLogs,
+      getHomeSystems: mockStorageGetHomeSystems,
     }),
   };
 });
@@ -174,7 +185,7 @@ vi.mock("../invoice-analysis-service", () => ({
 }));
 vi.mock("openai", () => ({
   default: class MockOpenAI {
-    chat = { completions: { create: vi.fn() } };
+    chat = { completions: { create: mockOpenAIChatCreate } };
   },
 }));
 vi.mock("stripe", () => {
@@ -277,6 +288,9 @@ beforeEach(async () => {
   mockStorageGetHouse.mockResolvedValue(stubHouse);
   mockStorageCreateLog.mockResolvedValue({ id: "log-001" });
   mockStorageCheckAchievements.mockResolvedValue([]);
+  mockStorageGetCustomTasks.mockResolvedValue([]);
+  mockStorageGetMaintenanceLogs.mockResolvedValue([]);
+  mockStorageGetHomeSystems.mockResolvedValue([]);
 
   app = express();
   app.use(express.json());
@@ -383,6 +397,7 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
       houseId: HOUSE_ID,
       year: today.getFullYear(),
       month: today.getMonth() + 1,
+      verificationTier: "photo_verified",
     };
 
     // db.select().from(taskCompletions).where() → [recentCompletion]
@@ -394,6 +409,9 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
     expect(res.body.scoringCount).toBe(1);
     expect(res.body.score).toBeGreaterThanOrEqual(4); // +4 per task in window
     expect(res.body.historicalCount).toBe(0);
+    expect(res.body.photoVerifiedCount).toBe(1);
+    expect(res.body.contractorVerifiedCount).toBe(0);
+    expect(res.body.selfReportedCount).toBe(0);
   });
 
   it("does NOT count a completion dated 13 months ago — scoringCount = 0, score = 0", async () => {
@@ -423,7 +441,7 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
     const oldD = new Date(oldDate + "T12:00:00");
 
     const completions = [
-      { id: "tc-new", houseId: HOUSE_ID, year: today.getFullYear(), month: today.getMonth() + 1 },
+      { id: "tc-new", houseId: HOUSE_ID, year: today.getFullYear(), month: today.getMonth() + 1, verificationTier: "photo_verified" },
       { id: "tc-old", houseId: HOUSE_ID, year: oldD.getFullYear(), month: oldD.getMonth() + 1 },
     ];
 
@@ -435,5 +453,67 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
     expect(res.body.scoringCount).toBe(1);
     expect(res.body.historicalCount).toBe(1);
     expect(res.body.score).toBeGreaterThanOrEqual(4);
+  });
+});
+
+describe("HWS scoring consumers use photo_verified parity", () => {
+  it("uses the shared photo_verified weight in the AI maintenance coach", async () => {
+    const now = new Date();
+    mockDbSelectWhere.mockResolvedValueOnce([{
+      id: "tc-coach-photo",
+      houseId: HOUSE_ID,
+      year: now.getFullYear(),
+      month: now.getMonth() + 1,
+      taskTitle: "Photo verified task",
+      verificationTier: "photo_verified",
+    }]);
+    mockOpenAIChatCreate.mockResolvedValueOnce({
+      choices: [{ message: { content: JSON.stringify({ briefing: "On track.", topTasks: [] }) } }],
+    });
+
+    const res = await request(app)
+      .post(`/api/houses/${HOUSE_ID}/maintenance-coach`)
+      .send({ month: now.getMonth() + 1, zone: "northeast" });
+
+    expect(res.status).toBe(200);
+    const prompt = mockOpenAIChatCreate.mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("Home wellness score: 4");
+    expect(prompt).toContain("1 verified tasks @4pts, 0 self-reported @2.4pts");
+  });
+
+  it("uses the shared photo_verified weight in resale readiness", async () => {
+    mockDbSelectWhere
+      .mockResolvedValueOnce([{
+        id: "tc-resale-photo",
+        houseId: HOUSE_ID,
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1,
+        taskTitle: "Photo verified task",
+        verificationTier: "photo_verified",
+      }])
+      .mockResolvedValueOnce([]);
+    mockOpenAIChatCreate.mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            grade: "C",
+            summary: "Documented maintenance is available.",
+            strengths: [],
+            concerns: [],
+            actionItems: [],
+          }),
+        },
+      }],
+    });
+
+    const res = await request(app)
+      .post(`/api/houses/${HOUSE_ID}/resale-readiness`)
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.meta.wellnessScore).toBe(4);
+    const prompt = mockOpenAIChatCreate.mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("1 photo-verified @4pts");
+    expect(prompt).toContain("0 self-reported @2.4pts");
   });
 });

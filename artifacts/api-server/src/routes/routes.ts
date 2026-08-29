@@ -15,7 +15,6 @@ import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, insertServiceRecordSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
-import { calculateMechanicalDocumentationBonus } from "../shared/maintenance-scheduler";
 import { createImmediateNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
 import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
@@ -39,6 +38,7 @@ import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
 import { decidePhotoEvidence, hasDuplicatePhotoHash } from "../photo-evidence-decision";
+import { calculateHwsScore } from "../hws-scoring";
 import {
   normalizeServiceRecordMutationInput,
   ServiceRecordInputError,
@@ -15187,48 +15187,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(taskCompletions)
         .where(eq(taskCompletions.houseId, houseId));
 
-      // 12-month rolling window: only count completions whose (year * 12 + month)
-      // falls within the last 12 calendar months (inclusive of the current month).
-      const now = new Date();
-      const cutoffAbsMonth = (now.getFullYear() - 1) * 12 + (now.getMonth() + 1);
-
-      const scoringCompletions = allCompletions.filter(
-        c => (c.year as number) * 12 + (c.month as number) >= cutoffAbsMonth
-      );
-      const historicalCompletions = allCompletions.filter(
-        c => (c.year as number) * 12 + (c.month as number) < cutoffAbsMonth
-      );
-
-      const scoringCount = scoringCompletions.length;
-      const historicalCount = historicalCompletions.length;
-
-      // ── Weighted score by verification tier ─────────────────────────────────
-      // contractor_verified = 4 pts, self_reported = 2.4 pts (60% weight)
-      // Soft cap: if ALL scored completions are self_reported, clamp the
-      // task-completion subtotal to 85 before adding the documentation bonus.
-      const contractorVerifiedCount = scoringCompletions.filter(
-        c => (c as any).verificationTier === 'contractor_verified',
-      ).length;
-      const selfReportedCount = scoringCount - contractorVerifiedCount;
-
-      const rawTaskScore = contractorVerifiedCount * 4 + selfReportedCount * 2.4;
-
-      const allSelfReported = scoringCount > 0 && contractorVerifiedCount === 0;
-      const taskScore = allSelfReported ? Math.min(rawTaskScore, 85) : rawTaskScore;
-
-      const docBonus = calculateMechanicalDocumentationBonus(house);
-      const score = Math.round(taskScore + docBonus);
+      const hwsScore = calculateHwsScore(allCompletions, house, {
+        rollingWindowMonths: 12,
+      });
 
       res.json({
-        score,
-        scoringCount,
-        historicalCount,
-        contractorVerifiedCount,
-        selfReportedCount,
+        score: hwsScore.score,
+        scoringCount: hwsScore.scoringCount,
+        historicalCount: hwsScore.historicalCount,
+        contractorVerifiedCount: hwsScore.contractorVerifiedCount,
+        photoVerifiedCount: hwsScore.photoVerifiedCount,
+        selfReportedCount: hwsScore.selfReportedCount,
         // Legacy fields for backward-compatible clients
-        completedTasks: scoringCount,
+        completedTasks: hwsScore.scoringCount,
         missedTasks: 0,
-        totalExpectedTasks: scoringCount,
+        totalExpectedTasks: hwsScore.scoringCount,
       });
     } catch (error) {
       console.error("Error calculating home health score:", error);
@@ -16039,12 +16012,8 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         storage.getCustomMaintenanceTasks(homeownerId, houseId),
       ]);
 
-      // Wellness score: canonical formula matching health-score endpoint (with tier weighting)
-      const _cvCount = completedTaskRows.filter(c => (c as any).verificationTier === 'contractor_verified').length;
-      const _srCount = completedTaskRows.length - _cvCount;
-      const _rawScore = _cvCount * 4 + _srCount * 2.4;
-      const _allSR = completedTaskRows.length > 0 && _cvCount === 0;
-      const wellnessScore = Math.round((_allSR ? Math.min(_rawScore, 85) : _rawScore) + calculateMechanicalDocumentationBonus(house));
+      const hwsScore = calculateHwsScore(completedTaskRows, house);
+      const wellnessScore = hwsScore.score;
 
       // Completed task titles for THIS month — used to filter out already-done tasks
       const completedThisMonth = new Set(
@@ -16134,7 +16103,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         `Date: ${monthNames[month - 1]} ${currentYear}`,
         `Season: ${season}`,
         `Climate zone / region: ${zone} (${regionName})`,
-        `Home wellness score: ${wellnessScore} (each completed task earns 4 points)`,
+        `Home wellness score: ${wellnessScore} (${hwsScore.verifiedCount} verified tasks @4pts, ${hwsScore.selfReportedCount} self-reported @2.4pts)`,
       ];
 
       if (currentMonthTasks.length > 0) {
@@ -16245,14 +16214,8 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
         ),
       ]);
 
-      // ── Canonical wellness score — weighted by verification tier ───────────
-      // contractor_verified = 4 pts, self_reported = 2.4 pts; soft cap at 85 when all self-reported
-      // (mirrors /api/houses/:id/health-score weighting exactly)
-      const _rrCvCount = completedTaskRows.filter(c => (c as any).verificationTier === 'contractor_verified').length;
-      const _rrSrCount = completedTaskRows.length - _rrCvCount;
-      const _rrRawScore = _rrCvCount * 4 + _rrSrCount * 2.4;
-      const _rrAllSR = completedTaskRows.length > 0 && _rrCvCount === 0;
-      const wellnessScore = Math.round((_rrAllSR ? Math.min(_rrRawScore, 85) : _rrRawScore) + calculateMechanicalDocumentationBonus(house));
+      const hwsScore = calculateHwsScore(completedTaskRows, house);
+      const wellnessScore = hwsScore.score;
 
       // Maintenance logs from last 3 years
       const recentLogs = allMaintenanceLogs.filter(log => {
@@ -16343,7 +16306,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
 
       const contextBlock = [
         `Property: ${house.address ?? "address not recorded"} — ${houseAgeStr}`,
-        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks — ${_rrCvCount} contractor-verified @4pts, ${_rrSrCount} self-reported @2.4pts${_rrAllSR ? ', soft-capped at 85' : ''})`,
+        `Home Wellness Score: ${wellnessScore} points (${completedTaskRows.length} total tasks — ${hwsScore.contractorVerifiedCount} contractor-verified @4pts, ${hwsScore.photoVerifiedCount} photo-verified @4pts, ${hwsScore.selfReportedCount} self-reported @2.4pts${hwsScore.allSelfReported ? ', soft-capped at 85' : ''})`,
         `Tasks completed this year (${currentYear}): ${completedThisYear}`,
         `Total maintenance log entries in last 3 years: ${recentLogs.length}`,
         recentLogs.length > 0 ? `Homeowner-logged service history:\n${logSummaryLines.join("\n")}` : "No homeowner maintenance log entries in last 3 years.",

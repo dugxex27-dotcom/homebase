@@ -414,6 +414,7 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
             homeownerId: OWNER_ID,
             year: recentYear,
             month: recentMonth,
+            verificationTier: "photo_verified",
           },
         ]),
       }),
@@ -487,7 +488,7 @@ describe("GET /api/houses/:id/health-score — 12-month scoring window", () => {
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockResolvedValue([
           // In-window: current month
-          { id: "tc-in", houseId: HOUSE_ID, homeownerId: OWNER_ID, year: recentYear, month: recentMonth },
+          { id: "tc-in", houseId: HOUSE_ID, homeownerId: OWNER_ID, year: recentYear, month: recentMonth, verificationTier: "photo_verified" },
           // Out-of-window: 2020
           { id: "tc-out", houseId: HOUSE_ID, homeownerId: OWNER_ID, year: 2020, month: 1 },
         ]),
