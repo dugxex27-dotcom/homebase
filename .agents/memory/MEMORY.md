@@ -5,6 +5,7 @@
 - [drizzle-kit push workaround](db-migrations.md) — use executeSql for migrations instead of drizzle-kit push (interactive prompt blocks CI)
 - [Apple StoreKit direct IAP](apple-storekit-iap.md) — cordova-plugin-purchase used directly (no RevenueCat) so Contractor Pro can stay Stripe-only
 - [GitHub sync workflow (push/token)](github-sync-workflow.md) — sync scripts gone; bash env has stale token; use Shell tab + REST API for GitHub pushes
+- [GitHub secret history decision](github-secret-history-policy.md) — keep the current-tree cleanup; do not rewrite or force-push existing Git history
 - [Stale session after server-side role change](stale-session-role-sync.md) — patch the *other* user's session in the store too, not just the acting user's, or they get 403s until re-login
 - [Stale-session revocation pattern](stale-session-revocation.md) — in-memory suspendedUserIds Set is process-local; use requireActiveAccountFresh's DB re-check + short TTL cache for cross-instance revocation
 - [Playwright testing in Replit NixOS](playwright-nixos-testing.md) — Chromium cannot run (missing libglib); use request fixture + REPLIT_DEV_DOMAIN baseURL instead
