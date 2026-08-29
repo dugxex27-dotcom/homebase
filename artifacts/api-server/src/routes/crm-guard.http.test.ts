@@ -190,7 +190,7 @@ describe("CRM guard — requireActiveAccountFresh closes the stale-session gap (
     expect(suspendedUserIds.has("user-crm-4")).toBe(true);
   });
 
-  it("degrades to next() (existing session guard still applies) when the DB call errors", async () => {
+  it("fails closed when the authoritative account-status lookup errors", async () => {
     (db.select as any).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -202,6 +202,7 @@ describe("CRM guard — requireActiveAccountFresh closes the stale-session gap (
 
     const response = await supertest(app).get("/api/crm/leads");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
+    expect(response.body.message).toMatch(/status temporarily unavailable/i);
   });
 });

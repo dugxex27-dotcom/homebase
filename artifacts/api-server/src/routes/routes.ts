@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { isConversationParticipant } from "./conversation-access";
+import { ensureHomeownerContactLead } from "./homeowner-contact-lead";
 import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
@@ -17940,10 +17941,26 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       );
       
       if (existing) {
+        if (userType === 'homeowner') {
+          await ensureHomeownerContactLead(storage, {
+            homeownerId: userId,
+            contractorId: existing.contractorId,
+            conversationId: existing.id,
+            subject: existing.subject,
+          });
+        }
         return res.json(existing);
       }
       
       const conversation = await storage.createConversation(conversationData);
+      if (userType === 'homeowner') {
+        await ensureHomeownerContactLead(storage, {
+          homeownerId: userId,
+          contractorId: conversation.contractorId,
+          conversationId: conversation.id,
+          subject: conversation.subject,
+        });
+      }
       res.status(201).json(conversation);
     } catch (error) {
       if (error instanceof z.ZodError) {

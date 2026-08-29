@@ -23,6 +23,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import { fetchCrmLeads } from "@/lib/crm-leads-query";
 import { ProFeatureGate, ProUpgradeBanner, ProBenefitsDialog } from "@/components/pro-feature-gate";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 import { CreditCard } from "lucide-react";
@@ -458,6 +459,12 @@ export default function ContractorCRMPage() {
   // Fetch leads
   const { data: leads, isLoading: isLoadingLeads } = useQuery<CrmLead[]>({
     queryKey: ['/api/crm/leads', { status: statusFilter, priority: priorityFilter, source: sourceFilter, searchQuery }],
+    queryFn: () => fetchCrmLeads<CrmLead>({
+      status: statusFilter,
+      priority: priorityFilter,
+      source: sourceFilter,
+      searchQuery,
+    }),
   });
 
   // Fetch integrations

@@ -38,3 +38,4 @@
 - [Static landing route rewrites](static-landing-route-rewrites.md) — exact-match public landing rewrites so nested SPA routes are not intercepted before React
 - [Authoritative account access checks](authoritative-account-access-checks.md) — protected access rechecks active status and fails closed when the status store is unavailable
 - [OAuth signup role intent](oauth-signup-role-intent.md) — OAuth intent may choose a role only for a brand-new account; it never promotes an existing account
+- [React Query object keys](react-query-object-keys.md) — this app’s default query function joins key segments into a path, so object segments require an explicit queryFn
