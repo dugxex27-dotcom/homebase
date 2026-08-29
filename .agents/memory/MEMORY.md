@@ -41,4 +41,4 @@
 - [React Query object keys](react-query-object-keys.md) — this app’s default query function joins key segments into a path, so object segments require an explicit queryFn
 - [Duplicate Stripe subscription remediation](duplicate-stripe-subscription-remediation.md) — preserve the app-referenced subscription; cancel/refund only the verified duplicate payment chain
 - [Safe webhook failure logging](safe-webhook-failure-logging.md) — log allowlisted reason codes, never arbitrary exception messages or names
-- [Linked evidence review concurrency](linked-evidence-review-concurrency.md) — human decisions and later confirmation must share one linkage-group lock and decision lookup
+- [Evidence and invoice scoring concurrency](linked-evidence-review-concurrency.md) — preserve evidence-group ordering; score dedup uses a canonical house/type/year lock

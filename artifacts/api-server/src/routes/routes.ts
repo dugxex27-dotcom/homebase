@@ -332,6 +332,53 @@ function findClientSuppliedVerificationFields(body: unknown): string[] {
   );
 }
 
+function resolveInvoiceServiceType(requested: unknown, stored: unknown): string {
+  const requestedValue = typeof requested === "string" ? requested.trim() : "";
+  if (requestedValue) return requestedValue;
+  const storedValue = typeof stored === "string" ? stored.trim() : "";
+  return storedValue || "maintenance";
+}
+
+export function normalizeInvoiceServiceType(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function resolveInvoiceScoringDate(
+  stored: unknown,
+  requested: unknown,
+): { serviceDate: string; date: Date; year: number } | null {
+  const storedValue = typeof stored === "string" ? stored.trim() : "";
+  const requestedValue = typeof requested === "string" ? requested.trim() : "";
+  const serviceDate =
+    storedValue
+    || requestedValue
+    || new Date().toISOString().split("T")[0];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return null;
+  const date = new Date(`${serviceDate}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return null;
+  const [year, month, day] = serviceDate.split("-").map(Number);
+  if (
+    date.getFullYear() !== year
+    || date.getMonth() + 1 !== month
+    || date.getDate() !== day
+  ) {
+    return null;
+  }
+  return { serviceDate, date, year };
+}
+
+export function invoiceScoringLockKey(
+  houseId: string,
+  normalizedServiceType: string,
+  scoringYear: number,
+): string {
+  return `maintenance-score:${JSON.stringify([
+    houseId,
+    normalizedServiceType,
+    scoringYear,
+  ])}`;
+}
+
 // Middleware to check homeowner subscription for paid features
 const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
   try {
@@ -22897,13 +22944,32 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .from(invoiceAnalyses)
         .where(eq(invoiceAnalyses.id, id));
       if (!preliminaryAnalysis) return res.status(404).json({ message: "Analysis not found" });
-      const groupLockKey = preliminaryAnalysis.taskCompletionId
+      const preliminaryServiceType = resolveInvoiceServiceType(
+        req.body?.serviceType,
+        preliminaryAnalysis.serviceType,
+      );
+      const preliminaryScoringDate = resolveInvoiceScoringDate(
+        preliminaryAnalysis.serviceDate,
+        req.body?.serviceDate,
+      );
+      if (!preliminaryScoringDate) {
+        return res.status(400).json({ message: "serviceDate must be a valid YYYY-MM-DD date" });
+      }
+      const scoringLockKey = invoiceScoringLockKey(
+        preliminaryAnalysis.houseId,
+        normalizeInvoiceServiceType(preliminaryServiceType),
+        preliminaryScoringDate.year,
+      );
+      await tx.execute(drizzleSql`
+        SELECT pg_advisory_xact_lock(hashtextextended(${scoringLockKey}, 0))
+      `);
+      const evidenceGroupLockKey = preliminaryAnalysis.taskCompletionId
         ? `maintenance-evidence-task:${preliminaryAnalysis.taskCompletionId}`
         : preliminaryAnalysis.maintenanceLogId
           ? `maintenance-evidence-log:${preliminaryAnalysis.maintenanceLogId}`
           : `maintenance-evidence-invoice:${preliminaryAnalysis.id}`;
       await tx.execute(drizzleSql`
-        SELECT pg_advisory_xact_lock(hashtextextended(${groupLockKey}, 0))
+        SELECT pg_advisory_xact_lock(hashtextextended(${evidenceGroupLockKey}, 0))
       `);
       await tx.execute(drizzleSql`
         SELECT id
@@ -22940,7 +23006,6 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } = req.body;
 
       const finalDescription = serviceDescription || analysis.serviceDescription || "Home Maintenance";
-      const finalDate = serviceDate || analysis.serviceDate || new Date().toISOString().split("T")[0];
       const rawTotalAmount = totalAmount ?? (analysis.totalAmount ? parseFloat(analysis.totalAmount) : null);
       let finalCost: number | null = null;
       if (rawTotalAmount !== null && rawTotalAmount !== undefined && rawTotalAmount !== "") {
@@ -22953,24 +23018,40 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const finalContractorName = contractorName || analysis.contractorName || null;
       const finalContractorCompany = contractorCompany || analysis.contractorCompany || null;
       const finalHomeArea = homeArea || analysis.homeArea || "other";
-      const finalServiceType = serviceType || analysis.serviceType || "maintenance";
+      const finalServiceType = resolveInvoiceServiceType(serviceType, analysis.serviceType);
+      const normalizedServiceType = normalizeInvoiceServiceType(finalServiceType);
+      const scoringDate = resolveInvoiceScoringDate(analysis.serviceDate, serviceDate);
+      if (!scoringDate) {
+        return res.status(400).json({ message: "serviceDate must be a valid YYYY-MM-DD date" });
+      }
+      const lockedScoringKey = invoiceScoringLockKey(
+        analysis.houseId,
+        normalizedServiceType,
+        scoringDate.year,
+      );
+      if (lockedScoringKey !== scoringLockKey) {
+        return res.status(409).json({
+          message: "Invoice scoring details changed during confirmation. Please retry.",
+        });
+      }
 
       // Duplicate-scoring guard: check for an existing scored maintenance log with the
-      // same house + serviceType within the same calendar year as the invoice's serviceDate.
+      // same house + normalized serviceType within the authoritative scoring year.
       // Prevents score inflation from confirming the same type of work twice in a year.
-      const scoringDateStr = analysis.serviceDate || finalDate;
-      const scoringDate = new Date(scoringDateStr + "T12:00:00");
-      const analysisYear = scoringDate.getFullYear();
-      const yearStart = `${analysisYear}-01-01`;
-      const yearEnd = `${analysisYear}-12-31`;
-      const [existingDupLog] = await tx.select().from(maintenanceLogs).where(
+      const yearStart = `${scoringDate.year}-01-01`;
+      const yearEnd = `${scoringDate.year}-12-31`;
+      const duplicateCandidates = await tx.select().from(maintenanceLogs).where(
         and(
           eq(maintenanceLogs.houseId, analysis.houseId),
-          eq(maintenanceLogs.serviceType as any, finalServiceType),
           isNotNull(maintenanceLogs.taskCompletionId),
           gte(maintenanceLogs.serviceDate as any, yearStart),
           lte(maintenanceLogs.serviceDate as any, yearEnd),
         )
+      );
+      const existingDupLog = duplicateCandidates.find(
+        (candidate) =>
+          normalizeInvoiceServiceType(candidate.serviceType || "")
+          === normalizedServiceType,
       );
       const isDuplicateScoring = !!existingDupLog;
       const verificationAudit = normalizeDIYVerificationAudit(
@@ -23028,8 +23109,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const logData = {
         homeownerId: req.session.user.id,
         houseId: analysis.houseId,
-        serviceDate: finalDate,
-        serviceType: finalServiceType,
+        serviceDate: scoringDate.serviceDate,
+        serviceType: normalizedServiceType,
         homeArea: finalHomeArea,
         serviceDescription: finalDescription,
         cost: finalCost !== null ? finalCost.toFixed(2) : null,
@@ -23079,8 +23160,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         taskTitle: finalDescription,
         taskCategory: finalHomeArea,
         completedAt: now,
-        month: scoringDate.getMonth() + 1,
-        year: scoringDate.getFullYear(),
+        month: scoringDate.date.getMonth() + 1,
+        year: scoringDate.year,
         completionMethod: analysis.completionMethod === "diy" ? "diy" : "professional",
         estimatedCost: null,
         actualCost: finalCost !== null ? finalCost.toFixed(2) : null,
@@ -23101,10 +23182,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       // Link taskCompletionId back to the maintenance log for bidirectional lookup
       await tx.update(maintenanceLogs).set({ taskCompletionId: insertedCompletion.id } as any).where(eq(maintenanceLogs.id, log.id));
+      const linkedLog = {
+        ...log,
+        taskCompletionId: insertedCompletion.id,
+      };
 
       confirmationResult = {
         analysis: updated,
-        maintenanceLog: log,
+        maintenanceLog: linkedLog,
         duplicateScoring: false,
       };
       });

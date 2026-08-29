@@ -655,6 +655,8 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     // year/month must come from analysis.serviceDate = 2020-03-15, never from the body.
     expect(insertedValues!.year).toBe(2020);
     expect(insertedValues!.month).toBe(3);
+    const insertedLog = findMaintenanceLogInsert(mockInsertValues);
+    expect(insertedLog?.serviceDate).toBe("2020-03-15");
 
     // Confirm the submitted recent date did NOT end up as year/month
     const submittedYear = recentDate.getFullYear();
@@ -1195,7 +1197,7 @@ describe("PATCH /api/maintenance-logs/:id — serviceDate locked on confirmed in
 // Guarantee: uploading and confirming the same invoice twice must not create
 // two taskCompletion rows for the same houseId + serviceType within the same
 // calendar year as the invoice's serviceDate.  The route queries maintenanceLogs
-// for an existing row with the same houseId, case-insensitive serviceType,
+// for an existing row with the same houseId, normalized serviceType,
 // non-null taskCompletionId, and serviceDate within the invoice's own year
 // (YYYY-01-01 … YYYY-12-31).  When a match is found the second confirmation
 // still creates a maintenance log (for the audit trail) but skips the
@@ -1259,7 +1261,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
 
     queueInvoiceConfirmQueries(
       recentAnalysisFixture(ANALYSIS_ID_B),
-      [{ id: LOG_ID }],
+      [{ id: LOG_ID, serviceType: "maintenance" }],
     );
 
     // db.update: only one call needed (mark analysis confirmed with taskCompletionId=null)
@@ -1312,7 +1314,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
       serviceDescription: "HVAC DIFFERENT WORDING",
     });
 
-    queueInvoiceConfirmQueries(analysisB, [{ id: LOG_ID }]);
+    queueInvoiceConfirmQueries(analysisB, [{ id: LOG_ID, serviceType: "maintenance" }]);
 
     const mockUpdateSet = vi.fn().mockReturnValueOnce({
       where: vi.fn().mockReturnValue({
@@ -1367,6 +1369,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
 
     expect(res.status).toBe(200);
     expect(res.body.duplicateScoring).toBe(false);
+    expect(res.body.maintenanceLog.taskCompletionId).toBe(TC_ID);
 
     // First confirmation must insert a taskCompletion
     const tcInsert = findTaskCompletionInsert(mockInsertValues);
@@ -1416,7 +1419,10 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     };
 
     // Duplicate check finds an existing scored log from the same 2020 window.
-    queueInvoiceConfirmQueries(oldAnalysisB, [{ id: "log-old-001" }]);
+    queueInvoiceConfirmQueries(oldAnalysisB, [{
+      id: "log-old-001",
+      serviceType: "maintenance",
+    }]);
 
     // db.update: one call — mark analysis confirmed with taskCompletionId=null
     const mockUpdateSet = vi.fn().mockReturnValueOnce({
