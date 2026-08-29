@@ -116,3 +116,10 @@ uri = "file://attached_assets/maintenance-template-counts.json"
 type = "unspecified"
 title = "Maintenance Template Counts"
 description = "Machine-readable counts and source breakdown for the maintenance template inventory."
+
+[[outputs]]
+id = "nnNRnBLm31u_1Ip2f9UXT"
+uri = "file://reports/maintenance-catalog-ground-truth.md"
+type = "text"
+title = "Complete US maintenance catalog ground truth"
+description = "Literal dump of all 1,098 US_MAINTENANCE_DATA task occurrences across seven regions, with month/type assignment, raw descriptions, priority inheritance, recurrence wording, and the year-round delivery bug diagnosis."
