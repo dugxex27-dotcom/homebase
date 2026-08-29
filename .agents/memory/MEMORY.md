@@ -40,3 +40,4 @@
 - [OAuth signup role intent](oauth-signup-role-intent.md) — OAuth intent may choose a role only for a brand-new account; it never promotes an existing account
 - [React Query object keys](react-query-object-keys.md) — this app’s default query function joins key segments into a path, so object segments require an explicit queryFn
 - [Duplicate Stripe subscription remediation](duplicate-stripe-subscription-remediation.md) — preserve the app-referenced subscription; cancel/refund only the verified duplicate payment chain
+- [Safe webhook failure logging](safe-webhook-failure-logging.md) — log allowlisted reason codes, never arbitrary exception messages or names

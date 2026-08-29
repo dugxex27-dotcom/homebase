@@ -42,6 +42,13 @@ import {
   normalizeServiceRecordMutationInput,
   ServiceRecordInputError,
 } from "../service-record-normalization";
+import {
+  checkStripeWebhookHealth,
+  getStripeWebhookHealthHttpStatus,
+  recordStripeWebhookFailure,
+  recordStripeWebhookSuccess,
+  STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+} from "../stripe-webhook-monitoring";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -2058,6 +2065,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe webhook handler - registered at both paths (Stripe dashboard uses /api/stripe/webhook)
   app.post(['/api/webhooks/stripe', '/api/stripe/webhook'], express.raw({ type: 'application/json' }), async (req: any, res: any) => {
     if (!stripe) {
+      recordStripeWebhookFailure({
+        statusCode: 500,
+        reason: "stripe_not_configured",
+      });
       return res.status(500).json({ error: 'Stripe not configured' });
     }
 
@@ -2065,7 +2076,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!webhookSecret) {
-      console.error('[STRIPE WEBHOOK] No webhook secret configured');
+      recordStripeWebhookFailure({
+        statusCode: 500,
+        reason: "webhook_secret_not_configured",
+      });
       return res.status(500).json({ error: 'Webhook secret not configured' });
     }
 
@@ -2074,7 +2088,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       event = stripe!.webhooks.constructEvent(req.body, sig as string, webhookSecret);
     } catch (err: any) {
-      console.error('[STRIPE WEBHOOK] Signature verification failed:', err.message);
+      recordStripeWebhookFailure({
+        statusCode: 400,
+        reason: "signature_verification_failed",
+        error: err,
+      });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -2084,6 +2102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // ── Layer 1: in-memory processed cache (warm path, no DB) ──────────────
     if (processedWebhookEventIds.has(eventId)) {
+      recordStripeWebhookSuccess();
       return res.json({ received: true, duplicate: true });
     }
 
@@ -2092,6 +2111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // arriving in the same event-loop tick cannot both slip through. Node.js
     // is single-threaded, so this check-then-add is atomic.
     if (inFlightWebhookEventIds.has(eventId)) {
+      recordStripeWebhookSuccess();
       return res.json({ received: true, duplicate: true });
     }
     inFlightWebhookEventIds.add(eventId);
@@ -2106,12 +2126,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (claim === 'committed') {
         enforceWebhookDedupCacheCap();
         processedWebhookEventIds.set(eventId, Date.now());
+        recordStripeWebhookSuccess();
         return res.json({ received: true, duplicate: true });
       }
 
       if (claim === 'pending' || claim === 'stale') {
         // Do not acknowledge a request another worker or the recovery path
         // owns. Stripe will retry after the active/recovery lease changes.
+        recordStripeWebhookFailure({
+          eventId,
+          eventType: event.type,
+          statusCode: 500,
+          reason: claim === 'pending'
+            ? 'event_claim_pending'
+            : 'event_claim_stale',
+          countsTowardOutage: false,
+        });
         return res.status(500).json({
           error: claim === 'pending'
             ? 'Stripe event is already being processed'
@@ -2137,9 +2167,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       enforceWebhookDedupCacheCap();
       processedWebhookEventIds.set(eventId, Date.now());
 
+      recordStripeWebhookSuccess();
       res.json({ received: true });
     } catch (error: any) {
-      console.error('[STRIPE WEBHOOK] Error processing event:', error);
+      recordStripeWebhookFailure({
+        eventId: event.id,
+        eventType: event.type,
+        statusCode: 500,
+        reason: "event_processing_failed",
+        error,
+      });
       res.status(500).json({ error: error.message });
     } finally {
       inFlightWebhookEventIds.delete(eventId);
@@ -5828,6 +5865,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     next();
   };
+
+  // Read-only webhook delivery health. This is intentionally separate from
+  // /api/stripe/health, which only verifies Stripe API connectivity.
+  app.get('/api/admin/stripe/webhook-health', requireAdmin, async (_req: any, res: any) => {
+    const health = await checkStripeWebhookHealth(
+      () => storage.getIncompleteStripeProcessedEvents(
+        STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+      ),
+    );
+    return res
+      .status(getStripeWebhookHealthHttpStatus(health))
+      .json(health);
+  });
 
   const isQaContractorIdentifier = async (id: string) => {
     const rows = await db

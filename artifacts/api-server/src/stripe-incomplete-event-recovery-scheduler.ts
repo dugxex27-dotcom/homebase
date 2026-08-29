@@ -1,5 +1,10 @@
 import { logger } from "./lib/logger";
 import { recoverIncompleteStripeEvents } from "./routes/routes";
+import { storage } from "./storage";
+import {
+  checkStripeWebhookHealth,
+  STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+} from "./stripe-webhook-monitoring";
 
 // How stale an incomplete event must be before we attempt recovery. Kept
 // short (relative to the 96h dedup TTL) so a crashed webhook handler doesn't
@@ -12,7 +17,18 @@ let schedulerInterval: NodeJS.Timeout | null = null;
 
 async function runRecoveryScan(): Promise<void> {
   try {
+    await checkStripeWebhookHealth(
+      () => storage.getIncompleteStripeProcessedEvents(
+        STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+      ),
+    );
+
     const results = await recoverIncompleteStripeEvents(OLDER_THAN_MINUTES);
+    await checkStripeWebhookHealth(
+      () => storage.getIncompleteStripeProcessedEvents(
+        STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+      ),
+    );
     if (results.length === 0) {
       return;
     }
