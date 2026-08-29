@@ -44,6 +44,9 @@ function adminSession(overrides: Record<string, unknown> = {}) {
     email: "owner@example.com",
     firstName: "Owner",
     subscriptionPlanId: null,
+    status: "active",
+    accountStatus: "active",
+    subscriptionStatus: "active",
     ...overrides,
   };
 }
@@ -236,8 +239,8 @@ function wireDbMocks(state: State, capturedInserts: any[]) {
           return hybrid(Promise.resolve([{ id: "plan-1", includedTechSeats: null, additionalSeatPrice: null }]));
         }
         if (table === users) {
-          if (projection && "status" in projection && Object.keys(projection).length === 1) {
-            return hybrid(Promise.resolve([{ status: "active" }]));
+          if (projection && "status" in projection) {
+            return hybrid(Promise.resolve([{ status: "active", accountStatus: "active" }]));
           }
           if (projection && "id" in projection && Object.keys(projection).length === 1) {
             return hybrid(Promise.resolve(state.techIds.map((id) => ({ id }))));
@@ -268,8 +271,20 @@ function wireDbMocks(state: State, capturedInserts: any[]) {
   }));
 }
 
+const CONTRACTOR_FIXTURE = {
+  id: ADMIN_ID,
+  email: "owner@example.com",
+  role: "contractor",
+  companyId: COMPANY_ID,
+  companyRole: "owner",
+  status: "active",
+  accountStatus: "active",
+  subscriptionStatus: "active",
+};
+
 beforeEach(() => {
   mockDbExecute.mockResolvedValue(undefined);
+  mockGetUser.mockResolvedValue(CONTRACTOR_FIXTURE);
 });
 
 afterEach(() => {
