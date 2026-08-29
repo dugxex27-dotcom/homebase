@@ -84,7 +84,21 @@ vi.mock("../db", () => ({
   pool: { query: vi.fn().mockResolvedValue(undefined), end: vi.fn() },
   db: {
     insert: vi.fn().mockReturnValue({ values: () => ({ returning: () => Promise.resolve([{ id: "seed" }]) }) }),
-    select: vi.fn().mockReturnValue({ from: () => ({ where: () => Promise.resolve([]) }) }),
+    select: vi.fn().mockImplementation(() => ({
+      from: () => ({
+        where: () => {
+          const activeAccount = Promise.resolve([{
+            status: "active",
+            accountStatus: "active",
+          }]);
+          return {
+            then: activeAccount.then.bind(activeAccount),
+            catch: activeAccount.catch.bind(activeAccount),
+            limit: () => activeAccount,
+          };
+        },
+      }),
+    })),
     update: vi.fn().mockReturnValue({ set: () => ({ where: () => Promise.resolve(undefined) }) }),
     execute: vi.fn().mockResolvedValue(undefined),
     delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
@@ -158,7 +172,12 @@ async function buildApp(sessionUser: Record<string, unknown>) {
       (sessionUser.id === CONTRACTOR_ID ? "contractor" : "homeowner");
     req.session = {
       isAuthenticated: true,
-      user: { role, ...sessionUser },
+      user: {
+        status: "active",
+        accountStatus: "active",
+        role,
+        ...sessionUser,
+      },
       save: (cb: (err?: any) => void) => cb(),
     };
     next();

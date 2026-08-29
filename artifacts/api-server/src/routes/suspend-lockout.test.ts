@@ -55,9 +55,11 @@ const ADMIN_SESSION = {
   user: {
     id: "admin-owner-001",
     email: "owner@company.test",
+    role: "contractor",
     companyId: "company-001",
     companyRole: "owner",
     status: "active",
+    accountStatus: "active",
     firstName: "Admin",
     lastName: "Owner",
   },
@@ -67,9 +69,11 @@ const TARGET_SESSION = {
   user: {
     id: "tech-user-001",
     email: "tech@company.test",
+    role: "contractor",
     companyId: "company-001",
     companyRole: "tech",
     status: "active",
+    accountStatus: "active",
     firstName: "Tech",
     lastName: "User",
   },
@@ -267,7 +271,13 @@ vi.mock("../security-audit", () => ({
 }));
 vi.mock("../storage", async () => {
   const { createStorageMock } = await import("../test-helpers/storage-mock");
-  return { storage: createStorageMock() };
+  return {
+    storage: createStorageMock({
+      claimStripeEvent: vi.fn().mockResolvedValue("claimed"),
+      refreshStripeEventClaim: vi.fn().mockResolvedValue(true),
+      markStripeEventCommitted: vi.fn().mockResolvedValue(true),
+    }),
+  };
 });
 vi.mock("../db", () => ({
   pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },

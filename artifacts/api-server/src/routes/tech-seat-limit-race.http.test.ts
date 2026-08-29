@@ -56,6 +56,9 @@ function adminSession(overrides: Record<string, unknown> = {}) {
     role: "contractor",
     companyId: COMPANY_ID,
     companyRole: "owner",
+    status: "active",
+    accountStatus: "active",
+    subscriptionStatus: "active",
     email: "owner@example.com",
     firstName: "Owner",
     subscriptionPlanId: null,
@@ -288,6 +291,17 @@ function wireDbMocks(state: SeatState, capturedInserts: any[]) {
           return hybrid(Promise.resolve([{ id: "plan-1", includedTechSeats: state.planIncludedTechSeats, additionalSeatPrice: state.additionalSeatPrice }]));
         }
         if (table === users) {
+          if (
+            projection &&
+            "status" in projection &&
+            "accountStatus" in projection
+          ) {
+            // isAuthenticated / requireNotSuspended fresh account-status check.
+            return hybrid(Promise.resolve([{
+              status: "active",
+              accountStatus: "active",
+            }]));
+          }
           if (projection && "status" in projection && Object.keys(projection).length === 1) {
             // requireNotSuspended / getUserStatusCached / recheckSuspensionFromDb
             return hybrid(Promise.resolve([{ status: "active" }]));
