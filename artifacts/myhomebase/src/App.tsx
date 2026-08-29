@@ -233,6 +233,7 @@ const AdminDashboard = lazy(() => import("./pages/admin"));
 const AdminSupport = lazy(() => import("./pages/admin-support"));
 const AdminFlaggedReviews = lazy(() => import("./pages/admin-flagged-reviews"));
 const AdminDemoLeads = lazy(() => import("./pages/admin-demo-leads"));
+const AdminMaintenanceEvidenceReviews = lazy(() => import("./pages/admin-maintenance-evidence-reviews"));
 const DeveloperConsole = lazy(() => import("./pages/developer-console"));
 const QaAdminConsole = lazy(() => import("./pages/qa-admin-console"));
 
@@ -482,6 +483,7 @@ function Router() {
           <>
             <Route path="/admin/developer-console" component={DeveloperConsole} />
             <Route path="/admin/flagged-reviews" component={AdminFlaggedReviews} />
+            <Route path="/admin/maintenance-evidence-reviews" component={AdminMaintenanceEvidenceReviews} />
             <Route path="/admin/demo-leads" component={AdminDemoLeads} />
             <Route path="/admin/support/:id" component={AdminSupport} />
             <Route path="/admin/support" component={AdminSupport} />

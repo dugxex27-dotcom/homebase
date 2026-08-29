@@ -20,7 +20,7 @@ import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, getMockInvoiceExtraction, getMockDIYVerification, type DIYVerification, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
+import { invoiceAnalyses, maintenanceEvidenceReviews, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -50,6 +50,13 @@ import {
   recordStripeWebhookSuccess,
   STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
 } from "../stripe-webhook-monitoring";
+import {
+  getResolvedHumanReviewForInvoice,
+  loadMaintenanceEvidenceReviewItems,
+  MaintenanceEvidenceReviewError,
+  recordMaintenanceEvidenceReview,
+  resubmitMaintenanceEvidence,
+} from "../maintenance-evidence-review";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -5136,6 +5143,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve uploaded files
   app.get("/objects/*objectPath", isAuthenticated, async (req: any, res: any) => {
     try {
+      // Maintenance evidence has record-level authorization and must only be
+      // served by the dedicated route below, never by this generic object path.
+      if (req.path.startsWith("/objects/maintenance-evidence/")) {
+        return res.sendStatus(404);
+      }
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -6136,6 +6148,262 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     next();
   };
+
+  const maintenanceEvidenceReviewSourceSchema = z.enum(["maintenance", "invoice"]);
+  const maintenanceEvidenceReviewDecisionSchema = z.object({
+    decision: z.enum(["approve", "reject", "request_more_info"]),
+    notes: z.string().max(4000).nullable().optional(),
+  }).superRefine((value, context) => {
+    if (value.decision === "request_more_info" && !value.notes?.trim()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["notes"],
+        message: "A note is required when requesting more information",
+      });
+    }
+  });
+  const homeownerEvidenceFilesSchema = z.object({
+    fileData: z.string().min(1),
+    fileName: z.string().min(1).max(255),
+    fileType: z.string().min(1).max(100),
+  });
+  const homeownerEvidenceResubmissionSchema = z.object({
+    beforePhotoFiles: z.array(homeownerEvidenceFilesSchema).max(10).default([]),
+    afterPhotoFiles: z.array(homeownerEvidenceFilesSchema).max(10).default([]),
+    receiptFiles: z.array(homeownerEvidenceFilesSchema).max(10).default([]),
+  }).superRefine((value, context) => {
+    const total = value.beforePhotoFiles.length + value.afterPhotoFiles.length + value.receiptFiles.length;
+    if (total < 1) context.addIssue({ code: z.ZodIssueCode.custom, message: "Please add at least one file." });
+    if (total > 10) context.addIssue({ code: z.ZodIssueCode.custom, message: "Please upload at most 10 files." });
+  });
+  const requireHomeownerEvidenceAccess: any = async (req: any, res: any, next: any) => {
+    const user = await storage.getUser(req.session?.user?.id);
+    if (!user || user.role !== "homeowner") return res.status(403).json({ message: "Homeowner access required" });
+    next();
+  };
+
+  const loadHomeownerEvidenceSource = async (sourceType: "maintenance" | "invoice", sourceId: string, homeownerId: string) => {
+    const table = sourceType === "maintenance" ? maintenanceLogs : invoiceAnalyses;
+    const [source] = await db.select().from(table).where(eq(table.id, sourceId)).limit(1);
+    return source && source.homeownerId === homeownerId ? source : null;
+  };
+
+  app.get("/api/maintenance-evidence/objects", isAuthenticated, async (req: any, res: any) => {
+    try {
+      const objectPath = typeof req.query.path === "string" ? req.query.path : "";
+      if (!/^\/objects\/maintenance-evidence\/[0-9a-f-]+(?:\.[a-z0-9]+)?$/i.test(objectPath)) return res.sendStatus(404);
+      const [log] = await db.select({ homeownerId: maintenanceLogs.homeownerId }).from(maintenanceLogs)
+        .where(or(
+          drizzleSql`${objectPath} = ANY(${maintenanceLogs.beforePhotoUrls})`,
+          drizzleSql`${objectPath} = ANY(${maintenanceLogs.afterPhotoUrls})`,
+          drizzleSql`${objectPath} = ANY(${maintenanceLogs.receiptUrls})`,
+        )).limit(1);
+      const [analysis] = log ? [] : await db.select({ homeownerId: invoiceAnalyses.homeownerId }).from(invoiceAnalyses)
+        .where(or(
+          drizzleSql`${objectPath} = ANY(${invoiceAnalyses.beforePhotoUrls})`,
+          drizzleSql`${objectPath} = ANY(${invoiceAnalyses.afterPhotoUrls})`,
+          drizzleSql`${objectPath} = ANY(${invoiceAnalyses.receiptUrls})`,
+          drizzleSql`${objectPath} = ANY(${invoiceAnalyses.invoiceUrls})`,
+        )).limit(1);
+      const ownerId = log?.homeownerId ?? analysis?.homeownerId;
+      if (!ownerId) return res.sendStatus(404);
+      const user = await storage.getUser(req.session.user.id);
+      const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+      const isAuthorizedAdmin = !!user && !user.isQaAccount && !!user.email && adminEmails.includes(user.email.toLowerCase());
+      if (ownerId !== req.session.user.id && !isAuthorizedAdmin) return res.sendStatus(404);
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      return objectStorageService.downloadObject(objectFile, res, 3600, "inline");
+    } catch (error) {
+      if (error instanceof ObjectNotFoundError) return res.sendStatus(404);
+      console.error("Error serving maintenance evidence object:", error);
+      return res.status(500).json({ message: "Unable to retrieve evidence file" });
+    }
+  });
+
+  app.get("/api/homeowner/maintenance-evidence/:sourceType/:sourceId/context", isAuthenticated, requireHomeownerEvidenceAccess, async (req: any, res: any) => {
+    try {
+      const sourceType = maintenanceEvidenceReviewSourceSchema.parse(req.params.sourceType);
+      const source = await loadHomeownerEvidenceSource(sourceType, req.params.sourceId, req.session.user.id);
+      if (!source || source.aiVerificationStatus !== "review_needed") return res.status(404).json({ message: "Evidence request not found" });
+      const reviewColumn = sourceType === "maintenance"
+        ? maintenanceEvidenceReviews.maintenanceLogId
+        : maintenanceEvidenceReviews.invoiceAnalysisId;
+      const [latestReview] = await db.select().from(maintenanceEvidenceReviews)
+        .where(and(eq(reviewColumn, source.id), eq(maintenanceEvidenceReviews.decision, "request_more_info")))
+        .orderBy(desc(maintenanceEvidenceReviews.createdAt)).limit(1);
+      return res.json({
+        title: source.serviceDescription ?? source.serviceType ?? "Maintenance evidence",
+        note: latestReview?.notes ?? "Please provide additional evidence for this service record.",
+        evidenceCounts: {
+          beforePhotos: source.beforePhotoUrls?.length ?? 0,
+          afterPhotos: source.afterPhotoUrls?.length ?? 0,
+          receipts: (source.receiptUrls?.length ?? 0) + (sourceType === "invoice" ? (source as any).invoiceUrls?.length ?? 0 : 0),
+        },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid evidence request" });
+      console.error("Error loading homeowner evidence context:", error);
+      return res.status(500).json({ message: "Unable to load this evidence request" });
+    }
+  });
+
+  app.post("/api/homeowner/maintenance-evidence/:sourceType/:sourceId/resubmit", isAuthenticated, requireHomeownerEvidenceAccess, async (req: any, res: any) => {
+    const uploadedPaths: string[] = [];
+    try {
+      const sourceType = maintenanceEvidenceReviewSourceSchema.parse(req.params.sourceType);
+      const input = homeownerEvidenceResubmissionSchema.parse(req.body);
+      const imageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp"]);
+      const receiptTypes = new Set([...imageTypes, "application/pdf"]);
+      const groups = [
+        ...input.beforePhotoFiles.map((file) => ({ file, role: "before" })),
+        ...input.afterPhotoFiles.map((file) => ({ file, role: "after" })),
+        ...input.receiptFiles.map((file) => ({ file, role: "receipt" })),
+      ];
+      let totalBytes = 0;
+      for (const { file, role } of groups) {
+        const mime = file.fileType.toLowerCase();
+        if (!(role === "receipt" ? receiptTypes : imageTypes).has(mime)) {
+          return res.status(400).json({ message: role === "receipt" ? "Receipts must be an image or PDF." : "Before and after files must be JPEG, PNG, or WebP images." });
+        }
+        const payload = file.fileData.replace(/^data:[^;]+;base64,/, "");
+        if (!/^[A-Za-z0-9+/]*={0,2}$/.test(payload) || payload.length === 0) return res.status(400).json({ message: "One of the selected files is invalid." });
+        const bytes = Buffer.from(payload, "base64");
+        if (bytes.length === 0 || bytes.length > 20 * 1024 * 1024) return res.status(413).json({ message: "Each file must be 20 MB or smaller." });
+        totalBytes += bytes.length;
+      }
+      if (totalBytes > 50 * 1024 * 1024) return res.status(413).json({ message: "Total upload size must be 50 MB or smaller." });
+
+      const source = await loadHomeownerEvidenceSource(sourceType, req.params.sourceId, req.session.user.id);
+      if (!source || source.aiVerificationStatus !== "review_needed") return res.status(404).json({ message: "Evidence request not found" });
+      const uploaded: Array<{ role: string; url: string; hash: string }> = [];
+      // Upload serially so a failure cannot race cleanup while other writes are
+      // still succeeding in the background.
+      for (const { file, role } of groups) {
+        const payload = file.fileData.replace(/^data:[^;]+;base64,/, "");
+        const buffer = Buffer.from(payload, "base64");
+        const extension = file.fileType === "application/pdf" ? "pdf" : (file.fileType.split("/")[1] === "jpeg" ? "jpg" : file.fileType.split("/")[1]);
+        const key = `maintenance-evidence/${randomUUID()}.${extension}`;
+        const url = await objectStorageService.uploadPrivateFile(key, buffer, file.fileType);
+        uploadedPaths.push(url);
+        uploaded.push({ role, url, hash: createHash("sha256").update(buffer).digest("hex") });
+      }
+      const result = await resubmitMaintenanceEvidence(db, {
+        sourceType, sourceId: req.params.sourceId, homeownerId: req.session.user.id,
+        beforeUrls: uploaded.filter((item) => item.role === "before").map((item) => item.url),
+        afterUrls: uploaded.filter((item) => item.role === "after").map((item) => item.url),
+        receiptUrls: uploaded.filter((item) => item.role === "receipt").map((item) => item.url),
+        beforeHashes: uploaded.filter((item) => item.role === "before").map((item) => item.hash),
+        afterHashes: uploaded.filter((item) => item.role === "after").map((item) => item.hash),
+        receiptHashes: uploaded.filter((item) => item.role === "receipt").map((item) => item.hash),
+      });
+      return res.status(201).json({ message: "Your additional evidence was submitted for review.", ...result });
+    } catch (error) {
+      await Promise.allSettled(uploadedPaths.map((url) => objectStorageService.deletePrivateFile(url)));
+      if (error instanceof z.ZodError) return res.status(400).json({ message: "Invalid evidence files", errors: error.issues });
+      if (error instanceof MaintenanceEvidenceReviewError) return res.status(error.status).json({ message: error.message, code: error.code });
+      console.error("Error resubmitting homeowner evidence:", error);
+      return res.status(500).json({ message: "Unable to submit evidence. Please try again." });
+    }
+  });
+
+  app.get("/api/admin/maintenance-evidence-reviews", requireAdmin, async (_req: any, res: any) => {
+    try {
+      const items = await loadMaintenanceEvidenceReviewItems(db);
+      res.json(items);
+    } catch (error) {
+      console.error("Error loading maintenance evidence review queue:", error);
+      res.status(500).json({ message: "Failed to load maintenance evidence review queue" });
+    }
+  });
+
+  app.get(
+    "/api/admin/maintenance-evidence-reviews/:sourceType/:sourceId",
+    requireAdmin,
+    async (req: any, res: any) => {
+      try {
+        const sourceType = maintenanceEvidenceReviewSourceSchema.parse(req.params.sourceType);
+        const items = await loadMaintenanceEvidenceReviewItems(db);
+        const item = items.find(
+          (candidate) =>
+            candidate.sourceType === sourceType
+            && candidate.sourceId === req.params.sourceId,
+        );
+        if (!item) {
+          return res.status(404).json({ message: "Maintenance evidence review item not found" });
+        }
+        return res.json(item);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid evidence source", errors: error.issues });
+        }
+        console.error("Error loading maintenance evidence review detail:", error);
+        return res.status(500).json({ message: "Failed to load maintenance evidence review detail" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/maintenance-evidence-reviews/:sourceType/:sourceId/decisions",
+    requireAdmin,
+    async (req: any, res: any) => {
+      try {
+        const sourceType = maintenanceEvidenceReviewSourceSchema.parse(req.params.sourceType);
+        const input = maintenanceEvidenceReviewDecisionSchema.parse(req.body);
+        const review = await recordMaintenanceEvidenceReview(db, {
+          sourceType,
+          sourceId: req.params.sourceId,
+          decision: input.decision,
+          notes: input.notes,
+          reviewerId: req.session.user.id,
+          reviewerEmail: req.session.user.email || "",
+        });
+
+        await auditLogger.logAdminAction({
+          userId: req.session.user.id,
+          userEmail: req.session.user.email || "",
+          eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
+          action: "Reviewed maintenance evidence",
+          details: {
+            sourceType,
+            sourceId: req.params.sourceId,
+            decision: input.decision,
+            evidenceReviewId: review.id,
+          },
+          req,
+        });
+        if (input.decision === "request_more_info") {
+          try {
+            const source = sourceType === "maintenance"
+              ? (await db.select().from(maintenanceLogs).where(eq(maintenanceLogs.id, req.params.sourceId)).limit(1))[0]
+              : (await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, req.params.sourceId)).limit(1))[0];
+            if (source?.homeownerId) {
+              await createNotificationSafely(storage, createImmediateNotification({
+                homeownerId: source.homeownerId,
+                type: "maintenance_evidence_request",
+                category: notificationCategories.regionalMaintenance,
+                title: "More maintenance evidence requested",
+                message: input.notes!.trim(),
+                actionUrl: `/service-records?sourceType=${sourceType}&sourceId=${encodeURIComponent(req.params.sourceId)}&evidenceReview=1`,
+              }), `homeowner evidence request ${review.id}`);
+            }
+          } catch (notificationError) {
+            console.error("Failed to prepare homeowner evidence notification; decision was recorded.", notificationError);
+          }
+        }
+
+        return res.status(201).json(review);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({ message: "Invalid review decision", errors: error.issues });
+        }
+        if (error instanceof MaintenanceEvidenceReviewError) {
+          return res.status(error.status).json({ message: error.message, code: error.code });
+        }
+        console.error("Error recording maintenance evidence review:", error);
+        return res.status(500).json({ message: "Failed to record maintenance evidence review" });
+      }
+    },
+  );
 
   // Read-only webhook delivery health. This is intentionally separate from
   // /api/stripe/health, which only verifies Stripe API connectivity.
@@ -22618,10 +22886,35 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.patch("/api/invoice-analyses/:id/confirm", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { id } = req.params;
-      const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
+      let confirmationResult: {
+        analysis: typeof invoiceAnalyses.$inferSelect;
+        maintenanceLog: typeof maintenanceLogs.$inferSelect;
+        duplicateScoring: boolean;
+      } | null = null;
+      await db.transaction(async (tx) => {
+      const [preliminaryAnalysis] = await tx
+        .select()
+        .from(invoiceAnalyses)
+        .where(eq(invoiceAnalyses.id, id));
+      if (!preliminaryAnalysis) return res.status(404).json({ message: "Analysis not found" });
+      const groupLockKey = preliminaryAnalysis.taskCompletionId
+        ? `maintenance-evidence-task:${preliminaryAnalysis.taskCompletionId}`
+        : preliminaryAnalysis.maintenanceLogId
+          ? `maintenance-evidence-log:${preliminaryAnalysis.maintenanceLogId}`
+          : `maintenance-evidence-invoice:${preliminaryAnalysis.id}`;
+      await tx.execute(drizzleSql`
+        SELECT pg_advisory_xact_lock(hashtextextended(${groupLockKey}, 0))
+      `);
+      await tx.execute(drizzleSql`
+        SELECT id
+        FROM invoice_analyses
+        WHERE id = ${id}
+        FOR UPDATE
+      `);
+      const [analysis] = await tx.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
       if (!analysis) return res.status(404).json({ message: "Analysis not found" });
       if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
-      if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
+      if (analysis.status !== "pending") return res.status(409).json({ message: "Analysis already processed" });
 
       // DIY analyses must be verified before confirmation — require diyVerified flag
       // AND persisted before+after photos to prevent flag-only bypass
@@ -22670,7 +22963,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const analysisYear = scoringDate.getFullYear();
       const yearStart = `${analysisYear}-01-01`;
       const yearEnd = `${analysisYear}-12-31`;
-      const [existingDupLog] = await db.select().from(maintenanceLogs).where(
+      const [existingDupLog] = await tx.select().from(maintenanceLogs).where(
         and(
           eq(maintenanceLogs.houseId, analysis.houseId),
           eq(maintenanceLogs.serviceType as any, finalServiceType),
@@ -22684,7 +22977,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         analysis.aiVerificationStatus,
         analysis.aiVerificationResponse,
       );
-      const evidenceDecision = decidePhotoEvidence({
+      const automatedEvidenceDecision = decidePhotoEvidence({
         completionMethod: analysis.completionMethod,
         hasPhotoEvidence:
           (analysis.beforePhotoUrls?.length ?? 0) > 0
@@ -22701,8 +22994,33 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         duplicatePhotoHashDetected: verificationAudit.duplicatePhotoHashDetected,
         existingReasonCodes: verificationAudit.reasonCodes,
       });
+      const humanReview = await getResolvedHumanReviewForInvoice(tx, analysis.id);
+      const evidenceDecision = humanReview?.decision === "approve"
+        ? {
+            ...automatedEvidenceDecision,
+            outcome: "approved" as const,
+            verificationTier: "photo_verified" as const,
+            aiVerificationStatus: "verified" as const,
+          }
+        : humanReview?.decision === "reject"
+          ? {
+              ...automatedEvidenceDecision,
+              outcome: "rejected" as const,
+              verificationTier: "self_reported" as const,
+              aiVerificationStatus: "rejected" as const,
+            }
+          : automatedEvidenceDecision;
       const finalVerificationResponse = {
         ...(verificationAudit.response ?? {}),
+        automatedFinalEvidenceDecision: automatedEvidenceDecision,
+        humanReviewDecision: humanReview
+          ? {
+              id: humanReview.id,
+              decision: humanReview.decision,
+              reviewerId: humanReview.reviewerId,
+              reviewedAt: humanReview.createdAt,
+            }
+          : null,
         finalEvidenceDecision: evidenceDecision,
       };
 
@@ -22728,23 +23046,32 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         beforePhotoHashes: verificationAudit.beforePhotoHashes,
         afterPhotoHashes: verificationAudit.afterPhotoHashes,
       };
-      const log = await storage.createMaintenanceLog(logData);
+      const [log] = await tx.insert(maintenanceLogs).values({
+        ...logData,
+        id: randomUUID(),
+        createdAt: new Date(),
+      }).returning();
 
       if (isDuplicateScoring) {
         // Skip task-completion insert: same service-type already scored this year
         const nowDup = new Date();
-        const [updatedDup] = await db.update(invoiceAnalyses)
+        const [updatedDup] = await tx.update(invoiceAnalyses)
           .set({ status: "confirmed", maintenanceLogId: log.id, taskCompletionId: null, confirmedAt: nowDup })
           .where(eq(invoiceAnalyses.id, id))
           .returning();
-        return res.json({ analysis: updatedDup, maintenanceLog: log, newAchievements: [], duplicateScoring: true });
+        confirmationResult = {
+          analysis: updatedDup,
+          maintenanceLog: log,
+          duplicateScoring: true,
+        };
+        return;
       }
 
       // Create task completion record for health score.
       // year/month are derived from the invoice's serviceDate (analysis-stored), NOT
       // from today, to prevent score inflation via confirming old invoices at a recent date.
       const now = new Date();
-      const [insertedCompletion] = await db.insert(taskCompletions).values({
+      const [insertedCompletion] = await tx.insert(taskCompletions).values({
         homeownerId: req.session.user.id,
         houseId: analysis.houseId,
         taskId: null,
@@ -22767,18 +23094,44 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }).returning();
 
       // Update analysis record to confirmed, link both log and task completion
-      const [updated] = await db.update(invoiceAnalyses)
+      const [updated] = await tx.update(invoiceAnalyses)
         .set({ status: "confirmed", maintenanceLogId: log.id, taskCompletionId: insertedCompletion.id, confirmedAt: now })
         .where(eq(invoiceAnalyses.id, id))
         .returning();
 
       // Link taskCompletionId back to the maintenance log for bidirectional lookup
-      await db.update(maintenanceLogs).set({ taskCompletionId: insertedCompletion.id } as any).where(eq(maintenanceLogs.id, log.id));
+      await tx.update(maintenanceLogs).set({ taskCompletionId: insertedCompletion.id } as any).where(eq(maintenanceLogs.id, log.id));
 
-      // Check achievements
-      const newAchievements = await storage.checkAndAwardAchievements(req.session.user.id);
-
-      res.json({ analysis: updated, maintenanceLog: log, newAchievements: newAchievements || [], duplicateScoring: false });
+      confirmationResult = {
+        analysis: updated,
+        maintenanceLog: log,
+        duplicateScoring: false,
+      };
+      });
+      if (res.headersSent) return;
+      if (!confirmationResult) {
+        throw new Error("Invoice confirmation completed without a result");
+      }
+      let newAchievements: unknown[] = [];
+      if (!(confirmationResult as { duplicateScoring: boolean }).duplicateScoring) {
+        try {
+          newAchievements =
+            await storage.checkAndAwardAchievements(req.session.user.id) || [];
+        } catch (achievementError) {
+          console.error(
+            "[INVOICE ANALYSIS] post-confirm achievement check failed:",
+            achievementError,
+          );
+        }
+      }
+      return res.json({
+        ...(confirmationResult as {
+          analysis: typeof invoiceAnalyses.$inferSelect;
+          maintenanceLog: typeof maintenanceLogs.$inferSelect;
+          duplicateScoring: boolean;
+        }),
+        newAchievements,
+      });
     } catch (err: any) {
       console.error("[INVOICE ANALYSIS] confirm error:", err);
       res.status(500).json({ message: "Failed to confirm invoice analysis" });

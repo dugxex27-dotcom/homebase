@@ -297,3 +297,36 @@ describe("GET /api/admin/demo-leads", () => {
     expect(mockDbWhere.mock.calls[mockDbWhere.mock.calls.length - 1][0]).toBeUndefined();
   });
 });
+
+describe("GET /api/admin/maintenance-evidence-reviews authorization", () => {
+  let previousAdminEmails: string | undefined;
+
+  beforeEach(() => {
+    previousAdminEmails = process.env.ADMIN_EMAILS;
+    process.env.ADMIN_EMAILS = ADMIN_EMAIL;
+    mockGetUser.mockReset();
+  });
+
+  afterEach(() => {
+    process.env.ADMIN_EMAILS = previousAdminEmails;
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when there is no authenticated session", async () => {
+    const app = await buildApp(null);
+
+    const res = await request(app).get("/api/admin/maintenance-evidence-reviews");
+
+    expect(res.status).toBe(401);
+    expect(mockDbSelect).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when the caller is not on the admin allow-list", async () => {
+    const app = await buildApp({ id: "regular-001", email: NON_ADMIN_EMAIL });
+
+    const res = await request(app).get("/api/admin/maintenance-evidence-reviews");
+
+    expect(res.status).toBe(403);
+    expect(mockDbSelect).not.toHaveBeenCalled();
+  });
+});

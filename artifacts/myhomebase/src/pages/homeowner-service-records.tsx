@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -138,6 +138,55 @@ export default function HomeownerServiceRecords() {
   const [aiSelectedHouseId, setAiSelectedHouseId] = useState("");
   const [highlightedLogId, setHighlightedLogId] = useState<string | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [evidenceReviewSource, setEvidenceReviewSource] = useState<{ sourceType: "maintenance" | "invoice"; sourceId: string } | null>(null);
+  const [evidenceFiles, setEvidenceFiles] = useState<{ before: File[]; after: File[]; receipt: File[] }>({ before: [], after: [], receipt: [] });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sourceType = params.get("sourceType");
+    const sourceId = params.get("sourceId");
+    if (params.get("evidenceReview") === "1" && (sourceType === "maintenance" || sourceType === "invoice") && sourceId) {
+      setEvidenceReviewSource({ sourceType, sourceId });
+    }
+  }, []);
+
+  const clearEvidenceReviewUrl = () => {
+    window.history.replaceState(null, "", window.location.pathname);
+    setEvidenceReviewSource(null);
+    setEvidenceFiles({ before: [], after: [], receipt: [] });
+  };
+  const { data: evidenceReviewContext, isError: evidenceReviewContextError } = useQuery<{
+    title: string; note: string; evidenceCounts: { beforePhotos: number; afterPhotos: number; receipts: number };
+  }>({
+    queryKey: ["/api/homeowner/maintenance-evidence", evidenceReviewSource?.sourceType, evidenceReviewSource?.sourceId, "context"],
+    enabled: !!evidenceReviewSource,
+    queryFn: async () => {
+      const response = await fetch(`/api/homeowner/maintenance-evidence/${evidenceReviewSource!.sourceType}/${evidenceReviewSource!.sourceId}/context`);
+      if (!response.ok) throw new Error("This evidence request is no longer available.");
+      return response.json();
+    },
+  });
+  const resubmitEvidenceMutation = useMutation({
+    mutationFn: async () => {
+      if (!evidenceReviewSource) throw new Error("No evidence request selected.");
+      const files = async (items: File[]) => Promise.all(items.map(async (file) => ({
+        fileData: await fileToBase64Uri(file), fileName: file.name, fileType: file.type,
+      })));
+      const response = await apiRequest(`/api/homeowner/maintenance-evidence/${evidenceReviewSource.sourceType}/${evidenceReviewSource.sourceId}/resubmit`, "POST", {
+        beforePhotoFiles: await files(evidenceFiles.before),
+        afterPhotoFiles: await files(evidenceFiles.after),
+        receiptFiles: await files(evidenceFiles.receipt),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
+      toast({ title: "Evidence submitted", description: "Your additional evidence has been sent for review." });
+      clearEvidenceReviewUrl();
+    },
+    onError: (error: Error) => toast({ title: "Could not submit evidence", description: error.message || "Please try again.", variant: "destructive" }),
+  });
 
 
   // Load houses
@@ -209,6 +258,10 @@ export default function HomeownerServiceRecords() {
       reader.onerror = (error) => reject(error);
     });
   };
+  const evidenceObjectUrl = (url: string) =>
+    url.startsWith("/objects/maintenance-evidence/")
+      ? `/api/maintenance-evidence/objects?path=${encodeURIComponent(url)}`
+      : url;
 
   // Upload files to object storage
   const uploadFiles = async (files: File[]): Promise<string[]> => {
@@ -855,7 +908,7 @@ export default function HomeownerServiceRecords() {
                           </h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.receiptUrls.map((url: string, index: number) => (
-                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+                              <a key={index} href={evidenceObjectUrl(url)} target="_blank" rel="noopener noreferrer"
                                 className="block p-2 border rounded hover:bg-gray-50 transition-colors"
                                 data-testid={`link-receipt-${index}`}>
                                 {url.endsWith('.pdf') ? (
@@ -864,7 +917,7 @@ export default function HomeownerServiceRecords() {
                                     <span className="truncate">Receipt {index + 1}</span>
                                   </div>
                                 ) : (
-                                  <img src={url} alt={`Receipt ${index + 1}`} className="w-full h-20 object-cover rounded" />
+                                  <img src={evidenceObjectUrl(url)} alt={`Receipt ${index + 1}`} className="w-full h-20 object-cover rounded" />
                                 )}
                               </a>
                             ))}
@@ -876,9 +929,9 @@ export default function HomeownerServiceRecords() {
                           <h5 style={{ fontSize: 11, fontWeight: 700, color: '#3C258E', marginBottom: 6 }}>Before Photos ({log.beforePhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.beforePhotoUrls.map((url: string, index: number) => (
-                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+                              <a key={index} href={evidenceObjectUrl(url)} target="_blank" rel="noopener noreferrer"
                                 className="block" data-testid={`link-before-photo-${index}`}>
-                                <img src={url} alt={`Before photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
+                                <img src={evidenceObjectUrl(url)} alt={`Before photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
                               </a>
                             ))}
                           </div>
@@ -889,9 +942,9 @@ export default function HomeownerServiceRecords() {
                           <h5 style={{ fontSize: 11, fontWeight: 700, color: '#3C258E', marginBottom: 6 }}>After Photos ({log.afterPhotoUrls.length})</h5>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                             {log.afterPhotoUrls.map((url: string, index: number) => (
-                              <a key={index} href={url} target="_blank" rel="noopener noreferrer"
+                              <a key={index} href={evidenceObjectUrl(url)} target="_blank" rel="noopener noreferrer"
                                 className="block" data-testid={`link-after-photo-${index}`}>
-                                <img src={url} alt={`After photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
+                                <img src={evidenceObjectUrl(url)} alt={`After photo ${index + 1}`} className="w-full h-24 object-cover rounded hover:opacity-90 transition-opacity" />
                               </a>
                             ))}
                           </div>
@@ -1680,6 +1733,60 @@ export default function HomeownerServiceRecords() {
                 </div>
               </form>
             </Form>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={!!evidenceReviewSource} onOpenChange={(open) => !open && clearEvidenceReviewUrl()}>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Provide additional evidence</DialogTitle>
+              <DialogDescription>
+                Add the photos or receipts requested by the reviewer. Your existing evidence will remain attached to the record.
+              </DialogDescription>
+            </DialogHeader>
+            {evidenceReviewContextError ? (
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">This evidence request is no longer available.</p>
+                <Button onClick={clearEvidenceReviewUrl}>Close</Button>
+              </div>
+            ) : !evidenceReviewContext ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading request…</div>
+            ) : (
+              <div className="space-y-5">
+                <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                  <p className="font-medium text-sm">{evidenceReviewContext.title}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{evidenceReviewContext.note}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">Current evidence: {evidenceReviewContext.evidenceCounts.beforePhotos} before photo(s), {evidenceReviewContext.evidenceCounts.afterPhotos} after photo(s), and {evidenceReviewContext.evidenceCounts.receipts} receipt(s).</p>
+                </div>
+                {([
+                  ["before", "Before photos", "image/*"],
+                  ["after", "After photos", "image/*"],
+                  ["receipt", "Receipts (images or PDF)", "image/jpeg,image/png,image/webp,application/pdf"],
+                ] as const).map(([role, label, accept]) => (
+                  <div key={role}>
+                    <label className="block text-sm font-medium mb-2">{label}</label>
+                    <Input type="file" accept={accept} multiple onChange={(event) => {
+                      const files = Array.from(event.target.files ?? []);
+                      setEvidenceFiles((current) => ({ ...current, [role]: [...current[role], ...files] }));
+                      event.currentTarget.value = "";
+                    }} data-testid={`input-evidence-${role}`} />
+                    {evidenceFiles[role].map((file, index) => (
+                      <div className="mt-2 flex items-center justify-between text-sm" key={`${file.name}-${index}`}>
+                        <span className="truncate">{file.name}</span>
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEvidenceFiles((current) => ({
+                          ...current, [role]: current[role].filter((_, currentIndex) => currentIndex !== index),
+                        }))}><X className="h-4 w-4" /><span className="sr-only">Remove {file.name}</span></Button>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={clearEvidenceReviewUrl}>Cancel</Button>
+                  <Button type="button" disabled={resubmitEvidenceMutation.isPending || Object.values(evidenceFiles).every((files) => files.length === 0)} onClick={() => resubmitEvidenceMutation.mutate()} data-testid="button-submit-evidence">
+                    {resubmitEvidenceMutation.isPending ? "Submitting…" : "Submit evidence"}
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
           </DialogContent>
         </Dialog>
       </div>

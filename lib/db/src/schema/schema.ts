@@ -1056,6 +1056,38 @@ export const taskCompletions = pgTable("task_completions", {
   index("IDX_task_completions_verification_tier").on(table.verificationTier),
 ]);
 
+// Immutable admin decisions for maintenance evidence that automated review
+// could not resolve. Source records retain the live/effective status used by
+// homeowner UI and scoring, while automatedSnapshot preserves the exact
+// machine-produced state that existed before each human action.
+export const maintenanceEvidenceReviews = pgTable("maintenance_evidence_reviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  maintenanceLogId: varchar("maintenance_log_id").references(() => maintenanceLogs.id, { onDelete: "set null" }),
+  taskCompletionId: varchar("task_completion_id").references(() => taskCompletions.id, { onDelete: "set null" }),
+  invoiceAnalysisId: varchar("invoice_analysis_id").references(() => invoiceAnalyses.id, { onDelete: "set null" }),
+  reviewerId: varchar("reviewer_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  reviewerEmail: text("reviewer_email").notNull(),
+  decision: text("decision").notNull().$type<"approve" | "reject" | "request_more_info">(),
+  notes: text("notes"),
+  automatedSnapshot: jsonb("automated_snapshot").notNull(),
+  resultingAiVerificationStatus: text("resulting_ai_verification_status"),
+  resultingVerificationTier: text("resulting_verification_tier"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("IDX_maintenance_evidence_reviews_log").on(table.maintenanceLogId, table.createdAt),
+  index("IDX_maintenance_evidence_reviews_task").on(table.taskCompletionId, table.createdAt),
+  index("IDX_maintenance_evidence_reviews_invoice").on(table.invoiceAnalysisId, table.createdAt),
+  index("IDX_maintenance_evidence_reviews_reviewer").on(table.reviewerId, table.createdAt),
+  check(
+    "CHK_maintenance_evidence_reviews_decision",
+    sql`${table.decision} IN ('approve', 'reject', 'request_more_info')`,
+  ),
+  check(
+    "CHK_maintenance_evidence_reviews_source",
+    sql`${table.maintenanceLogId} IS NOT NULL OR ${table.invoiceAnalysisId} IS NOT NULL`,
+  ),
+]);
+
 // Achievement definitions - master list of all available achievements
 export const achievementDefinitions = pgTable("achievement_definitions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -1381,6 +1413,15 @@ export const insertTaskCompletionSchema = createInsertSchema(taskCompletions).om
   aiVerificationStatus: aiVerificationStatusSchema.nullable().optional(),
 });
 
+export const insertMaintenanceEvidenceReviewSchema = createInsertSchema(maintenanceEvidenceReviews, {
+  decision: z.enum(["approve", "reject", "request_more_info"]),
+  resultingAiVerificationStatus: aiVerificationStatusSchema.nullable().optional(),
+  resultingVerificationTier: maintenanceVerificationTierSchema.nullable().optional(),
+}).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertAchievementDefinitionSchema = createInsertSchema(achievementDefinitions).omit({
   id: true,
   createdAt: true,
@@ -1599,6 +1640,8 @@ export type InsertContractorBoost = z.infer<typeof insertContractorBoostSchema>;
 export type ContractorBoost = typeof contractorBoosts.$inferSelect;
 export type InsertTaskCompletion = z.infer<typeof insertTaskCompletionSchema>;
 export type TaskCompletion = typeof taskCompletions.$inferSelect;
+export type InsertMaintenanceEvidenceReview = z.infer<typeof insertMaintenanceEvidenceReviewSchema>;
+export type MaintenanceEvidenceReview = typeof maintenanceEvidenceReviews.$inferSelect;
 export type InsertAchievementDefinition = z.infer<typeof insertAchievementDefinitionSchema>;
 export type AchievementDefinition = typeof achievementDefinitions.$inferSelect;
 export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;

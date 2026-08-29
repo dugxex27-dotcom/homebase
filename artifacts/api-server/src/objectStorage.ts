@@ -116,6 +116,31 @@ export class ObjectStorageService {
     }
   }
 
+  // Server-side private upload for evidence that must never be available from
+  // the public-object namespace. The returned value is an object-entity path.
+  async uploadPrivateFile(path: string, buffer: Buffer, contentType: string): Promise<string> {
+    if (path.startsWith("/") || path.includes("..")) throw new Error("Invalid private object path");
+    const { bucketName, objectName } = parseObjectPath(`${this.getPrivateObjectDir()}/${path}`);
+    await objectStorageClient.bucket(bucketName).file(objectName).save(buffer, {
+      contentType,
+      metadata: { cacheControl: "private, max-age=3600" },
+    });
+    return `/objects/${path}`;
+  }
+
+  async deletePrivateFile(objectPath: string): Promise<void> {
+    if (!objectPath.startsWith("/objects/maintenance-evidence/")) return;
+    try {
+      const entityId = objectPath.slice("/objects/".length);
+      const { bucketName, objectName } = parseObjectPath(`${this.getPrivateObjectDir()}/${entityId}`);
+      const file = objectStorageClient.bucket(bucketName).file(objectName);
+      const [exists] = await file.exists();
+      if (exists) await file.delete();
+    } catch (error) {
+      console.warn("Error deleting private file from object storage:", error);
+    }
+  }
+
   // List files under a given prefix in the primary public bucket.
   // Returns an array of object names (relative to the bucket root, e.g.
   // "public/invoices/abc123.jpg") along with their creation timestamps.
@@ -151,7 +176,12 @@ export class ObjectStorageService {
   }
 
   // Downloads an object to the response.
-  async downloadObject(file: File, res: Response, cacheTtlSec: number = 3600) {
+  async downloadObject(
+    file: File,
+    res: Response,
+    cacheTtlSec: number = 3600,
+    disposition: "attachment" | "inline" = "attachment",
+  ) {
     try {
       // Get file metadata
       const [metadata] = await file.getMetadata();
@@ -160,7 +190,7 @@ export class ObjectStorageService {
       res.set({
         "Content-Type": metadata.contentType || "application/octet-stream",
         "Content-Length": metadata.size,
-        "Content-Disposition": `attachment; filename="${metadata.name?.split('/').pop() || 'download'}"`,
+        "Content-Disposition": `${disposition}; filename="${metadata.name?.split('/').pop() || 'download'}"`,
         "Cache-Control": `private, max-age=${cacheTtlSec}`,
       });
 

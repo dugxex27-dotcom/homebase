@@ -201,6 +201,13 @@ The MyHomeBase™ Team`);
     refetchOnMount: true,
   });
 
+  // Fetch maintenance evidence reviews for the count
+  const { data: maintenanceReviews, isLoading: maintenanceReviewsLoading } = useQuery<any[]>({
+    queryKey: ["/api/admin/maintenance-evidence-reviews"],
+    staleTime: 0,
+    refetchOnMount: true,
+  });
+
   // Dismiss fraud queue entry mutation
   const dismissFraudMutation = useMutation({
     mutationFn: async (entryId: string) => {
@@ -707,6 +714,42 @@ The MyHomeBase™ Team`);
           <CardContent>
             <p className="text-sm text-muted-foreground">
               Review reported suspicious reviews, investigate IP/device duplicates, and take action on fraudulent content.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Maintenance Evidence Reviews */}
+        <Card className="mb-8" data-testid="card-maintenance-evidence-reviews">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-indigo-600" />
+                  Maintenance Evidence Reviews
+                </CardTitle>
+                <CardDescription className="mt-2">
+                  Review flagged maintenance records and invoice uploads
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => navigate('/admin/maintenance-evidence-reviews')}
+                data-testid="button-manage-maintenance-evidence"
+              >
+                {maintenanceReviewsLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : maintenanceReviews && maintenanceReviews.length > 0 ? (
+                  <Badge variant="destructive" className="mr-2 px-1.5 py-0 min-w-5 h-5 flex items-center justify-center">
+                    {maintenanceReviews.length}
+                  </Badge>
+                ) : null}
+                Review Queue
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Evaluate ambiguous maintenance photos and documents, inspect technical details, and approve, reject, or request more info.
             </p>
           </CardContent>
         </Card>
