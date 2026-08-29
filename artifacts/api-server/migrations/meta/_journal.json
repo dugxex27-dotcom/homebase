@@ -64,6 +64,13 @@
       "when": 1787881176000,
       "tag": "20260828-contract-snapshot-terms",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788019800000,
+      "tag": "20260829-photo-verified-evidence",
+      "breakpoints": true
     }
   ]
 }

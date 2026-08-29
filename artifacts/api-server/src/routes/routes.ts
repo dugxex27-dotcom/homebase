@@ -29,7 +29,7 @@ import { pool, db } from "../db";
 import OpenAI from "openai";
 import multer from "multer";
 import Stripe from "stripe";
-import { geocodeAddress, calculateDistance } from "../geocoding-service";
+import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePropertyCoordinates } from "../geocoding-service";
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
@@ -298,6 +298,31 @@ const quizLimiter = rateLimit({
 
 // Grandfathered emails that get free unlimited access forever
 const GRANDFATHERED_EMAILS = (process.env.GRANDFATHERED_EMAILS || 'lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,freshandcleangutters@gmail.com').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+const SERVER_OWNED_VERIFICATION_FIELDS = [
+  "verificationTier",
+  "deviceTimestamp",
+  "locationFlag",
+  "timestampFlag",
+  "distanceFromPropertyMiles",
+  "timestampDeltaHours",
+  "verificationReasonCodes",
+  "aiVerificationStatus",
+  "aiVerificationResponse",
+  "gpsLat",
+  "gpsLng",
+  "propertyLat",
+  "propertyLng",
+  "beforePhotoHash",
+  "afterPhotoHash",
+] as const;
+
+function findClientSuppliedVerificationFields(body: unknown): string[] {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return [];
+  return SERVER_OWNED_VERIFICATION_FIELDS.filter((field) =>
+    Object.prototype.hasOwnProperty.call(body, field),
+  );
+}
 
 // Middleware to check homeowner subscription for paid features
 const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
@@ -12972,6 +12997,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/maintenance-logs", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
+      const serverOwnedFields = findClientSuppliedVerificationFields(req.body);
+      if (serverOwnedFields.length > 0) {
+        return res.status(400).json({
+          message: "Verification evidence is managed by the server",
+          code: "SERVER_OWNED_VERIFICATION_FIELDS",
+          fields: serverOwnedFields,
+        });
+      }
+
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertMaintenanceLogSchema.omit({ homeownerId: true }).parse(req.body);
       
@@ -13106,42 +13140,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // ── Location flag ──────────────────────────────────────────────────────
       // Flag if photo GPS is absent or more than ~1 mile from property.
-      const houseLatNum = house.latitude ? parseFloat(house.latitude as string) : null;
-      const houseLngNum = house.longitude ? parseFloat(house.longitude as string) : null;
+      const propertyCoordinates = await resolvePropertyCoordinates(
+        house,
+        async (coordinates) => {
+          const cachedHouse = await storage.cacheHouseCoordinatesIfAddressMatches(
+            houseId,
+            house.address,
+            coordinates.latitude.toString(),
+            coordinates.longitude.toString(),
+            new Date(),
+          );
+          if (cachedHouse) return coordinates;
+
+          // Another API instance may have populated this same house after this
+          // request began geocoding. Re-read and use that winner's coordinates
+          // only when the queried address is still current; an address edit
+          // remains a stale lookup and must not be used.
+          const latestHouse = await storage.getHouse(houseId);
+          const latestLatitude = latestHouse?.latitude == null
+            ? Number.NaN
+            : Number(latestHouse.latitude);
+          const latestLongitude = latestHouse?.longitude == null
+            ? Number.NaN
+            : Number(latestHouse.longitude);
+          if (
+            latestHouse?.address === house.address
+            && Number.isFinite(latestLatitude)
+            && Number.isFinite(latestLongitude)
+          ) {
+            return {
+              latitude: latestLatitude,
+              longitude: latestLongitude,
+            };
+          }
+          return null;
+        },
+      );
+      const houseLatNum = propertyCoordinates?.latitude ?? null;
+      const houseLngNum = propertyCoordinates?.longitude ?? null;
 
       let locationFlag = false;
+      let distanceFromPropertyMiles: number | null = null;
+      const verificationReasonCodes: string[] = [];
       if (resolvedGpsLat == null || resolvedGpsLng == null) {
         // No GPS in photo — flag as unverifiable location
         locationFlag = true;
+        verificationReasonCodes.push("location_missing");
       } else if (houseLatNum != null && houseLngNum != null) {
-        // Simple Haversine-based mile distance check
-        const R = 3958.8; // Earth radius in miles
-        const dLat = ((resolvedGpsLat - houseLatNum) * Math.PI) / 180;
-        const dLng = ((resolvedGpsLng - houseLngNum) * Math.PI) / 180;
-        const a =
-          Math.sin(dLat / 2) ** 2 +
-          Math.cos((houseLatNum * Math.PI) / 180) *
-            Math.cos((resolvedGpsLat * Math.PI) / 180) *
-            Math.sin(dLng / 2) ** 2;
-        const distanceMiles = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        if (distanceMiles > 1) locationFlag = true;
+        distanceFromPropertyMiles = calculateDistanceExact(
+          resolvedGpsLat,
+          resolvedGpsLng,
+          houseLatNum,
+          houseLngNum,
+        );
+        if (distanceFromPropertyMiles > 1) {
+          locationFlag = true;
+          verificationReasonCodes.push("distance_from_property_exceeded");
+        }
       } else {
         // GPS present in photo but house has no geocoordinates stored —
         // cannot verify location against property, flag as unverifiable
         locationFlag = true;
+        verificationReasonCodes.push("property_coordinates_missing");
       }
 
       // ── Timestamp flag ─────────────────────────────────────────────────────
       let timestampFlag = false;
       let deviceTs: Date | null = null;
+      let timestampDeltaHours: number | null = null;
       if (resolvedDeviceTimestamp) {
         deviceTs = new Date(resolvedDeviceTimestamp);
         if (!isNaN(deviceTs.getTime())) {
-          const diffHours = Math.abs(Date.now() - deviceTs.getTime()) / (1000 * 60 * 60);
-          if (diffHours > 24) timestampFlag = true;
+          timestampDeltaHours = Math.abs(Date.now() - deviceTs.getTime()) / (1000 * 60 * 60);
+          if (timestampDeltaHours > 24) {
+            timestampFlag = true;
+            verificationReasonCodes.push("timestamp_delta_exceeded");
+          }
         } else {
           deviceTs = null;
+          verificationReasonCodes.push("timestamp_invalid");
         }
+      } else if (allPhotoUrls.length > 0) {
+        verificationReasonCodes.push("timestamp_missing");
       }
       
       // Calculate DIY savings using shared helper function
@@ -13180,6 +13260,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deviceTimestamp: deviceTs,
         locationFlag,
         timestampFlag,
+        distanceFromPropertyMiles: distanceFromPropertyMiles !== null ? distanceFromPropertyMiles.toFixed(2) : null,
+        timestampDeltaHours: timestampDeltaHours !== null ? timestampDeltaHours.toFixed(2) : null,
+        verificationReasonCodes,
         gpsLat: resolvedGpsLat != null ? String(resolvedGpsLat) : null,
         gpsLng: resolvedGpsLng != null ? String(resolvedGpsLng) : null,
         propertyLat: houseLatNum != null ? String(houseLatNum) : null,
@@ -13231,6 +13314,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         notes: null,
         documentsUploaded: 0,
         verificationTier,
+        distanceFromPropertyMiles: distanceFromPropertyMiles !== null ? distanceFromPropertyMiles.toFixed(2) : null,
+        timestampDeltaHours: timestampDeltaHours !== null ? timestampDeltaHours.toFixed(2) : null,
+        verificationReasonCodes,
       };
       
       await db.insert(taskCompletions).values(taskCompletionData);
@@ -13257,6 +13343,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existingLog = await storage.getMaintenanceLog(req.params.id);
       if (!existingLog || existingLog.homeownerId !== req.session.user.id) {
         return res.status(404).json({ message: "Maintenance log not found" });
+      }
+
+      const serverOwnedFields = findClientSuppliedVerificationFields(req.body);
+      if (serverOwnedFields.length > 0) {
+        return res.status(400).json({
+          message: "Verification evidence is managed by the server",
+          code: "SERVER_OWNED_VERIFICATION_FIELDS",
+          fields: serverOwnedFields,
+        });
       }
       
       // Validate request body (excluding homeownerId which cannot be changed)
@@ -14638,7 +14733,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           createdAt: new Date(),
           ...(geocoded && {
             latitude: geocoded.latitude.toString(),
-            longitude: geocoded.longitude.toString()
+            longitude: geocoded.longitude.toString(),
+            coordinatesCachedAt: new Date(),
           })
         };
         await tx.insert(houses).values(houseData as any);
@@ -19217,6 +19313,15 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
       const homeownerId = req.session?.user?.id;
       if (!homeownerId) {
         return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const serverOwnedFields = findClientSuppliedVerificationFields(req.body);
+      if (serverOwnedFields.length > 0) {
+        return res.status(400).json({
+          message: "Verification evidence is managed by the server",
+          code: "SERVER_OWNED_VERIFICATION_FIELDS",
+          fields: serverOwnedFields,
+        });
       }
 
       // Ensure month and year are set from completedAt

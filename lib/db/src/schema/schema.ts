@@ -507,6 +507,36 @@ export const homeApplianceManuals = pgTable("home_appliance_manuals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const maintenanceVerificationTierSchema = z.enum([
+  "self_reported",
+  "contractor_verified",
+  "photo_verified",
+]);
+export type MaintenanceVerificationTier = z.infer<typeof maintenanceVerificationTierSchema>;
+
+export const photoVerificationReasonCodeSchema = z.enum([
+  "evidence_missing",
+  "location_missing",
+  "property_coordinates_missing",
+  "distance_from_property_exceeded",
+  "timestamp_missing",
+  "timestamp_invalid",
+  "timestamp_delta_exceeded",
+  "ai_ambiguous",
+  "ai_mismatch",
+  "review_needed",
+]);
+export type PhotoVerificationReasonCode = z.infer<typeof photoVerificationReasonCodeSchema>;
+
+export const aiVerificationStatusSchema = z.enum([
+  "not_run",
+  "pending",
+  "verified",
+  "rejected",
+  "review_needed",
+]);
+export type AiVerificationStatus = z.infer<typeof aiVerificationStatusSchema>;
+
 export const maintenanceLogs = pgTable("maintenance_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(), // In real app would be foreign key to users table
@@ -529,10 +559,15 @@ export const maintenanceLogs = pgTable("maintenance_logs", {
   diySavingsAmount: decimal("diy_savings_amount", { precision: 10, scale: 2 }), // Amount saved by doing DIY (pro cost - diy cost), null for contractor completions
   taskCompletionId: text("task_completion_id"), // references taskCompletions.id — kept in sync with serviceDate year/month
   // Fraud-resistance fields
-  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified'
+  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified' | 'photo_verified'
   deviceTimestamp: timestamp("device_timestamp"), // EXIF timestamp from camera
   locationFlag: boolean("location_flag").notNull().default(false), // true if photo GPS is far from property
   timestampFlag: boolean("timestamp_flag").notNull().default(false), // true if device_timestamp is >24h off server time
+  distanceFromPropertyMiles: decimal("distance_from_property_miles", { precision: 10, scale: 2 }), // Measured photo-to-property distance
+  timestampDeltaHours: decimal("timestamp_delta_hours", { precision: 10, scale: 2 }), // Absolute EXIF/server timestamp delta
+  verificationReasonCodes: text("verification_reason_codes").array().notNull().default(sql`'{}'::text[]`), // Stable evidence decision reasons
+  aiVerificationStatus: text("ai_verification_status"), // 'not_run' | 'pending' | 'verified' | 'rejected' | 'review_needed'
+  aiVerificationResponse: jsonb("ai_verification_response"), // Structured AI response retained for later audit
   gpsLat: decimal("gps_lat", { precision: 10, scale: 8 }), // GPS lat extracted from photo EXIF
   gpsLng: decimal("gps_lng", { precision: 11, scale: 8 }), // GPS lng extracted from photo EXIF
   propertyLat: decimal("property_lat", { precision: 10, scale: 8 }), // House lat at time of submission
@@ -573,6 +608,8 @@ export const invoiceAnalyses = pgTable("invoice_analyses", {
   aiNotes: text("ai_notes"), // Any caveats or issues the AI noticed
   rawExtraction: jsonb("raw_extraction"), // Full JSON blob from GPT-4o-mini
   diyVerified: boolean("diy_verified").notNull().default(false), // true if AI verified DIY photos
+  aiVerificationStatus: text("ai_verification_status"), // 'not_run' | 'pending' | 'verified' | 'rejected' | 'review_needed'
+  aiVerificationResponse: jsonb("ai_verification_response"), // Structured DIY verification response
   // Idempotency: SHA-256 hash of the primary uploaded file bytes (nullable for legacy rows)
   invoiceHash: text("invoice_hash"),
   // Links to created records on confirmation
@@ -588,6 +625,8 @@ export const insertInvoiceAnalysisSchema = createInsertSchema(invoiceAnalyses).o
   id: true,
   createdAt: true,
   confirmedAt: true,
+}).extend({
+  aiVerificationStatus: aiVerificationStatusSchema.nullable().optional(),
 });
 export type InsertInvoiceAnalysis = z.infer<typeof insertInvoiceAnalysisSchema>;
 export type InvoiceAnalysis = typeof invoiceAnalyses.$inferSelect;
@@ -626,6 +665,7 @@ export const houses = pgTable("houses", {
   postalCode: text("postal_code"), // For international address support
   latitude: decimal("latitude", { precision: 10, scale: 8 }), // Geocoded latitude
   longitude: decimal("longitude", { precision: 11, scale: 8 }), // Geocoded longitude
+  coordinatesCachedAt: timestamp("coordinates_cached_at", { withTimezone: true }), // When property coordinates were persisted from geocoding
   // Household Profile fields for maintenance schedule generation
   homeType: text("home_type"), // "single_family", "condo", "townhouse", "apartment", "mobile_home", "multi_family"
   squareFootage: integer("square_footage"), // Total square footage of the home
@@ -1001,7 +1041,12 @@ export const taskCompletions = pgTable("task_completions", {
   costSavings: decimal("cost_savings", { precision: 10, scale: 2 }), // calculated savings (for DIY tasks)
   notes: text("notes"), // optional completion notes
   documentsUploaded: integer("documents_uploaded").default(0), // count of receipts/photos uploaded
-  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified'
+  verificationTier: text("verification_tier").notNull().default('self_reported'), // 'self_reported' | 'contractor_verified' | 'photo_verified'
+  distanceFromPropertyMiles: decimal("distance_from_property_miles", { precision: 10, scale: 2 }), // Measured photo-to-property distance
+  timestampDeltaHours: decimal("timestamp_delta_hours", { precision: 10, scale: 2 }), // Absolute EXIF/server timestamp delta
+  verificationReasonCodes: text("verification_reason_codes").array().notNull().default(sql`'{}'::text[]`), // Stable evidence decision reasons
+  aiVerificationStatus: text("ai_verification_status"), // 'not_run' | 'pending' | 'verified' | 'rejected' | 'review_needed'
+  aiVerificationResponse: jsonb("ai_verification_response"), // Structured AI response retained for later audit
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("IDX_task_completions_homeowner").on(table.homeownerId),
@@ -1152,6 +1197,9 @@ export const insertMaintenanceLogSchema = createInsertSchema(maintenanceLogs).om
 }).extend({
   completionMethod: z.enum(['diy', 'contractor']).optional(), // Validate completion method
   diySavingsAmount: z.string().optional(), // Decimal stored as string, nullable
+  verificationTier: maintenanceVerificationTierSchema.optional(),
+  verificationReasonCodes: z.array(photoVerificationReasonCodeSchema).optional(),
+  aiVerificationStatus: aiVerificationStatusSchema.nullable().optional(),
 });
 
 // Schema for task completion endpoint
@@ -1325,6 +1373,10 @@ export const insertContractorBoostSchema = createInsertSchema(contractorBoosts).
 export const insertTaskCompletionSchema = createInsertSchema(taskCompletions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  verificationTier: maintenanceVerificationTierSchema.optional(),
+  verificationReasonCodes: z.array(photoVerificationReasonCodeSchema).optional(),
+  aiVerificationStatus: aiVerificationStatusSchema.nullable().optional(),
 });
 
 export const insertAchievementDefinitionSchema = createInsertSchema(achievementDefinitions).omit({

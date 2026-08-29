@@ -21,21 +21,42 @@ import { vi, describe, it, expect, afterEach } from "vitest";
 const {
   mockGetUser,
   mockGetHouse,
+  mockGetMaintenanceLog,
+  mockUpdateMaintenanceLog,
+  mockCacheHouseCoordinatesIfAddressMatches,
   mockCreateMaintenanceLog,
+  mockCreateTaskCompletion,
   mockCheckAndAwardAchievements,
   mockSearchPublicObject,
   mockExifrGps,
   mockExifrParse,
+  mockResolvePropertyCoordinates,
 } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockGetHouse: vi.fn(),
+  mockGetMaintenanceLog: vi.fn(),
+  mockUpdateMaintenanceLog: vi.fn(),
+  mockCacheHouseCoordinatesIfAddressMatches: vi.fn(),
   mockCreateMaintenanceLog: vi.fn(),
+  mockCreateTaskCompletion: vi.fn(),
   mockCheckAndAwardAchievements: vi.fn().mockResolvedValue([]),
   // ObjectStorageService.searchPublicObject — controlled per test
   mockSearchPublicObject: vi.fn(),
   // exifr module functions
   mockExifrGps: vi.fn(),
   mockExifrParse: vi.fn(),
+  mockResolvePropertyCoordinates: vi.fn(async (house: {
+    latitude?: string | number | null;
+    longitude?: string | number | null;
+  }, _persist?: (
+    coordinates: { latitude: number; longitude: number },
+  ) => Promise<{ latitude: number; longitude: number } | null>) => {
+    const latitude = house.latitude == null ? Number.NaN : Number(house.latitude);
+    const longitude = house.longitude == null ? Number.NaN : Number(house.longitude);
+    return Number.isFinite(latitude) && Number.isFinite(longitude)
+      ? { latitude, longitude }
+      : null;
+  }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -138,10 +159,14 @@ vi.mock("../objectStorage", () => ({
   ObjectNotFoundError: class ObjectNotFoundError extends Error {},
 }));
 
-vi.mock("../geocoding-service", () => ({
-  geocodeAddress: vi.fn().mockResolvedValue(null),
-  calculateDistance: vi.fn().mockReturnValue(0),
-}));
+vi.mock("../geocoding-service", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../geocoding-service")>();
+  return {
+    ...actual,
+    geocodeAddress: vi.fn().mockResolvedValue(null),
+    resolvePropertyCoordinates: mockResolvePropertyCoordinates,
+  };
+});
 
 vi.mock("../invoice-analysis-service", () => ({
   extractInvoiceData: vi.fn().mockResolvedValue(null),
@@ -203,7 +228,11 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getUser: mockGetUser,
       getHouse: mockGetHouse,
+      getMaintenanceLog: mockGetMaintenanceLog,
+      updateMaintenanceLog: mockUpdateMaintenanceLog,
+      cacheHouseCoordinatesIfAddressMatches: mockCacheHouseCoordinatesIfAddressMatches,
       createMaintenanceLog: mockCreateMaintenanceLog,
+      createTaskCompletion: mockCreateTaskCompletion,
       checkAndAwardAchievements: mockCheckAndAwardAchievements,
     }),
   };
@@ -306,6 +335,25 @@ async function buildApp() {
   return app;
 }
 
+async function buildAppWithSession() {
+  const app = express();
+  app.use(express.json({ limit: "10mb" }));
+  app.use((req: any, _res, next) => {
+    req.session = {
+      isAuthenticated: true,
+      user: {
+        id: HOMEOWNER_ID,
+        email: USER_FIXTURE.email,
+        role: "homeowner",
+        status: "active",
+      },
+    };
+    next();
+  });
+  await registerRoutes(app);
+  return app;
+}
+
 /** Simulate a photo stored in object storage that returns `imageBuffer` on download */
 function mockPhotoInStorage(imageBuffer: Buffer) {
   mockSearchPublicObject.mockResolvedValueOnce({
@@ -346,6 +394,9 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     expect(mockCreateMaintenanceLog).toHaveBeenCalledOnce();
     const logData = mockCreateMaintenanceLog.mock.calls[0][0];
     expect(logData.locationFlag).toBe(false);
+    expect(Number(logData.distanceFromPropertyMiles)).toBeLessThanOrEqual(0.1);
+    expect(Number(logData.timestampDeltaHours)).toBeLessThanOrEqual(0.1);
+    expect(logData.verificationReasonCodes).toEqual([]);
 
     // EXIF GPS must be stored as the authoritative coordinates
     expect(parseFloat(logData.gpsLat)).toBeCloseTo(NEAR_LAT, 4);
@@ -383,6 +434,11 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
 
     // Distance > 1 mile → must be flagged
     expect(logData.locationFlag).toBe(true);
+    expect(Number(logData.distanceFromPropertyMiles)).toBeGreaterThan(1);
+    expect(logData.verificationReasonCodes).toEqual(expect.arrayContaining([
+      "distance_from_property_exceeded",
+      "timestamp_missing",
+    ]));
   });
 
   it("(c) No EXIF GPS in photo + client GPS near property → falls back to client, locationFlag = false", async () => {
@@ -449,6 +505,47 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     expect(logData.locationFlag).toBe(false);
   });
 
+  it.each([
+    {
+      label: "just below",
+      gpsLat: PROPERTY_LAT + (0.99 / 69),
+      expectedFlag: false,
+      expectedReason: false,
+    },
+    {
+      label: "just above",
+      gpsLat: PROPERTY_LAT + (1.01 / 69),
+      expectedFlag: true,
+      expectedReason: true,
+    },
+  ])(
+    "uses the unrounded distance at the one-mile boundary: $label",
+    async ({ gpsLat, expectedFlag, expectedReason }) => {
+      const app = await buildApp();
+      mockGetUser.mockResolvedValue(USER_FIXTURE);
+      mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+      mockCreateMaintenanceLog.mockResolvedValue({
+        id: `log-boundary-${expectedFlag ? "above" : "below"}`,
+        locationFlag: expectedFlag,
+      });
+
+      const res = await request(app)
+        .post("/api/maintenance-logs/complete-task")
+        .send({
+          ...BASE_BODY,
+          gpsLat,
+          gpsLng: PROPERTY_LNG,
+        });
+
+      expect(res.status).toBe(201);
+      const logData = mockCreateMaintenanceLog.mock.calls[0][0];
+      expect(logData.locationFlag).toBe(expectedFlag);
+      expect(Number(logData.distanceFromPropertyMiles) > 1).toBe(expectedFlag);
+      expect(logData.verificationReasonCodes.includes("distance_from_property_exceeded"))
+        .toBe(expectedReason);
+    },
+  );
+
   it("(b-extra) EXIF GPS far from property is flagged even when house has no stored coordinates", async () => {
     const app = await buildApp();
     mockGetUser.mockResolvedValue(USER_FIXTURE);
@@ -478,5 +575,189 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     const logData = mockCreateMaintenanceLog.mock.calls[0][0];
     // GPS present but no property coordinates to compare against → unverifiable → flagged
     expect(logData.locationFlag).toBe(true);
+    expect(logData.distanceFromPropertyMiles).toBeNull();
+    expect(logData.verificationReasonCodes).toEqual(expect.arrayContaining([
+      "property_coordinates_missing",
+      "timestamp_missing",
+    ]));
+  });
+
+  it("persists newly resolved property coordinates for later completion requests", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetHouse.mockResolvedValue({
+      id: HOUSE_ID,
+      homeownerId: HOMEOWNER_ID,
+      address: "789 Cache Me Road",
+      latitude: null,
+      longitude: null,
+    });
+    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-006", locationFlag: false });
+    mockCacheHouseCoordinatesIfAddressMatches.mockResolvedValue({
+      ...HOUSE_FIXTURE,
+      coordinatesCachedAt: new Date(),
+    });
+    mockResolvePropertyCoordinates.mockImplementationOnce(async (
+      _house: { latitude?: string | number | null; longitude?: string | number | null },
+      persist?: (
+        coordinates: { latitude: number; longitude: number },
+      ) => Promise<{ latitude: number; longitude: number } | null>,
+    ) => {
+      const coordinates = { latitude: PROPERTY_LAT, longitude: PROPERTY_LNG };
+      return await persist?.(coordinates) ?? null;
+    });
+
+    const res = await request(app)
+      .post("/api/maintenance-logs/complete-task")
+      .send({
+        ...BASE_BODY,
+        gpsLat: NEAR_LAT,
+        gpsLng: NEAR_LNG,
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockCacheHouseCoordinatesIfAddressMatches).toHaveBeenCalledWith(
+      HOUSE_ID,
+      "789 Cache Me Road",
+      String(PROPERTY_LAT),
+      String(PROPERTY_LNG),
+      expect.any(Date),
+    );
+    const logData = mockCreateMaintenanceLog.mock.calls[0][0];
+    expect(logData.propertyLat).toBe(String(PROPERTY_LAT));
+    expect(logData.propertyLng).toBe(String(PROPERTY_LNG));
+    expect(logData.locationFlag).toBe(false);
+  });
+
+  it("uses coordinates cached by another instance instead of recording a false missing-coordinate reason", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    const initiallyUncachedHouse = {
+      id: HOUSE_ID,
+      homeownerId: HOMEOWNER_ID,
+      address: "321 Concurrent Way",
+      latitude: null,
+      longitude: null,
+    };
+    mockGetHouse
+      .mockResolvedValueOnce(initiallyUncachedHouse)
+      .mockResolvedValueOnce({
+        ...initiallyUncachedHouse,
+        latitude: String(PROPERTY_LAT),
+        longitude: String(PROPERTY_LNG),
+        coordinatesCachedAt: new Date(),
+      });
+    mockCacheHouseCoordinatesIfAddressMatches.mockResolvedValue(undefined);
+    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-007", locationFlag: false });
+    mockResolvePropertyCoordinates.mockImplementationOnce(async (_house, persist) => {
+      const geocoded = { latitude: PROPERTY_LAT, longitude: PROPERTY_LNG };
+      return await persist?.(geocoded) ?? null;
+    });
+
+    const res = await request(app)
+      .post("/api/maintenance-logs/complete-task")
+      .send({
+        ...BASE_BODY,
+        gpsLat: NEAR_LAT,
+        gpsLng: NEAR_LNG,
+      });
+
+    expect(res.status).toBe(201);
+    const logData = mockCreateMaintenanceLog.mock.calls[0][0];
+    expect(logData.propertyLat).toBe(String(PROPERTY_LAT));
+    expect(logData.propertyLng).toBe(String(PROPERTY_LNG));
+    expect(logData.locationFlag).toBe(false);
+    expect(logData.verificationReasonCodes).not.toContain("property_coordinates_missing");
+  });
+});
+
+describe("public record writes cannot forge server-owned verification evidence", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects photo_verified and AI evidence on maintenance-log creation", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    const res = await request(app)
+      .post("/api/maintenance-logs")
+      .send({
+        houseId: HOUSE_ID,
+        serviceDate: "2026-08-29",
+        serviceType: "HVAC inspection",
+        verificationTier: "photo_verified",
+        aiVerificationStatus: "verified",
+        aiVerificationResponse: { verified: true },
+        distanceFromPropertyMiles: "0.01",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      code: "SERVER_OWNED_VERIFICATION_FIELDS",
+      fields: expect.arrayContaining([
+        "verificationTier",
+        "aiVerificationStatus",
+        "aiVerificationResponse",
+        "distanceFromPropertyMiles",
+      ]),
+    });
+    expect(mockCreateMaintenanceLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects attempts to promote or edit an existing maintenance log's evidence", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: "log-existing",
+      homeownerId: HOMEOWNER_ID,
+      houseId: HOUSE_ID,
+      verificationTier: "self_reported",
+    });
+
+    const res = await request(app)
+      .patch("/api/maintenance-logs/log-existing")
+      .send({
+        verificationTier: "photo_verified",
+        verificationReasonCodes: [],
+        locationFlag: false,
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      code: "SERVER_OWNED_VERIFICATION_FIELDS",
+      fields: expect.arrayContaining([
+        "verificationTier",
+        "verificationReasonCodes",
+        "locationFlag",
+      ]),
+    });
+    expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects forged verification evidence on direct task-completion creation", async () => {
+    const app = await buildAppWithSession();
+
+    const res = await request(app)
+      .post("/api/task-completions")
+      .send({
+        houseId: HOUSE_ID,
+        taskType: "maintenance",
+        taskTitle: "HVAC inspection",
+        verificationTier: "photo_verified",
+        aiVerificationStatus: "verified",
+        timestampDeltaHours: "0.25",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toMatchObject({
+      code: "SERVER_OWNED_VERIFICATION_FIELDS",
+      fields: expect.arrayContaining([
+        "verificationTier",
+        "aiVerificationStatus",
+        "timestampDeltaHours",
+      ]),
+    });
+    expect(mockCreateTaskCompletion).not.toHaveBeenCalled();
   });
 });

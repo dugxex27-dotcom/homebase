@@ -159,6 +159,13 @@ export interface IStorage {
   getHouse(id: string): Promise<House | undefined>;
   createHouse(house: InsertHouse): Promise<House>;
   updateHouse(id: string, house: Partial<InsertHouse>): Promise<House | undefined>;
+  cacheHouseCoordinatesIfAddressMatches(
+    id: string,
+    address: string,
+    latitude: string,
+    longitude: string,
+    coordinatesCachedAt: Date,
+  ): Promise<House | undefined>;
   deleteHouse(id: string): Promise<boolean>;
   getDefaultHouse(homeownerId: string): Promise<House | undefined>;
 
@@ -1874,6 +1881,33 @@ export class MemStorage implements IStorage {
     const updated: House = {
       ...existing,
       ...house,
+    };
+    this.houses.set(id, updated);
+    return updated;
+  }
+
+  async cacheHouseCoordinatesIfAddressMatches(
+    id: string,
+    address: string,
+    latitude: string,
+    longitude: string,
+    coordinatesCachedAt: Date,
+  ): Promise<House | undefined> {
+    const existing = this.houses.get(id);
+    if (
+      !existing
+      || existing.address !== address
+      || existing.latitude != null
+      || existing.longitude != null
+    ) {
+      return undefined;
+    }
+
+    const updated: House = {
+      ...existing,
+      latitude,
+      longitude,
+      coordinatesCachedAt,
     };
     this.houses.set(id, updated);
     return updated;
@@ -9244,6 +9278,26 @@ class DbStorage implements IStorage {
 
     await db.update(houses).set(houseData).where(eq(houses.id, id));
     return (await this.getHouse(id))!;
+  }
+
+  async cacheHouseCoordinatesIfAddressMatches(
+    id: string,
+    address: string,
+    latitude: string,
+    longitude: string,
+    coordinatesCachedAt: Date,
+  ): Promise<House | undefined> {
+    const updated = await db
+      .update(houses)
+      .set({ latitude, longitude, coordinatesCachedAt })
+      .where(and(
+        eq(houses.id, id),
+        eq(houses.address, address),
+        isNull(houses.latitude),
+        isNull(houses.longitude),
+      ))
+      .returning();
+    return updated[0];
   }
 
   async deleteHouse(id: string): Promise<boolean> {
