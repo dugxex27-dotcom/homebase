@@ -32,6 +32,7 @@ const {
   COMPANY_ID,
   ADMIN_ID,
   mockGetUser,
+  mockGetCompany,
   mockDbSelect,
   mockDbInsert,
   mockDbUpdate,
@@ -40,6 +41,7 @@ const {
   COMPANY_ID: "company-race-001",
   ADMIN_ID: "admin-race-001",
   mockGetUser: vi.fn(),
+  mockGetCompany: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbInsert: vi.fn(),
   mockDbUpdate: vi.fn(),
@@ -87,7 +89,7 @@ vi.mock("../storage", async () => {
   return {
     storage: createStorageMock({
       getUser: mockGetUser,
-      getCompany: vi.fn().mockResolvedValue({ id: COMPANY_ID, tier: "contractor_business", bulkImportEnabled: true }),
+      getCompany: mockGetCompany,
     }),
   };
 });
@@ -255,6 +257,7 @@ interface SeatState {
   companyMaxTechSeats: number | null | undefined; // legacy value, intentionally ignored
   planIncludedTechSeats: number | null; // legacy value, intentionally ignored
   additionalSeatPrice: string | null; // legacy value, intentionally ignored
+  companyTier: string;
   techIds: string[]; // all reserved company-member ids, including the owner and pending invites
   existingUsersByEmail: Record<string, any>;
 }
@@ -265,6 +268,7 @@ function freshState(overrides: Partial<SeatState> = {}): SeatState {
     companyMaxTechSeats: undefined,
     planIncludedTechSeats: null,
     additionalSeatPrice: null,
+    companyTier: "contractor_basic",
     techIds: [],
     existingUsersByEmail: {},
     ...overrides,
@@ -281,6 +285,16 @@ function hybrid(promise: Promise<any>) {
 }
 
 function wireDbMocks(state: SeatState, capturedInserts: any[]) {
+  mockGetUser.mockResolvedValue({
+    id: ADMIN_ID,
+    role: "contractor",
+    subscriptionStatus: "active",
+  });
+  mockGetCompany.mockResolvedValue({
+    id: COMPANY_ID,
+    tier: state.companyTier,
+    bulkImportEnabled: true,
+  });
   mockDbSelect.mockImplementation((projection?: any) => ({
     from: (table: any) => ({
       where: (..._args: any[]) => {
@@ -518,6 +532,44 @@ describe("POST /api/contractor/bulk-import — seat-limit race condition", () =>
     const lines = ["email,firstName,lastName", ...emails.map((e, i) => `${e},First${i},Last${i}`)];
     return Buffer.from(lines.join("\n"), "utf-8");
   }
+
+  it("blocks a contractor_business company when the contractor has no active subscription", async () => {
+    const app = await buildApp();
+    const state = freshState({ companyTier: "contractor_business" });
+    const captured: any[] = [];
+    wireDbMocks(state, captured);
+    mockGetUser.mockResolvedValue({
+      id: ADMIN_ID,
+      role: "contractor",
+      subscriptionStatus: null,
+    });
+
+    const res = await request(app)
+      .post("/api/contractor/bulk-import")
+      .set("x-test-session", sessionHeader(adminSession()))
+      .attach("file", csvBuffer(["blocked@example.com"]), "techs.csv");
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("BULK_IMPORT_NOT_AVAILABLE");
+    expect(captured).toHaveLength(0);
+  });
+
+  it("allows an active contractor on a non-legacy tier to bulk import", async () => {
+    const app = await buildApp();
+    const state = freshState({ companyTier: "contractor_basic", techIds: ["owner"] });
+    const captured: any[] = [];
+    wireDbMocks(state, captured);
+
+    const res = await request(app)
+      .post("/api/contractor/bulk-import")
+      .set("x-test-session", sessionHeader(adminSession()))
+      .attach("file", csvBuffer(["active@example.com"]), "techs.csv");
+
+    expect(res.status).toBe(200);
+    expect(res.body.successRows).toBe(1);
+    expect(res.body.failedRows).toBe(0);
+    expect(captured).toHaveLength(1);
+  });
 
   it("imports all rows when comfortably under the limit", async () => {
     const app = await buildApp();

@@ -686,7 +686,9 @@ export const requireDivisionAccess = (req: any, res: any, next: any) => {
   next();
 };
 
-// Gates routes that require bulk import to be enabled for the company.
+// Gates routes that require bulk import to be enabled for the company and
+// available to a contractor with a real active subscription. Legacy company
+// tiers are not entitlements and must never grant access on their own.
 export const requireBulkImport = async (req: any, res: any, next: any) => {
   if (!req.session?.isAuthenticated || !req.session?.user) {
     return res.status(401).json({ message: "Unauthorized" });
@@ -695,10 +697,12 @@ export const requireBulkImport = async (req: any, res: any, next: any) => {
   if (!companyId) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
   try {
     const { storage } = await import('./storage');
+    const user = await (storage as any).getUser(req.session.user.id);
     const company = await (storage as any).getCompany(companyId);
     const allowed =
-      company?.bulkImportEnabled === true ||
-      company?.tier === 'contractor_business';
+      user?.role === 'contractor' &&
+      user?.subscriptionStatus === 'active' &&
+      company?.bulkImportEnabled === true;
     if (!allowed) return res.status(403).json({ code: 'BULK_IMPORT_NOT_AVAILABLE' });
     next();
   } catch {
