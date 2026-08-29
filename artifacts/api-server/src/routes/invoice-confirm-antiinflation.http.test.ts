@@ -26,7 +26,6 @@ const {
   TC_ID,
   mockGetUser,
   mockGetHouse,
-  mockCreateMaintenanceLog,
   mockCheckAchievements,
   mockDbSelect,
   mockDbInsert,
@@ -40,7 +39,6 @@ const {
   TC_ID: "tc-001",
   mockGetUser: vi.fn(),
   mockGetHouse: vi.fn(),
-  mockCreateMaintenanceLog: vi.fn(),
   mockCheckAchievements: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbInsert: vi.fn(),
@@ -209,7 +207,6 @@ vi.mock("../storage", async () => {
       getHouse: mockGetHouse,
       getMaintenanceLog: mockGetMaintenanceLog,
       updateMaintenanceLog: mockUpdateMaintenanceLog,
-      createMaintenanceLog: mockCreateMaintenanceLog,
       checkAndAwardAchievements: mockCheckAchievements,
     }),
   };
@@ -307,6 +304,42 @@ function buildInsertMock() {
 }
 
 /**
+ * Build a select query that supports all forms used by invoice confirmation:
+ * - await ...where(...)
+ * - await ...where(...).limit(1)
+ * - await ...where(...).orderBy(...).limit(1)
+ */
+function selectResult(rows: unknown[]) {
+  const result: any = Promise.resolve(rows);
+  result.limit = vi.fn().mockReturnValue(result);
+  result.orderBy = vi.fn().mockReturnValue(result);
+  return {
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue(result),
+    }),
+  };
+}
+
+function queueInvoiceConfirmQueries(
+  analysis: Record<string, unknown>,
+  duplicateLogs: unknown[] = [],
+) {
+  // 1) preliminary analysis read
+  // 2) locked analysis re-read
+  // 3) duplicate-log lookup
+  // 4) human-review helper analysis read (.limit)
+  // 5) human-review helper linked-analysis lookup
+  // 6) human-review helper decision lookup (.orderBy().limit())
+  mockDbSelect
+    .mockReturnValueOnce(selectResult([analysis]))
+    .mockReturnValueOnce(selectResult([analysis]))
+    .mockReturnValueOnce(selectResult(duplicateLogs))
+    .mockReturnValueOnce(selectResult([analysis]))
+    .mockReturnValueOnce(selectResult([analysis]))
+    .mockReturnValueOnce(selectResult([]));
+}
+
+/**
  * Return the values() call whose payload contains taskCompletion-specific
  * fields (year and month).  This filters out plan-seeding inserts which do
  * not carry those fields, allowing assertions to target the right call
@@ -320,12 +353,34 @@ function findTaskCompletionInsert(mockInsertValues: ReturnType<typeof vi.fn>) {
   return call ? (call[0] as Record<string, unknown>) : undefined;
 }
 
+function findMaintenanceLogInsert(mockInsertValues: ReturnType<typeof vi.fn>) {
+  const call = mockInsertValues.mock.calls.find(
+    ([vals]: [Record<string, unknown>]) =>
+      vals !== null
+      && typeof vals === "object"
+      && "serviceDate" in vals
+      && "serviceType" in vals
+      && !("year" in vals)
+      && !("month" in vals),
+  );
+  return call ? (call[0] as Record<string, unknown>) : undefined;
+}
+
 async function buildApp() {
   const app = express();
   app.use(express.json());
   await registerRoutes(app);
   return app;
 }
+
+beforeEach(() => {
+  // clearAllMocks() preserves one-time implementation queues. A failed request
+  // must not leak its remaining DB responses into the next test.
+  mockDbSelect.mockReset();
+  mockDbInsert.mockReset();
+  mockDbUpdate.mockReset();
+  mockDbExecute.mockReset().mockResolvedValue({ rows: [] });
+});
 
 // ---------------------------------------------------------------------------
 // PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforcement
@@ -343,7 +398,6 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
     const photoHash = "a".repeat(64);
     const analysisWithVerificationAudit = {
@@ -365,16 +419,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
       },
     };
 
-    // db.select — two sequential calls:
-    //   1. fetch analysis by id
-    //   2. duplicate service-type check (empty → no duplicate, so insert proceeds)
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([analysisWithVerificationAudit]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(analysisWithVerificationAudit);
 
     // db.update — two sequential calls:
     //   1. invoiceAnalyses: set({status, ...}).where(...).returning()
@@ -413,7 +458,8 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
         }),
       }),
     });
-    expect(mockCreateMaintenanceLog).toHaveBeenCalledWith(expect.objectContaining({
+    const insertedLog = findMaintenanceLogInsert(mockInsertValues);
+    expect(insertedLog).toMatchObject({
       verificationTier: "self_reported",
       verificationReasonCodes: ["duplicate_photo_hash", "review_needed", "ai_fraud_risk"],
       aiVerificationStatus: "review_needed",
@@ -426,7 +472,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
       }),
       beforePhotoHashes: [photoHash],
       afterPhotoHashes: [],
-    }));
+    });
 
     // year/month must come from the invoice serviceDate (2020-03-15),
     // NOT from today's wall-clock date.
@@ -445,7 +491,6 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
     const beforeHash = "a".repeat(64);
     const afterHash = "b".repeat(64);
@@ -475,13 +520,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
       },
     };
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([cleanAnalysis]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(cleanAnalysis);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -515,7 +554,8 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
         },
       }),
     });
-    expect(mockCreateMaintenanceLog).toHaveBeenCalledWith(expect.objectContaining({
+    const insertedLog = findMaintenanceLogInsert(mockInsertValues);
+    expect(insertedLog).toMatchObject({
       verificationTier: "photo_verified",
       verificationReasonCodes: [],
       aiVerificationStatus: "verified",
@@ -527,7 +567,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
           verificationTier: "photo_verified",
         }),
       }),
-    }));
+    });
   });
 
   it("uses analysis.serviceDate when body omits serviceDate field", async () => {
@@ -537,19 +577,11 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
 
-    // Analysis has serviceDate = 2019-11-05
+    // Analysis has serviceDate = 2019-11-05.
     const analysisFixture = { ...OLD_ANALYSIS_FIXTURE, serviceDate: "2019-11-05" };
-    // First select: fetch analysis. Second select: duplicate check (empty → no duplicate).
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([analysisFixture]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(analysisFixture);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -585,18 +617,10 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
 
     // Analysis has an old serviceDate (2020-03-15) — well outside the 12-month window.
-    // First select: fetch analysis. Second select: duplicate check (empty → no duplicate).
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([OLD_ANALYSIS_FIXTURE]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(OLD_ANALYSIS_FIXTURE);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -680,17 +704,9 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
 
-    // db.select: 1) fetch analysis, 2) duplicate service-type check (empty → proceed)
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([DIY_ANALYSIS_FIXTURE]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(DIY_ANALYSIS_FIXTURE);
 
     // db.update: 1) mark analysis confirmed, 2) link taskCompletionId on log
     const mockUpdateSet = vi.fn()
@@ -734,16 +750,9 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([DIY_ANALYSIS_FIXTURE]) }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
-      });
+    queueInvoiceConfirmQueries(DIY_ANALYSIS_FIXTURE);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -787,9 +796,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
 
     const unverifiedDiy = { ...DIY_ANALYSIS_FIXTURE, diyVerified: false };
 
-    mockDbSelect.mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([unverifiedDiy]) }),
-    });
+    queueInvoiceConfirmQueries(unverifiedDiy);
 
     const res = await request(app)
       .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
@@ -809,9 +816,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
 
     const noBeforePhotos = { ...DIY_ANALYSIS_FIXTURE, beforePhotoUrls: [] };
 
-    mockDbSelect.mockReturnValueOnce({
-      from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([noBeforePhotos]) }),
-    });
+    queueInvoiceConfirmQueries(noBeforePhotos);
 
     const res = await request(app)
       .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
@@ -1250,24 +1255,12 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-002" });
     mockCheckAchievements.mockResolvedValue([]);
 
-    // db.select:
-    //   call 1 — fetch analysis B (pending, same serviceType as the already-confirmed A)
-    //   call 2 — duplicate check: returns an existing log row (serviceType matches,
-    //            taskCompletionId is not null, serviceDate is within 12 months)
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([recentAnalysisFixture(ANALYSIS_ID_B)]),
-        }),
-      })
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ id: LOG_ID }]),  // existing scored log found
-        }),
-      });
+    queueInvoiceConfirmQueries(
+      recentAnalysisFixture(ANALYSIS_ID_B),
+      [{ id: LOG_ID }],
+    );
 
     // db.update: only one call needed (mark analysis confirmed with taskCompletionId=null)
     const mockUpdateSet = vi.fn().mockReturnValueOnce({
@@ -1312,7 +1305,6 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-003" });
     mockCheckAchievements.mockResolvedValue([]);
 
     // Analysis B has a deliberately different serviceDescription but the same serviceType
@@ -1320,18 +1312,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
       serviceDescription: "HVAC DIFFERENT WORDING",
     });
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([analysisB]),
-        }),
-      })
-      .mockReturnValueOnce({
-        // Duplicate check still finds the existing log via serviceType match
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ id: LOG_ID }]),
-        }),
-      });
+    queueInvoiceConfirmQueries(analysisB, [{ id: LOG_ID }]);
 
     const mockUpdateSet = vi.fn().mockReturnValueOnce({
       where: vi.fn().mockReturnValue({
@@ -1364,21 +1345,9 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([recentAnalysisFixture(ANALYSIS_ID)]),
-        }),
-      })
-      .mockReturnValueOnce({
-        // Duplicate check: no existing log → allow taskCompletion creation
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
+    queueInvoiceConfirmQueries(recentAnalysisFixture(ANALYSIS_ID));
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -1422,7 +1391,6 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-old-002" });
     mockCheckAchievements.mockResolvedValue([]);
 
     // Analysis B: old invoice from 2020, same serviceType as an already-confirmed 2020 invoice.
@@ -1447,23 +1415,8 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
       aiNotes: null,
     };
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        // Fetch analysis B
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([oldAnalysisB]),
-        }),
-      })
-      .mockReturnValueOnce({
-        // Duplicate check: finds an existing log whose serviceDate is also in 2020
-        // (e.g. "2020-03-15") with a non-null taskCompletionId.
-        // Under the old rolling-12-month logic this would NOT have matched because
-        // 2020-03-15 is more than 12 months ago.  Under the new year-window logic
-        // it DOES match because both dates are in 2020.
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([{ id: "log-old-001" }]),
-        }),
-      });
+    // Duplicate check finds an existing scored log from the same 2020 window.
+    queueInvoiceConfirmQueries(oldAnalysisB, [{ id: "log-old-001" }]);
 
     // db.update: one call — mark analysis confirmed with taskCompletionId=null
     const mockUpdateSet = vi.fn().mockReturnValueOnce({
@@ -1502,7 +1455,6 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     const app = await buildApp();
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
-    mockCreateMaintenanceLog.mockResolvedValue({ id: "log-2019-001" });
     mockCheckAchievements.mockResolvedValue([]);
 
     // Analysis to confirm: serviceDate in 2019.
@@ -1528,18 +1480,8 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
       aiNotes: null,
     };
 
-    mockDbSelect
-      .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([analysis2019]),
-        }),
-      })
-      .mockReturnValueOnce({
-        // Duplicate check: no existing log within 2019-01-01…2019-12-31 → allow
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      });
+    // Duplicate check: no existing log within 2019-01-01…2019-12-31.
+    queueInvoiceConfirmQueries(analysis2019);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({

@@ -21,6 +21,7 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 
 const {
   mockDbSelectWhere,
+  mockDbExecute,
   mockDbInsertValues,
   mockDbUpdateWhereReturning,
   mockStorageGetUser,
@@ -35,6 +36,7 @@ const {
   const mockDbInsertValues = vi.fn();
   return {
     mockDbSelectWhere: vi.fn(),
+    mockDbExecute: vi.fn(),
     mockDbInsertValues,
     mockDbUpdateWhereReturning: vi.fn(),
     mockStorageGetUser: vi.fn(),
@@ -73,6 +75,26 @@ vi.mock("../db", () => ({
     delete: vi.fn().mockReturnValue({
       where: vi.fn().mockResolvedValue(undefined),
     }),
+    transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) =>
+      callback({
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: mockDbSelectWhere,
+          }),
+        }),
+        insert: vi.fn().mockReturnValue({
+          values: mockDbInsertValues,
+        }),
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              returning: mockDbUpdateWhereReturning,
+            }),
+          }),
+        }),
+        execute: mockDbExecute,
+      }),
+    ),
   },
 }));
 
@@ -183,6 +205,15 @@ vi.mock("../invoice-analysis-service", () => ({
   extractInvoiceData: vi.fn().mockResolvedValue(null),
   verifyDIYPhotos: vi.fn().mockResolvedValue(null),
 }));
+vi.mock("../maintenance-evidence-review", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../maintenance-evidence-review")>();
+  return {
+    ...actual,
+    // Human-review linkage has dedicated coverage. These tests isolate invoice
+    // date stamping and HWS scoring while still exercising the transaction.
+    getResolvedHumanReviewForInvoice: vi.fn().mockResolvedValue(null),
+  };
+});
 vi.mock("openai", () => ({
   default: class MockOpenAI {
     chat = { completions: { create: mockOpenAIChatCreate } };
@@ -284,6 +315,13 @@ let app: express.Express;
 // but express itself is the request handler we test against.
 beforeEach(async () => {
   vi.clearAllMocks();
+  // clearAllMocks() does not discard mockResolvedValueOnce queues. Reset the
+  // DB doubles explicitly so a failed request cannot leak invoice fixtures
+  // into later HWS assertions.
+  mockDbSelectWhere.mockReset();
+  mockDbExecute.mockReset().mockResolvedValue({ rows: [] });
+  mockDbInsertValues.mockReset();
+  mockDbUpdateWhereReturning.mockReset();
   mockStorageGetUser.mockResolvedValue(stubUser);
   mockStorageGetHouse.mockResolvedValue(stubHouse);
   mockStorageCreateLog.mockResolvedValue({ id: "log-001" });
@@ -296,6 +334,19 @@ beforeEach(async () => {
   app.use(express.json());
   await registerRoutes(app);
 });
+
+function queueInvoiceConfirmQueries(analysis: Record<string, unknown>) {
+  // The confirm route performs:
+  // 1) preliminary analysis read
+  // 2) locked analysis re-read
+  // 3) duplicate-log lookup
+  // Human-review lookup is mocked here because this file tests date stamping
+  // and score-window behavior, not evidence-review linkage.
+  mockDbSelectWhere
+    .mockResolvedValueOnce([analysis])
+    .mockResolvedValueOnce([analysis])
+    .mockResolvedValueOnce([]);
+}
 
 // ---------------------------------------------------------------------------
 // confirm route — month/year stamped from serviceDate, not today
@@ -328,10 +379,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — month/year derived from se
     const todayStr = new Date().toISOString().split("T")[0];
     const analysis = buildAnalysis(todayStr);
 
-    // db.select().from(invoiceAnalyses).where() → analysis
-    mockDbSelectWhere.mockResolvedValueOnce([analysis]);
-    // db.select().from(maintenanceLogs).where() → [] (no duplicate service type in window)
-    mockDbSelectWhere.mockResolvedValueOnce([]);
+    queueInvoiceConfirmQueries(analysis);
 
     let capturedValues: any = null;
     mockDbInsertValues.mockImplementation((vals: any) => {
@@ -358,10 +406,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — month/year derived from se
     const oldDateStr = dateMonthsAgo(13);
     const analysis = buildAnalysis(oldDateStr);
 
-    // db.select().from(invoiceAnalyses).where() → analysis
-    mockDbSelectWhere.mockResolvedValueOnce([analysis]);
-    // db.select().from(maintenanceLogs).where() → [] (no duplicate service type in window)
-    mockDbSelectWhere.mockResolvedValueOnce([]);
+    queueInvoiceConfirmQueries(analysis);
 
     let capturedValues: any = null;
     mockDbInsertValues.mockImplementation((vals: any) => {
