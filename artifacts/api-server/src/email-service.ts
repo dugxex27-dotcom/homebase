@@ -1716,10 +1716,10 @@ export async function sendCheckoutFailureEmail(
   const user = await storage.getUser(userId);
   if (!user?.email) return false;
 
-  const planDisplay =
-    plan === 'pro'
-      ? 'Contractor Pro ($40/month)'
-      : 'Contractor Basic ($20/month)';
+  // The contractor offering is now one Basic plan. Keep accepting the legacy
+  // plan argument for callers and stored records, but never show retired Pro
+  // pricing in customer-facing email.
+  const planDisplay = 'Contractor Basic ($20/month)';
 
   const html = wrapEmailContent(
     getEmailHeader('Complete Your Setup'),

@@ -8098,7 +8098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8136,7 +8136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8173,7 +8173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8206,7 +8206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8250,7 +8250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8286,7 +8286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8330,7 +8330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8366,7 +8366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8398,7 +8398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8441,7 +8441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8474,7 +8474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8585,7 +8585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8616,7 +8616,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8659,7 +8659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8691,7 +8691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8734,7 +8734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8854,7 +8854,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8889,7 +8889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -8923,7 +8923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9031,7 +9031,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9063,7 +9063,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9180,7 +9180,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9308,7 +9308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9401,7 +9401,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9436,7 +9436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9536,7 +9536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
         return res.status(403).json({ 
-          message: "CRM features require Contractor Pro subscription",
+          message: "CRM features require an active Contractor Basic subscription",
           upgradeRequired: true 
         });
       }
@@ -9869,7 +9869,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
-        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+        return res.status(403).json({ message: "CRM features require an active Contractor Basic subscription", upgradeRequired: true });
       }
       if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
       if (!req.file.mimetype.includes('csv') && !req.file.originalname.toLowerCase().endsWith('.csv')) {
@@ -9957,7 +9957,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
-        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+        return res.status(403).json({ message: "CRM features require an active Contractor Basic subscription", upgradeRequired: true });
       }
       if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
       if (!req.file.mimetype.includes('csv') && !req.file.originalname.toLowerCase().endsWith('.csv')) {
@@ -10122,7 +10122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
-        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+        return res.status(403).json({ message: "CRM features require an active Contractor Basic subscription", upgradeRequired: true });
       }
       const clients = await storage.getCrmClients(req.session.user.id);
       sendCsvDownload(res, 'clients-export.csv', clients as any, [
@@ -10159,7 +10159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
-        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+        return res.status(403).json({ message: "CRM features require an active Contractor Basic subscription", upgradeRequired: true });
       }
       const quotes = await storage.getCrmQuotes(req.session.user.id);
       // Line items are a nested array (description/quantity/unitPrice/total per item) that
@@ -10199,7 +10199,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hasAccess = await hasCrmProAccess(req.session.user);
       if (!hasAccess) {
-        return res.status(403).json({ message: "CRM features require Contractor Pro subscription", upgradeRequired: true });
+        return res.status(403).json({ message: "CRM features require an active Contractor Basic subscription", upgradeRequired: true });
       }
       const invoices = await storage.getCrmInvoices(req.session.user.id);
       sendCsvDownload(res, 'invoices-export.csv', invoices as any, [
