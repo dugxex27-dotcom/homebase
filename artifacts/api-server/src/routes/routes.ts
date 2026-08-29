@@ -47,6 +47,41 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
   : null;
 
+/**
+ * Resolve the subscription attached to a Stripe invoice across API versions.
+ *
+ * Current Stripe invoice payloads use
+ * `parent.subscription_details.subscription`. Older payloads exposed
+ * `subscription`, and a legacy application fixture used `subscriptionId`.
+ * Any of these fields may contain either an ID string or an expanded object.
+ */
+export function extractStripeInvoiceSubscriptionId(invoice: unknown): string | null {
+  if (!invoice || typeof invoice !== 'object') return null;
+
+  const invoiceRecord = invoice as Record<string, any>;
+  const candidates = [
+    invoiceRecord.parent?.subscription_details?.subscription,
+    invoiceRecord.subscription,
+    invoiceRecord.subscriptionId,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.length > 0) {
+      return candidate;
+    }
+    if (
+      candidate &&
+      typeof candidate === 'object' &&
+      typeof candidate.id === 'string' &&
+      candidate.id.length > 0
+    ) {
+      return candidate.id;
+    }
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Server-side boost pricing — never trust the client-supplied amount.
 // All boost purchases (new + renewal) must use this value.
@@ -2249,11 +2284,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     switch (event.type) {
       case 'invoice.paid': {
           const invoice = event.data.object as Stripe.Invoice;
-          const invoiceSubscription =
-            (invoice as any).subscription ?? (invoice as any).subscriptionId;
-          const subscriptionId = typeof invoiceSubscription === 'string'
-            ? invoiceSubscription
-            : invoiceSubscription?.id;
+          const subscriptionId = extractStripeInvoiceSubscriptionId(invoice);
           const customerId = invoice.customer as string;
 
           const user = await storage.getUserByStripeCustomerId(customerId);
@@ -2477,7 +2508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // 2. Extract device fingerprint from Stripe subscription metadata (stored at checkout)
                 let deviceFp: string | null = null;
                 try {
-                  const subscriptionId = (invoiceObj as any).subscription as string | undefined;
+                  const subscriptionId = extractStripeInvoiceSubscriptionId(invoiceObj);
                   if (stripe && subscriptionId) {
                     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
                     deviceFp = (subscription.metadata as any)?.deviceFingerprint ?? null;
@@ -2698,12 +2729,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         case 'invoice.payment_failed': {
           const invoice = event.data.object as Stripe.Invoice;
-          const subscriptionId = ((invoice as any).subscription ?? (invoice as any).subscriptionId) as string;
+          const subscriptionId = extractStripeInvoiceSubscriptionId(invoice);
           const customerId = invoice.customer as string;
 
           const user = await storage.getUserByStripeCustomerId(customerId);
           if (!user) {
             console.error('[STRIPE WEBHOOK] User not found for customer:', customerId);
+            break;
+          }
+          if (!subscriptionId) {
+            console.warn(`[STRIPE WEBHOOK] Invoice ${invoice.id} payment failed without a subscription; skipping subscription failure processing`);
             break;
           }
 

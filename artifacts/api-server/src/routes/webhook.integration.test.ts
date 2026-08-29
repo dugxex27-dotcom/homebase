@@ -1627,6 +1627,156 @@ function makeInvoicePaidEventWithCreated(
   } as unknown as Stripe.Event;
 }
 
+type InvoiceSubscriptionPayloadShape =
+  | "current"
+  | "legacy-subscription"
+  | "legacy-subscription-id"
+  | "missing";
+
+function makeInvoicePaidEventWithSubscriptionShape(
+  eventId: string,
+  subscriptionId: string,
+  customerId: string,
+  shape: InvoiceSubscriptionPayloadShape,
+): Stripe.Event {
+  const invoice: Record<string, unknown> = {
+    id: `in_test_subscription_shape_${eventId}`,
+    object: "invoice",
+    customer: customerId,
+    amount_paid: 500,
+    period_start: Math.floor(Date.now() / 1000) - 3600,
+    period_end: Math.floor(Date.now() / 1000),
+  };
+
+  if (shape === "current") {
+    invoice.parent = {
+      type: "subscription_details",
+      subscription_details: { subscription: subscriptionId },
+    };
+  } else if (shape === "legacy-subscription") {
+    invoice.subscription = subscriptionId;
+  } else if (shape === "legacy-subscription-id") {
+    invoice.subscriptionId = subscriptionId;
+  }
+
+  return {
+    id: eventId,
+    object: "event",
+    type: "invoice.paid",
+    data: { object: invoice },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2026-04-22.dahlia",
+  } as unknown as Stripe.Event;
+}
+
+describe("Stripe webhook — invoice subscription payload compatibility", () => {
+  let app: express.Express;
+
+  const USER_ID = "user_test_invoice_shape_01";
+  const CUSTOMER_ID = "cus_test_invoice_shape_01";
+  const SUBSCRIPTION_ID = "sub_test_invoice_shape_01";
+  const fakeUser = {
+    id: USER_ID,
+    role: "homeowner",
+    companyId: null,
+    email: "invoice-shape@test.com",
+    stripeCustomerId: CUSTOMER_ID,
+    stripeSubscriptionId: null,
+    subscriptionStatus: "trialing",
+    stripeSubscriptionEventAt: null,
+  };
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(fakeUser);
+    mockGetUser.mockReset().mockResolvedValue(fakeUser);
+    mockSubscriptionsRetrieve.mockReset().mockImplementation(async (subscriptionId: string) => ({
+      id: subscriptionId,
+      customer: CUSTOMER_ID,
+      status: "active",
+      items: { data: [{ price: { id: "price_test_invoice_shape" } }] },
+    }));
+    mockApplyUserStripeSubscriptionState.mockClear();
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    ["current parent.subscription_details.subscription", "current"],
+    ["legacy subscription", "legacy-subscription"],
+    ["legacy subscriptionId", "legacy-subscription-id"],
+  ] as const)("invoice.paid resolves the %s payload shape", async (_label, shape) => {
+    const event = makeInvoicePaidEventWithSubscriptionShape(
+      `evt_invoice_shape_${shape}`,
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+      shape,
+    );
+    mockConstructEvent.mockReset().mockReturnValueOnce(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ received: true });
+    expect(mockSubscriptionsRetrieve).toHaveBeenCalledWith(SUBSCRIPTION_ID);
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(
+      event.id,
+      expect.any(Date),
+    );
+  });
+
+  it("invoice.paid without any subscription shape warns and commits without crashing", async () => {
+    const event = makeInvoicePaidEventWithSubscriptionShape(
+      "evt_invoice_shape_missing",
+      SUBSCRIPTION_ID,
+      CUSTOMER_ID,
+      "missing",
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    mockConstructEvent.mockReset().mockReturnValueOnce(event);
+
+    const response = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({ received: true });
+    expect(mockSubscriptionsRetrieve).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("paid without a subscription; skipping subscription activation"),
+    );
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(
+      event.id,
+      expect.any(Date),
+    );
+  });
+});
+
 describe("Stripe webhook — subscription event ordering guard (out-of-order / stale redelivery)", () => {
   let app: express.Express;
   let currentUser: {
