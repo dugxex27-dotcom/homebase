@@ -102,3 +102,17 @@ id = "1rTusQGVczCbf5jEdxPNC"
 uri = "file://artifacts/myhomebase/public/icon-512x512.png"
 type = "image"
 title = "HomeBase logo (for Stripe upload)"
+
+[[outputs]]
+id = "KSaOcVCinqgYyzTgB0whD"
+uri = "file://attached_assets/maintenance-template-inventory.csv"
+type = "table"
+title = "Complete Maintenance Template Inventory"
+description = "Full raw inventory of 1,121 regional, international, and age/system-aware maintenance template rows, including titles, descriptions, regions, months, frequency metadata, categories, priorities, dependencies, and original fields."
+
+[[outputs]]
+id = "kCkgj4FRSB7ePvFtDCrBJ"
+uri = "file://attached_assets/maintenance-template-counts.json"
+type = "unspecified"
+title = "Maintenance Template Counts"
+description = "Machine-readable counts and source breakdown for the maintenance template inventory."
