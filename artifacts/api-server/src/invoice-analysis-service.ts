@@ -30,6 +30,23 @@ export interface DIYVerification {
   notes: string;
   workDescribed: string | null;
   materialsIdentified: string[];
+  /** A soft signal only; this must never independently reject a submission. */
+  fraudRiskFlag?: boolean;
+  /** Stable, machine-readable reasons for the soft risk signal. */
+  fraudRiskReasons?: string[];
+}
+
+export type DIYPhotoRole = "before" | "after" | "receipt";
+
+export interface DIYPhotoInput {
+  base64: string;
+  mimeType: string;
+  role: DIYPhotoRole;
+}
+
+export interface DIYVerificationContext {
+  claimedTaskTitle: string;
+  claimedCategory: string;
 }
 
 const INVOICE_PROMPT = `You are extracting home maintenance service details from an invoice, receipt, or work order photo.
@@ -74,14 +91,42 @@ Invoice text:
 `;
 
 const DIY_VERIFICATION_PROMPT = `You are verifying that photos show legitimate DIY home maintenance work.
-Analyze these photos and return ONLY a JSON object:
+The homeowner's claimed task context will be provided before the images. Compare the visible work to that claim, but do not infer a final health-score or verification tier.
+
+Each image is preceded by an explicit role label:
+- BEFORE PHOTO: the condition before the claimed work
+- AFTER PHOTO: the condition after the claimed work
+- RECEIPT PHOTO: a purchase receipt or materials record
+
+Return ONLY a JSON object. A fraud-risk flag is a soft review signal: it must not independently make "verified" false when the photos otherwise show the claimed work.
 {
   "verified": true if photos clearly show before/after DIY work or purchase receipts for materials,
   "confidence": "high" | "medium" | "low",
   "notes": "brief explanation of what you see and why you did or did not verify",
   "workDescribed": "concise description of the work visible in photos, or null",
-  "materialsIdentified": ["list of any materials or tools visible in photos"]
+  "materialsIdentified": ["list of any materials or tools visible in photos"],
+  "fraudRiskFlag": true only when there is a soft reason to send this evidence for review, otherwise false,
+  "fraudRiskReasons": ["zero or more stable reason codes from: claimed_work_mismatch, reused_or_stock_image, insufficient_before_after_evidence, receipt_mismatch, other"]
 }`;
+
+const DIY_FRAUD_RISK_REASONS = new Set([
+  "claimed_work_mismatch",
+  "reused_or_stock_image",
+  "insufficient_before_after_evidence",
+  "receipt_mismatch",
+  "other",
+]);
+
+export function buildDIYVerificationPrompt(context: DIYVerificationContext): string {
+  const title = context.claimedTaskTitle.trim() || "DIY home maintenance";
+  const category = context.claimedCategory.trim() || "general maintenance";
+  return `${DIY_VERIFICATION_PROMPT}
+
+Claimed task title: ${title}
+Claimed maintenance category: ${category}
+
+Evaluate the role-labeled images below against this claimed task.`;
+}
 
 /** Parse a GPT JSON response string into an InvoiceExtraction object. */
 function parseExtractionResponse(raw: string): InvoiceExtraction {
@@ -166,6 +211,8 @@ export function getMockDIYVerification(): DIYVerification {
     notes: "This is a sample AI verification shown for demo accounts — no AI service was called. In the full product, this confirms your before/after photos show completed work.",
     workDescribed: "Replaced a worn kitchen faucet and resealed the surrounding countertop with silicone caulk",
     materialsIdentified: ["Faucet", "Plumber's tape", "Silicone caulk"],
+    fraudRiskFlag: false,
+    fraudRiskReasons: [],
   };
 }
 
@@ -221,14 +268,32 @@ export async function extractInvoiceData(
 }
 
 export async function verifyDIYPhotos(
-  photoBase64List: Array<{ base64: string; mimeType: string }>
+  photoBase64List: DIYPhotoInput[],
+  context: DIYVerificationContext = {
+    claimedTaskTitle: "DIY home maintenance",
+    claimedCategory: "general maintenance",
+  },
 ): Promise<DIYVerification> {
   const openai = createOpenAIClient();
 
-  const imageContent = photoBase64List.map((p) => ({
-    type: "image_url" as const,
-    image_url: { url: `data:${p.mimeType};base64,${p.base64}` },
-  }));
+  const roleCounts: Record<DIYPhotoRole, number> = {
+    before: 0,
+    after: 0,
+    receipt: 0,
+  };
+  const imageContent = photoBase64List.flatMap((p) => {
+    roleCounts[p.role] += 1;
+    return [
+      {
+        type: "text" as const,
+        text: `${p.role.toUpperCase()} PHOTO ${roleCounts[p.role]}:`,
+      },
+      {
+        type: "image_url" as const,
+        image_url: { url: `data:${p.mimeType};base64,${p.base64}` },
+      },
+    ];
+  });
 
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
@@ -236,7 +301,7 @@ export async function verifyDIYPhotos(
       {
         role: "user",
         content: [
-          { type: "text", text: DIY_VERIFICATION_PROMPT },
+          { type: "text", text: buildDIYVerificationPrompt(context) },
           ...imageContent,
         ],
       },
@@ -247,6 +312,13 @@ export async function verifyDIYPhotos(
 
   const raw = response.choices[0]?.message?.content ?? "{}";
   const parsed = JSON.parse(raw);
+  const fraudRiskReasons = Array.isArray(parsed.fraudRiskReasons)
+    ? parsed.fraudRiskReasons.filter(
+        (reason: unknown): reason is string =>
+          typeof reason === "string" && DIY_FRAUD_RISK_REASONS.has(reason),
+      )
+    : [];
+  const fraudRiskFlag = parsed.fraudRiskFlag === true;
 
   return {
     verified: Boolean(parsed.verified),
@@ -258,5 +330,9 @@ export async function verifyDIYPhotos(
     materialsIdentified: Array.isArray(parsed.materialsIdentified)
       ? parsed.materialsIdentified
       : [],
+    fraudRiskFlag,
+    fraudRiskReasons: fraudRiskFlag && fraudRiskReasons.length === 0
+      ? ["other"]
+      : fraudRiskReasons,
   };
 }

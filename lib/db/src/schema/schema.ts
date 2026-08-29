@@ -524,6 +524,8 @@ export const photoVerificationReasonCodeSchema = z.enum([
   "timestamp_delta_exceeded",
   "ai_ambiguous",
   "ai_mismatch",
+  "ai_fraud_risk",
+  "duplicate_photo_hash",
   "review_needed",
 ]);
 export type PhotoVerificationReasonCode = z.infer<typeof photoVerificationReasonCodeSchema>;

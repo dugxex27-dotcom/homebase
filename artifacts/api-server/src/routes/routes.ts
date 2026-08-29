@@ -20,7 +20,7 @@ import { createImmediateNotification, createNotificationSafely, notificationCate
 import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
-import { extractInvoiceData, verifyDIYPhotos, getMockInvoiceExtraction, getMockDIYVerification, type InvoiceExtraction } from "../invoice-analysis-service";
+import { extractInvoiceData, verifyDIYPhotos, getMockInvoiceExtraction, getMockDIYVerification, type DIYVerification, type InvoiceExtraction } from "../invoice-analysis-service";
 import { invoiceAnalyses, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
@@ -513,6 +513,234 @@ export function checkDiyVerifyGuard(
     };
   }
   return null;
+}
+
+type DIYPhotoRole = "before" | "after" | "receipt";
+type DIYPhotoUpload = {
+  fileData?: unknown;
+  fileName?: string;
+  fileType?: string;
+};
+
+export type DIYPhotoHashSummary = {
+  before: string[];
+  after: string[];
+  receipt: string[];
+  unavailableRoles: DIYPhotoRole[];
+};
+
+/**
+ * Extract a base64 payload without throwing on malformed client input.
+ * This is deliberately stricter than Buffer.from(), which silently accepts
+ * some invalid base64 strings and would make a bad upload look hashable.
+ */
+export function extractDIYBase64Payload(fileData: unknown): string | null {
+  if (typeof fileData !== "string") return null;
+  const markerIndex = fileData.indexOf("base64,");
+  const payload = markerIndex >= 0
+    ? fileData.slice(markerIndex + "base64,".length)
+    : fileData;
+  const normalized = payload.replace(/\s/g, "");
+  if (
+    normalized.length === 0 ||
+    normalized.length % 4 === 1 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
+  ) {
+    return null;
+  }
+  const decoded = Buffer.from(normalized, "base64");
+  if (decoded.length === 0) return null;
+  const canonical = decoded.toString("base64").replace(/=+$/, "");
+  return canonical === normalized.replace(/=+$/, "") ? normalized : null;
+}
+
+export function hashDIYPhotoFile(fileData: unknown): string | null {
+  const payload = extractDIYBase64Payload(fileData);
+  if (!payload) return null;
+  try {
+    return createHash("sha256").update(Buffer.from(payload, "base64")).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Hash each submitted file independently. A missing/malformed hash is
+ * recorded for review, but never prevents the remaining files from being
+ * verified or persisted.
+ */
+export function summarizeDIYPhotoHashes(
+  filesByRole: Record<DIYPhotoRole, DIYPhotoUpload[]>,
+): DIYPhotoHashSummary {
+  const summary: DIYPhotoHashSummary = {
+    before: [],
+    after: [],
+    receipt: [],
+    unavailableRoles: [],
+  };
+  for (const role of ["before", "after", "receipt"] as const) {
+    for (const file of filesByRole[role] ?? []) {
+      const hash = hashDIYPhotoFile(file.fileData);
+      if (hash) summary[role].push(hash);
+      else if (!summary.unavailableRoles.includes(role)) summary.unavailableRoles.push(role);
+    }
+  }
+  return summary;
+}
+
+export type DIYDuplicatePhotoMatch = {
+  hash: string;
+  source: "current_submission" | "prior_maintenance_evidence";
+  priorRecordId?: string;
+};
+
+export function findDIYDuplicatePhotoMatches(
+  hashSummary: DIYPhotoHashSummary,
+  priorEvidence: Array<{
+    id?: string | null;
+    beforePhotoHashes?: unknown;
+    afterPhotoHashes?: unknown;
+    before_photo_hashes?: unknown;
+    after_photo_hashes?: unknown;
+    aiVerificationResponse?: unknown;
+    ai_verification_response?: unknown;
+  }> = [],
+): DIYDuplicatePhotoMatch[] {
+  const matches: DIYDuplicatePhotoMatch[] = [];
+  const currentByHash = new Map<string, number>();
+  for (const hash of [...hashSummary.before, ...hashSummary.after, ...hashSummary.receipt]) {
+    const canonicalHash = hash.toLowerCase();
+    currentByHash.set(canonicalHash, (currentByHash.get(canonicalHash) ?? 0) + 1);
+  }
+  for (const [hash, count] of currentByHash) {
+    if (count > 1) matches.push({ hash, source: "current_submission" });
+  }
+
+  const currentHashes = new Set(currentByHash.keys());
+  for (const evidence of priorEvidence) {
+    const rawResponse = evidence.aiVerificationResponse ?? evidence.ai_verification_response;
+    const structuredResponse =
+      rawResponse && typeof rawResponse === "object" && !Array.isArray(rawResponse)
+        ? rawResponse as Record<string, unknown>
+        : {};
+    const structuredEvidence =
+      structuredResponse.evidence
+      && typeof structuredResponse.evidence === "object"
+      && !Array.isArray(structuredResponse.evidence)
+        ? structuredResponse.evidence as Record<string, unknown>
+        : {};
+    const structuredHashes =
+      structuredEvidence.photoHashes
+      && typeof structuredEvidence.photoHashes === "object"
+      && !Array.isArray(structuredEvidence.photoHashes)
+        ? structuredEvidence.photoHashes as Record<string, unknown>
+        : {};
+    const directBeforeHashes = evidence.beforePhotoHashes ?? evidence.before_photo_hashes;
+    const directAfterHashes = evidence.afterPhotoHashes ?? evidence.after_photo_hashes;
+    const priorHashes = new Set(
+      [
+        ...(Array.isArray(directBeforeHashes) ? directBeforeHashes : []),
+        ...(Array.isArray(directAfterHashes) ? directAfterHashes : []),
+        ...(Array.isArray(structuredHashes.before) ? structuredHashes.before : []),
+        ...(Array.isArray(structuredHashes.after) ? structuredHashes.after : []),
+        ...(Array.isArray(structuredHashes.receipt) ? structuredHashes.receipt : []),
+      ]
+        .filter((hash): hash is string => typeof hash === "string" && /^[0-9a-f]{64}$/i.test(hash))
+        .map((hash) => hash.toLowerCase()),
+    );
+    for (const hash of currentHashes) {
+      if (priorHashes.has(hash)) {
+        matches.push({
+          hash,
+          source: "prior_maintenance_evidence",
+          priorRecordId: evidence.id ?? undefined,
+        });
+      }
+    }
+  }
+  return matches;
+}
+
+const ALLOWED_AI_VERIFICATION_STATUSES = new Set([
+  "not_run",
+  "pending",
+  "verified",
+  "rejected",
+  "review_needed",
+]);
+
+const ALLOWED_PHOTO_VERIFICATION_REASON_CODES = new Set([
+  "evidence_missing",
+  "location_missing",
+  "property_coordinates_missing",
+  "distance_from_property_exceeded",
+  "timestamp_missing",
+  "timestamp_invalid",
+  "timestamp_delta_exceeded",
+  "ai_ambiguous",
+  "ai_mismatch",
+  "ai_fraud_risk",
+  "duplicate_photo_hash",
+  "review_needed",
+]);
+
+/**
+ * Read only validated audit metadata from the JSON response. Invalid or legacy
+ * response shapes produce empty evidence instead of breaking confirmation.
+ */
+export function normalizeDIYVerificationAudit(
+  status: unknown,
+  response: unknown,
+): {
+  status: string | null;
+  response: Record<string, unknown> | null;
+  reasonCodes: string[];
+  beforePhotoHashes: string[];
+  afterPhotoHashes: string[];
+} {
+  const normalizedStatus =
+    typeof status === "string" && ALLOWED_AI_VERIFICATION_STATUSES.has(status)
+      ? status
+      : null;
+  if (!response || typeof response !== "object" || Array.isArray(response)) {
+    return {
+      status: normalizedStatus,
+      response: null,
+      reasonCodes: [],
+      beforePhotoHashes: [],
+      afterPhotoHashes: [],
+    };
+  }
+
+  const structured = response as Record<string, unknown>;
+  const reasonCodes = Array.isArray(structured.verificationReasonCodes)
+    ? structured.verificationReasonCodes.filter(
+        (code): code is string =>
+          typeof code === "string" && ALLOWED_PHOTO_VERIFICATION_REASON_CODES.has(code),
+      )
+    : [];
+  const evidence =
+    structured.evidence && typeof structured.evidence === "object" && !Array.isArray(structured.evidence)
+      ? structured.evidence as Record<string, unknown>
+      : {};
+  const photoHashes =
+    evidence.photoHashes && typeof evidence.photoHashes === "object" && !Array.isArray(evidence.photoHashes)
+      ? evidence.photoHashes as Record<string, unknown>
+      : {};
+  const validHashes = (value: unknown): string[] =>
+    Array.isArray(value)
+      ? value.filter(
+          (hash): hash is string => typeof hash === "string" && /^[0-9a-f]{64}$/i.test(hash),
+        ).map((hash) => hash.toLowerCase())
+      : [];
+
+  return {
+    status: normalizedStatus,
+    response: structured,
+    reasonCodes: [...new Set(reasonCodes)],
+    beforePhotoHashes: validHashes(photoHashes.before),
+    afterPhotoHashes: validHashes(photoHashes.after),
+  };
 }
 
 /**
@@ -22056,8 +22284,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         });
       }
 
-      // All newly uploaded files for AI verification
-      const allPhotos = [...beforePhotoFiles, ...afterPhotoFiles, ...receiptFiles];
+      const filesByRole: Record<DIYPhotoRole, DIYPhotoUpload[]> = {
+        before: beforePhotoFiles,
+        after: afterPhotoFiles,
+        receipt: receiptFiles,
+      };
+      // Preserve each image's semantic role all the way into the AI request.
+      const allPhotos = ([
+        ...beforePhotoFiles.map((file: DIYPhotoUpload) => ({ file, role: "before" as const })),
+        ...afterPhotoFiles.map((file: DIYPhotoUpload) => ({ file, role: "after" as const })),
+        ...receiptFiles.map((file: DIYPhotoUpload) => ({ file, role: "receipt" as const })),
+      ]);
+      const photoHashSummary = summarizeDIYPhotoHashes(filesByRole);
 
       // Helper: upload array of files and return stored URLs
       const uploadFileSet = async (files: Array<{ fileData: string; fileName: string; fileType: string }>): Promise<string[]> => {
@@ -22123,18 +22361,34 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // Run DIY verification using uploaded file data (if new files provided) or return based on existing
       let diyVerified: boolean = analysis.diyVerified ?? false;
       let verificationNotes = analysis.aiNotes;
+      let aiVerificationStatus = analysis.aiVerificationStatus ?? null;
+      let aiVerificationResponse = analysis.aiVerificationResponse ?? null;
+      let verificationReasonCodes: string[] = [];
+      let verificationResult: DIYVerification | null = null;
+      let verificationContext = {
+        claimedTaskTitle:
+          analysis.serviceDescription?.trim()
+          || analysis.serviceType?.trim()
+          || "DIY home maintenance",
+        claimedCategory:
+          analysis.homeArea?.trim()
+          || analysis.serviceType?.trim()
+          || "general maintenance",
+      };
 
       if (allPhotos.length > 0) {
         try {
-          const photoData = allPhotos.slice(0, 4).map((f) => ({
-            base64: f.fileData.includes("base64,") ? f.fileData.split("base64,")[1] : f.fileData,
-            mimeType: f.fileType || "image/jpeg",
+          const photoData = allPhotos.map(({ file, role }) => ({
+            base64: extractDIYBase64Payload(file.fileData) ?? "",
+            mimeType: file.fileType || "image/jpeg",
+            role,
           }));
           // Demo accounts never trigger a real (paid) GPT-4o vision call —
           // see getMockDIYVerification for rationale.
           const verification = req.session.user.isDemoAccount
             ? getMockDIYVerification()
-            : await verifyDIYPhotos(photoData);
+            : await verifyDIYPhotos(photoData, verificationContext);
+          verificationResult = verification;
           diyVerified = verification.verified;
           verificationNotes = verification.notes;
         } catch (verifyErr) {
@@ -22172,9 +22426,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       let updated: typeof invoiceAnalyses.$inferSelect | undefined;
 
       await db.transaction(async (tx) => {
-        // Lock the row for the duration of this transaction
+        // The transaction-scoped advisory lock serializes duplicate-evidence
+        // comparison across all pending analyses for this house, not just
+        // concurrent writes to this one analysis row.
         const lockedRows = await tx.execute(
-          drizzleSql`SELECT * FROM invoice_analyses WHERE id = ${id} FOR UPDATE`,
+          drizzleSql`
+            SELECT *, pg_advisory_xact_lock(hashtextextended(house_id, 0)) AS evidence_lock
+            FROM invoice_analyses
+            WHERE id = ${id}
+            FOR UPDATE
+          `,
         );
         const locked = lockedRows.rows[0] as Record<string, unknown> | undefined;
 
@@ -22203,10 +22464,101 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           return;
         }
 
+        if (verificationResult) {
+          let priorHashLookupUnavailable = false;
+          let priorEvidence: Array<{
+            id?: string | null;
+            beforePhotoHashes?: unknown;
+            afterPhotoHashes?: unknown;
+            before_photo_hashes?: unknown;
+            after_photo_hashes?: unknown;
+            aiVerificationResponse?: unknown;
+            ai_verification_response?: unknown;
+          }> = [];
+          try {
+            const priorRows = await tx.execute(drizzleSql`
+              SELECT
+                id,
+                before_photo_hashes,
+                after_photo_hashes,
+                ai_verification_response
+              FROM maintenance_logs
+              WHERE homeowner_id = ${analysis.homeownerId}
+                AND house_id = ${analysis.houseId}
+              UNION ALL
+              SELECT
+                id,
+                NULL::text[] AS before_photo_hashes,
+                NULL::text[] AS after_photo_hashes,
+                ai_verification_response
+              FROM invoice_analyses
+              WHERE homeowner_id = ${analysis.homeownerId}
+                AND house_id = ${analysis.houseId}
+                AND id <> ${id}
+                AND ai_verification_response IS NOT NULL
+            `);
+            priorEvidence = Array.isArray(priorRows?.rows)
+              ? priorRows.rows as typeof priorEvidence
+              : [];
+          } catch {
+            // Duplicate comparison is audit evidence. If it is unavailable,
+            // preserve the AI result and mark it for review instead of failing.
+            priorHashLookupUnavailable = true;
+          }
+
+          const duplicatePhotoMatches = findDIYDuplicatePhotoMatches(
+            photoHashSummary,
+            priorEvidence,
+          );
+          const fraudRiskReasons = new Set(verificationResult.fraudRiskReasons ?? []);
+          if (duplicatePhotoMatches.length > 0) {
+            fraudRiskReasons.add("duplicate_photo_hash");
+            verificationReasonCodes.push("duplicate_photo_hash");
+          }
+          if (verificationResult.fraudRiskFlag) {
+            verificationReasonCodes.push("ai_fraud_risk");
+          }
+          if (verificationResult.confidence === "low") {
+            verificationReasonCodes.push("ai_ambiguous");
+          }
+          if (!verificationResult.verified) {
+            verificationReasonCodes.push("ai_mismatch");
+          }
+
+          const hashEvidenceUnavailable =
+            photoHashSummary.unavailableRoles.length > 0 || priorHashLookupUnavailable;
+          const fraudRiskFlag =
+            verificationResult.fraudRiskFlag === true || duplicatePhotoMatches.length > 0;
+          if (fraudRiskFlag || hashEvidenceUnavailable) {
+            verificationReasonCodes.push("review_needed");
+          }
+          verificationReasonCodes = [...new Set(verificationReasonCodes)];
+          aiVerificationStatus = !diyVerified
+            ? "rejected"
+            : fraudRiskFlag || hashEvidenceUnavailable
+              ? "review_needed"
+              : "verified";
+          aiVerificationResponse = {
+            ...verificationResult,
+            fraudRiskFlag,
+            fraudRiskReasons: [...fraudRiskReasons],
+            evidence: {
+              claimedTaskTitle: verificationContext.claimedTaskTitle,
+              claimedCategory: verificationContext.claimedCategory,
+              photoHashes: photoHashSummary,
+              duplicatePhotoMatches,
+              priorHashLookupUnavailable,
+            },
+            verificationReasonCodes,
+          };
+        }
+
         const [result] = await tx.update(invoiceAnalyses)
           .set({
             diyVerified,
             aiNotes: verificationNotes,
+            aiVerificationStatus,
+            aiVerificationResponse,
             beforePhotoUrls: [...existingBefore, ...newBeforeUrls],
             afterPhotoUrls: [...existingAfter, ...newAfterUrls],
             receiptUrls: [...existingReceipts, ...newReceiptUrls],
@@ -22221,7 +22573,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return void res.status(status).json({ message, code });
       }
 
-      res.json({ analysis: updated, diyVerified, verificationNotes });
+      res.json({
+        analysis: updated,
+        diyVerified,
+        verificationNotes,
+        aiVerificationStatus,
+        aiVerificationResponse,
+      });
     } catch (err: any) {
       console.error("[INVOICE ANALYSIS] diy-verify error:", err);
       res.status(500).json({ message: "Failed to verify DIY photos" });
@@ -22295,6 +22653,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         )
       );
       const isDuplicateScoring = !!existingDupLog;
+      const verificationAudit = normalizeDIYVerificationAudit(
+        analysis.aiVerificationStatus,
+        analysis.aiVerificationResponse,
+      );
 
       // Create maintenance log (always — preserved for audit trail even on duplicates)
       const logData = {
@@ -22311,6 +22673,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         receiptUrls: [...(analysis.invoiceUrls || []), ...(analysis.receiptUrls || [])],
         beforePhotoUrls: analysis.beforePhotoUrls || [],
         afterPhotoUrls: analysis.afterPhotoUrls || [],
+        // Phase 1 evidence fields remain audit-only here. This phase does not
+        // promote the record to photo_verified or alter scoring.
+        verificationTier: "self_reported" as const,
+        verificationReasonCodes: verificationAudit.reasonCodes as any,
+        aiVerificationStatus: verificationAudit.status as any,
+        aiVerificationResponse: verificationAudit.response,
+        beforePhotoHashes: verificationAudit.beforePhotoHashes,
+        afterPhotoHashes: verificationAudit.afterPhotoHashes,
       };
       const log = await storage.createMaintenanceLog(logData);
 
@@ -22344,6 +22714,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         costSavings: null,
         notes: null,
         documentsUploaded: (analysis.invoiceUrls?.length || 0) + (analysis.receiptUrls?.length || 0),
+        verificationTier: "self_reported",
+        verificationReasonCodes: verificationAudit.reasonCodes,
+        aiVerificationStatus: verificationAudit.status,
+        aiVerificationResponse: verificationAudit.response,
       }).returning();
 
       // Update analysis record to confirmed, link both log and task completion

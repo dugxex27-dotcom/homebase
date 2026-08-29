@@ -26,6 +26,7 @@ const {
   mockDbInsert,
   mockDeleteFile,
   mockUploadFile,
+  mockGetMaintenanceLogs,
 } = vi.hoisted(() => ({
   OWNER_ID: "demo-homeowner-owner-001",
   HOUSE_ID: "house-001",
@@ -37,6 +38,7 @@ const {
   mockDbInsert: vi.fn(),
   mockDeleteFile: vi.fn().mockResolvedValue(undefined),
   mockUploadFile: vi.fn().mockResolvedValue(undefined),
+  mockGetMaintenanceLogs: vi.fn().mockResolvedValue([]),
 }));
 
 const OWNER_SESSION = {
@@ -191,6 +193,7 @@ vi.mock("../storage", async () => {
   return {
     storage: createStorageMock({
       getUser: mockGetUser,
+      getMaintenanceLogs: mockGetMaintenanceLogs,
     }),
   };
 });
@@ -221,7 +224,12 @@ vi.mock("../db", () => ({
 
 import express from "express";
 import request from "supertest";
-import { registerRoutes } from "./routes";
+import {
+  findDIYDuplicatePhotoMatches,
+  hashDIYPhotoFile,
+  registerRoutes,
+  summarizeDIYPhotoHashes,
+} from "./routes";
 import * as invoiceAnalysisService from "../invoice-analysis-service";
 
 // ---------------------------------------------------------------------------
@@ -654,10 +662,107 @@ describe("POST /api/invoice-analyses/:id/diy-verify — AI approval (happy path)
     expect(setPayload).toHaveProperty("beforePhotoUrls");
     expect(setPayload).toHaveProperty("afterPhotoUrls");
     expect(setPayload).toHaveProperty("receiptUrls");
+    expect(setPayload).toHaveProperty("aiVerificationStatus", "review_needed");
+    expect(setPayload).toHaveProperty("aiVerificationResponse");
 
     // The update payload must include the newly uploaded before/after URLs
     expect((setPayload.beforePhotoUrls as string[]).length).toBeGreaterThan(0);
     expect((setPayload.afterPhotoUrls as string[]).length).toBeGreaterThan(0);
+
+    const [photos, context] = vi.mocked(invoiceAnalysisService.verifyDIYPhotos).mock.calls[0];
+    expect(photos.map((photo) => photo.role)).toEqual(["before", "after"]);
+    expect(context).toEqual({
+      claimedTaskTitle: "Replaced kitchen faucet myself",
+      claimedCategory: "plumbing",
+    });
+    expect(res.body.aiVerificationResponse.fraudRiskFlag).toBe(true);
+    expect(res.body.aiVerificationResponse.fraudRiskReasons).toContain("duplicate_photo_hash");
+  });
+});
+
+describe("DIY verification photo-hash evidence", () => {
+  it("detects duplicate hashes within one submission", () => {
+    const summary = summarizeDIYPhotoHashes({
+      before: [PHOTO_FILE],
+      after: [PHOTO_FILE],
+      receipt: [],
+    });
+
+    expect(findDIYDuplicatePhotoMatches(summary)).toEqual([
+      expect.objectContaining({ source: "current_submission" }),
+    ]);
+  });
+
+  it("detects a submitted hash found in prior maintenance evidence", () => {
+    const summary = summarizeDIYPhotoHashes({
+      before: [PHOTO_FILE],
+      after: [],
+      receipt: [],
+    });
+    const submittedHash = hashDIYPhotoFile(PHOTO_FILE.fileData);
+    expect(submittedHash).not.toBeNull();
+
+    expect(findDIYDuplicatePhotoMatches(summary, [{
+      id: "maintenance-log-previous",
+      before_photo_hashes: [submittedHash!.toUpperCase()],
+      after_photo_hashes: [],
+    }])).toEqual([
+      {
+        hash: submittedHash,
+        source: "prior_maintenance_evidence",
+        priorRecordId: "maintenance-log-previous",
+      },
+    ]);
+  });
+
+  it("matches uppercase historical hashes and receipt hashes stored in prior audit JSON", () => {
+    const receiptFile = {
+      ...PHOTO_FILE,
+      fileData: "data:image/png;base64,cmVjZWlwdA==",
+    };
+    const summary = summarizeDIYPhotoHashes({
+      before: [],
+      after: [],
+      receipt: [receiptFile],
+    });
+    const receiptHash = hashDIYPhotoFile(receiptFile.fileData);
+    expect(receiptHash).not.toBeNull();
+
+    expect(findDIYDuplicatePhotoMatches(summary, [{
+      id: "prior-invoice-analysis",
+      aiVerificationResponse: {
+        evidence: {
+          photoHashes: {
+            before: [],
+            after: [],
+            receipt: [receiptHash!.toUpperCase()],
+          },
+        },
+      },
+    }])).toEqual([
+      {
+        hash: receiptHash,
+        source: "prior_maintenance_evidence",
+        priorRecordId: "prior-invoice-analysis",
+      },
+    ]);
+  });
+
+  it("records malformed or missing hashes without throwing", () => {
+    expect(() => summarizeDIYPhotoHashes({
+      before: [{ ...PHOTO_FILE, fileData: "%%%not-base64%%%" }],
+      after: [{ ...PHOTO_FILE, fileData: undefined }],
+      receipt: [],
+    })).not.toThrow();
+
+    const summary = summarizeDIYPhotoHashes({
+      before: [{ ...PHOTO_FILE, fileData: "%%%not-base64%%%" }],
+      after: [{ ...PHOTO_FILE, fileData: undefined }],
+      receipt: [],
+    });
+    expect(summary.before).toEqual([]);
+    expect(summary.after).toEqual([]);
+    expect(summary.unavailableRoles).toEqual(["before", "after"]);
   });
 });
 

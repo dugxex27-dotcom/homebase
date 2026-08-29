@@ -43,6 +43,7 @@ vi.mock("pdf-parse", () => ({
 
 import {
   extractInvoiceData,
+  verifyDIYPhotos,
   tryExtractPdfText,
   PDF_TEXT_MIN_LENGTH,
 } from "./invoice-analysis-service";
@@ -276,5 +277,74 @@ describe("extractInvoiceData — image mimeTypes", () => {
     expect(Array.isArray(content)).toBe(true);
     const imageBlock = content.find((c: any) => c.type === "image_url");
     expect(imageBlock.image_url.url).toMatch(/^data:image\/png;base64,/);
+  });
+});
+
+describe("verifyDIYPhotos — contextual role-labeled verification", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("labels every image role and includes the claimed task context", async () => {
+    mockChatCompletionsCreate.mockResolvedValue(
+      makeGptCompletionResponse(JSON.stringify({
+        verified: true,
+        confidence: "high",
+        notes: "The photos show the claimed faucet replacement.",
+        workDescribed: "Faucet replacement",
+        materialsIdentified: ["Faucet"],
+        fraudRiskFlag: false,
+        fraudRiskReasons: [],
+      })),
+    );
+
+    await verifyDIYPhotos(
+      [
+        { base64: "YmVmb3JlLTE=", mimeType: "image/jpeg", role: "before" },
+        { base64: "YmVmb3JlLTI=", mimeType: "image/jpeg", role: "before" },
+        { base64: "YWZ0ZXI=", mimeType: "image/png", role: "after" },
+        { base64: "cmVjZWlwdA==", mimeType: "image/webp", role: "receipt" },
+      ],
+      {
+        claimedTaskTitle: "Replace kitchen faucet",
+        claimedCategory: "plumbing",
+      },
+    );
+
+    const content = mockChatCompletionsCreate.mock.calls[0][0].messages[0].content;
+    const textBlocks = content
+      .filter((block: any) => block.type === "text")
+      .map((block: any) => block.text);
+    expect(textBlocks[0]).toContain("Claimed task title: Replace kitchen faucet");
+    expect(textBlocks[0]).toContain("Claimed maintenance category: plumbing");
+    expect(textBlocks).toEqual(expect.arrayContaining([
+      "BEFORE PHOTO 1:",
+      "BEFORE PHOTO 2:",
+      "AFTER PHOTO 1:",
+      "RECEIPT PHOTO 1:",
+    ]));
+  });
+
+  it("normalizes a soft fraud-risk result without changing verified", async () => {
+    mockChatCompletionsCreate.mockResolvedValue(
+      makeGptCompletionResponse(JSON.stringify({
+        verified: true,
+        confidence: "medium",
+        notes: "Work is visible, but the image may be reused.",
+        workDescribed: "Filter replacement",
+        materialsIdentified: ["Filter"],
+        fraudRiskFlag: true,
+        fraudRiskReasons: ["reused_or_stock_image", "free-form-model-text"],
+      })),
+    );
+
+    const result = await verifyDIYPhotos(
+      [{ base64: "cGhvdG8=", mimeType: "image/jpeg", role: "after" }],
+      { claimedTaskTitle: "Replace filter", claimedCategory: "hvac" },
+    );
+
+    expect(result.verified).toBe(true);
+    expect(result.fraudRiskFlag).toBe(true);
+    expect(result.fraudRiskReasons).toEqual(["reused_or_stock_image"]);
   });
 });

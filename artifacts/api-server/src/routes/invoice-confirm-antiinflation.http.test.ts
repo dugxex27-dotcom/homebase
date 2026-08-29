@@ -345,13 +345,32 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     mockGetUser.mockResolvedValue(USER_FIXTURE);
     mockCreateMaintenanceLog.mockResolvedValue({ id: LOG_ID });
     mockCheckAchievements.mockResolvedValue([]);
+    const photoHash = "a".repeat(64);
+    const analysisWithVerificationAudit = {
+      ...OLD_ANALYSIS_FIXTURE,
+      aiVerificationStatus: "review_needed",
+      aiVerificationResponse: {
+        verified: true,
+        fraudRiskFlag: true,
+        fraudRiskReasons: ["duplicate_photo_hash"],
+        verificationReasonCodes: ["duplicate_photo_hash", "review_needed"],
+        evidence: {
+          photoHashes: {
+            before: [photoHash],
+            after: ["not-a-valid-sha256"],
+            receipt: [],
+            unavailableRoles: [],
+          },
+        },
+      },
+    };
 
     // db.select — two sequential calls:
     //   1. fetch analysis by id
     //   2. duplicate service-type check (empty → no duplicate, so insert proceeds)
     mockDbSelect
       .mockReturnValueOnce({
-        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([OLD_ANALYSIS_FIXTURE]) }),
+        from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([analysisWithVerificationAudit]) }),
       })
       .mockReturnValueOnce({
         from: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) }),
@@ -382,6 +401,20 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     // Locate the taskCompletions insert among all db.insert() calls.
     const insertedValues = findTaskCompletionInsert(mockInsertValues);
     expect(insertedValues).toBeDefined();
+    expect(insertedValues).toMatchObject({
+      verificationTier: "self_reported",
+      verificationReasonCodes: ["duplicate_photo_hash", "review_needed"],
+      aiVerificationStatus: "review_needed",
+      aiVerificationResponse: analysisWithVerificationAudit.aiVerificationResponse,
+    });
+    expect(mockCreateMaintenanceLog).toHaveBeenCalledWith(expect.objectContaining({
+      verificationTier: "self_reported",
+      verificationReasonCodes: ["duplicate_photo_hash", "review_needed"],
+      aiVerificationStatus: "review_needed",
+      aiVerificationResponse: analysisWithVerificationAudit.aiVerificationResponse,
+      beforePhotoHashes: [photoHash],
+      afterPhotoHashes: [],
+    }));
 
     // year/month must come from the invoice serviceDate (2020-03-15),
     // NOT from today's wall-clock date.
