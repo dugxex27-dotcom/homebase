@@ -21,6 +21,8 @@
  *      · 404 when the record is not found
  *      · 409 idempotency — cannot decline a record that is already processed
  *      · 200 marks the record as declined
+ *  - Contractor → homeowner → contractor round trips
+ *      · accepted and declined statuses appear in the contractor's sent records
  */
 
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -213,7 +215,10 @@ vi.mock("../notification-orchestrator", () => ({
 }));
 vi.mock("../email-service", () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
-  emailService: { send: vi.fn().mockResolvedValue(undefined) },
+  emailService: {
+    send: vi.fn().mockResolvedValue(undefined),
+    sendEmail: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 vi.mock("../sms-service", () => ({
   smsService: { send: vi.fn().mockResolvedValue(undefined) },
@@ -674,5 +679,114 @@ describe("POST /api/homeowner/pending-job-records/:id/decline", () => {
     expect(mockDbUpdateSet).toHaveBeenCalledWith(
       expect.objectContaining({ status: "declined" }),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Contractor send → homeowner decision → contractor sent-records round trips
+// ---------------------------------------------------------------------------
+
+describe("contractor job record status round trips", () => {
+  let app: express.Express;
+  let persistedRecord: Omit<typeof JOB_RECORD_FIXTURE, "acceptedAt"> & {
+    acceptedAt: Date | null;
+  };
+
+  beforeEach(async () => {
+    app = await buildApp();
+    persistedRecord = { ...JOB_RECORD_FIXTURE };
+
+    mockGetUser.mockImplementation((id: string) => {
+      if (id === HOMEOWNER_ID) return Promise.resolve(HOMEOWNER_USER);
+      if (id === CONTRACTOR_ID) return Promise.resolve(CONTRACTOR_USER);
+      return Promise.resolve(null);
+    });
+    mockGetCrmJob.mockResolvedValue(JOB_FIXTURE);
+    mockGetCompany.mockResolvedValue(null);
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+    mockCreateMaintenanceLog.mockResolvedValue(MAINTENANCE_LOG_FIXTURE);
+    mockDbInsertReturning.mockImplementation(async () => {
+      persistedRecord = { ...JOB_RECORD_FIXTURE, status: "pending" };
+      return [persistedRecord];
+    });
+    mockDbUpdateReturning.mockImplementation(async () => [persistedRecord]);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function queueHomeownerLookupAndContractorSentRecords() {
+    selectOnce([persistedRecord]);
+    mockDbSelect.mockReturnValueOnce({
+      from: vi.fn().mockReturnValue({
+        innerJoin: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            orderBy: vi.fn().mockImplementation(async () => [persistedRecord]),
+          }),
+        }),
+      }),
+    });
+  }
+
+  it("shows Accepted to the contractor after the homeowner accepts the sent record", async () => {
+    const sendResponse = await request(app)
+      .post(`/api/crm/jobs/${JOB_ID}/send-to-homeowner`)
+      .set("x-test-user", "contractor")
+      .send({ homeownerId: HOMEOWNER_ID, houseId: HOUSE_ID });
+    expect(sendResponse.status).toBe(201);
+    expect(sendResponse.body.status).toBe("pending");
+
+    queueHomeownerLookupAndContractorSentRecords();
+    mockDbUpdateReturning.mockImplementationOnce(async () => {
+      persistedRecord = {
+        ...persistedRecord,
+        status: "accepted",
+        acceptedAt: new Date("2026-06-01T11:00:00.000Z"),
+      };
+      return [persistedRecord];
+    });
+
+    const acceptResponse = await request(app)
+      .post(`/api/homeowner/pending-job-records/${RECORD_ID}/accept`)
+      .set("x-test-user", "homeowner")
+      .send({ houseId: HOUSE_ID });
+    expect(acceptResponse.status).toBe(200);
+
+    const sentResponse = await request(app)
+      .get("/api/crm/sent-job-records")
+      .set("x-test-user", "contractor");
+    expect(sentResponse.status).toBe(200);
+    expect(sentResponse.body).toEqual([
+      expect.objectContaining({ id: RECORD_ID, status: "accepted" }),
+    ]);
+  });
+
+  it("shows Declined to the contractor after the homeowner declines the sent record", async () => {
+    const sendResponse = await request(app)
+      .post(`/api/crm/jobs/${JOB_ID}/send-to-homeowner`)
+      .set("x-test-user", "contractor")
+      .send({ homeownerId: HOMEOWNER_ID, houseId: HOUSE_ID });
+    expect(sendResponse.status).toBe(201);
+    expect(sendResponse.body.status).toBe("pending");
+
+    queueHomeownerLookupAndContractorSentRecords();
+    mockDbUpdateReturning.mockImplementationOnce(async () => {
+      persistedRecord = { ...persistedRecord, status: "declined" };
+      return [persistedRecord];
+    });
+
+    const declineResponse = await request(app)
+      .post(`/api/homeowner/pending-job-records/${RECORD_ID}/decline`)
+      .set("x-test-user", "homeowner");
+    expect(declineResponse.status).toBe(200);
+
+    const sentResponse = await request(app)
+      .get("/api/crm/sent-job-records")
+      .set("x-test-user", "contractor");
+    expect(sentResponse.status).toBe(200);
+    expect(sentResponse.body).toEqual([
+      expect.objectContaining({ id: RECORD_ID, status: "declined" }),
+    ]);
   });
 });
