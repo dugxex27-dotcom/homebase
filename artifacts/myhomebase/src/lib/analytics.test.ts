@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   getDirectorySearchTrackingPayload,
   getDirectorySearchTrackingSignature,
+  trackDirectorySearch,
 } from './analytics';
 
 describe('contractor-directory search analytics', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('creates a meaningful event for a service-only search', () => {
     expect(getDirectorySearchTrackingPayload({
       services: ['Plumbing Services'],
@@ -40,5 +45,39 @@ describe('contractor-directory search analytics', () => {
 
     expect(sameSearch).toBe(first);
     expect(changedSearch).not.toBe(first);
+  });
+
+  it.each([
+    {
+      label: 'service-only filter',
+      filters: { services: ['Plumbing Services'] },
+      payload: {
+        searchTerm: 'Plumbing Services',
+        serviceType: 'Plumbing Services',
+        searchContext: 'contractor_directory',
+      },
+    },
+    {
+      label: 'URL/text query',
+      filters: { searchQuery: 'roofing' },
+      payload: {
+        searchTerm: 'roofing',
+        searchContext: 'contractor_directory',
+      },
+    },
+  ])('posts a $label search to the persistence endpoint', async ({ filters, payload }) => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await trackDirectorySearch(filters);
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledWith('/api/analytics/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
   });
 });
