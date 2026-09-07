@@ -6199,6 +6199,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update session
       req.session.user = currentUser;
       delete req.session.oauthIntent;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((error: Error | null) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
 
       // Determine redirect destination based on role so the client has an
       // explicit navigation contract rather than re-deriving it from role alone.

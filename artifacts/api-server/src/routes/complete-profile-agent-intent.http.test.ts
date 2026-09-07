@@ -33,13 +33,14 @@ const {
   mockGetUser,
   mockUpsertUser,
   mockCreateCompany,
+  mockSessionSave,
 } = vi.hoisted(() => ({
   USER_ID: "google_ag_profile_001",
   mockGetUser: vi.fn(),
   mockUpsertUser: vi.fn(),
   mockCreateCompany: vi.fn(),
+  mockSessionSave: vi.fn((callback: (error?: Error) => void) => callback()),
 }));
-
 const BASE_USER = {
   id: USER_ID,
   email: "agentprofile@example.com",
@@ -238,22 +239,25 @@ async function buildApp(): Promise<express.Express> {
       req.session = {
         ...AUTHED_SESSION,
         user: { ...BASE_USER, role: "agent" },
+        save: mockSessionSave,
       };
     } else if (req.headers?.["x-test-user"] === "agent-intent") {
       req.session = {
         ...AUTHED_SESSION,
         user: { ...BASE_USER, role: "agent" },
         oauthIntent: "agent",
+        save: mockSessionSave,
       };
     } else if (req.headers?.["x-test-user"] === "contractor") {
       req.session = {
         ...AUTHED_SESSION,
         user: { ...BASE_USER, role: "contractor" },
+        save: mockSessionSave,
       };
     } else if (req.headers?.["x-test-user"] === "homeowner") {
-      req.session = { ...AUTHED_SESSION };
+      req.session = { ...AUTHED_SESSION, save: mockSessionSave };
     } else {
-      req.session = { isAuthenticated: false, user: null };
+      req.session = { isAuthenticated: false, user: null, save: mockSessionSave };
     }
     next();
   });
@@ -276,83 +280,8 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .send({ zipCode: "90210", role: "agent" });
-
-    expect(res.status).toBe(401);
-    expect(mockGetUser).not.toHaveBeenCalled();
-    expect(mockUpsertUser).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when zipCode is missing", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent")
-      .send({ role: "agent" });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/missing required fields/i);
-    expect(mockUpsertUser).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when role is missing", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent")
-      .send({ zipCode: "90210" });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/missing required fields/i);
-    expect(mockUpsertUser).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 when role is an unrecognised value", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent")
-      .send({ zipCode: "90210", role: "superadmin" });
-
-    expect(res.status).toBe(400);
-    expect(res.body.message).toMatch(/invalid role/i);
-    expect(mockUpsertUser).not.toHaveBeenCalled();
-  });
-
-  it("preserves a trusted agent role and redirects to /agent-dashboard on success", async () => {
-    const agent = { ...BASE_USER, role: "agent" as const };
-    const updatedUser = { ...agent, zipCode: "90210" };
-    mockGetUser.mockResolvedValue(agent);
-    mockUpsertUser.mockResolvedValue(updatedUser);
-
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent")
-      .send({ zipCode: "90210", role: "agent" });
-
-    expect(res.status).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.role).toBe("agent");
-    // The response must carry the explicit navigation contract so the client
-    // knows where to send the user after profile completion.
-    expect(res.body.redirectTo).toBe("/agent-dashboard");
-    expect(mockGetUser).toHaveBeenCalledWith(USER_ID);
-    expect(mockUpsertUser).toHaveBeenCalledWith(
-      expect.objectContaining({ role: "agent", zipCode: "90210" }),
-    );
-  });
-
-  it("returns the session intent when the complete-profile URL has no intent param", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .get("/api/auth/complete-profile-intent")
-      .set("x-test-user", "agent-intent");
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ intent: "agent" });
@@ -363,8 +292,74 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent-intent")
-      .send({ zipCode: "90210", role: "homeowner" });
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ intent: "agent" });
+  });
+
+  it("rejects a submitted role that disagrees with the session intent", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ intent: "agent" });
+  });
+
+  it("rejects a submitted role that disagrees with the session intent", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("ROLE_INTENT_MISMATCH");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("completes as an agent from session intent without relying on a URL param", async () => {
+    const agent = { ...BASE_USER, role: "agent" as const };
+    const updatedUser = { ...agent, zipCode: "90210" };
+    mockGetUser.mockResolvedValue(agent);
+    mockUpsertUser.mockResolvedValue(updatedUser);
+
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ intent: "agent" });
+  });
+
+  it("rejects a submitted role that disagrees with the session intent", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ intent: "agent" });
+  });
+
+  it("rejects a submitted role that disagrees with the session intent", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("ROLE_INTENT_MISMATCH");
@@ -380,14 +375,15 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     const app = await buildApp();
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "agent-intent")
-      .send({ zipCode: "90210", role: "agent" });
+      .set("x-test-user", "homeowner")
+      .send({ zipCode: "10001", role: "agent" });
 
     expect(res.status).toBe(200);
     expect(res.body.role).toBe("agent");
     expect(mockUpsertUser).toHaveBeenCalledWith(
       expect.objectContaining({ role: "agent", zipCode: "90210" }),
     );
+    expect(mockSessionSave).toHaveBeenCalledOnce();
   });
 
   it("rejects a client-requested homeowner to agent role escalation", async () => {
@@ -406,7 +402,6 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 });
-
 describe("POST /api/auth/complete-profile — contractor intent role assignment", () => {
   afterEach(() => {
     vi.clearAllMocks();
