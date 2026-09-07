@@ -8778,7 +8778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Clients Routes --------------------
 
   // GET /api/crm/clients - List all clients - PAID FEATURE
-  app.get('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.get('/api/crm/clients', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });

@@ -916,14 +916,14 @@ describe("Suspend lockout — contractor read routes (analytics, stripe-connect,
 // Suspended-user lockout on CRM read routes
 // ---------------------------------------------------------------------------
 //
-// GET /api/crm/jobs, /api/crm/quotes, /api/crm/invoices,
+// GET /api/crm/clients, /api/crm/jobs, /api/crm/quotes, /api/crm/invoices,
 // /api/crm/integrations, /api/crm/webhooks/:id/logs previously relied solely
 // on the blanket app.use('/api/crm', ...) guard which has an edge case where
 // it calls next() unconditionally when neither session nor OAuth paths match.
 // Adding requireNotSuspended() directly to each route closes that gap.
 // ---------------------------------------------------------------------------
 
-describe("Suspend lockout — CRM read routes (jobs, quotes, invoices, integrations, webhook logs)", () => {
+describe("Suspend lockout — CRM read routes (clients, jobs, quotes, invoices, integrations, webhook logs)", () => {
   let app: express.Express;
 
   beforeEach(async () => {
@@ -941,6 +941,19 @@ describe("Suspend lockout — CRM read routes (jobs, quotes, invoices, integrati
   afterEach(() => {
     sharedSuspendedUserIds.clear();
     vi.clearAllMocks();
+  });
+
+  // ── GET /api/crm/clients ──────────────────────────────────────────────────
+
+  it("blocks a suspended user from reading CRM clients", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/clients")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
   });
 
   // ── GET /api/crm/jobs ────────────────────────────────────────────────────
