@@ -78,6 +78,18 @@ const TARGET_SESSION = {
     lastName: "User",
   },
 };
+const AGENT_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "agent-user-001",
+    email: "agent@company.test",
+    role: "agent",
+    status: "active",
+    accountStatus: "active",
+    firstName: "Agent",
+    lastName: "User",
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Module mocks — hoisted before all imports by Vitest
@@ -96,10 +108,16 @@ vi.mock("../replitAuth", async (importOriginal) => {
 
     // isAuthenticated: injects session from x-test-user header
     //   "target" → suspended tech user session
+    //   "agent" → agent user session
     //   anything else → admin/owner session
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
       const who = req.headers?.["x-test-user"] ?? "admin";
-      req.session = who === "target" ? TARGET_SESSION : ADMIN_SESSION;
+      req.session =
+        who === "target"
+          ? TARGET_SESSION
+          : who === "agent"
+            ? AGENT_SESSION
+            : ADMIN_SESSION;
       next();
     }),
 
@@ -2178,6 +2196,61 @@ describe("Suspend lockout — messaging routes (conversations, messages)", () =>
     const res = await request(app)
       .get("/api/crm/invoices/invoice-001")
       .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Suspended-agent lockout on financial and analytics routes
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — agent payouts, referrals, and analytics", () => {
+  const AGENT_USER_ID = AGENT_SESSION.user.id;
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_agent_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_agent_lockout_placeholder";
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    ["/api/agent/payouts", "payout history"],
+    ["/api/agent/referrals", "referral data"],
+    ["/api/agent/analytics", "analytics"],
+  ])("blocks a suspended agent from accessing %s (%s)", async (path) => {
+    sharedSuspendedUserIds.add(AGENT_USER_ID);
+
+    const res = await request(app)
+      .get(path)
+      .set("x-test-user", "agent");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it.each([
+    "/api/agent/payouts",
+    "/api/agent/referrals",
+    "/api/agent/analytics",
+  ])("allows a non-suspended agent past the suspension gate on %s", async (path) => {
+    const res = await request(app)
+      .get(path)
+      .set("x-test-user", "agent");
 
     if (res.status === 401) {
       expect(res.body.message).not.toMatch(/suspended/i);

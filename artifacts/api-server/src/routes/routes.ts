@@ -12672,7 +12672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent-specific routes
-  app.get("/api/agent/profile", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/profile", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12699,7 +12699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/agent/profile", isAuthenticated, async (req: any, res: any) => {
+  app.put("/api/agent/profile", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12743,7 +12743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/referrals", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/referrals", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12778,7 +12778,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/stats", isAuthenticated, async (req: any, res: any) => {
+  const getAgentAnalytics = async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12798,10 +12798,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching agent stats:", error);
       res.status(500).json({ message: "Failed to fetch agent stats" });
     }
-  });
+  };
+
+  app.get("/api/agent/stats", isAuthenticated, requireNotSuspended(), getAgentAnalytics);
+  app.get("/api/agent/analytics", isAuthenticated, requireNotSuspended(), getAgentAnalytics);
 
   // Stripe Connect onboarding for agents
-  app.post("/api/agent/stripe-connect/create-account", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/agent/stripe-connect/create-account", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12874,7 +12877,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Check Stripe Connect account status
-  app.get("/api/agent/stripe-connect/status", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/stripe-connect/status", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12928,7 +12931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get agent payout history
-  app.get("/api/agent/payouts", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/payouts", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -12966,7 +12969,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent verification routes
-  app.post("/api/agent/upload-state-id", isAuthenticated, uploadLimiter, upload.single('stateId'), async (req: any, res: any) => {
+  app.post("/api/agent/upload-state-id", isAuthenticated, requireNotSuspended(), uploadLimiter, upload.single('stateId'), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -13043,7 +13046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/agent/verification-status", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/verification-status", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -13064,7 +13067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/agent/submit-verification", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/agent/submit-verification", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -13139,7 +13142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Agent profile picture upload endpoint
-  app.post("/api/agent/profile-picture", isAuthenticated, uploadLimiter, upload.single('image'), async (req: any, res: any) => {
+  app.post("/api/agent/profile-picture", isAuthenticated, requireNotSuspended(), uploadLimiter, upload.single('image'), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -20848,7 +20851,7 @@ If the document contains no relevant home information, return the structure with
   }
 
   // List handoff packages for the authenticated agent
-  app.get("/api/agent/handoff-packages", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/handoff-packages", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -20866,7 +20869,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Create a new handoff package
-  app.post("/api/agent/handoff-packages", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/agent/handoff-packages", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -20897,7 +20900,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Get a single handoff package with its documents
-  app.get("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res: any) => {
+  app.get("/api/agent/handoff-packages/:id", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -20918,7 +20921,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Upload a document to a handoff package and trigger AI extraction
-  app.post("/api/agent/handoff-packages/:id/documents", isAuthenticated, uploadLimiter, upload.single("document"), async (req: any, res: any) => {
+  app.post("/api/agent/handoff-packages/:id/documents", isAuthenticated, requireNotSuspended(), uploadLimiter, upload.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -21025,7 +21028,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Update handoff package extracted data (agent edits the AI results)
-  app.patch("/api/agent/handoff-packages/:id", isAuthenticated, async (req: any, res: any) => {
+  app.patch("/api/agent/handoff-packages/:id", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
@@ -21103,7 +21106,7 @@ If the document contains no relevant home information, return the structure with
   });
 
   // Send the handoff package to the buyer (generates magic link + sends email)
-  app.post("/api/agent/handoff-packages/:id/send", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/agent/handoff-packages/:id/send", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "agent") return res.status(403).json({ message: "Agent access only" });
