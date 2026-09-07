@@ -9,6 +9,7 @@
  *   5. 402 when Stripe cannot find the payment intent
  *   6. 200 with the renewed boost when payment is confirmed and the contractor owns the boost
  *   7. Cross-contractor ownership check (contractor A cannot renew contractor B's boost)
+ *   8. 409 when the payment intent was already used, including a concurrent-insert race
  */
 
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
@@ -684,6 +685,43 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
     expect(res.status).toBe(402);
     expect(res.body.message).toMatch(/payment required/i);
     expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 when the payment intent is already recorded on an existing boost", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
+    mockGetContractorBoosts.mockResolvedValue([
+      BOOST_A_FIXTURE,
+      { ...RENEWED_BOOST_FIXTURE, stripePaymentIntentId: VALID_PI_ID },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/already been used/i);
+    expect(mockCreateContractorBoost).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 when a concurrent renewal already claimed the payment intent", async () => {
+    mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
+    mockGetContractorBoosts.mockResolvedValue([BOOST_A_FIXTURE]);
+    mockCreateContractorBoost.mockRejectedValue(
+      Object.assign(new Error("duplicate key value violates unique constraint"), {
+        code: "23505",
+        constraint: "contractor_boosts_stripe_pi_id_unique",
+      }),
+    );
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_A_ID}/renew`)
+      .set("x-test-user", "contractor-a")
+      .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
+
+    expect(res.status).toBe(409);
+    expect(res.body.message).toMatch(/already been used/i);
+    expect(mockCreateContractorBoost).toHaveBeenCalledTimes(1);
   });
 
   // ── Ownership tests (payment present) ────────────────────────────────────

@@ -12083,21 +12083,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const renewalEnd = new Date(renewalStart);
       renewalEnd.setDate(renewalEnd.getDate() + 30);
 
-      const renewedBoost = await storage.createContractorBoost({
-        contractorId: userId as string,
-        serviceCategory: boost.serviceCategory,
-        businessAddress: boost.businessAddress,
-        businessLatitude: boost.businessLatitude,
-        businessLongitude: boost.businessLongitude,
-        boostRadius: boost.boostRadius,
-        startDate: renewalStart,
-        endDate: renewalEnd,
-        // Always use the server-side price; ignore any amount stored on the original boost.
-        amount: BOOST_PRICE_DOLLARS.toString(),
-        status: "active",
-        isActive: true,
-        stripePaymentIntentId: parsed.data.stripePaymentIntentId,
-      });
+      let renewedBoost;
+      try {
+        renewedBoost = await storage.createContractorBoost({
+          contractorId: userId as string,
+          serviceCategory: boost.serviceCategory,
+          businessAddress: boost.businessAddress,
+          businessLatitude: boost.businessLatitude,
+          businessLongitude: boost.businessLongitude,
+          boostRadius: boost.boostRadius,
+          startDate: renewalStart,
+          endDate: renewalEnd,
+          // Always use the server-side price; ignore any amount stored on the original boost.
+          amount: BOOST_PRICE_DOLLARS.toString(),
+          status: "active",
+          isActive: true,
+          stripePaymentIntentId: parsed.data.stripePaymentIntentId,
+        });
+      } catch (error: any) {
+        // The DB's unique Stripe PI index closes the race between two renewal
+        // requests that both pass the read check before either insert commits.
+        if (
+          error?.code === "23505" &&
+          error?.constraint === "contractor_boosts_stripe_pi_id_unique"
+        ) {
+          return res.status(409).json({ message: "This payment has already been used for a boost" });
+        }
+        throw error;
+      }
 
       res.json(renewedBoost);
     } catch (error) {
