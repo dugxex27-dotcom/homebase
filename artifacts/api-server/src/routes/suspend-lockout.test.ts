@@ -2252,6 +2252,32 @@ describe("Suspend lockout — messaging routes (conversations, messages)", () =>
       expect(res.body.message).not.toMatch(/suspended/i);
     }
   });
+
+  // ── GET /api/crm/export/quotes ────────────────────────────────────────────
+
+  it("blocks a suspended user from downloading the CRM quote export", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/export/quotes")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  // ── GET /api/crm/export/invoices ──────────────────────────────────────────
+
+  it("blocks a suspended user from downloading the CRM invoice export", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/export/invoices")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
 });
 
 // ---------------------------------------------------------------------------
