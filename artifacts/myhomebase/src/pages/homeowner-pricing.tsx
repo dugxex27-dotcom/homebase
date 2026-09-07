@@ -19,6 +19,7 @@ import {
   isNativePurchaseSupported,
   type NativePlanKey,
 } from "@/lib/nativePurchase";
+import { CheckoutModal } from "@/components/CheckoutModal";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
   base: 'base',
@@ -154,6 +155,14 @@ export default function HomeownerPricing() {
       });
     },
   });
+
+  const selectPlan = (plan: string) => {
+    if (isNativePurchaseSupported()) {
+      checkoutMutation.mutate(plan);
+      return;
+    }
+    setCheckoutPlan(plan);
+  };
 
   // Fetch full user data for subscription details
   const { data: userData, isLoading, isError } = useQuery({
@@ -404,7 +413,7 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-base-plan"
-                  onClick={() => checkoutMutation.mutate('base')}
+                  onClick={() => selectPlan('base')}
                   disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'base' ? (
@@ -471,7 +480,7 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plan"
-                  onClick={() => checkoutMutation.mutate('premium')}
+                  onClick={() => selectPlan('premium')}
                   disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'premium' ? (
@@ -538,7 +547,7 @@ export default function HomeownerPricing() {
                 <Button 
                   className="w-full bg-[#3C258E] hover:bg-[#2C0F5B] text-white"
                   data-testid="button-select-premium-plus-plan"
-                  onClick={() => checkoutMutation.mutate('premium_plus')}
+                  onClick={() => selectPlan('premium_plus')}
                   disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending && checkoutPlan === 'premium_plus' ? (
@@ -713,6 +722,14 @@ export default function HomeownerPricing() {
       </div>
     </div>
 
+      {checkoutPlan && !isNativePurchaseSupported() && (
+        <CheckoutModal
+          plan={checkoutPlan}
+          fromPlan={hasActiveSubscription ? actualPlan : undefined}
+          trialMode={isOnboarding}
+          onClose={() => setCheckoutPlan(null)}
+        />
+      )}
     </>
   );
 }

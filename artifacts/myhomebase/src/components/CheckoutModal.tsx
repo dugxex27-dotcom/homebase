@@ -58,13 +58,20 @@ const PLAN_SUMMARY: Record<string, PlanSummaryInfo> = {
 
 interface CheckoutModalProps {
   plan: string;
+  fromPlan?: string;
   trialMode: boolean;
   onClose: () => void;
 }
 
-export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) {
+const PLAN_LEVEL: Record<string, number> = {
+  base: 1,
+  premium: 2,
+  premium_plus: 3,
+};
+export function CheckoutModal({ plan, fromPlan, trialMode, onClose }: CheckoutModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const summary = PLAN_SUMMARY[plan] ?? null;
+  const benefits = getBenefits(plan, fromPlan);
   const [checkoutError, setCheckoutError] = useState(false);
   const [checkoutAttempt, setCheckoutAttempt] = useState(0);
   const [stripe, setStripe] = useState<Stripe | null>(null);
@@ -170,7 +177,7 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
               </div>
             </div>
             <div className="plan-summary-benefits">
-              {summary.benefits.map((benefit) => (
+              {benefits.map((benefit) => (
                 <div key={benefit} className="plan-summary-benefit-row">
                   <div className="plan-summary-check-icon">
                     <Check size={11} strokeWidth={3} />
@@ -211,4 +218,20 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
       </div>
     </div>
   );
+}
+
+function getBenefits(plan: string, fromPlan?: string): string[] {
+  const summary = PLAN_SUMMARY[plan];
+  if (!summary) return [];
+
+  const fromLevel = fromPlan ? PLAN_LEVEL[fromPlan] : undefined;
+  const targetLevel = PLAN_LEVEL[plan];
+  if (fromLevel === undefined || targetLevel === undefined || fromLevel >= targetLevel) {
+    return summary.benefits;
+  }
+
+  return Object.entries(PLAN_LEVEL)
+    .filter(([, level]) => level > fromLevel && level <= targetLevel)
+    .sort(([, firstLevel], [, secondLevel]) => firstLevel - secondLevel)
+    .flatMap(([planSlug]) => PLAN_SUMMARY[planSlug]?.benefits ?? []);
 }
