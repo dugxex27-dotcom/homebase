@@ -442,6 +442,9 @@ describe("PATCH /api/contractor/team/:userId/suspend — route-level wiring", ()
     mockInvalidateUserSessions.mockClear();
     mockDbSelect.mockReset();
     mockDbUpdate.mockReset();
+    vi.mocked(storage.getContractorBoosts).mockReset();
+    vi.mocked(storage.getContractorBoosts).mockResolvedValue([]);
+    vi.mocked(storage.updateContractorBoost).mockReset();
 
     addSpy = vi.spyOn(sharedSuspendedUserIds, "add");
 
@@ -507,6 +510,54 @@ describe("PATCH /api/contractor/team/:userId/suspend — route-level wiring", ()
     // Both must fire — either alone leaves a security gap
     expect(addSpy).toHaveBeenCalledWith(TARGET_USER_ID);
     expect(mockInvalidateUserSessions).toHaveBeenCalledOnce();
+  });
+
+  it("cancels every active boost belonging to the suspended contractor", async () => {
+    configureDbForSuspend();
+    vi.mocked(storage.getContractorBoosts).mockResolvedValueOnce([
+      { id: "boost-active-status", status: "active", isActive: true } as any,
+      { id: "boost-active-flag", status: "pending", isActive: true } as any,
+      { id: "boost-already-cancelled", status: "cancelled", isActive: false } as any,
+    ]);
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(200);
+    expect(storage.getContractorBoosts).toHaveBeenCalledWith(TARGET_USER_ID);
+    expect(storage.updateContractorBoost).toHaveBeenCalledTimes(2);
+    expect(storage.updateContractorBoost).toHaveBeenCalledWith(
+      "boost-active-status",
+      { status: "cancelled", isActive: false },
+    );
+    expect(storage.updateContractorBoost).toHaveBeenCalledWith(
+      "boost-active-flag",
+      { status: "cancelled", isActive: false },
+    );
+    expect(storage.updateContractorBoost).not.toHaveBeenCalledWith(
+      "boost-already-cancelled",
+      expect.anything(),
+    );
+  });
+
+  it("leaves the contractor active and the suspension retriable when boost cancellation fails", async () => {
+    configureDbForSuspend();
+    vi.mocked(storage.getContractorBoosts).mockResolvedValueOnce([
+      { id: "boost-active-failing", status: "active", isActive: true } as any,
+    ]);
+    vi.mocked(storage.updateContractorBoost).mockRejectedValueOnce(
+      new Error("boost update failed"),
+    );
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(500);
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+    expect(sharedSuspendedUserIds.has(TARGET_USER_ID)).toBe(false);
+    expect(mockInvalidateUserSessions).not.toHaveBeenCalled();
   });
 
   it("blocks the suspended user's subsequent request with 401 immediately after suspend", async () => {

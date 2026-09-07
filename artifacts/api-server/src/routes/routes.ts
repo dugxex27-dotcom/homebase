@@ -23808,6 +23808,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
+      const contractorBoosts = await storage.getContractorBoosts(userId);
+      const activeBoosts = contractorBoosts.filter(
+        (boost) => boost.status === 'active' || boost.isActive,
+      );
+      for (const boost of activeBoosts) {
+        await storage.updateContractorBoost(boost.id, {
+          status: 'cancelled',
+          isActive: false,
+        });
+      }
       await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
