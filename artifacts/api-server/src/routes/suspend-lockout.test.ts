@@ -927,13 +927,14 @@ describe("Suspend lockout — contractor read routes (analytics, stripe-connect,
 // ---------------------------------------------------------------------------
 //
 // GET /api/crm/clients, /api/crm/jobs, /api/crm/quotes, /api/crm/invoices,
+// /api/crm/export/leads,
 // /api/crm/integrations, /api/crm/webhooks/:id/logs previously relied solely
 // on the blanket app.use('/api/crm', ...) guard which has an edge case where
 // it calls next() unconditionally when neither session nor OAuth paths match.
 // Adding requireNotSuspended() directly to each route closes that gap.
 // ---------------------------------------------------------------------------
 
-describe("Suspend lockout — CRM read routes (clients, jobs, quotes, invoices, integrations, webhook logs)", () => {
+describe("Suspend lockout — CRM read and export routes (clients, jobs, quotes, invoices, integrations, webhook logs)", () => {
   let app: express.Express;
 
   beforeEach(async () => {
@@ -1030,6 +1031,29 @@ describe("Suspend lockout — CRM read routes (clients, jobs, quotes, invoices, 
       .set("x-test-user", "target");
 
     expect(res.status).not.toBe(401);
+  });
+
+  // ── GET /api/crm/export/leads ─────────────────────────────────────────────
+
+  it("blocks a suspended contractor from exporting CRM leads as CSV", async () => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/export/leads")
+      .set("x-test-user", "target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  it("allows a non-suspended contractor past the suspension gate on CRM lead export", async () => {
+    const res = await request(app)
+      .get("/api/crm/export/leads")
+      .set("x-test-user", "target");
+
+    if (res.status === 401) {
+      expect(res.body.message).not.toMatch(/suspended/i);
+    }
   });
 
   // ── GET /api/crm/integrations ────────────────────────────────────────────
