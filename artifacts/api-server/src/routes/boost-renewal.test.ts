@@ -21,6 +21,11 @@ const {
   mockGetContractorBoosts,
   mockCreateContractorBoost,
   mockPaymentIntentsRetrieve,
+  mockCheckoutSessionsCreate,
+  mockConstructEvent,
+  mockGetUser,
+  mockClaimStripeEvent,
+  mockMarkStripeEventCommitted,
   mockSearchContractors,
   mockGetActiveBoosts,
   CONTRACTOR_A_ID,
@@ -32,6 +37,11 @@ const {
     mockGetContractorBoosts: vi.fn(),
     mockCreateContractorBoost: vi.fn(),
     mockPaymentIntentsRetrieve: vi.fn(),
+    mockCheckoutSessionsCreate: vi.fn(),
+    mockConstructEvent: vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" }),
+    mockGetUser: vi.fn(),
+    mockClaimStripeEvent: vi.fn().mockResolvedValue("claimed"),
+    mockMarkStripeEventCommitted: vi.fn().mockResolvedValue(true),
     mockSearchContractors: vi.fn(),
     mockGetActiveBoosts: vi.fn(),
     CONTRACTOR_A_ID: "contractor-a-001",
@@ -65,6 +75,16 @@ const CONTRACTOR_B_SESSION = {
   },
 };
 
+const HOMEOWNER_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "homeowner-001",
+    email: "homeowner@test.com",
+    role: "homeowner",
+    status: "active",
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Module mocks
 // ---------------------------------------------------------------------------
@@ -84,6 +104,8 @@ vi.mock("../replitAuth", async (importOriginal) => {
       const who = req.headers?.["x-test-user"] ?? "contractor-a";
       if (who === "contractor-b") {
         req.session = CONTRACTOR_B_SESSION;
+      } else if (who === "homeowner") {
+        req.session = HOMEOWNER_SESSION;
       } else {
         req.session = CONTRACTOR_A_SESSION;
       }
@@ -200,7 +222,7 @@ vi.mock("../security-audit", () => ({
 vi.mock("stripe", () => {
   function MockStripe(this: any) {
     this.webhooks = {
-      constructEvent: vi.fn().mockReturnValue({ id: "evt_stub", type: "test.stub" }),
+      constructEvent: mockConstructEvent,
     };
     this.subscriptionItems = {
       createUsageRecord: vi.fn().mockResolvedValue(undefined),
@@ -219,6 +241,11 @@ vi.mock("stripe", () => {
     this.paymentIntents = {
       retrieve: mockPaymentIntentsRetrieve,
     };
+    this.checkout = {
+      sessions: {
+        create: mockCheckoutSessionsCreate,
+      },
+    };
   }
   return { default: MockStripe };
 });
@@ -231,8 +258,195 @@ vi.mock("../storage", async () => {
       createContractorBoost: mockCreateContractorBoost,
       searchContractors: mockSearchContractors,
       getActiveBoosts: mockGetActiveBoosts,
+      getUser: mockGetUser,
+      claimStripeEvent: mockClaimStripeEvent,
+      markStripeEventCommitted: mockMarkStripeEventCommitted,
     }),
   };
+});
+
+describe("GET /api/contractors/boost — contractor boost list", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockGetContractorBoosts.mockReset();
+    app = express();
+    app.use(expressJson());
+    await registerRoutes(app);
+  });
+
+  afterEach(() => vi.clearAllMocks());
+
+  it("returns only the contractor's boosts sorted active-first and newest-first within status", async () => {
+    const olderActive = { ...ACTIVE_BOOST_FIXTURE, id: "active-old", createdAt: new Date("2026-06-01") };
+    const newerActive = { ...ACTIVE_BOOST_FIXTURE, id: "active-new", createdAt: new Date("2026-08-01") };
+    const expired = {
+      ...EXPIRED_BOOST_FIXTURE,
+      id: "expired",
+      status: "expired",
+      isActive: false,
+      createdAt: new Date("2026-09-01"),
+    };
+    mockGetContractorBoosts.mockResolvedValue([expired, olderActive, newerActive]);
+
+    const res = await request(app)
+      .get("/api/contractors/boost")
+      .set("x-test-user", "contractor-a");
+
+    expect(res.status).toBe(200);
+    expect(res.body.map((boost: any) => boost.id)).toEqual(["active-new", "active-old", "expired"]);
+    expect(mockGetContractorBoosts).toHaveBeenCalledWith(CONTRACTOR_A_ID);
+  });
+
+  it("returns 403 for non-contractors", async () => {
+    const res = await request(app)
+      .get("/api/contractors/boost")
+      .set("x-test-user", "homeowner");
+
+    expect(res.status).toBe(403);
+    expect(mockGetContractorBoosts).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/contractors/boost/:boostId/create-renewal-checkout", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockGetContractorBoosts.mockReset();
+    mockCheckoutSessionsCreate.mockReset();
+    app = express();
+    app.use(expressJson());
+    await registerRoutes(app);
+  });
+
+  afterEach(() => vi.clearAllMocks());
+
+  it("returns 404 when the contractor does not own the boost", async () => {
+    mockGetContractorBoosts.mockResolvedValue([]);
+    const res = await request(app)
+      .post("/api/contractors/boost/missing/create-renewal-checkout")
+      .set("x-test-user", "contractor-a");
+    expect(res.status).toBe(404);
+    expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the boost is still active", async () => {
+    mockGetContractorBoosts.mockResolvedValue([ACTIVE_BOOST_FIXTURE]);
+    const res = await request(app)
+      .post(`/api/contractors/boost/${ACTIVE_BOOST_FIXTURE.id}/create-renewal-checkout`)
+      .set("x-test-user", "contractor-a");
+    expect(res.status).toBe(400);
+    expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns 503 when Stripe is unavailable", async () => {
+    const originalKey = process.env.STRIPE_SECRET_KEY;
+    delete process.env.STRIPE_SECRET_KEY;
+    vi.resetModules();
+    const { registerRoutes: registerRoutesWithoutStripe } = await import("./routes");
+    const noStripeApp = express();
+    noStripeApp.use(expressJson());
+    await registerRoutesWithoutStripe(noStripeApp);
+
+    const res = await request(noStripeApp)
+      .post(`/api/contractors/boost/${EXPIRED_BOOST_FIXTURE.id}/create-renewal-checkout`)
+      .set("x-test-user", "contractor-a");
+    expect(res.status).toBe(503);
+
+    if (originalKey === undefined) delete process.env.STRIPE_SECRET_KEY;
+    else process.env.STRIPE_SECRET_KEY = originalKey;
+    vi.resetModules();
+  });
+
+  it("returns the hosted checkout URL for an expired boost", async () => {
+    mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
+    mockCheckoutSessionsCreate.mockResolvedValue({ url: "https://checkout.stripe.test/renew" });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${EXPIRED_BOOST_FIXTURE.id}/create-renewal-checkout`)
+      .set("x-test-user", "contractor-a")
+      .set("origin", "https://app.test");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ url: "https://checkout.stripe.test/renew" });
+    expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "payment",
+        metadata: {
+          type: "boost_renewal",
+          boostId: EXPIRED_BOOST_FIXTURE.id,
+          contractorId: CONTRACTOR_A_ID,
+        },
+        line_items: [
+          expect.objectContaining({
+            price_data: expect.objectContaining({ unit_amount: 4900, currency: "usd" }),
+          }),
+        ],
+      }),
+    );
+  });
+});
+
+describe("Stripe checkout.session.completed — boost renewal", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    mockConstructEvent.mockReset();
+    mockGetUser.mockReset();
+    mockGetContractorBoosts.mockReset();
+    mockCreateContractorBoost.mockReset();
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => vi.clearAllMocks());
+
+  it("creates a new active 30-day boost with the checkout payment intent", async () => {
+    const paymentIntentId = "pi_checkout_renewal_001";
+    mockConstructEvent.mockReturnValue({
+      id: "evt_boost_renewal",
+      type: "checkout.session.completed",
+      created: Math.floor(Date.now() / 1000),
+      data: {
+        object: {
+          id: "cs_boost_renewal",
+          mode: "payment",
+          payment_status: "paid",
+          amount_total: 4900,
+          currency: "usd",
+          payment_intent: paymentIntentId,
+          metadata: {
+            type: "boost_renewal",
+            boostId: EXPIRED_BOOST_FIXTURE.id,
+            contractorId: CONTRACTOR_A_ID,
+          },
+        },
+      },
+    });
+    mockGetUser.mockResolvedValue({ id: CONTRACTOR_A_ID, role: "contractor", status: "active" });
+    mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
+    mockCreateContractorBoost.mockResolvedValue({ id: "renewed-via-webhook" });
+    const before = Date.now();
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "test-signature")
+      .set("content-type", "application/json")
+      .send("{}");
+
+    expect(res.status).toBe(200);
+    const created = mockCreateContractorBoost.mock.calls[0][0];
+    expect(created).toMatchObject({
+      contractorId: CONTRACTOR_A_ID,
+      serviceCategory: EXPIRED_BOOST_FIXTURE.serviceCategory,
+      status: "active",
+      isActive: true,
+      amount: "49",
+      stripePaymentIntentId: paymentIntentId,
+    });
+    expect(new Date(created.startDate).getTime()).toBeGreaterThanOrEqual(before);
+    expect(new Date(created.endDate).getTime() - new Date(created.startDate).getTime()).toBe(30 * 86_400_000);
+  });
 });
 
 vi.mock("../db", () => ({

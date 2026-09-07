@@ -11684,6 +11684,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register the static boost-list route before /api/contractors/:id so
+  // Express does not interpret "boost" as a contractor ID.
+  app.get("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can view their boosts" });
+      }
+
+      const boosts = await storage.getContractorBoosts(userId as string);
+      const statusOrder: Record<string, number> = { active: 0, expired: 1, cancelled: 2 };
+      const sorted = [...boosts].sort((a, b) => {
+        const aOrder = statusOrder[a.status] ?? 3;
+        const bOrder = statusOrder[b.status] ?? 3;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
+      });
+      res.json(sorted);
+    } catch (error) {
+      req.log?.error({ error }, "Error fetching contractor boosts");
+      res.status(500).json({ message: "Failed to fetch boosts" });
+    }
+  });
+
   app.get("/api/contractors/:id", async (req: any, res: any) => {
     try {
       if (await isQaContractorIdentifier(req.params.id)) {
@@ -11805,32 +11831,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contractor boost routes
-
-  // List the authenticated contractor's own boosts (all statuses)
-  app.get("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
-    try {
-      const userId = req.session?.user?.id;
-      const userRole = req.session?.user?.role;
-
-      if (userRole !== 'contractor') {
-        return res.status(403).json({ message: "Only contractors can view their boosts" });
-      }
-
-      const boosts = await storage.getContractorBoosts(userId as string);
-      // Sort: active first, then expired, then cancelled; most recent first within each group
-      const statusOrder: Record<string, number> = { active: 0, expired: 1, cancelled: 2 };
-      const sorted = [...boosts].sort((a, b) => {
-        const aOrder = statusOrder[a.status] ?? 3;
-        const bOrder = statusOrder[b.status] ?? 3;
-        if (aOrder !== bOrder) return aOrder - bOrder;
-        return new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime();
-      });
-      res.json(sorted);
-    } catch (error) {
-      req.log?.error({ error }, "Error fetching contractor boosts");
-      res.status(500).json({ message: "Failed to fetch boosts" });
-    }
-  });
 
   app.post("/api/contractors/boost", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
