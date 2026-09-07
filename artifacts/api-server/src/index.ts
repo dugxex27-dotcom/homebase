@@ -5,6 +5,10 @@ import { registerOnboardingRoutes } from "./routes/onboardingRoutes";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
 import { seedRegionalData } from "./seed-regional-data";
+import {
+  DEVELOPMENT_CONTRACTOR_FIXTURE,
+  seedDevelopmentContractor,
+} from "./seed-development-contractor";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@workspace/db";
@@ -149,6 +153,18 @@ app.get("/info/*path", proxyToSquarespace);
     await seedRegionalData();
   } catch (err) {
     logger.warn({ err }, "[seed-regional-data] Seeding failed — server will still start");
+  }
+
+  try {
+    const result = await seedDevelopmentContractor();
+    if (result.seeded) {
+      logger.info(
+        { email: DEVELOPMENT_CONTRACTOR_FIXTURE.email },
+        "[development-contractor] Populated dashboard-check account is ready",
+      );
+    }
+  } catch (err) {
+    logger.warn({ err }, "[development-contractor] Seeding failed — server will still start");
   }
 
   // Emit an operator-visible notice about the MemStorage → DB transition for
