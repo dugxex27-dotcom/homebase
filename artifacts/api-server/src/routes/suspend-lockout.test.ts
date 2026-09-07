@@ -1335,6 +1335,40 @@ describe("Suspend lockout — boost check and previously-used contractor routes"
 
   // ── POST /api/webhooks/stripe — payment_intent.succeeded (contractor boost) ─
 
+  it("does not activate a boost and logs an anomaly when contractorId metadata is missing", async () => {
+    const PAYMENT_INTENT_ID = "pi_boost_missing_contractor_test";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    mockStripeConstructEvent.mockReturnValueOnce({
+      id: "evt_boost_missing_contractor",
+      type: "payment_intent.succeeded",
+      data: {
+        object: {
+          id: PAYMENT_INTENT_ID,
+          metadata: {
+            type: "contractor_boost",
+          },
+        },
+      },
+    });
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("stripe-signature", "sig_test")
+      .set("content-type", "application/json")
+      .send(Buffer.from(JSON.stringify({})));
+
+    expect(res.status).toBe(200);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        `ANOMALY: Boost activation blocked — contractor_boost payment intent ${PAYMENT_INTENT_ID} is missing contractorId metadata`,
+      ),
+    );
+    expect(vi.mocked(storage.getUser)).not.toHaveBeenCalled();
+    expect(vi.mocked(storage.getContractorBoosts)).not.toHaveBeenCalled();
+    expect(vi.mocked(storage.updateContractorBoost)).not.toHaveBeenCalled();
+  });
+
   it("does not activate a boost when the contractor is suspended", async () => {
     const CONTRACTOR_ID = "contractor-suspended-001";
     const PAYMENT_INTENT_ID = "pi_boost_suspended_test";
