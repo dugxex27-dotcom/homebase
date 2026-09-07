@@ -36,8 +36,14 @@ const {
   TRANSFER_ROW_ID,
   analysisStore,
   houseStore,
+  maintenanceLogStore,
+  applianceStore,
+  homeSystemStore,
   mockGetUser,
   mockGetHouses,
+  mockGetMaintenanceLogs,
+  mockGetHomeAppliances,
+  mockGetHomeSystems,
   mockGetHouseTransfer,
   mockTransferHouseOwnership,
   mockUpdateHouseTransfer,
@@ -58,8 +64,14 @@ const {
     TRANSFER_ROW_ID: "transfer-row-001",
     analysisStore:   store,
     houseStore:      { rows: [] as Array<Record<string, any>> },
+    maintenanceLogStore: { rows: [] as Array<Record<string, any>> },
+    applianceStore:      { rows: [] as Array<Record<string, any>> },
+    homeSystemStore:     { rows: [] as Array<Record<string, any>> },
     mockGetUser:     vi.fn(),
     mockGetHouses:   vi.fn(),
+    mockGetMaintenanceLogs: vi.fn(),
+    mockGetHomeAppliances: vi.fn(),
+    mockGetHomeSystems: vi.fn(),
     mockGetHouseTransfer: vi.fn(),
     mockTransferHouseOwnership: vi.fn(),
     mockUpdateHouseTransfer: vi.fn(),
@@ -240,6 +252,9 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getUser: mockGetUser,
       getHouses: mockGetHouses,
+      getMaintenanceLogs: mockGetMaintenanceLogs,
+      getHomeAppliances: mockGetHomeAppliances,
+      getHomeSystems: mockGetHomeSystems,
       getHouseTransfer: mockGetHouseTransfer,
       transferHouseOwnership: mockTransferHouseOwnership,
       updateHouseTransfer: mockUpdateHouseTransfer,
@@ -273,6 +288,9 @@ import {
   homeHandoffPackages as homeHandoffPackagesTable,
   handoffTransfers as handoffTransfersTable,
   houses           as housesTable,
+  maintenanceLogs  as maintenanceLogsTable,
+  homeAppliances   as homeAppliancesTable,
+  homeSystems      as homeSystemsTable,
 } from "@workspace/db";
 
 // ---------------------------------------------------------------------------
@@ -300,6 +318,27 @@ const BASE_ANALYSIS = Object.freeze({
   aiNotes:            null,
   createdAt:          new Date("2026-05-01T10:00:00Z"),
 });
+
+const TRANSFERRED_RECORD_FIXTURES = {
+  maintenanceLog: {
+    id: "maintenance-log-transfer-001",
+    homeownerId: OWNER_A_ID,
+    houseId: HOUSE_ID,
+    title: "Annual furnace service",
+  },
+  appliance: {
+    id: "appliance-transfer-001",
+    homeownerId: OWNER_A_ID,
+    houseId: HOUSE_ID,
+    name: "Kitchen refrigerator",
+  },
+  homeSystem: {
+    id: "home-system-transfer-001",
+    homeownerId: OWNER_A_ID,
+    houseId: HOUSE_ID,
+    systemType: "HVAC",
+  },
+} as const;
 
 const BASE_HOUSE = Object.freeze({
   id: HOUSE_ID,
@@ -381,6 +420,18 @@ async function buildApp(store: { rows: Array<Record<string, any>> }) {
                 if (params.includes(row.houseId)) {
                   row.homeownerId = values.homeownerId;
                 }
+              }
+            }
+            const childStores = new Map<any, { rows: Array<Record<string, any>> }>([
+              [maintenanceLogsTable, maintenanceLogStore],
+              [homeAppliancesTable, applianceStore],
+              [homeSystemsTable, homeSystemStore],
+            ]);
+            const childStore = childStores.get(table);
+            if (childStore && values.homeownerId) {
+              const params = extractStringParams(condition);
+              for (const row of childStore.rows) {
+                if (params.includes(row.houseId)) row.homeownerId = values.homeownerId;
               }
             }
             return Promise.resolve(undefined);
@@ -496,6 +547,25 @@ describe("POST /api/handoff/:token/claim + GET /api/invoice-analyses — ownersh
   beforeEach(async () => {
     // Reset store: ownerA owns the analysis at the start of each test.
     analysisStore.rows = [{ ...BASE_ANALYSIS }];
+    maintenanceLogStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.maintenanceLog }];
+    applianceStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.appliance }];
+    homeSystemStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.homeSystem }];
+    mockGetUser.mockImplementation(async (userId: string) => ({
+      id: userId,
+      email: `${userId}@homebase.com`,
+      role: "homeowner",
+      status: "active",
+      subscriptionStatus: "active",
+    }));
+    mockGetMaintenanceLogs.mockImplementation(async (homeownerId: string) =>
+      maintenanceLogStore.rows.filter((row) => row.homeownerId === homeownerId),
+    );
+    mockGetHomeAppliances.mockImplementation(async (homeownerId: string) =>
+      applianceStore.rows.filter((row) => row.homeownerId === homeownerId),
+    );
+    mockGetHomeSystems.mockImplementation(async (homeownerId: string) =>
+      homeSystemStore.rows.filter((row) => row.homeownerId === homeownerId),
+    );
     app = await buildApp(analysisStore);
   });
 
@@ -583,6 +653,39 @@ describe("POST /api/handoff/:token/claim + GET /api/invoice-analyses — ownersh
       .get(`/api/invoice-analyses?houseId=${HOUSE_ID}`)
       .set("x-test-user", "owner-a");
     expect(postA.body).toHaveLength(0);
+  });
+
+  it.each([
+    ["maintenance logs", "/api/maintenance-logs", TRANSFERRED_RECORD_FIXTURES.maintenanceLog.id],
+    ["home appliances", "/api/appliances", TRANSFERRED_RECORD_FIXTURES.appliance.id],
+    ["home systems", "/api/home-systems", TRANSFERRED_RECORD_FIXTURES.homeSystem.id],
+  ])("after transfer, the former owner cannot see %s but the new owner can", async (
+    _label,
+    endpoint,
+    recordId,
+  ) => {
+    const claimRes = await request(app)
+      .post(`/api/handoff/${TOKEN}/claim`)
+      .set("x-test-user", "owner-b")
+      .send({});
+    expect(claimRes.status).toBe(200);
+
+    const formerOwnerRes = await request(app)
+      .get(endpoint)
+      .set("x-test-user", "owner-a");
+    expect(formerOwnerRes.status).toBe(200);
+    expect(formerOwnerRes.body).toEqual([]);
+
+    const newOwnerRes = await request(app)
+      .get(endpoint)
+      .set("x-test-user", "owner-b");
+    expect(newOwnerRes.status).toBe(200);
+    expect(newOwnerRes.body).toHaveLength(1);
+    expect(newOwnerRes.body[0]).toMatchObject({
+      id: recordId,
+      homeownerId: OWNER_B_ID,
+      houseId: HOUSE_ID,
+    });
   });
 
   it("unauthenticated GET returns 401", async () => {
