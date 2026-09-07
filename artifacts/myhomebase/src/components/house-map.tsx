@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { X, Thermometer, Zap, Droplets, Shield, Sun, Home, Wrench, Wind, Flame, Snowflake, Waves, Info } from "lucide-react";
+import { getHomeWellnessScoreStatus } from "@/lib/home-wellness-score";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -566,7 +567,7 @@ export default function HouseMap({
 
   // Score ring
   const rawScore = scoreData ? Math.max(0, scoreData.score) : 0;
-  const scoreColor = rawScore > 750 ? "#4a9e2f" : rawScore > 500 ? "#e8a020" : "#e03e3e";
+  const { color: scoreColor } = getHomeWellnessScoreStatus(rawScore);
   const circumference = 2 * Math.PI * 22; // r=22 in 52×52 SVG
   const scoreOffset = circumference - (Math.min(rawScore, 1000) / 1000) * circumference;
 

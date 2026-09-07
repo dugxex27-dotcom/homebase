@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Circle, TrendingUp, ClipboardList, Wrench, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { getHomeWellnessScoreStatus } from "@/lib/home-wellness-score";
 
 interface HomeHealthScoreProps {
   houseId: string;
@@ -75,22 +76,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
 
   const percentage = completedTasks > 0 ? Math.min(100, Math.round((score / Math.max(score, 200)) * 100)) : 0;
 
-  let scoreColor = "#4a9e2f";
-  let status = "Excellent";
-
-  if (score === 0) {
-    scoreColor = "#9ca3af";
-    status = "Getting Started";
-  } else if (score < 50) {
-    scoreColor = "#e8a020";
-    status = "Good";
-  } else if (score < 100) {
-    scoreColor = "#4a9e2f";
-    status = "Great";
-  } else {
-    scoreColor = "#2c0f5b";
-    status = "Excellent";
-  }
+  const { color: scoreColor, label: status } = getHomeWellnessScoreStatus(score);
 
   const circumference = 2 * Math.PI * 36;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
