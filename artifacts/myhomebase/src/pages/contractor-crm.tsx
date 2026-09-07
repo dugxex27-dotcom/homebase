@@ -175,6 +175,8 @@ interface SentJobRecord {
   homeownerLastName: string | null;
 }
 
+type SentJobRecordStatusFilter = 'all' | SentJobRecord['status'];
+
 interface DashboardStats {
   totalClients: number;
   activeJobs: number;
@@ -404,6 +406,7 @@ export default function ContractorCRMPage() {
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<CrmJob | null>(null);
   const [jobStatusFilter, setJobStatusFilter] = useState("all");
+  const [sentRecordStatusFilter, setSentRecordStatusFilter] = useState<SentJobRecordStatusFilter>('all');
 
   const [isAddQuoteOpen, setIsAddQuoteOpen] = useState(false);
   const [quoteLineItems, setQuoteLineItems] = useState<QuoteLineItem[]>([]);
@@ -501,6 +504,10 @@ export default function ContractorCRMPage() {
     queryKey: ['/api/crm/sent-job-records'],
     enabled: hasProAccess,
   });
+  const pendingSentRecordCount = sentJobRecords?.filter((record) => record.status === 'pending').length ?? 0;
+  const filteredSentJobRecords = sentJobRecords?.filter(
+    (record) => sentRecordStatusFilter === 'all' || record.status === sentRecordStatusFilter,
+  ) ?? [];
 
   // Fetch dashboard stats (Pro tier)
   const { data: dashboardStats, isLoading: isLoadingDashboard } = useQuery<DashboardStats>({
@@ -2154,10 +2161,31 @@ export default function ContractorCRMPage() {
 
               {/* Sent Records Panel */}
               <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <HomeIcon className="h-5 w-5 text-green-600" />
-                  Sent Records
-                </h3>
+                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <HomeIcon className="h-5 w-5 text-green-600" />
+                    Sent Records
+                    {pendingSentRecordCount > 0 && (
+                      <Badge variant="secondary" data-testid="sent-records-pending-count">
+                        {pendingSentRecordCount} pending
+                      </Badge>
+                    )}
+                  </h3>
+                  <Select
+                    value={sentRecordStatusFilter}
+                    onValueChange={(value) => setSentRecordStatusFilter(value as SentJobRecordStatusFilter)}
+                  >
+                    <SelectTrigger className="w-full sm:w-48" data-testid="select-filter-sent-record-status">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="accepted">Accepted</SelectItem>
+                      <SelectItem value="declined">Declined</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {isLoadingSentRecords ? (
                   <Card><CardContent className="py-8 text-center text-muted-foreground">Loading sent records...</CardContent></Card>
                 ) : !sentJobRecords || sentJobRecords.length === 0 ? (
@@ -2167,9 +2195,15 @@ export default function ContractorCRMPage() {
                       <p>No records sent yet. Use "Send to Homeowner" on a completed job to push it to a homeowner's dashboard.</p>
                     </CardContent>
                   </Card>
+                ) : filteredSentJobRecords.length === 0 ? (
+                  <Card>
+                    <CardContent className="py-8 text-center text-muted-foreground" data-testid="sent-records-filter-empty">
+                      No {sentRecordStatusFilter} sent records.
+                    </CardContent>
+                  </Card>
                 ) : (
                   <div className="space-y-3">
-                    {sentJobRecords.map((record) => {
+                    {filteredSentJobRecords.map((record) => {
                       const homeownerName = [record.homeownerFirstName, record.homeownerLastName].filter(Boolean).join(' ') || 'Homeowner';
                       const statusBadge = record.status === 'accepted'
                         ? <Badge className="bg-green-100 text-green-800 border-green-200" data-testid={`sent-record-status-${record.id}`}><CheckCircle className="h-3 w-3 mr-1" />Accepted</Badge>
