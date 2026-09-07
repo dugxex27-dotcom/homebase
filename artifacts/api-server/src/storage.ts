@@ -7218,8 +7218,14 @@ class DbStorage implements IStorage {
   }
 
   async deleteHomeAppliance(id: string): Promise<boolean> {
-    const result = await db.delete(homeAppliances).where(eq(homeAppliances.id, id)).returning();
-    return result.length > 0;
+    return db.transaction(async (tx) => {
+      // Delete children explicitly as well as relying on the schema cascade.
+      // Some development databases created this table before the cascade
+      // constraint was added, and would otherwise reject appliance deletion.
+      await tx.delete(homeApplianceManuals).where(eq(homeApplianceManuals.applianceId, id));
+      const result = await tx.delete(homeAppliances).where(eq(homeAppliances.id, id)).returning();
+      return result.length > 0;
+    });
   }
 
   // ─── Home Appliance Manuals — DATABASE BACKED ────────────────────────────

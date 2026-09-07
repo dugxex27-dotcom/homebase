@@ -4708,6 +4708,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                   className="h-7 w-7 p-0"
                                   style={{ color: 'var(--purple-deep)' }}
                                   data-testid={`button-edit-appliance-${appliance.id}`}
+                                  aria-label={`Edit ${appliance.name}`}
                                 >
                                   <Edit className="w-3.5 h-3.5" />
                                 </Button>
@@ -4720,6 +4721,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                   }}
                                   className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
                                   data-testid={`button-delete-appliance-${appliance.id}`}
+                                  aria-label={`Delete ${appliance.name}`}
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </Button>
