@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useRef } from "react";
-import { loadStripe } from "@stripe/stripe-js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
 import { apiRequest } from "@/lib/queryClient";
 import { X, Check } from "lucide-react";
 import "./CheckoutModal.css";
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY ?? "");
 
 interface PlanSummaryInfo {
   name: string;
@@ -67,6 +65,9 @@ interface CheckoutModalProps {
 export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const summary = PLAN_SUMMARY[plan] ?? null;
+  const [checkoutError, setCheckoutError] = useState(false);
+  const [checkoutAttempt, setCheckoutAttempt] = useState(0);
+  const [stripe, setStripe] = useState<Stripe | null>(null);
 
   useEffect(() => {
     const vv = window.visualViewport;
@@ -88,18 +89,50 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    setStripe(null);
+
+    loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY ?? "")
+      .then((stripeInstance) => {
+        if (cancelled) return;
+        if (!stripeInstance) {
+          setCheckoutError(true);
+          return;
+        }
+        setStripe(stripeInstance);
+      })
+      .catch(() => {
+        if (!cancelled) setCheckoutError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutAttempt]);
+
   const fetchClientSecret = useCallback(async () => {
-    const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
-    const res = await apiRequest("/api/create-subscription-checkout", "POST", {
-      plan,
-      trialMode,
-      embedded: true,
-      deviceFingerprint,
-    });
-    const data = await res.json();
-    if (!data.clientSecret) throw new Error(data.message ?? "Failed to start checkout");
-    return data.clientSecret as string;
+    try {
+      const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
+      const res = await apiRequest("/api/create-subscription-checkout", "POST", {
+        plan,
+        trialMode,
+        embedded: true,
+        deviceFingerprint,
+      });
+      const data = await res.json();
+      if (!data.clientSecret) throw new Error(data.message ?? "Failed to start checkout");
+      return data.clientSecret as string;
+    } catch (error) {
+      setCheckoutError(true);
+      throw error;
+    }
   }, [plan, trialMode]);
+
+  const retryCheckout = () => {
+    setCheckoutError(false);
+    setCheckoutAttempt((attempt) => attempt + 1);
+  };
 
   return (
     <div
@@ -151,9 +184,29 @@ export function CheckoutModal({ plan, trialMode, onClose }: CheckoutModalProps) 
 
         {/* Stripe checkout */}
         <div className="checkout-body">
-          <EmbeddedCheckoutProvider stripe={stripePromise} options={{ fetchClientSecret }}>
-            <EmbeddedCheckout />
-          </EmbeddedCheckoutProvider>
+          {checkoutError ? (
+            <div className="checkout-error" role="alert">
+              <div className="checkout-error-title">We couldn&apos;t load checkout</div>
+              <p className="checkout-error-message">
+                Check your connection and try again. Your plan selection is still saved.
+              </p>
+              <button type="button" className="checkout-retry-btn" onClick={retryCheckout}>
+                Try again
+              </button>
+            </div>
+          ) : stripe ? (
+            <EmbeddedCheckoutProvider
+              key={checkoutAttempt}
+              stripe={stripe}
+              options={{ fetchClientSecret }}
+            >
+              <EmbeddedCheckout />
+            </EmbeddedCheckoutProvider>
+          ) : (
+            <div className="checkout-loading" role="status">
+              Loading secure checkout…
+            </div>
+          )}
         </div>
       </div>
     </div>
