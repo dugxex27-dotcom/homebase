@@ -27,11 +27,13 @@ const {
   mockDbSelect,
   mockDbUpdate,
   mockStripeConstructEvent,
+  oauthSuspendedUserIds,
 } = vi.hoisted(() => {
   const ADMIN_USER_ID = "admin-owner-001";
   const TARGET_USER_ID = "tech-user-001";
   const COMPANY_ID = "company-001";
   const sharedSuspendedUserIds = new Set<string>();
+  const oauthSuspendedUserIds = new Set<string>();
 
   const mockDbSelect = vi.fn();
   const mockDbUpdate = vi.fn();
@@ -46,6 +48,7 @@ const {
     mockDbSelect,
     mockDbUpdate,
     mockStripeConstructEvent,
+    oauthSuspendedUserIds,
   };
 });
 
@@ -112,6 +115,11 @@ vi.mock("../replitAuth", async (importOriginal) => {
     //   anything else → admin/owner session
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
       const who = req.headers?.["x-test-user"] ?? "admin";
+      if (who === "oauth-target") {
+        req.user = { id: TARGET_USER_ID };
+        req.isAuthenticated = () => true;
+        return next();
+      }
       req.session =
         who === "target"
           ? TARGET_SESSION
@@ -124,11 +132,12 @@ vi.mock("../replitAuth", async (importOriginal) => {
     // requireNotSuspended: checks our sharedSuspendedUserIds Set so lockout
     // tests work without needing a real DB or TTL cache.
     requireNotSuspended: vi.fn(() => (req: any, res: any, next: any) => {
-      const user = req.session?.user;
+      const user = req.session?.user ?? req.user;
       if (!user) return res.status(401).json({ message: "Unauthorized" });
       if (
         ["suspended", "removed", "pending_invite"].includes(user.status) ||
-        sharedSuspendedUserIds.has(user.id)
+        sharedSuspendedUserIds.has(user.id) ||
+        oauthSuspendedUserIds.has(user.id)
       ) {
         return res
           .status(401)
@@ -160,6 +169,7 @@ vi.mock("../replitAuth", async (importOriginal) => {
     evictStatusCache: vi.fn(),
     refreshUserSessionRole: vi.fn(),
     invalidateActiveStatusCache: vi.fn(),
+    isOAuthUserSuspended: vi.fn(async (userId: string) => oauthSuspendedUserIds.has(userId)),
   };
 });
 
@@ -1067,6 +1077,36 @@ describe("Suspend lockout — CRM read routes (clients, jobs, quotes, invoices, 
     if (res.status === 401) {
       expect(res.body.message).not.toMatch(/suspended/i);
     }
+  });
+});
+
+describe("Suspend lockout — CRM OAuth authentication timing", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    oauthSuspendedUserIds.clear();
+    process.env.STRIPE_SECRET_KEY = "sk_test_crm_oauth_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_crm_oauth_lockout_placeholder";
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    oauthSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("blocks a suspended OAuth user after the CRM prefix runs before route authentication", async () => {
+    oauthSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .get("/api/crm/leads")
+      .set("x-test-user", "oauth-target");
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
   });
 });
 

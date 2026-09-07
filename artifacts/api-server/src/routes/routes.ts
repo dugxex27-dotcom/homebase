@@ -8145,7 +8145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // CRM Lead Management routes - PAID FEATURE for contractors
   
   // GET /api/crm/leads - List all leads for contractor with filters
-  app.get('/api/crm/leads', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.get('/api/crm/leads', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8193,7 +8193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/leads/:id - Get lead with notes
-  app.get('/api/crm/leads/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.get('/api/crm/leads/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8816,7 +8816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/crm/clients - Create new client
-  app.post('/api/crm/clients', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.post('/api/crm/clients', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8853,7 +8853,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // GET /api/crm/clients/:id - Get single client
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.get('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.get('/api/crm/clients/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8886,7 +8886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PATCH /api/crm/clients/:id - Update client
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.patch('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.patch('/api/crm/clients/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -8930,7 +8930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // DELETE /api/crm/clients/:id - Soft delete client (set isActive = false)
   // Phase 7: Added requireContractorSubscription for CRM security consistency
-  app.delete('/api/crm/clients/:id', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.delete('/api/crm/clients/:id', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -9046,7 +9046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/jobs/:id - Get single job
-  app.get('/api/crm/jobs/:id', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/crm/jobs/:id', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -10116,7 +10116,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // -------------------- CRM Dashboard Route --------------------
 
   // GET /api/crm/dashboard - Get dashboard stats
-  app.get('/api/crm/dashboard', isAuthenticated, requireContractorSubscription, async (req: any, res: any) => {
+  app.get('/api/crm/dashboard', isAuthenticated, requireNotSuspended(), requireContractorSubscription, async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
@@ -10427,7 +10427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/crm/import/template - Get JSON template for import
-  app.get('/api/crm/import/template', isAuthenticated, async (req: any, res: any) => {
+  app.get('/api/crm/import/template', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       if (req.session.user.role !== 'contractor') {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
