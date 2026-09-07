@@ -613,6 +613,7 @@ export default function ContractorDashboard() {
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [pendingCancelInviteMember, setPendingCancelInviteMember] = useState<TeamMember | null>(null);
+  const [pendingCancelBoost, setPendingCancelBoost] = useState<ContractorBoostItem | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
@@ -710,6 +711,26 @@ export default function ContractorDashboard() {
     },
     onError: (err: Error) => {
       toast({ title: "Renewal error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const cancelBoostMutation = useMutation({
+    mutationFn: async (boostId: string) => {
+      const res = await fetch(`/api/contractors/boost/${boostId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.message || 'Failed to cancel boost');
+      return data;
+    },
+    onSuccess: () => {
+      setPendingCancelBoost(null);
+      queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors/boost'] });
+      toast({ title: "Boost cancelled", description: "The boost is no longer active." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Cancellation error", description: err.message, variant: "destructive" });
     },
   });
 
@@ -2162,11 +2183,27 @@ export default function ContractorDashboard() {
                               Renew
                             </button>
                           ) : (
-                            <span style={{
-                              fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
-                              padding: '3px 8px', borderRadius: 5,
-                              background: '#FFF7E6', color: '#D97706',
-                            }}>Active</span>
+                            <>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                                padding: '3px 8px', borderRadius: 5,
+                                background: '#FFF7E6', color: '#D97706',
+                              }}>Active</span>
+                              <button
+                                data-testid={`button-cancel-boost-${boost.id}`}
+                                onClick={() => setPendingCancelBoost(boost)}
+                                disabled={cancelBoostMutation.isPending}
+                                style={{
+                                  padding: '5px 9px', borderRadius: 6,
+                                  border: '1px solid #fecaca', background: '#fff',
+                                  color: '#dc2626', fontSize: 12, fontWeight: 600,
+                                  cursor: cancelBoostMutation.isPending ? 'not-allowed' : 'pointer',
+                                  opacity: cancelBoostMutation.isPending ? 0.7 : 1,
+                                }}
+                              >
+                                Cancel
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -2175,6 +2212,18 @@ export default function ContractorDashboard() {
                 </div>
               )}
             </div>
+            <ConfirmDialog
+              open={!!pendingCancelBoost}
+              onOpenChange={(open) => { if (!open) setPendingCancelBoost(null); }}
+              title="Cancel this boost?"
+              description="This cannot be undone."
+              confirmText="Cancel Boost"
+              cancelText="Keep Boost"
+              variant="destructive"
+              onConfirm={() => {
+                if (pendingCancelBoost) cancelBoostMutation.mutate(pendingCancelBoost.id);
+              }}
+            />
           </>
         )}
 
