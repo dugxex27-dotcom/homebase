@@ -32,10 +32,12 @@ const {
   USER_ID,
   mockGetUser,
   mockUpsertUser,
+  mockCreateCompany,
 } = vi.hoisted(() => ({
   USER_ID: "google_ag_profile_001",
   mockGetUser: vi.fn(),
   mockUpsertUser: vi.fn(),
+  mockCreateCompany: vi.fn(),
 }));
 
 const BASE_USER = {
@@ -183,6 +185,7 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getUser: mockGetUser,
       upsertUser: mockUpsertUser,
+      createCompany: mockCreateCompany,
     }),
   };
 });
@@ -241,6 +244,11 @@ async function buildApp(): Promise<express.Express> {
         ...AUTHED_SESSION,
         user: { ...BASE_USER, role: "agent" },
         oauthIntent: "agent",
+      };
+    } else if (req.headers?.["x-test-user"] === "contractor") {
+      req.session = {
+        ...AUTHED_SESSION,
+        user: { ...BASE_USER, role: "contractor" },
       };
     } else if (req.headers?.["x-test-user"] === "homeowner") {
       req.session = { ...AUTHED_SESSION };
@@ -396,5 +404,115 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("ROLE_CHANGE_NOT_ALLOWED");
     expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/complete-profile — contractor intent role assignment", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when zipCode is missing", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "contractor")
+      .send({
+        role: "contractor",
+        companyName: "Rivera Home Services",
+        companyPhone: "555-0100",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/missing required fields/i);
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+    expect(mockCreateCompany).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "company name",
+      body: { companyPhone: "555-0100" },
+    },
+    {
+      label: "company phone",
+      body: { companyName: "Rivera Home Services" },
+    },
+  ])("returns 400 when $label is missing", async ({ body }) => {
+    const contractor = { ...BASE_USER, role: "contractor" as const };
+    mockGetUser.mockResolvedValue(contractor);
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "contractor")
+      .send({ zipCode: "90210", role: "contractor", ...body });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/company name and phone are required/i);
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+    expect(mockCreateCompany).not.toHaveBeenCalled();
+  });
+
+  it("preserves the contractor role, creates its company, and returns the onboarding redirect", async () => {
+    const contractor = { ...BASE_USER, role: "contractor" as const };
+    const profileUpdated = { ...contractor, zipCode: "90210" };
+    const company = { id: "company-profile-001" };
+    const companyLinked = {
+      ...profileUpdated,
+      companyId: company.id,
+      companyRole: "owner",
+      canRespondToProposals: true,
+    };
+    mockGetUser.mockResolvedValue(contractor);
+    mockUpsertUser
+      .mockResolvedValueOnce(profileUpdated)
+      .mockResolvedValueOnce(companyLinked);
+    mockCreateCompany.mockResolvedValue(company);
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "contractor")
+      .send({
+        zipCode: "90210",
+        role: "contractor",
+        companyName: "Rivera Home Services",
+        companyBio: "Residential repair and maintenance",
+        companyPhone: "555-0100",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      success: true,
+      role: "contractor",
+      redirectTo: "/contractor-pricing?trial=true&onboarding=true",
+    });
+    expect(mockGetUser).toHaveBeenCalledWith(USER_ID);
+    expect(mockUpsertUser).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ role: "contractor", zipCode: "90210" }),
+    );
+    expect(mockCreateCompany).toHaveBeenCalledWith({
+      name: "Rivera Home Services",
+      bio: "Residential repair and maintenance",
+      phone: "555-0100",
+      email: contractor.email,
+      location: "90210",
+      ownerId: USER_ID,
+      services: [],
+      licenseNumber: "",
+      licenseMunicipality: "",
+    });
+    expect(mockUpsertUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        role: "contractor",
+        companyId: company.id,
+        companyRole: "owner",
+        canRespondToProposals: true,
+      }),
+    );
   });
 });
