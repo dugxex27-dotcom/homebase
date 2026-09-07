@@ -72,6 +72,7 @@ export const CONTRACTOR_TEAM_SIZE_OPTIONS: Array<{
 type FormState = {
   company: string;
   name: string;
+  email: string;
   phone: string;
   zipCode: string;
   yearsExperience: string;
@@ -96,7 +97,7 @@ export default function ContractorOnboarding() {
     new URLSearchParams(window.location.search).get('fromOAuth') === 'true';
 
   const [form, setForm] = useState<FormState>({
-    company: '', name: '', phone: '', zipCode: '', yearsExperience: '',
+    company: '', name: '', email: '', phone: '', zipCode: '', yearsExperience: '',
     teamSizeSelection: '',
     services: [], customService: '', serviceFilter: '',
     licenseNumber: '', licenseState: '', insuranceCarrier: '',
@@ -118,6 +119,7 @@ export default function ContractorOnboarding() {
           if (!prev.name && (user.firstName || user.lastName)) {
             updates.name = [user.firstName, user.lastName].filter(Boolean).join(' ');
           }
+          if (!prev.email && user.email) updates.email = user.email;
           if (!prev.phone && user.phone) updates.phone = user.phone;
           return Object.keys(updates).length ? { ...prev, ...updates } : prev;
         });
@@ -146,6 +148,7 @@ export default function ContractorOnboarding() {
       const payload: Record<string, unknown> = {
         company: form.company,
         name: form.name,
+        email: form.email,
         phone: form.phone,
         postalCode: form.zipCode,
         services: form.services,
@@ -276,6 +279,18 @@ export default function ContractorOnboarding() {
                     placeholder="First & last name"
                     value={form.name}
                     onChange={e => set('name', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="contractor-email" style={labelStyle}>Email address</label>
+                  <input
+                    id="contractor-email"
+                    style={inpStyle}
+                    type="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={e => set('email', e.target.value)}
+                    autoComplete="email"
                   />
                 </div>
                 <div>
