@@ -2203,7 +2203,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Secure logo upload endpoint with authentication (MUST be after setupAuth for session access)
   console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
-  app.post('/api/upload-logo-raw', uploadLimiter, async (req: any, res: any) => {
+  app.post('/api/upload-logo-raw', isAuthenticated, requireNotSuspended(), uploadLimiter, async (req: any, res: any) => {
     console.error('[LOGO-DEBUG] Session check:', {
       hasSession: !!req.session,
       isAuthenticated: req.session?.isAuthenticated,
@@ -5197,7 +5197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const objectStorageService = new ObjectStorageService();
 
   // Get upload URL for proposal attachments
-  app.post("/api/objects/upload", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/objects/upload", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { fileType = "proposal" } = req.body;
       const uploadURL = await objectStorageService.getObjectEntityUploadURL(fileType);
@@ -5228,7 +5228,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message image upload endpoint
-  app.post('/api/upload/message-image', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/upload/message-image', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { imageData } = req.body;
       
@@ -5254,7 +5254,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Universal file upload endpoint for messages and proposals
-  app.post('/api/upload/files', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/upload/files', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { files } = req.body; // files is an array of { fileData: base64, fileName: string, fileType: string }
       
@@ -6351,7 +6351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/homeowner/maintenance-evidence/:sourceType/:sourceId/resubmit", isAuthenticated, requireHomeownerEvidenceAccess, async (req: any, res: any) => {
+  app.post("/api/homeowner/maintenance-evidence/:sourceType/:sourceId/resubmit", isAuthenticated, requireNotSuspended(), requireHomeownerEvidenceAccess, async (req: any, res: any) => {
     const uploadedPaths: string[] = [];
     try {
       const sourceType = maintenanceEvidenceReviewSourceSchema.parse(req.params.sourceType);
@@ -6562,7 +6562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload endpoint for contractor profiles
-  app.post('/api/upload/image', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/upload/image', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { imageData, type } = req.body; // imageData is base64, type is 'logo' or 'photo'
       
@@ -6618,7 +6618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/contractor/upload-logo', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/contractor/upload-logo', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { imageData } = req.body;
       
@@ -7676,7 +7676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI support chat — requires authentication and rate limiting to prevent cost amplification
-  app.post('/api/support/ai-chat', isAuthenticated, aiChatLimiter, async (req: any, res: any) => {
+  app.post('/api/support/ai-chat', isAuthenticated, requireNotSuspended(), aiChatLimiter, async (req: any, res: any) => {
     try {
       const { question, role } = req.body;
       if (!question || typeof question !== 'string' || question.trim().length === 0) {
@@ -13708,7 +13708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Complete a maintenance task with DIY or contractor method
-  app.post("/api/maintenance-logs/complete-task", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
+  app.post("/api/maintenance-logs/complete-task", isAuthenticated, requireNotSuspended(), requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Validate request body with Zod schema
       const validatedData = completeTaskSchema.parse(req.body);
@@ -14819,7 +14819,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload contract file for proposal
-  app.post("/api/proposals/:id/contract", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/proposals/:id/contract", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const proposalId = req.params.id;
       const userId = req.session.user.id;
@@ -14946,7 +14946,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appointments", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/appointments", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
       const userRole = req.session.user.role;
@@ -16121,7 +16121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/home-systems/extract-pdf — AI reads a PDF/image and extracts home system fields
-  app.post("/api/home-systems/extract-pdf", isAuthenticated, requirePropertyOwner, upload.single("file"), async (req: any, res: any) => {
+  app.post("/api/home-systems/extract-pdf", isAuthenticated, requireNotSuspended(), requirePropertyOwner, upload.single("file"), async (req: any, res: any) => {
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -16290,7 +16290,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
   // AI Disclosure Suggestion: POST /api/houses/:houseId/disclosure/ai-suggest
   // Accepts the current form's question list, fetches house/systems/logs, calls GPT-4o-mini,
   // and returns suggested answers keyed by question ID.
-  app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const userId = req.session.user.id;
@@ -16424,7 +16424,7 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
   });
 
   // ===== AI MAINTENANCE PRIORITY COACH =====
-  app.post("/api/houses/:houseId/maintenance-coach", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/houses/:houseId/maintenance-coach", isAuthenticated, requireNotSuspended(), requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -16621,7 +16621,7 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
   });
 
   // ===== AI HOME RESALE READINESS REPORT =====
-  app.post("/api/houses/:houseId/resale-readiness", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/houses/:houseId/resale-readiness", isAuthenticated, requireNotSuspended(), requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -16832,7 +16832,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   });
 
   // ===== AI INSURANCE PREP ASSISTANT =====
-  app.post("/api/houses/:houseId/insurance-prep", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/houses/:houseId/insurance-prep", isAuthenticated, requireNotSuspended(), requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
       const homeownerId = req.session.user.id;
@@ -17077,7 +17077,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   });
 
   // ===== INSURANCE PREP — EMAIL TO ADJUSTER =====
-  app.post("/api/insurance-prep/send-email", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/insurance-prep/send-email", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
         adjusterEmail: z.string().email(),
@@ -17273,7 +17273,7 @@ ${esc(claimMemo)}
   });
 
   // ===== AI CONTRACTOR MESSAGE DRAFTING =====
-  app.post("/api/ai/draft-contractor-message", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/ai/draft-contractor-message", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const userId = req.session.user.id;
 
@@ -19201,7 +19201,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     }
   });
 
-  app.post('/api/contractors/:id/reviews', isAuthenticated, upload.single("photo"), async (req: any, res: any) => {
+  app.post('/api/contractors/:id/reviews', isAuthenticated, requireNotSuspended(), upload.single("photo"), async (req: any, res: any) => {
     try {
       const principal = getMessagingPrincipal(req);
       if (!principal) return res.status(401).json({ message: "Unauthorized" });
@@ -20375,7 +20375,7 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
     return { valid: true };
   };
 
-  app.post('/api/ai/contractor-recommendation', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/ai/contractor-recommendation', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { problem } = req.body;
 
@@ -20544,7 +20544,7 @@ Important: Only recommend service types from the available list. Match problems 
   });
 
   // AI Home Troubleshooter - conversational diagnostic chat
-  app.post('/api/ai/troubleshoot', isAuthenticated, async (req: any, res: any) => {
+  app.post('/api/ai/troubleshoot', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const { messages } = req.body;
 
@@ -21219,7 +21219,7 @@ If the document contains no relevant home information, return the structure with
   // existing house record (all 6 child tables + houses) with pre-flight validation,
   // dry-run support, and post-commit verification.
   // When pkg.houseId is null: falls back to the original AI re-extraction path.
-  app.post("/api/handoff/:token/claim", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/handoff/:token/claim", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       const userRole = req.session?.user?.role;
@@ -21742,7 +21742,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/home-documents/upload — upload any document to vault
-  app.post("/api/home-documents/upload", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
+  app.post("/api/home-documents/upload", isAuthenticated, requireNotSuspended(), uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -21804,7 +21804,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // POST /api/home-documents/upload-inspection — upload + AI extract inspection report
-  app.post("/api/home-documents/upload-inspection", isAuthenticated, uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
+  app.post("/api/home-documents/upload-inspection", isAuthenticated, requireNotSuspended(), uploadLimiter, uploadDocument.single("document"), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
       if (req.session?.user?.role !== "homeowner") return res.status(403).json({ message: "Homeowner access only" });
@@ -22460,7 +22460,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
   // POST /api/invoice-analyses/analyze
   // Upload invoice/receipt images + optional before/after photos, run GPT-4o vision extraction
-  app.post("/api/invoice-analyses/analyze", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
+  app.post("/api/invoice-analyses/analyze", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const {
         houseId,
@@ -22655,7 +22655,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   // POST /api/invoice-analyses/:id/diy-verify
   // Run AI verification of DIY before/after/receipt photos for an existing pending analysis.
   // Must be called before confirming a DIY analysis to update the diyVerified flag.
-  app.post("/api/invoice-analyses/:id/diy-verify", isAuthenticated, requireHomeownerSubscription, diyVerifyLimiter, async (req: any, res: any) => {
+  app.post("/api/invoice-analyses/:id/diy-verify", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, diyVerifyLimiter, async (req: any, res: any) => {
     try {
       const { id } = req.params;
       const [analysis] = await db.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));

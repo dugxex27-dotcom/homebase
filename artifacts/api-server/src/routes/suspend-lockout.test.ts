@@ -2421,3 +2421,72 @@ describe("Suspend lockout — agent payouts, referrals, and analytics", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suspended-contractor lockout on file upload, AI, and dispatch routes
+// ---------------------------------------------------------------------------
+
+describe("Suspend lockout — upload, AI analysis, and outbound dispatch routes", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    sharedSuspendedUserIds.clear();
+    mockDbSelect.mockReset();
+    mockDbUpdate.mockReset();
+
+    process.env.STRIPE_SECRET_KEY = "sk_test_resource_lockout_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_resource_lockout_placeholder";
+
+    app = express();
+    app.use(express.json({ limit: "1mb" }));
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    sharedSuspendedUserIds.clear();
+    vi.clearAllMocks();
+  });
+
+  const newlyGuardedRoutes = [
+    ["contractor logo upload", "/api/upload-logo-raw"],
+    ["proposal attachment upload URL", "/api/objects/upload"],
+    ["message image upload", "/api/upload/message-image"],
+    ["message file upload", "/api/upload/files"],
+    ["maintenance evidence resubmission", "/api/homeowner/maintenance-evidence/maintenance/log-001/resubmit"],
+    ["profile image upload", "/api/upload/image"],
+    ["contractor company logo upload", "/api/contractor/upload-logo"],
+    ["support AI chat", "/api/support/ai-chat"],
+    ["maintenance task evidence upload", "/api/maintenance-logs/complete-task"],
+    ["proposal contract attachment", "/api/proposals/proposal-001/contract"],
+    ["appointment notification", "/api/appointments"],
+    ["home-system document extraction", "/api/home-systems/extract-pdf"],
+    ["disclosure AI suggestions", "/api/houses/house-001/disclosure/ai-suggest"],
+    ["maintenance AI coach", "/api/houses/house-001/maintenance-coach"],
+    ["resale readiness AI analysis", "/api/houses/house-001/resale-readiness"],
+    ["insurance prep AI analysis", "/api/houses/house-001/insurance-prep"],
+    ["insurance prep email", "/api/insurance-prep/send-email"],
+    ["AI contractor message drafting", "/api/ai/draft-contractor-message"],
+    ["review photo upload", "/api/contractors/contractor-001/reviews"],
+    ["AI contractor recommendation", "/api/ai/contractor-recommendation"],
+    ["AI troubleshooting", "/api/ai/troubleshoot"],
+    ["handoff document upload", "/api/agent/handoff-packages/package-001/documents"],
+    ["handoff package email", "/api/agent/handoff-packages/package-001/send"],
+    ["handoff claim AI analysis", "/api/handoff/token-001/claim"],
+    ["home document upload", "/api/home-documents/upload"],
+    ["inspection document upload", "/api/home-documents/upload-inspection"],
+    ["invoice AI analysis", "/api/invoice-analyses/analyze"],
+    ["DIY photo AI verification", "/api/invoice-analyses/analysis-001/diy-verify"],
+  ] as const;
+
+  it.each(newlyGuardedRoutes)("blocks a suspended contractor from %s", async (_label, path) => {
+    sharedSuspendedUserIds.add(TARGET_USER_ID);
+
+    const res = await request(app)
+      .post(path)
+      .set("x-test-user", "target")
+      .send({});
+
+    expect(res.status).toBe(401);
+    expect(res.body.message).toMatch(/suspended/i);
+  });
+});
