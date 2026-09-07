@@ -35,7 +35,12 @@ const {
   ANALYSIS_ID,
   TRANSFER_ROW_ID,
   analysisStore,
+  houseStore,
   mockGetUser,
+  mockGetHouses,
+  mockGetHouseTransfer,
+  mockTransferHouseOwnership,
+  mockUpdateHouseTransfer,
   mockDbSelect,
   mockDbInsert,
   mockDbUpdate,
@@ -52,7 +57,12 @@ const {
     ANALYSIS_ID:     "analysis-transfer-001",
     TRANSFER_ROW_ID: "transfer-row-001",
     analysisStore:   store,
+    houseStore:      { rows: [] as Array<Record<string, any>> },
     mockGetUser:     vi.fn(),
+    mockGetHouses:   vi.fn(),
+    mockGetHouseTransfer: vi.fn(),
+    mockTransferHouseOwnership: vi.fn(),
+    mockUpdateHouseTransfer: vi.fn(),
     mockDbSelect:    vi.fn(),
     mockDbInsert:    vi.fn(),
     mockDbUpdate:    vi.fn(),
@@ -226,7 +236,15 @@ vi.mock("../security-audit", () => ({
 
 vi.mock("../storage", async () => {
   const { createStorageMock } = await import("../test-helpers/storage-mock");
-  return { storage: createStorageMock({ getUser: mockGetUser }) };
+  return {
+    storage: createStorageMock({
+      getUser: mockGetUser,
+      getHouses: mockGetHouses,
+      getHouseTransfer: mockGetHouseTransfer,
+      transferHouseOwnership: mockTransferHouseOwnership,
+      updateHouseTransfer: mockUpdateHouseTransfer,
+    }),
+  };
 });
 
 vi.mock("../db", () => ({
@@ -281,6 +299,21 @@ const BASE_ANALYSIS = Object.freeze({
   diyVerified:        false,
   aiNotes:            null,
   createdAt:          new Date("2026-05-01T10:00:00Z"),
+});
+
+const BASE_HOUSE = Object.freeze({
+  id: HOUSE_ID,
+  homeownerId: OWNER_A_ID,
+  name: "Transferred Home",
+  address: "123 Transfer Lane",
+});
+
+const ACCEPTED_HOUSE_TRANSFER = Object.freeze({
+  id: TRANSFER_ROW_ID,
+  houseId: HOUSE_ID,
+  fromHomeownerId: OWNER_A_ID,
+  toHomeownerId: OWNER_B_ID,
+  status: "accepted",
 });
 
 /** Handoff package with a real houseId — triggers the transactional transfer path. */
@@ -566,5 +599,76 @@ describe("POST /api/handoff/:token/claim + GET /api/invoice-analyses — ownersh
       .post(`/api/handoff/${TOKEN}/claim`)
       .send({}); // no x-test-user → isAuthenticated returns 401
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/house-transfers/:id/confirm + GET /api/houses — ownership transfer", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    houseStore.rows = [{ ...BASE_HOUSE }];
+    mockGetHouses.mockImplementation(async (homeownerId: string) =>
+      houseStore.rows.filter((house) => house.homeownerId === homeownerId),
+    );
+    mockGetHouseTransfer.mockResolvedValue({ ...ACCEPTED_HOUSE_TRANSFER });
+    mockTransferHouseOwnership.mockImplementation(
+      async (houseId: string, fromHomeownerId: string, toHomeownerId: string) => {
+        const house = houseStore.rows.find(
+          (row) => row.id === houseId && row.homeownerId === fromHomeownerId,
+        );
+        if (house) house.homeownerId = toHomeownerId;
+        return {
+          maintenanceLogsTransferred: 0,
+          appliancesTransferred: 0,
+          appointmentsTransferred: 0,
+          customTasksTransferred: 0,
+          homeSystemsTransferred: 0,
+          serviceRecordsTransferred: 0,
+          taskCompletionsTransferred: 0,
+          taskOverridesTransferred: 0,
+          crmInvoicesTransferred: 0,
+          invoiceAnalysesTransferred: 0,
+        };
+      },
+    );
+    mockUpdateHouseTransfer.mockResolvedValue({
+      ...ACCEPTED_HOUSE_TRANSFER,
+      status: "completed",
+    });
+    app = await buildApp(analysisStore);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("removes the transferred house from the former owner's list and shows it to the new owner", async () => {
+    const confirmRes = await request(app)
+      .post(`/api/house-transfers/${TRANSFER_ROW_ID}/confirm`)
+      .set("x-test-user", "owner-a")
+      .send({});
+
+    expect(confirmRes.status).toBe(200);
+    expect(mockTransferHouseOwnership).toHaveBeenCalledWith(
+      HOUSE_ID,
+      OWNER_A_ID,
+      OWNER_B_ID,
+    );
+
+    const formerOwnerRes = await request(app)
+      .get("/api/houses")
+      .set("x-test-user", "owner-a");
+    expect(formerOwnerRes.status).toBe(200);
+    expect(formerOwnerRes.body).toHaveLength(0);
+
+    const newOwnerRes = await request(app)
+      .get("/api/houses")
+      .set("x-test-user", "owner-b");
+    expect(newOwnerRes.status).toBe(200);
+    expect(newOwnerRes.body).toHaveLength(1);
+    expect(newOwnerRes.body[0]).toMatchObject({
+      id: HOUSE_ID,
+      homeownerId: OWNER_B_ID,
+    });
   });
 });
