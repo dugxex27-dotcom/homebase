@@ -43,6 +43,17 @@ const DEFAULT_SEAT_INFO: SeatInfo = {
   teamSeatLimit: 50,
 };
 
+export const resolveDivisionAccess = (data: {
+  hasDivisions?: boolean | null;
+  hasActiveSubscription?: boolean | null;
+  needsSubscription?: boolean | null;
+  isDemoAccount?: boolean | null;
+}): boolean => {
+  if (data.isDemoAccount) return true;
+  return data.hasDivisions
+    ?? ((data.hasActiveSubscription ?? false) && !(data.needsSubscription ?? false));
+};
+
 export function useContractorSubscription(): ContractorSubscriptionStatus {
   const { user, isLoading: isAuthLoading } = useAuth();
   const typedUser = user as User | undefined;
@@ -106,8 +117,7 @@ export function useContractorSubscription(): ContractorSubscriptionStatus {
   }
 
   const tier = data.companyTier as string | null ?? null;
-  const hasDivisions = data.hasDivisions
-    ?? ((data.hasActiveSubscription ?? false) && !(data.needsSubscription ?? false));
+  const hasDivisions = resolveDivisionAccess(data);
   const hasBulkImport = data.bulkImportEnabled ?? hasDivisions;
 
   return {

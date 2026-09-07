@@ -1220,6 +1220,20 @@ export function getContractorSubscriptionAccess(
   };
 }
 
+/**
+ * Divisions are included with the unified paid contractor entitlement.
+ * Historical company tiers are intentionally not part of this policy.
+ */
+export function hasContractorDivisionAccess(
+  subscriptionStatus: string | null | undefined,
+  isInTrial: boolean,
+  isDemoAccount: boolean,
+): boolean {
+  return isDemoAccount ||
+    getContractorSubscriptionAccess(subscriptionStatus, isInTrial)
+      .hasActiveSubscription;
+}
+
 // ---------------------------------------------------------------------------
 // resolveBilledSeatCount — pure: seats bill only while the base subscription
 // is active or trialing
@@ -17368,7 +17382,11 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         tierName: plan?.tierName ?? null,
         // Phase 3.5 — Scale-Up fields
         companyTier: companyData?.tier ?? null,
-        hasDivisions: hasActiveSubscription,
+        hasDivisions: hasContractorDivisionAccess(
+          user.subscriptionStatus,
+          !!isInTrial,
+          !!user.isDemoAccount,
+        ),
         seatInfo: {
           includedTeamSeats,
           additionalTeamSeatPrice,

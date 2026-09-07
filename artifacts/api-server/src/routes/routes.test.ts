@@ -40,6 +40,7 @@ import {
   validateContractorCheckoutPlan,
   normalizeStripeSubscriptionStatus,
   getContractorSubscriptionAccess,
+  hasContractorDivisionAccess,
 } from "./routes";
 import { refreshUserSessionRole } from "../replitAuth";
 
@@ -139,6 +140,31 @@ describe("contractor subscription access policy", () => {
       hasActiveSubscription: true,
       needsSubscription: false,
     });
+  });
+});
+
+describe("contractor division entitlement policy", () => {
+  it.each([
+    ["active", false, false],
+    ["trialing", true, false],
+    ["grandfathered", false, false],
+    [null, false, true],
+  ])(
+    "allows an eligible contractor without consulting a historical company tier",
+    (status, isInTrial, isDemoAccount) => {
+      expect(
+        hasContractorDivisionAccess(status, isInTrial, isDemoAccount),
+      ).toBe(true);
+    },
+  );
+
+  it.each([
+    ["past_due", false],
+    ["cancelled", false],
+    ["trialing", false],
+    [null, false],
+  ])("keeps unpaid contractors out for %s", (status, isInTrial) => {
+    expect(hasContractorDivisionAccess(status, isInTrial, false)).toBe(false);
   });
 });
 
