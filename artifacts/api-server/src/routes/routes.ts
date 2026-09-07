@@ -232,6 +232,7 @@ declare module 'express-session' {
   interface SessionData {
     user?: any;
     isAuthenticated?: boolean;
+    oauthIntent?: string;
   }
 }
 
@@ -6094,6 +6095,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Return the server-owned signup intent so complete-profile remains correct
+  // even if its optional URL hint is stripped by navigation or a redirect.
+  app.get('/api/auth/complete-profile-intent', (req: any, res: any) => {
+    if (!req.session?.isAuthenticated || !req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const intent = ['contractor', 'agent'].includes(req.session.oauthIntent)
+      ? req.session.oauthIntent
+      : null;
+    return res.json({ intent });
+  });
+
   // Complete profile for OAuth users
   app.post('/api/auth/complete-profile', async (req: any, res: any) => {
     try {
@@ -6112,6 +6126,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!['homeowner', 'contractor', 'agent'].includes(role)) {
         return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const sessionIntent = ['contractor', 'agent'].includes(req.session.oauthIntent)
+        ? req.session.oauthIntent
+        : null;
+      if (sessionIntent && role !== sessionIntent) {
+        return res.status(403).json({
+          message: "Submitted role does not match the signup intent",
+          code: "ROLE_INTENT_MISMATCH",
+        });
       }
 
       const userId = req.session.user.id;
@@ -6172,6 +6196,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update session
       req.session.user = currentUser;
+      delete req.session.oauthIntent;
 
       // Determine redirect destination based on role so the client has an
       // explicit navigation contract rather than re-deriving it from role alone.

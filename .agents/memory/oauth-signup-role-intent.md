@@ -7,4 +7,4 @@ An OAuth role intent may select contractor or agent only while creating a brand-
 
 **Why:** Treating a client-submitted profile role or a replayable OAuth intent as an existing-account role update enables role escalation, while assigning the trusted new-account role before profile completion preserves legitimate onboarding.
 
-**How to apply:** Bind the validated intent to the OAuth session, persist the new account's role before rendering profile completion, and make profile completion preserve that persisted role.
+**How to apply:** Bind the validated intent to the OAuth session, persist the new account's role before rendering profile completion, and retain the intent until profile completion succeeds. The client should read the session intent rather than relying on a URL hint, and the API should reject a submitted role that disagrees with it.

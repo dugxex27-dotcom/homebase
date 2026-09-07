@@ -29,8 +29,9 @@ import { vi, describe, it, expect, afterEach } from "vitest";
 // Hoisted fixtures
 // ---------------------------------------------------------------------------
 
-const { mockUpsertUser } = vi.hoisted(() => ({
+const { mockUpsertUser, capturedSession } = vi.hoisted(() => ({
   mockUpsertUser: vi.fn(),
+  capturedSession: { current: null as any },
 }));
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,7 @@ type UserFixture = {
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string | null;
+  _isNewOAuthUser?: boolean;
 };
 
 /**
@@ -125,6 +127,7 @@ async function buildApp(
         cb();
       },
     };
+    capturedSession.current = req.session;
 
     next();
   });
@@ -148,15 +151,22 @@ describe("/auth/google/callback — agent intent routing", () => {
       email: "newagent@example.com",
       role: "homeowner",
       zipCode: null,
+      _isNewOAuthUser: true,
     };
+    mockUpsertUser.mockResolvedValue({ ...newUser, role: "agent", _isNewOAuthUser: undefined });
 
     const app = await buildApp(newUser);
 
     const res = await request(app).get("/auth/google/callback");
 
     expect(res.status).toBe(302);
-    expect(res.headers.location).toBe("/complete-profile?intent=agent");
-    expect(mockUpsertUser).not.toHaveBeenCalled();
+    expect(res.headers.location).toBe(
+      "/referral-entry?next=%2Fcomplete-profile%3Fintent%3Dagent",
+    );
+    expect(mockUpsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "agent" }),
+    );
+    expect(capturedSession.current.oauthIntent).toBe("agent");
   });
 
   it("does not promote an existing non-agent through a replayed agent intent", async () => {

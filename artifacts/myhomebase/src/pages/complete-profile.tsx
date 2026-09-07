@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,8 +45,13 @@ export default function CompleteProfile() {
 
   // Pre-select role when arriving from a role-specific Google OAuth flow.
   const urlIntent = new URLSearchParams(window.location.search).get('intent');
-  const intentContractor = urlIntent === 'contractor';
-  const intentAgent = urlIntent === 'agent';
+  const { data: intentData, isLoading: isIntentLoading } = useQuery<{ intent: string | null }>({
+    queryKey: ['/api/auth/complete-profile-intent'],
+  });
+  const trustedIntent = intentData?.intent;
+  const effectiveIntent = trustedIntent ?? urlIntent;
+  const intentContractor = effectiveIntent === 'contractor';
+  const intentAgent = effectiveIntent === 'agent';
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -58,6 +63,12 @@ export default function CompleteProfile() {
       companyPhone: "",
     },
   });
+
+  useEffect(() => {
+    if (trustedIntent === 'contractor' || trustedIntent === 'agent') {
+      form.setValue('role', trustedIntent);
+    }
+  }, [form, trustedIntent]);
 
   const selectedRole = form.watch("role");
 
@@ -289,7 +300,7 @@ export default function CompleteProfile() {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={mutation.isPending}
+                  disabled={mutation.isPending || isIntentLoading}
                   style={{ 
                     background: selectedRole === 'contractor' ? '#518ebc' : '#3c258e'
                   }}

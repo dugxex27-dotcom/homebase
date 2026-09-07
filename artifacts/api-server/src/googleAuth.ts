@@ -126,10 +126,11 @@ export async function setupGoogleAuth(app: Express) {
         const { _isNewOAuthUser: _flag, ...rawPersistedUser } = rawUser as any;
         let user = rawPersistedUser;
 
-        // Consume and clear flags stored before the OAuth redirect.
+        // Read flags stored before the OAuth redirect. The referral flag is
+        // consumed here, while a trusted new-account role intent must survive
+        // until complete-profile validates and consumes it.
         const oauthIntent: string | undefined = req.session.oauthIntent;
         const oauthRef: string | undefined = req.session.oauthRef as string | undefined;
-        delete req.session.oauthIntent;
         delete req.session.oauthRef;
 
         // A role intent may choose the role only for a brand-new account.
@@ -141,6 +142,11 @@ export async function setupGoogleAuth(app: Express) {
             : null;
         if (trustedSignupRole && user.role !== trustedSignupRole) {
           user = await storage.upsertUser({ ...user, role: trustedSignupRole });
+        }
+        if (trustedSignupRole && !user.zipCode) {
+          req.session.oauthIntent = trustedSignupRole;
+        } else {
+          delete req.session.oauthIntent;
         }
 
         // Create session in the same format as email/password login

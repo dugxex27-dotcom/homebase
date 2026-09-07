@@ -236,6 +236,12 @@ async function buildApp(): Promise<express.Express> {
         ...AUTHED_SESSION,
         user: { ...BASE_USER, role: "agent" },
       };
+    } else if (req.headers?.["x-test-user"] === "agent-intent") {
+      req.session = {
+        ...AUTHED_SESSION,
+        user: { ...BASE_USER, role: "agent" },
+        oauthIntent: "agent",
+      };
     } else if (req.headers?.["x-test-user"] === "homeowner") {
       req.session = { ...AUTHED_SESSION };
     } else {
@@ -328,6 +334,49 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     // knows where to send the user after profile completion.
     expect(res.body.redirectTo).toBe("/agent-dashboard");
     expect(mockGetUser).toHaveBeenCalledWith(USER_ID);
+    expect(mockUpsertUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "agent", zipCode: "90210" }),
+    );
+  });
+
+  it("returns the session intent when the complete-profile URL has no intent param", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .get("/api/auth/complete-profile-intent")
+      .set("x-test-user", "agent-intent");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ intent: "agent" });
+  });
+
+  it("rejects a submitted role that disagrees with the session intent", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "90210", role: "homeowner" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("ROLE_INTENT_MISMATCH");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("completes as an agent from session intent without relying on a URL param", async () => {
+    const agent = { ...BASE_USER, role: "agent" as const };
+    const updatedUser = { ...agent, zipCode: "90210" };
+    mockGetUser.mockResolvedValue(agent);
+    mockUpsertUser.mockResolvedValue(updatedUser);
+
+    const app = await buildApp();
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "90210", role: "agent" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.role).toBe("agent");
     expect(mockUpsertUser).toHaveBeenCalledWith(
       expect.objectContaining({ role: "agent", zipCode: "90210" }),
     );
