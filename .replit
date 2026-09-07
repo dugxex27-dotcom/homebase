@@ -88,12 +88,12 @@ args = "pnpm --filter @workspace/myhomebase run typecheck"
 name = "libs-typecheck"
 author = "agent"
 
+[workflows.workflow.metadata]
+isValidation = true
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm run typecheck:libs"
-
-[workflows.workflow.metadata]
-isValidation = true
 
 [[workflows.workflow]]
 name = "quiz-typecheck"
