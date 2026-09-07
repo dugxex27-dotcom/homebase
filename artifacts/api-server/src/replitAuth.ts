@@ -60,7 +60,9 @@ function updateUserSession(
 
 async function upsertUser(claims: any) {
   const subject = typeof claims["sub"] === "string" ? claims["sub"].trim() : "";
-  const email = typeof claims["email"] === "string" ? claims["email"].trim() : "";
+  const email = typeof claims["email"] === "string"
+    ? claims["email"].trim().toLowerCase()
+    : "";
 
   if (!subject) {
     throw new Error("OIDC identity is missing a subject");

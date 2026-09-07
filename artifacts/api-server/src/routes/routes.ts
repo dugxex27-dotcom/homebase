@@ -6202,8 +6202,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(403).json({ message: "QA accounts cannot access ordinary admin routes" });
     }
 
-    const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim()).filter(Boolean);
-    if (!adminEmails.includes(req.session.user.email)) {
+    const adminEmails = (process.env.ADMIN_EMAILS || '')
+      .split(',')
+      .map(email => email.trim().toLowerCase())
+      .filter(Boolean);
+    const sessionEmail = typeof req.session.user.email === "string"
+      ? req.session.user.email.trim().toLowerCase()
+      : "";
+    if (!adminEmails.includes(sessionEmail)) {
       return res.status(403).json({ message: "Forbidden - admin access required" });
     }
 

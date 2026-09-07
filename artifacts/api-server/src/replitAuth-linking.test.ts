@@ -140,12 +140,12 @@ describe("Replit OIDC account resolution", () => {
 
     expect(result.error).toBeNull();
     expect(result.user.id).toBe(existingUser.id);
-    expect(mockGetUserByEmail).toHaveBeenCalledWith("EXISTING@example.com");
+    expect(mockGetUserByEmail).toHaveBeenCalledWith("existing@example.com");
     expect(mockGetUser).toHaveBeenCalledWith("new-oidc-subject");
     expect(mockUpsertUser).toHaveBeenCalledWith(
       expect.objectContaining({
         id: existingUser.id,
-        email: "EXISTING@example.com",
+        email: "existing@example.com",
         role: existingUser.role,
         companyId: existingUser.companyId,
         companyRole: existingUser.companyRole,
