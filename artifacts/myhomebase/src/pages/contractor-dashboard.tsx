@@ -568,6 +568,7 @@ export default function ContractorDashboard() {
   const queryClientInstance = useQueryClient();
   const [location] = useLocation();
   const search = useSearch();
+  const boostRenewalToastShown = React.useRef(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
@@ -580,6 +581,27 @@ export default function ContractorDashboard() {
     const tab = new URLSearchParams(search).get('tab');
     setActiveTab((tab === 'team' || tab === 'invoices') ? tab : 'overview');
   }, [search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    if (params.get('boost_renewed') !== '1' || boostRenewalToastShown.current) {
+      return;
+    }
+
+    boostRenewalToastShown.current = true;
+    toast({
+      title: "Your boost has been renewed — it will appear as active shortly.",
+    });
+
+    params.delete('boost_renewed');
+    const nextSearch = params.toString();
+    window.history.replaceState(
+      window.history.state,
+      '',
+      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`,
+    );
+  }, [search, toast]);
+
   const [teamSearch, setTeamSearch] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
