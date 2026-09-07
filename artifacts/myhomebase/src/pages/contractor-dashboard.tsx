@@ -111,6 +111,11 @@ interface ContractorLeadSummary {
   createdAt: string | Date | null;
 }
 
+interface ContractorRatingSummary {
+  averageRating: number;
+  totalReviews: number;
+}
+
 interface BulkImportError {
   row: number;
   error: string;
@@ -947,6 +952,22 @@ export default function ContractorDashboard() {
     enabled: !!typedUser?.id,
   });
 
+  const {
+    data: contractorRating,
+    isLoading: isLoadingContractorRating,
+    isError: isContractorRatingError,
+  } = useQuery<ContractorRatingSummary>({
+    queryKey: ["/api/contractors", typedUser?.id, "rating"],
+    queryFn: async () => {
+      const response = await fetch(`/api/contractors/${typedUser?.id}/rating`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch contractor rating");
+      return response.json();
+    },
+    enabled: !!typedUser?.id,
+  });
+
   const { data: contactedHomeowners = [], isLoading: isLoadingHomeowners } = useQuery<ContactedHomeowner[]>({
     queryKey: ["/api/contractors", typedUser?.id, "contacted-homeowners"],
     queryFn: async () => {
@@ -1084,12 +1105,20 @@ export default function ContractorDashboard() {
                 <div className="dash-chip-label">All-Time Earnings</div>
               </div>
               <div className="dash-chip">
-                <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-jobs">{acceptedProposals.length}</div>
-                <div className="dash-chip-label">Accepted Proposals</div>
+                <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-projects">
+                  {isLoadingProposals ? '–' : acceptedProposals.length}
+                </div>
+                <div className="dash-chip-label">Active Projects</div>
               </div>
               <div className="dash-chip">
-                <div className={`dash-chip-num${pendingProposals.length > 0 ? ' warn' : ''}`} data-testid="text-pending-proposals">{pendingProposals.length}</div>
-                <div className="dash-chip-label">Proposals</div>
+                <div className={`dash-chip-num${contractorRating && contractorRating.totalReviews > 0 ? ' good' : ''}`} data-testid="text-reviews">
+                  {isLoadingContractorRating || isContractorRatingError
+                    ? '–'
+                    : contractorRating && contractorRating.totalReviews > 0
+                      ? contractorRating.averageRating.toFixed(1)
+                      : '0'}
+                </div>
+                <div className="dash-chip-label">Reviews</div>
               </div>
               <div className="dash-chip">
                 <div className={`dash-chip-num${recentNewLeadCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">

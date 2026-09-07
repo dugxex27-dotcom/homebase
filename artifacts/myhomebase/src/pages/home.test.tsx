@@ -310,7 +310,7 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("Contractor dashboard business stats", () => {
-  it("shows populated proposal, rating, and recent new-lead values", () => {
+  it("sends a signed-in contractor to the dashboard while keeping the business summary visible", () => {
     flags.role = "contractor";
     flags.contractorProposals = [
       { status: "accepted" },
@@ -335,6 +335,10 @@ describe("Contractor dashboard business stats", () => {
 
     renderHome();
 
+    expect(flags.setLocationSpy).toHaveBeenCalledWith("/contractor-dashboard");
+    expect(screen.getByText("Active Projects")).toBeDefined();
+    expect(screen.getByText("Reviews")).toBeDefined();
+    expect(screen.getByText("New Leads")).toBeDefined();
     expect(screen.getByText("2 active projects")).toBeDefined();
     expect(screen.getByText("4.6/5 stars from 3 reviews")).toBeDefined();
     expect(screen.getByText("1 new lead this week")).toBeDefined();
