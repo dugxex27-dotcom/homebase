@@ -22,6 +22,7 @@ const {
   mockCreateContractorBoost,
   mockPaymentIntentsRetrieve,
   mockCheckoutSessionsCreate,
+  mockCheckoutSessionsRetrieve,
   mockSearchContractors,
   mockGetActiveBoosts,
   mockGetUser,
@@ -33,6 +34,7 @@ const {
   mockCreateContractorBoost: vi.fn(),
   mockPaymentIntentsRetrieve: vi.fn(),
   mockCheckoutSessionsCreate: vi.fn(),
+  mockCheckoutSessionsRetrieve: vi.fn(),
   mockSearchContractors: vi.fn(),
   mockGetActiveBoosts: vi.fn(),
   mockGetUser: vi.fn(),
@@ -168,7 +170,12 @@ vi.mock("stripe", () => {
     this.subscriptions = { retrieve: vi.fn().mockResolvedValue({ id: "sub_stub", items: { data: [] } }) };
     this.accounts = { retrieve: vi.fn().mockResolvedValue({ id: "acct_test", charges_enabled: true, payouts_enabled: true, country: "US" }) };
     this.paymentIntents = { retrieve: mockPaymentIntentsRetrieve };
-    this.checkout = { sessions: { create: mockCheckoutSessionsCreate } };
+    this.checkout = {
+      sessions: {
+        create: mockCheckoutSessionsCreate,
+        retrieve: mockCheckoutSessionsRetrieve,
+      },
+    };
   }
   return { default: MockStripe };
 });
@@ -432,17 +439,19 @@ describe("POST /api/contractors/boost/:id/create-renewal-checkout — checkout u
 
     // Boost has a suspiciously cheap stored amount
     mockGetContractorBoosts.mockResolvedValue([CHEAP_BOOST]);
-    mockCheckoutSessionsCreate.mockResolvedValue({ url: "https://checkout.stripe.com/test" });
+    mockCheckoutSessionsCreate.mockResolvedValue({ client_secret: "cs_test_renewal" });
 
     const res = await request(app)
       .post(`/api/contractors/boost/${BOOST_ID}/create-renewal-checkout`);
 
     expect(res.status).toBe(200);
-    expect(res.body.url).toBe("https://checkout.stripe.com/test");
+    expect(res.body.clientSecret).toBe("cs_test_renewal");
 
     // Inspect the line_items passed to stripe.checkout.sessions.create
     const sessionArg = mockCheckoutSessionsCreate.mock.calls[0]?.[0];
     expect(sessionArg).toBeDefined();
+    expect(sessionArg.ui_mode).toBe("embedded");
+    expect(sessionArg.return_url).toContain("session_id={CHECKOUT_SESSION_ID}");
     const lineItem = sessionArg.line_items?.[0];
     expect(lineItem).toBeDefined();
     expect(lineItem.price_data.unit_amount).toBe(BOOST_PRICE_DOLLARS * 100);
@@ -456,7 +465,7 @@ describe("POST /api/contractors/boost/:id/create-renewal-checkout — checkout u
     // Boost with an inflated stored amount (e.g. legacy record)
     const legacyBoost = { ...CHEAP_BOOST, amount: "99.99" };
     mockGetContractorBoosts.mockResolvedValue([legacyBoost]);
-    mockCheckoutSessionsCreate.mockResolvedValue({ url: "https://checkout.stripe.com/test2" });
+    mockCheckoutSessionsCreate.mockResolvedValue({ client_secret: "cs_test_renewal_2" });
 
     await request(app)
       .post(`/api/contractors/boost/${BOOST_ID}/create-renewal-checkout`);
@@ -466,5 +475,88 @@ describe("POST /api/contractors/boost/:id/create-renewal-checkout — checkout u
     // Must be the canonical server-side price, not 9999 cents (99.99)
     expect(lineItem.price_data.unit_amount).toBe(BOOST_PRICE_DOLLARS * 100);
     expect(lineItem.price_data.unit_amount).not.toBe(9999);
+  });
+
+  it("allows an active boost within seven days of expiry", async () => {
+    const app = await buildApp();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 6);
+    mockGetContractorBoosts.mockResolvedValue([{
+      ...CHEAP_BOOST,
+      status: "active",
+      isActive: true,
+      endDate: endDate.toISOString(),
+    }]);
+    mockCheckoutSessionsCreate.mockResolvedValue({ client_secret: "cs_renew_soon" });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_ID}/create-renewal-checkout`);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("rejects an active boost more than seven days from expiry", async () => {
+    const app = await buildApp();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 8);
+    mockGetContractorBoosts.mockResolvedValue([{
+      ...CHEAP_BOOST,
+      status: "active",
+      isActive: true,
+      endDate: endDate.toISOString(),
+    }]);
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_ID}/create-renewal-checkout`);
+
+    expect(res.status).toBe(400);
+    expect(mockCheckoutSessionsCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/contractors/boost/:id/renewal-checkout-payment", () => {
+  afterEach(() => vi.clearAllMocks());
+
+  it("returns the PaymentIntent ID for the contractor's paid renewal session", async () => {
+    const app = await buildApp();
+    mockCheckoutSessionsRetrieve.mockResolvedValue({
+      payment_status: "paid",
+      amount_total: BOOST_PRICE_DOLLARS * 100,
+      currency: "usd",
+      payment_intent: VALID_PI_ID,
+      metadata: {
+        type: "boost_renewal",
+        contractorId: CONTRACTOR_ID,
+        boostId: BOOST_ID,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_ID}/renewal-checkout-payment`)
+      .send({ sessionId: "cs_paid_renewal" });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ stripePaymentIntentId: VALID_PI_ID });
+  });
+
+  it("rejects a paid session belonging to another boost", async () => {
+    const app = await buildApp();
+    mockCheckoutSessionsRetrieve.mockResolvedValue({
+      payment_status: "paid",
+      amount_total: BOOST_PRICE_DOLLARS * 100,
+      currency: "usd",
+      payment_intent: VALID_PI_ID,
+      metadata: {
+        type: "boost_renewal",
+        contractorId: CONTRACTOR_ID,
+        boostId: "different-boost",
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/contractors/boost/${BOOST_ID}/renewal-checkout-payment`)
+      .send({ sessionId: "cs_wrong_boost" });
+
+    expect(res.status).toBe(402);
   });
 });

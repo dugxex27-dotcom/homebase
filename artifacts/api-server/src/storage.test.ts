@@ -16,6 +16,34 @@ vi.mock("./lib/logger", () => ({
 
 import { MemStorage } from "./storage";
 
+describe("MemStorage.createContractorBoost payment idempotency", () => {
+  it("returns one boost when webhook and browser paths create the same payment concurrently", async () => {
+    const storage = new MemStorage();
+    const boostData = {
+      contractorId: "contractor-race",
+      serviceCategory: "plumbing",
+      businessAddress: "1 Test St",
+      businessLatitude: "39.78170000",
+      businessLongitude: "-89.65010000",
+      boostRadius: 10,
+      startDate: new Date(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      amount: "49.00",
+      stripePaymentIntentId: "pi_shared_webhook_browser",
+      status: "active",
+      isActive: true,
+    };
+
+    const [fromWebhook, fromBrowser] = await Promise.all([
+      storage.createContractorBoost(boostData),
+      storage.createContractorBoost(boostData),
+    ]);
+
+    expect(fromWebhook.id).toBe(fromBrowser.id);
+    expect(await storage.getContractorBoosts("contractor-race")).toHaveLength(1);
+  });
+});
+
 describe("MemStorage.transferHouseOwnership", () => {
   let storage: MemStorage;
 

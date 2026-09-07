@@ -359,9 +359,9 @@ describe("POST /api/contractors/boost/:boostId/create-renewal-checkout", () => {
     vi.resetModules();
   });
 
-  it("returns the hosted checkout URL for an expired boost", async () => {
+  it("returns an embedded checkout client secret for an expired boost", async () => {
     mockGetContractorBoosts.mockResolvedValue([EXPIRED_BOOST_FIXTURE]);
-    mockCheckoutSessionsCreate.mockResolvedValue({ url: "https://checkout.stripe.test/renew" });
+    mockCheckoutSessionsCreate.mockResolvedValue({ client_secret: "cs_test_boost_renewal" });
 
     const res = await request(app)
       .post(`/api/contractors/boost/${EXPIRED_BOOST_FIXTURE.id}/create-renewal-checkout`)
@@ -369,10 +369,12 @@ describe("POST /api/contractors/boost/:boostId/create-renewal-checkout", () => {
       .set("origin", "https://app.test");
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ url: "https://checkout.stripe.test/renew" });
+    expect(res.body).toEqual({ clientSecret: "cs_test_boost_renewal" });
     expect(mockCheckoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
+        ui_mode: "embedded",
         mode: "payment",
+        return_url: expect.stringContaining("session_id={CHECKOUT_SESSION_ID}"),
         metadata: {
           type: "boost_renewal",
           boostId: EXPIRED_BOOST_FIXTURE.id,

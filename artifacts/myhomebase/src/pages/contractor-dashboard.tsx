@@ -22,6 +22,7 @@ import { useContractorSubscription } from "@/hooks/useContractorSubscription";
 
 import { ContractorTrialExpiredPaywall, ContractorTrialBanner, ContractorNoPlanBanner } from "@/components/contractor-feature-gate";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
+import { BoostRenewalCheckoutModal } from "@/components/BoostRenewalCheckoutModal";
 import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -105,6 +106,8 @@ interface ContractorBoostItem {
   isActive: boolean;
   createdAt: string | null;
 }
+
+const BOOST_RENEWAL_WINDOW_DAYS = 7;
 
 interface ContractorLeadSummary {
   status: string;
@@ -568,7 +571,6 @@ export default function ContractorDashboard() {
   const queryClientInstance = useQueryClient();
   const [location] = useLocation();
   const search = useSearch();
-  const boostRenewalToastShown = React.useRef(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'invoices'>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab');
@@ -581,26 +583,6 @@ export default function ContractorDashboard() {
     const tab = new URLSearchParams(search).get('tab');
     setActiveTab((tab === 'team' || tab === 'invoices') ? tab : 'overview');
   }, [search]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(search);
-    if (params.get('boost_renewed') !== '1' || boostRenewalToastShown.current) {
-      return;
-    }
-
-    boostRenewalToastShown.current = true;
-    toast({
-      title: "Your boost has been renewed — it will appear as active shortly.",
-    });
-
-    params.delete('boost_renewed');
-    const nextSearch = params.toString();
-    window.history.replaceState(
-      window.history.state,
-      '',
-      `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`,
-    );
-  }, [search, toast]);
 
   const [teamSearch, setTeamSearch] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -620,6 +602,7 @@ export default function ContractorDashboard() {
   const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [renewalBoostId, setRenewalBoostId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
@@ -694,25 +677,65 @@ export default function ContractorDashboard() {
     enabled: !!typedUser,
   });
 
-  const renewBoostMutation = useMutation({
-    mutationFn: async (boostId: string) => {
-      const res = await fetch(`/api/contractors/boost/${boostId}/create-renewal-checkout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Failed to start renewal');
-      return data as { url: string };
-    },
-    onSuccess: (data) => {
-      if (data.url) {
-        window.location.href = data.url;
+  const processedRenewalSessionRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const sessionId = params.get('session_id');
+    const boostId = params.get('boost_id');
+    if (
+      params.get('boost_renewed') !== '1' ||
+      !sessionId ||
+      !boostId ||
+      processedRenewalSessionRef.current === sessionId
+    ) {
+      return;
+    }
+
+    processedRenewalSessionRef.current = sessionId;
+    const finishRenewal = async () => {
+      try {
+        const paymentRes = await fetch(`/api/contractors/boost/${encodeURIComponent(boostId)}/renewal-checkout-payment`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ sessionId }),
+        });
+        const paymentData = await paymentRes.json();
+        if (!paymentRes.ok) throw new Error(paymentData.message || 'Could not confirm renewal payment');
+
+        const renewRes = await fetch(`/api/contractors/boost/${encodeURIComponent(boostId)}/renew`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            durationDays: 30,
+            stripePaymentIntentId: paymentData.stripePaymentIntentId,
+          }),
+        });
+        const renewData = await renewRes.json();
+        if (!renewRes.ok) throw new Error(renewData.message || 'Could not activate renewed boost');
+
+        await queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors/boost'] });
+        toast({ title: "Boost renewed", description: "Your visibility boost is active for another 30 days." });
+      } catch (error) {
+        processedRenewalSessionRef.current = null;
+        toast({
+          title: "Renewal needs attention",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        const cleanParams = new URLSearchParams(window.location.search);
+        cleanParams.delete('boost_renewed');
+        cleanParams.delete('boost_id');
+        cleanParams.delete('session_id');
+        const cleanSearch = cleanParams.toString();
+        window.history.replaceState({}, '', `${window.location.pathname}${cleanSearch ? `?${cleanSearch}` : ''}`);
       }
-    },
-    onError: (err: Error) => {
-      toast({ title: "Renewal error", description: err.message, variant: "destructive" });
-    },
-  });
+    };
+
+    void finishRenewal();
+  }, [search, queryClientInstance, toast]);
 
   const cancelBoostMutation = useMutation({
     mutationFn: async (boostId: string) => {
@@ -1132,6 +1155,16 @@ export default function ContractorDashboard() {
   
   return (
     <div>
+      {renewalBoostId && (() => {
+        const renewalBoost = myBoosts.find((boost) => boost.id === renewalBoostId);
+        return renewalBoost ? (
+          <BoostRenewalCheckoutModal
+            boostId={renewalBoost.id}
+            serviceCategory={renewalBoost.serviceCategory}
+            onClose={() => setRenewalBoostId(null)}
+          />
+        ) : null;
+      })()}
 
       {/* ── DASH HEADER ─────────────────────────── */}
       <div className="dash-header" style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}>
@@ -2134,8 +2167,10 @@ export default function ContractorDashboard() {
                   {myBoosts.map((boost, idx) => {
                     const isExpired = boost.status === 'expired' || boost.status === 'cancelled' || !boost.isActive || new Date(boost.endDate) < new Date();
                     const endDateObj = new Date(boost.endDate);
+                    const renewalWindowEnd = new Date();
+                    renewalWindowEnd.setDate(renewalWindowEnd.getDate() + BOOST_RENEWAL_WINDOW_DAYS);
+                    const canRenew = boost.status !== 'cancelled' && endDateObj <= renewalWindowEnd;
                     const endLabel = format(endDateObj, 'MMM d, yyyy');
-                    const isRenewing = renewBoostMutation.isPending && renewBoostMutation.variables === boost.id;
                     return (
                       <div
                         key={boost.id}
@@ -2166,23 +2201,22 @@ export default function ContractorDashboard() {
                           </div>
                         </div>
                         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {isExpired ? (
+                          {canRenew && (
                             <button
                               data-testid={`button-renew-boost-${boost.id}`}
-                              onClick={() => renewBoostMutation.mutate(boost.id)}
-                              disabled={isRenewing}
+                              onClick={() => setRenewalBoostId(boost.id)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 4,
                                 padding: '5px 12px', borderRadius: 6, border: 'none',
                                 background: '#1560A2', color: '#fff',
-                                fontSize: 12, fontWeight: 600, cursor: isRenewing ? 'not-allowed' : 'pointer',
-                                opacity: isRenewing ? 0.7 : 1,
+                                fontSize: 12, fontWeight: 600, cursor: 'pointer',
                               }}
                             >
-                              {isRenewing ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <RefreshCw size={11} />}
+                              <RefreshCw size={11} />
                               Renew
                             </button>
-                          ) : (
+                          )}
+                          {!isExpired && (
                             <>
                               <span style={{
                                 fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',

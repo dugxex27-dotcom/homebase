@@ -103,6 +103,8 @@ export function extractStripeInvoiceSubscriptionId(invoice: unknown): string | n
 // ---------------------------------------------------------------------------
 /** Price of a 30-day contractor visibility boost, in USD dollars. */
 export const BOOST_PRICE_DOLLARS = 49;
+/** Active boosts become eligible for renewal this many days before expiry. */
+export const BOOST_RENEWAL_WINDOW_DAYS = 7;
 
 // ---------------------------------------------------------------------------
 // Current contractor upgrade preview — unified flat per-seat pricing.
@@ -12072,8 +12074,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ) {
         return res.status(402).json({ message: "Payment required: payment intent does not belong to this renewal" });
       }
-      if (userBoosts.some(existing => existing.stripePaymentIntentId === paymentIntent.id)) {
-        return res.status(409).json({ message: "This payment has already been used for a boost" });
+      const existingRenewal = userBoosts.find(existing => existing.stripePaymentIntentId === paymentIntent.id);
+      if (existingRenewal) {
+        // The checkout.completed webhook may win the race with the browser's
+        // return flow. Treat that as success so the client can refresh its list.
+        return res.json(existingRenewal);
       }
       // ─────────────────────────────────────────────────────────────────────
 
@@ -12119,7 +12124,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create a Stripe Checkout session so a contractor can renew an expired boost
+  // Resolve a paid renewal Checkout Session to the PaymentIntent that the
+  // browser must hand to the renew endpoint.
+  app.post("/api/contractors/boost/:boostId/renewal-checkout-payment", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+      const parsed = z.object({ sessionId: z.string().min(1) }).safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Checkout session is required" });
+      }
+      if (userRole !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can renew boosts" });
+      }
+      if (!stripe) {
+        return res.status(503).json({ message: "Payment service unavailable" });
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(parsed.data.sessionId);
+      const paymentIntentId = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+
+      if (
+        session.payment_status !== 'paid' ||
+        session.amount_total !== BOOST_PRICE_DOLLARS * 100 ||
+        session.currency !== 'usd' ||
+        session.metadata?.type !== 'boost_renewal' ||
+        session.metadata?.contractorId !== userId ||
+        session.metadata?.boostId !== req.params.boostId ||
+        !paymentIntentId
+      ) {
+        return res.status(402).json({ message: "Renewal payment is incomplete or invalid" });
+      }
+
+      res.json({ stripePaymentIntentId: paymentIntentId });
+    } catch {
+      res.status(402).json({ message: "Renewal checkout session was not found" });
+    }
+  });
+
+  // Create a Stripe Checkout session for an expired boost or one nearing expiry.
   app.post("/api/contractors/boost/:boostId/create-renewal-checkout", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
     try {
       const userId = req.session?.user?.id;
@@ -12140,8 +12186,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Boost not found or access denied" });
       }
 
-      if (boost.status === 'active' && new Date(boost.endDate) > new Date()) {
-        return res.status(400).json({ message: "Boost is still active and does not need renewal yet" });
+      const renewalWindowEnd = new Date();
+      renewalWindowEnd.setDate(renewalWindowEnd.getDate() + BOOST_RENEWAL_WINDOW_DAYS);
+      if (boost.status === 'cancelled' || new Date(boost.endDate) > renewalWindowEnd) {
+        return res.status(400).json({
+          message: `Boosts can be renewed within ${BOOST_RENEWAL_WINDOW_DAYS} days of expiry`,
+        });
       }
 
       // Always derive the checkout amount from the server-side price map,
@@ -12151,6 +12201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const baseUrl = req.headers.origin || `https://${req.headers.host}`;
 
       const session = await stripe.checkout.sessions.create({
+        ui_mode: 'embedded' as 'elements' | 'embedded_page' | 'form' | 'hosted_page',
         mode: 'payment',
         line_items: [
           {
@@ -12172,8 +12223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contractorId: userId as string,
           },
         },
-        success_url: `${baseUrl}/contractor-dashboard?boost_renewed=1`,
-        cancel_url: `${baseUrl}/contractor-dashboard`,
+        return_url: `${baseUrl}/contractor-dashboard?boost_renewed=1&boost_id=${encodeURIComponent(boost.id)}&session_id={CHECKOUT_SESSION_ID}`,
         metadata: {
           type: 'boost_renewal',
           boostId: boost.id,
@@ -12181,7 +12231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
 
-      res.json({ url: session.url });
+      res.json({ clientSecret: session.client_secret });
     } catch (error) {
       req.log?.error({ error }, "Error creating boost renewal checkout");
       res.status(500).json({ message: "Failed to create renewal checkout" });

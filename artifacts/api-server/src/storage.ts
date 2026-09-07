@@ -3931,6 +3931,13 @@ export class MemStorage implements IStorage {
   }
 
   async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
+    if (boostData.stripePaymentIntentId) {
+      const existing = Array.from(this.contractorBoosts.values()).find(
+        (boost) => boost.stripePaymentIntentId === boostData.stripePaymentIntentId,
+      );
+      if (existing) return existing;
+    }
+
     const boost: ContractorBoost = {
       id: randomUUID(),
       ...boostData,
@@ -7408,10 +7415,23 @@ class DbStorage implements IStorage {
   }
 
   async createContractorBoost(boostData: InsertContractorBoost): Promise<ContractorBoost> {
-    const [boost] = await db
+    const [insertedBoost] = await db
       .insert(contractorBoosts)
       .values({ ...boostData, id: randomUUID() })
+      .onConflictDoNothing()
       .returning();
+    const boost = insertedBoost ?? (
+      boostData.stripePaymentIntentId
+        ? (await db
+            .select()
+            .from(contractorBoosts)
+            .where(eq(contractorBoosts.stripePaymentIntentId, boostData.stripePaymentIntentId))
+            .limit(1))[0]
+        : undefined
+    );
+    if (!boost) {
+      throw new Error("Contractor boost insert conflicted without an existing payment record");
+    }
     // Dual-write: mirror every DB boost into MemStorage so that:
     //   (a) the SIGTERM flush handler can read and re-persist in-flight records
     //       before the process exits, and
