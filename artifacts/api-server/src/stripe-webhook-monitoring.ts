@@ -1,3 +1,5 @@
+import { randomUUID } from "crypto";
+import { pool } from "./db";
 import { logger } from "./lib/logger";
 
 export const STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD = 3;
@@ -28,7 +30,7 @@ export interface StaleStripePendingEvent {
 
 export interface StripeWebhookHealthSnapshot {
   status: "healthy" | "unhealthy";
-  stateScope: "process";
+  stateScope: "fleet";
   reasons: string[];
   consecutive5xxFailures: number;
   consecutive5xxThreshold: number;
@@ -40,27 +42,183 @@ export interface StripeWebhookHealthSnapshot {
   monitoringCheckError: string | null;
 }
 
-interface MonitoringState {
+export interface StripeWebhookMonitoringState {
   consecutive5xxFailures: number;
   lastFailureAtMs: number | null;
   lastSuccessfulResponseAtMs: number | null;
-  lastFailureAlertAtMs: number | null;
   stalePendingCount: number;
   lastStalePendingEventIds: string[];
-  lastStaleAlertAtMs: number | null;
   monitoringCheckError: string | null;
 }
 
-const state: MonitoringState = {
+interface StateMutationResult extends StripeWebhookMonitoringState {
+  shouldAlert: boolean;
+  previousCount: number;
+}
+
+export interface StripeWebhookMonitoringStore {
+  read(): Promise<StripeWebhookMonitoringState>;
+  recordFailure(nowMs: number): Promise<StateMutationResult>;
+  recordSuccess(nowMs: number): Promise<StateMutationResult>;
+  recordStaleEvents(count: number, eventIds: string[], nowMs: number): Promise<StateMutationResult>;
+  recordCheckError(errorCode: string): Promise<StripeWebhookMonitoringState>;
+}
+
+type MonitoringRow = {
+  consecutive_5xx_failures: number;
+  last_failure_at: Date | null;
+  last_successful_response_at: Date | null;
+  stale_pending_count: number;
+  last_stale_pending_event_ids: string[];
+  monitoring_check_error: string | null;
+  should_alert?: boolean;
+  previous_count?: number;
+};
+
+const EMPTY_STATE: StripeWebhookMonitoringState = {
   consecutive5xxFailures: 0,
   lastFailureAtMs: null,
   lastSuccessfulResponseAtMs: null,
-  lastFailureAlertAtMs: null,
   stalePendingCount: 0,
   lastStalePendingEventIds: [],
-  lastStaleAlertAtMs: null,
   monitoringCheckError: null,
 };
+
+function fromRow(row: MonitoringRow | undefined): StripeWebhookMonitoringState {
+  if (!row) throw new Error("Stripe webhook monitoring state row is missing");
+  return {
+    consecutive5xxFailures: row.consecutive_5xx_failures,
+    lastFailureAtMs: row.last_failure_at?.getTime() ?? null,
+    lastSuccessfulResponseAtMs: row.last_successful_response_at?.getTime() ?? null,
+    stalePendingCount: row.stale_pending_count,
+    lastStalePendingEventIds: row.last_stale_pending_event_ids ?? [],
+    monitoringCheckError: row.monitoring_check_error,
+  };
+}
+
+interface Queryable {
+  query<T extends object>(text: string, values?: unknown[]): Promise<{ rows: T[] }>;
+}
+
+export function createPostgresStripeWebhookMonitoringStore(
+  queryable: Queryable,
+  tableName = "stripe_webhook_monitoring_state",
+): StripeWebhookMonitoringStore {
+  if (!/^[a-z_][a-z0-9_]*$/.test(tableName)) {
+    throw new Error("Invalid Stripe webhook monitoring table name");
+  }
+  const table = `"${tableName}"`;
+
+  return {
+  async read() {
+    const result = await queryable.query<MonitoringRow>(
+      `SELECT * FROM ${table} WHERE id = 1`,
+    );
+    return fromRow(result.rows[0]);
+  },
+
+  async recordFailure(nowMs) {
+    const now = new Date(nowMs);
+    const alertClaimToken = randomUUID();
+    const result = await queryable.query<MonitoringRow>(
+      `INSERT INTO ${table} (
+         id, consecutive_5xx_failures, last_failure_at,
+         last_failure_alert_at, last_failure_alert_token
+       ) VALUES (1, 1, $1, NULL, NULL)
+       ON CONFLICT (id) DO UPDATE SET
+         consecutive_5xx_failures = ${table}.consecutive_5xx_failures + 1,
+         last_failure_at = $1,
+         last_failure_alert_at = CASE
+           WHEN ${table}.consecutive_5xx_failures + 1 >= $2
+            AND (${table}.last_failure_alert_at IS NULL
+              OR ${table}.last_failure_alert_at <= $1 - ($3 * interval '1 millisecond'))
+           THEN $1 ELSE ${table}.last_failure_alert_at END,
+         last_failure_alert_token = CASE
+           WHEN ${table}.consecutive_5xx_failures + 1 >= $2
+            AND (${table}.last_failure_alert_at IS NULL
+              OR ${table}.last_failure_alert_at <= $1 - ($3 * interval '1 millisecond'))
+           THEN $4 ELSE ${table}.last_failure_alert_token END
+       RETURNING *,
+         (last_failure_alert_token = $4) AS should_alert,
+         GREATEST(consecutive_5xx_failures - 1, 0) AS previous_count`,
+      [now, STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD, STRIPE_WEBHOOK_ALERT_COOLDOWN_MS, alertClaimToken],
+    );
+    const row = result.rows[0];
+    return { ...fromRow(row), shouldAlert: row?.should_alert === true, previousCount: row?.previous_count ?? 0 };
+  },
+
+  async recordSuccess(nowMs) {
+    const result = await queryable.query<MonitoringRow>(
+      `INSERT INTO ${table} (
+         id, consecutive_5xx_failures, last_successful_response_at,
+         last_failure_alert_at, last_failure_alert_token
+       ) VALUES (1, 0, $1, NULL, NULL)
+       ON CONFLICT (id) DO UPDATE SET
+         consecutive_5xx_failures = 0,
+         last_successful_response_at = $1,
+         last_failure_alert_at = NULL,
+         last_failure_alert_token = NULL
+       RETURNING *, false AS should_alert,
+         0 AS previous_count`,
+      [new Date(nowMs)],
+    );
+    const row = result.rows[0];
+    return { ...fromRow(row), shouldAlert: false, previousCount: row?.previous_count ?? 0 };
+  },
+
+  async recordStaleEvents(count, eventIds, nowMs) {
+    const alertClaimToken = randomUUID();
+    const result = await queryable.query<MonitoringRow>(
+      `INSERT INTO ${table} (
+         id, stale_pending_count, last_stale_pending_event_ids,
+         last_stale_alert_at, last_stale_alert_token, monitoring_check_error
+       ) VALUES (
+         1, $1, $2,
+         CASE WHEN $1 > 0 THEN $3 ELSE NULL END,
+         CASE WHEN $1 > 0 THEN $5 ELSE NULL END,
+         NULL
+       )
+       ON CONFLICT (id) DO UPDATE SET
+         stale_pending_count = $1,
+         last_stale_pending_event_ids = $2,
+         monitoring_check_error = NULL,
+         last_stale_alert_at = CASE
+           WHEN $1 > 0 AND (
+             ${table}.stale_pending_count <> $1 OR ${table}.last_stale_alert_at IS NULL
+             OR ${table}.last_stale_alert_at <= $3 - ($4 * interval '1 millisecond')
+           ) THEN $3
+           WHEN $1 = 0 THEN NULL
+           ELSE ${table}.last_stale_alert_at END,
+         last_stale_alert_token = CASE
+           WHEN $1 > 0 AND (
+             ${table}.stale_pending_count <> $1 OR ${table}.last_stale_alert_at IS NULL
+             OR ${table}.last_stale_alert_at <= $3 - ($4 * interval '1 millisecond')
+           ) THEN $5
+           WHEN $1 = 0 THEN NULL
+           ELSE ${table}.last_stale_alert_token END
+       RETURNING *,
+         ($1 > 0 AND last_stale_alert_token = $5) AS should_alert,
+         0 AS previous_count`,
+      [count, eventIds, new Date(nowMs), STRIPE_WEBHOOK_ALERT_COOLDOWN_MS, alertClaimToken],
+    );
+    const row = result.rows[0];
+    return { ...fromRow(row), shouldAlert: row?.should_alert === true, previousCount: row?.previous_count ?? 0 };
+  },
+
+  async recordCheckError(errorCode) {
+    const result = await queryable.query<MonitoringRow>(
+      `INSERT INTO ${table} (id, monitoring_check_error)
+       VALUES (1, $1)
+       ON CONFLICT (id) DO UPDATE SET monitoring_check_error = EXCLUDED.monitoring_check_error
+       RETURNING *`,
+      [errorCode],
+    );
+    return fromRow(result.rows[0]);
+  },
+  };
+}
+
+const postgresStore = createPostgresStripeWebhookMonitoringStore(pool);
 
 function sanitizeToken(value: unknown, fallback: string): string {
   if (typeof value !== "string" || value.length === 0) return fallback;
@@ -84,21 +242,14 @@ function asIso(timestampMs: number | null): string | null {
   return timestampMs === null ? null : new Date(timestampMs).toISOString();
 }
 
-export function getStripeWebhookHealthSnapshot(): StripeWebhookHealthSnapshot {
+function toSnapshot(state: StripeWebhookMonitoringState): StripeWebhookHealthSnapshot {
   const reasons: string[] = [];
-  if (state.consecutive5xxFailures >= STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD) {
-    reasons.push("consecutive_5xx_responses");
-  }
-  if (state.stalePendingCount > 0) {
-    reasons.push("stale_pending_event_claims");
-  }
-  if (state.monitoringCheckError) {
-    reasons.push("monitoring_check_failed");
-  }
-
+  if (state.consecutive5xxFailures >= STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD) reasons.push("consecutive_5xx_responses");
+  if (state.stalePendingCount > 0) reasons.push("stale_pending_event_claims");
+  if (state.monitoringCheckError) reasons.push("monitoring_check_failed");
   return {
     status: reasons.length > 0 ? "unhealthy" : "healthy",
-    stateScope: "process",
+    stateScope: "fleet",
     reasons,
     consecutive5xxFailures: state.consecutive5xxFailures,
     consecutive5xxThreshold: STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD,
@@ -111,150 +262,111 @@ export function getStripeWebhookHealthSnapshot(): StripeWebhookHealthSnapshot {
   };
 }
 
-export function getStripeWebhookHealthHttpStatus(
-  health: StripeWebhookHealthSnapshot,
-): 200 | 503 {
-  return health.status === "healthy" ? 200 : 503;
-}
-
-export function recordStripeWebhookSuccess(nowMs = Date.now()): StripeWebhookHealthSnapshot {
-  const previousFailures = state.consecutive5xxFailures;
-  state.consecutive5xxFailures = 0;
-  state.lastFailureAlertAtMs = null;
-  state.lastSuccessfulResponseAtMs = nowMs;
-
-  if (previousFailures > 0) {
-    logger.info(
-      { previousConsecutive5xxFailures: previousFailures },
-      "[STRIPE-WEBHOOK-MONITOR] Webhook 5xx streak recovered",
+export function createStripeWebhookMonitor(store: StripeWebhookMonitoringStore) {
+  const unavailableState = (): StripeWebhookMonitoringState => ({
+    ...EMPTY_STATE,
+    lastStalePendingEventIds: [],
+    monitoringCheckError: "shared_monitoring_state_unavailable",
+  });
+  const logStoreFailure = () => {
+    logger.error(
+      { failureReason: "shared_monitoring_state_unavailable", errorClass: "Error" },
+      "[STRIPE-WEBHOOK-MONITOR] Shared monitoring state unavailable",
     );
-  }
-
-  return getStripeWebhookHealthSnapshot();
-}
-
-export function recordStripeWebhookFailure(
-  context: StripeWebhookFailureContext,
-  nowMs = Date.now(),
-): StripeWebhookHealthSnapshot {
-  const responseClass = `${Math.floor(context.statusCode / 100)}xx`;
-  const countsTowardOutage =
-    context.statusCode >= 500 &&
-    context.statusCode < 600 &&
-    context.countsTowardOutage !== false;
-  const failure = {
-    stripeEventId: sanitizeStripeWebhookEventId(context.eventId),
-    eventType: sanitizeStripeWebhookEventType(context.eventType),
-    httpStatus: context.statusCode,
-    responseClass,
-    failureReason: context.reason,
-    errorClass: getSafeErrorClass(context.error),
-    countsTowardOutage,
   };
 
-  logger.error(failure, "[STRIPE-WEBHOOK] Processing failure");
+  return {
+    async getHealthSnapshot() {
+      try {
+        return toSnapshot(await store.read());
+      } catch {
+        logStoreFailure();
+        return toSnapshot(unavailableState());
+      }
+    },
+    async recordSuccess(nowMs = Date.now()) {
+      try {
+        const result = await store.recordSuccess(nowMs);
+        if (result.previousCount > 0) {
+          logger.info({ previousConsecutive5xxFailures: result.previousCount }, "[STRIPE-WEBHOOK-MONITOR] Webhook 5xx streak recovered");
+        }
+        return toSnapshot(result);
+      } catch {
+        logStoreFailure();
+        return toSnapshot(unavailableState());
+      }
+    },
+    async recordFailure(context: StripeWebhookFailureContext, nowMs = Date.now()) {
+      const responseClass = `${Math.floor(context.statusCode / 100)}xx`;
+      const countsTowardOutage = context.statusCode >= 500 && context.statusCode < 600 && context.countsTowardOutage !== false;
+      const failure = {
+        stripeEventId: sanitizeStripeWebhookEventId(context.eventId),
+        eventType: sanitizeStripeWebhookEventType(context.eventType),
+        httpStatus: context.statusCode,
+        responseClass,
+        failureReason: context.reason,
+        errorClass: getSafeErrorClass(context.error),
+        countsTowardOutage,
+      };
+      logger.error(failure, "[STRIPE-WEBHOOK] Processing failure");
 
-  if (countsTowardOutage) {
-    state.consecutive5xxFailures += 1;
-    state.lastFailureAtMs = nowMs;
-
-    const cooldownExpired =
-      state.lastFailureAlertAtMs === null ||
-      nowMs - state.lastFailureAlertAtMs >= STRIPE_WEBHOOK_ALERT_COOLDOWN_MS;
-    if (
-      state.consecutive5xxFailures >= STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD &&
-      cooldownExpired
-    ) {
-      state.lastFailureAlertAtMs = nowMs;
-      logger.error(
-        {
-          ...failure,
-          alert: true,
-          consecutive5xxFailures: state.consecutive5xxFailures,
-          threshold: STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD,
-        },
-        "[STRIPE-WEBHOOK-MONITOR] Consecutive HTTP 5xx threshold exceeded — operator attention required",
-      );
-    }
-  } else if (context.statusCode < 500 || context.statusCode >= 600) {
-    state.consecutive5xxFailures = 0;
-    state.lastFailureAlertAtMs = null;
-  }
-
-  return getStripeWebhookHealthSnapshot();
+      try {
+        let state: StripeWebhookMonitoringState;
+        if (countsTowardOutage) {
+          const result = await store.recordFailure(nowMs);
+          state = result;
+          if (result.shouldAlert) {
+            logger.error(
+              { ...failure, alert: true, consecutive5xxFailures: result.consecutive5xxFailures, threshold: STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD },
+              "[STRIPE-WEBHOOK-MONITOR] Consecutive HTTP 5xx threshold exceeded — operator attention required",
+            );
+          }
+        } else if (context.statusCode < 500 || context.statusCode >= 600) {
+          state = await store.recordSuccess(nowMs);
+        } else {
+          state = await store.read();
+        }
+        return toSnapshot(state);
+      } catch {
+        logStoreFailure();
+        return toSnapshot(unavailableState());
+      }
+    },
+    async checkHealth(readStalePendingEvents: () => Promise<readonly StaleStripePendingEvent[]>, nowMs = Date.now()) {
+      try {
+        const events = await readStalePendingEvents();
+        const eventIds = events.slice(0, 10).map((event) => sanitizeStripeWebhookEventId(event.eventId));
+        const result = await store.recordStaleEvents(events.length, eventIds, nowMs);
+        if (result.shouldAlert) {
+          const oldestClaimedAtMs = Math.min(...events.map((event) => event.processedAt.getTime()));
+          logger.error(
+            { alert: true, stalePendingCount: events.length, threshold: 1, eventIds, oldestClaimedAt: new Date(oldestClaimedAtMs).toISOString(), olderThanMinutes: STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES },
+            "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims detected — recovery required",
+          );
+        } else if (events.length === 0 && result.previousCount > 0) {
+          logger.info({ previousStalePendingCount: result.previousCount }, "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims cleared");
+        }
+        return toSnapshot(result);
+      } catch (error) {
+        logger.error({ failureReason: "stale_pending_check_failed", errorClass: getSafeErrorClass(error) }, "[STRIPE-WEBHOOK-MONITOR] Stale pending claim check failed");
+        try {
+          return toSnapshot(await store.recordCheckError("stale_pending_check_failed"));
+        } catch {
+          logStoreFailure();
+          return toSnapshot(unavailableState());
+        }
+      }
+    },
+  };
 }
 
-export function recordStaleStripePendingEvents(
-  events: readonly StaleStripePendingEvent[],
-  nowMs = Date.now(),
-): StripeWebhookHealthSnapshot {
-  const previousCount = state.stalePendingCount;
-  state.stalePendingCount = events.length;
-  state.lastStalePendingEventIds = events
-    .slice(0, 10)
-    .map((event) => sanitizeStripeWebhookEventId(event.eventId));
-  state.monitoringCheckError = null;
+const monitor = createStripeWebhookMonitor(postgresStore);
 
-  if (events.length > 0) {
-    const cooldownExpired =
-      state.lastStaleAlertAtMs === null ||
-      nowMs - state.lastStaleAlertAtMs >= STRIPE_WEBHOOK_ALERT_COOLDOWN_MS;
-    if (previousCount !== events.length || cooldownExpired) {
-      state.lastStaleAlertAtMs = nowMs;
-      const oldestClaimedAtMs = Math.min(
-        ...events.map((event) => event.processedAt.getTime()),
-      );
-      logger.error(
-        {
-          alert: true,
-          stalePendingCount: events.length,
-          threshold: 1,
-          eventIds: state.lastStalePendingEventIds,
-          oldestClaimedAt: new Date(oldestClaimedAtMs).toISOString(),
-          olderThanMinutes: STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
-        },
-        "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims detected — recovery required",
-      );
-    }
-  } else if (previousCount > 0) {
-    state.lastStaleAlertAtMs = null;
-    logger.info(
-      { previousStalePendingCount: previousCount },
-      "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims cleared",
-    );
-  }
+export const getStripeWebhookHealthSnapshot = monitor.getHealthSnapshot;
+export const recordStripeWebhookSuccess = monitor.recordSuccess;
+export const recordStripeWebhookFailure = monitor.recordFailure;
+export const checkStripeWebhookHealth = monitor.checkHealth;
 
-  return getStripeWebhookHealthSnapshot();
-}
-
-export async function checkStripeWebhookHealth(
-  readStalePendingEvents: () => Promise<readonly StaleStripePendingEvent[]>,
-  nowMs = Date.now(),
-): Promise<StripeWebhookHealthSnapshot> {
-  try {
-    const events = await readStalePendingEvents();
-    return recordStaleStripePendingEvents(events, nowMs);
-  } catch (error) {
-    state.monitoringCheckError = "stale_pending_check_failed";
-    logger.error(
-      {
-        failureReason: state.monitoringCheckError,
-        errorClass: getSafeErrorClass(error),
-      },
-      "[STRIPE-WEBHOOK-MONITOR] Stale pending claim check failed",
-    );
-    return getStripeWebhookHealthSnapshot();
-  }
-}
-
-/** Test-only reset; does not affect production behavior. */
-export function resetStripeWebhookMonitoringForTests(): void {
-  state.consecutive5xxFailures = 0;
-  state.lastFailureAtMs = null;
-  state.lastSuccessfulResponseAtMs = null;
-  state.lastFailureAlertAtMs = null;
-  state.stalePendingCount = 0;
-  state.lastStalePendingEventIds = [];
-  state.lastStaleAlertAtMs = null;
-  state.monitoringCheckError = null;
+export function getStripeWebhookHealthHttpStatus(health: StripeWebhookHealthSnapshot): 200 | 503 {
+  return health.status === "healthy" ? 200 : 503;
 }

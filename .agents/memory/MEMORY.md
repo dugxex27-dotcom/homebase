@@ -43,3 +43,4 @@
 - [Duplicate Stripe subscription remediation](duplicate-stripe-subscription-remediation.md) — preserve the app-referenced subscription; cancel/refund only the verified duplicate payment chain
 - [Safe webhook failure logging](safe-webhook-failure-logging.md) — log allowlisted reason codes, never arbitrary exception messages or names
 - [Evidence and invoice scoring concurrency](linked-evidence-review-concurrency.md) — preserve evidence-group ordering; score dedup uses a canonical house/type/year lock
+- [Fleet-wide alert cooldowns](fleet-alert-cooldowns.md) — claim alerts atomically with unique tokens; health must fail closed when shared state is absent

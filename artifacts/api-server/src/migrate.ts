@@ -190,6 +190,32 @@ export async function runMigrations() {
     console.warn('[MIGRATE] stripe_processed_events table setup warning (non-fatal):', err?.message ?? err);
   }
 
+  // Fleet-wide Stripe webhook outage and alert-cooldown state.
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "stripe_webhook_monitoring_state" (
+        "id" integer PRIMARY KEY CHECK ("id" = 1),
+        "consecutive_5xx_failures" integer NOT NULL DEFAULT 0,
+        "last_failure_at" timestamptz,
+        "last_successful_response_at" timestamptz,
+        "last_failure_alert_at" timestamptz,
+        "last_failure_alert_token" text,
+        "stale_pending_count" integer NOT NULL DEFAULT 0,
+        "last_stale_pending_event_ids" text[] NOT NULL DEFAULT '{}',
+        "last_stale_alert_at" timestamptz,
+        "last_stale_alert_token" text,
+        "monitoring_check_error" text
+      );
+      ALTER TABLE "stripe_webhook_monitoring_state"
+        ADD COLUMN IF NOT EXISTS "last_failure_alert_token" text,
+        ADD COLUMN IF NOT EXISTS "last_stale_alert_token" text;
+      INSERT INTO "stripe_webhook_monitoring_state" ("id")
+      VALUES (1) ON CONFLICT ("id") DO NOTHING;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] stripe_webhook_monitoring_state table setup warning (non-fatal):', err?.message ?? err);
+  }
+
   // Add house_id to home_handoff_packages — links a package to the specific
   // existing house record it represents (set by agent at creation/send time).
   // ON DELETE SET NULL: package survives if the house row is ever removed.
