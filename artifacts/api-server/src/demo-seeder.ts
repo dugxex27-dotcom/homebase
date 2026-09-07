@@ -675,7 +675,13 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
   ];
 
   const needed = DEMO_TC_TARGET - cnt;
-  const toInsert = allDemoTasks.slice(0, needed);
+  // The display target is larger than the set of task templates. Reuse the
+  // templates in order so this path can recover from any baseline below 195,
+  // including an empty completion history.
+  const toInsert = Array.from(
+    { length: needed },
+    (_, index) => allDemoTasks[index % allDemoTasks.length],
+  );
   await Promise.all(
     toInsert.map(async (task) => {
       const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);

@@ -89,7 +89,7 @@ import type { Server } from "http";
 import app from "./app";
 import { registerRoutes } from "./routes/routes";
 import { db } from "./db";
-import { affiliateReferrals, subscriptionCycleEvents } from "@workspace/db";
+import { affiliateReferrals, subscriptionCycleEvents, taskCompletions } from "@workspace/db";
 import { eq, like, count } from "drizzle-orm";
 
 let server: Server;
@@ -358,6 +358,7 @@ describe("agent demo seeder", () => {
 
 describe("homeowner score and history after fresh login", () => {
   const MAIN_HOUSE_ID = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
+  const DEMO_HOMEOWNER_ID = "demo-homeowner-permanent-id";
 
   it(
     "GET /api/task-completions returns ≥ 15 records and GET /api/houses/:id/health-score returns a non-zero score",
@@ -414,6 +415,53 @@ describe("homeowner score and history after fresh login", () => {
       ).toBeGreaterThan(0);
     },
     60_000
+  );
+
+  it(
+    "GET demo login finishes its background top-up at 195 completions and produces a non-zero score",
+    async () => {
+      // Exercise recovery from the lowest possible baseline. The house and
+      // homeowner already exist from the synchronous login test above.
+      await db
+        .delete(taskCompletions)
+        .where(eq(taskCompletions.homeownerId, DEMO_HOMEOWNER_ID));
+
+      const agent = supertest.agent(app);
+      const loginRes = await agent
+        .get("/api/auth/homeowner-demo-login")
+        .timeout(30_000);
+
+      expect(loginRes.status).toBe(302);
+      expect(loginRes.headers.location).toBe("/dashboard");
+
+      // The GET route deliberately starts the top-up without delaying its
+      // redirect. Poll the real DB so the assertion awaits that exact
+      // fire-and-forget invocation rather than starting a second top-up.
+      const deadline = Date.now() + 30_000;
+      let completionCount = 0;
+      do {
+        const [result] = await db
+          .select({ completionCount: count() })
+          .from(taskCompletions)
+          .where(eq(taskCompletions.homeownerId, DEMO_HOMEOWNER_ID));
+        completionCount = Number(result.completionCount);
+        if (completionCount >= 195) break;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      } while (Date.now() < deadline);
+
+      expect(
+        completionCount,
+        `Expected GET demo-login top-up to reach at least 195 completions, got ${completionCount}`,
+      ).toBeGreaterThanOrEqual(195);
+
+      const scoreRes = await agent
+        .get(`/api/houses/${MAIN_HOUSE_ID}/health-score`)
+        .timeout(30_000);
+
+      expect(scoreRes.status).toBe(200);
+      expect(scoreRes.body.score).toBeGreaterThan(0);
+    },
+    60_000,
   );
 });
 
