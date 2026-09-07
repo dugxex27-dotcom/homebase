@@ -84,6 +84,8 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@workspace/api-client-react": "workspace:*",
+    "@workspace/api-zod": "workspace:*",
     "@capacitor/core": "^8.3.1",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.0.3",

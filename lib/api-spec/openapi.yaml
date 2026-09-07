@@ -13,6 +13,18 @@ tags:
   - name: admin
     description: Admin-only operations
 paths:
+  /auth/user:
+    get:
+      operationId: getAuthUser
+      tags: [auth]
+      summary: Get the authenticated user
+      responses:
+        "200":
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
   /admin/invoice-orphan-cleanup/run:
     post:
       operationId: runInvoiceOrphanCleanup
@@ -49,6 +61,17 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    AuthUser:
+      type: object
+      properties:
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        phone:
+          type: ["string", "null"]
+        zipCode:
+          type: ["string", "null"]
     HealthStatus:
       type: object
       properties:

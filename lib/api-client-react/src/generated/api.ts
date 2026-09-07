@@ -16,7 +16,11 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus, InvoiceOrphanCleanupResult } from "./api.schemas";
+import type {
+  AuthUser,
+  HealthStatus,
+  InvoiceOrphanCleanupResult,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -26,6 +30,79 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Get the authenticated user
+ */
+export const getGetAuthUserUrl = () => {
+  return `/api/auth/user`;
+};
+
+export const getAuthUser = async (options?: RequestInit): Promise<AuthUser> => {
+  return customFetch<AuthUser>(getGetAuthUserUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAuthUserQueryKey = () => {
+  return [`/api/auth/user`] as const;
+};
+
+export const getGetAuthUserQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAuthUser>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAuthUserQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAuthUser>>> = ({
+    signal,
+  }) => getAuthUser({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthUser>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAuthUserQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAuthUser>>
+>;
+export type GetAuthUserQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the authenticated user
+ */
+
+export function useGetAuthUser<
+  TData = Awaited<ReturnType<typeof getAuthUser>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAuthUser>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAuthUserQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * Admin-only. Immediately runs the invoice orphan file cleanup sweep and returns counts of files scanned, deleted, skipped, and errors. Normally this sweep runs automatically every 6 hours; this endpoint lets operators run it on demand without restarting the server.

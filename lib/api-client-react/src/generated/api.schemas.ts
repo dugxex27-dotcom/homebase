@@ -5,6 +5,17 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface AuthUser {
+  /** @nullable */
+  firstName?: string | null;
+  /** @nullable */
+  lastName?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  zipCode?: string | null;
+}
+
 export interface HealthStatus {
   status: string;
 }

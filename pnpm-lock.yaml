@@ -590,6 +590,12 @@ importers:
       '@stripe/stripe-js':
         specifier: ^9.10.0
         version: 9.10.0
+      '@workspace/api-client-react':
+        specifier: workspace:*
+        version: link:../../lib/api-client-react
+      '@workspace/api-zod':
+        specifier: workspace:*
+        version: link:../../lib/api-zod
       cordova-plugin-purchase:
         specifier: ^13.17.2
         version: 13.17.2

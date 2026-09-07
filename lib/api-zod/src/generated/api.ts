@@ -8,6 +8,16 @@
 import * as zod from "zod";
 
 /**
+ * @summary Get the authenticated user
+ */
+export const GetAuthUserResponse = zod.object({
+  firstName: zod.string().nullish(),
+  lastName: zod.string().nullish(),
+  phone: zod.string().nullish(),
+  zipCode: zod.string().nullish(),
+});
+
+/**
  * Admin-only. Immediately runs the invoice orphan file cleanup sweep and returns counts of files scanned, deleted, skipped, and errors. Normally this sweep runs automatically every 6 hours; this endpoint lets operators run it on demand without restarting the server.
 
  * @summary Trigger invoice orphan file cleanup

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import type { AuthUser } from "@workspace/api-client-react";
+import { GetAuthUserResponse } from "@workspace/api-zod";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Briefcase, Wrench, Shield, Rocket, ChevronRight, ChevronLeft, Plus, X } from "lucide-react";
 import "./home.css";
@@ -103,8 +105,12 @@ export default function ContractorOnboarding() {
 
   useEffect(() => {
     fetch('/api/auth/user', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then((user: { zipCode?: string; firstName?: string; lastName?: string; phone?: string } | null) => {
+      .then(async (r): Promise<AuthUser | null> => {
+        if (!r.ok) return null;
+        const result = GetAuthUserResponse.safeParse(await r.json());
+        return result.success ? result.data : null;
+      })
+      .then((user) => {
         if (!user) return;
         setForm(prev => {
           const updates: Partial<FormState> = {};
