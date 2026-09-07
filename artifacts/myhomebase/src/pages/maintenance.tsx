@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import HomeHealthScore from "@/components/home-health-score";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -178,6 +178,33 @@ const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
+
+const MECHANICAL_FEATURES: Array<{
+  key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear";
+  label: string;
+  icon: string;
+  lifespan: [number, number];
+  category: string;
+}> = [
+  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25], category: "roofing" },
+  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20], category: "hvac" },
+  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12], category: "plumbing" },
+];
+
+function getMechanicalAgeInfo(house: House) {
+  const currentYear = new Date().getFullYear();
+  return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
+    const installedYear = house[key] as number | null | undefined;
+    if (!installedYear) {
+      return { label, icon, category, tone: "unknown" as const, text: "Add install year to raise your score" };
+    }
+    const age = currentYear - installedYear;
+    const [min, max] = lifespan;
+    const tone = age <= min ? "good" as const : age <= max ? "warn" as const : "alert" as const;
+    const status = age <= min ? "Good condition" : age <= max ? "Aging — plan ahead" : "Past typical lifespan";
+    return { label, icon, category, tone, text: `${age} yr${age === 1 ? "" : "s"} old · installed ${installedYear} · ${status}` };
+  });
+}
 
 // Climate zone mapping based on US regions
 const getClimateZoneFromCoordinates = (lat: number, lng: number): string => {
@@ -3781,6 +3808,82 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             </div>
           </section>
         </HomeownerFeatureGate>
+      )}
+      {userRole === 'homeowner' && houses.some((house: House) =>
+        getMechanicalAgeInfo(house).some(item => item.tone === 'alert' || item.tone === 'warn')
+      ) && (
+        <section className="px-4 sm:px-6 lg:px-8 pb-4">
+          <div className="max-w-7xl mx-auto space-y-3">
+            {houses.map((house: House) => {
+              const ageItems = getMechanicalAgeInfo(house).filter(
+                item => item.tone === 'alert' || item.tone === 'warn'
+              );
+              if (ageItems.length === 0) return null;
+
+              return (
+                <div
+                  key={house.id}
+                  className="dash-light-card"
+                  style={{ borderLeft: `3px solid ${ageItems.some(item => item.tone === 'alert') ? '#dc2626' : '#f59e0b'}` }}
+                  data-testid={`maintenance-aging-systems-${house.id}`}
+                >
+                  <div className="dash-light-card-row" style={{ marginBottom: 8 }}>
+                    <div
+                      className="dash-light-card-icon"
+                      style={{ background: ageItems.some(item => item.tone === 'alert') ? '#fee2e2' : '#fef3c7' }}
+                    >
+                      <AlertTriangle
+                        size={18}
+                        style={{ color: ageItems.some(item => item.tone === 'alert') ? '#dc2626' : '#d97706' }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="dash-light-card-title">
+                        {ageItems.some(item => item.tone === 'alert') ? 'Needs Attention' : 'Plan Ahead'}
+                      </div>
+                      <div className="dash-light-card-sub">
+                        {houses.length > 1 ? `${house.name} · ` : ''}Aging systems that could become costly
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {ageItems.map(item => (
+                      <div
+                        key={item.label}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          background: item.tone === 'alert' ? '#fef2f2' : '#fffbeb',
+                          border: `1px solid ${item.tone === 'alert' ? '#fecaca' : '#fde68a'}`,
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                        }}
+                      >
+                        <span style={{ fontSize: 20 }}>{item.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 13, color: item.tone === 'alert' ? '#991b1b' : '#92400e' }}>
+                            {item.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: item.tone === 'alert' ? '#b91c1c' : '#b45309', marginTop: 1 }}>
+                            {item.text}
+                          </div>
+                        </div>
+                        <Link
+                          href={`/find-contractors?category=${encodeURIComponent(item.category)}`}
+                          style={{ fontSize: 11, color: item.tone === 'alert' ? '#dc2626' : '#d97706', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}
+                          data-testid={`maintenance-find-help-${item.category}`}
+                        >
+                          Find help →
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="mb-6">
