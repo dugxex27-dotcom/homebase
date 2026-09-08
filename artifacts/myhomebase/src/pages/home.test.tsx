@@ -552,6 +552,28 @@ describe("Install-year nudge — Save button disabled for invalid input", () => 
     expect(saveBtn).toBeDisabled();
   });
 
+  it("Save button stays disabled for pasted partial years and enables for a valid pasted year", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    const input = screen.getByTestId("input-install-year-roofInstalledYear");
+    const saveBtn = screen.getByTestId(
+      "button-save-install-year-roofInstalledYear",
+    );
+
+    await user.click(input);
+    for (const partialYear of ["2", "20", "201"]) {
+      await user.clear(input);
+      await user.paste(partialYear);
+      expect(saveBtn).toBeDisabled();
+    }
+
+    await user.clear(input);
+    await user.paste("2010");
+    expect(saveBtn).not.toBeDisabled();
+  });
+
   it("Save button re-enables after clearing an out-of-range year and typing a valid one", async () => {
     const user = userEvent.setup();
     renderHome();
