@@ -17486,7 +17486,13 @@ Write a polite, clear, and specific message that the homeowner would send to a c
 - Sound like a real homeowner — not overly formal, not too casual
 - Be under 150 words
 
-Respond with ONLY the message text. No subject line, no greeting prefix like "Here is your draft:", no extra commentary.`;
+Also suggest 2-3 short, useful follow-up questions the homeowner could ask this contractor to get a clearer quote or plan. Tailor them to the issue when possible and do not repeat a question already answered by the draft.
+
+Respond as JSON with exactly this shape:
+{
+  "message": "the drafted message, with no subject line or extra commentary",
+  "followUpQuestions": ["question one?", "question two?"]
+}`;
 
       const openai = new OpenAI({
         baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -17497,11 +17503,17 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
         model: "gpt-4o-mini",
         messages: [{ role: "user", content: prompt }],
         temperature: 0.6,
-        max_tokens: 300,
+        max_tokens: 450,
+        response_format: { type: "json_object" },
       });
 
-      const message = completion.choices[0]?.message?.content?.trim() || "I noticed an issue at my home and would like to discuss it with you. Please let me know your availability for an estimate or appointment.";
-      res.json({ message });
+      const draftResponseSchema = z.object({
+        message: z.string().trim().min(1),
+        followUpQuestions: z.array(z.string().trim().min(1)).min(2).max(3),
+      });
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      const draft = draftResponseSchema.parse(JSON.parse(raw));
+      res.json(draft);
     } catch (error) {
       console.error("[AI DRAFT MESSAGE] Error:", error);
       res.status(500).json({ message: "Failed to generate message draft" });
