@@ -309,6 +309,23 @@ export default function Home() {
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
     },
   });
+  const unlinkInvoiceMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      const res = await fetch(`/api/homeowner/unlink-invoice/${invoiceId}`, {
+        method: 'PATCH',
+      });
+      if (!res.ok) throw new Error((await res.json()).message || 'Failed to dismiss invoice');
+      return res.json();
+    },
+    onSuccess: (_, invoiceId) => {
+      queryClient.setQueryData<typeof linkedInvoices>(
+        ["/api/homeowner/linked-invoices"],
+        (current = []) => current.filter(invoice => invoice.id !== invoiceId),
+      );
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
+    },
+  });
 
   // Accept / decline contractor job records
   const acceptJobRecordMutation = useMutation({
@@ -1130,15 +1147,25 @@ export default function Home() {
                                       </button>
                                     )}
                                   </div>
-                                  <button
-                                    className="btn-primary"
-                                    style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, opacity: canSave ? 1 : 0.45, cursor: canSave ? 'pointer' : 'default' }}
-                                    disabled={!canSave || claimInvoiceMutation.isPending}
-                                    onClick={() => canSave && claimInvoiceMutation.mutate({ invoiceId: inv.id, houseId: effectiveHouseId! })}
-                                    data-testid={`button-claim-invoice-${inv.id}`}
-                                  >
-                                    Save to history
-                                  </button>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <button
+                                      style={{ fontSize: 11, padding: '4px 8px', color: '#7B6FA0', background: 'transparent', border: '1px solid var(--purple-border)', borderRadius: 7, cursor: unlinkInvoiceMutation.isPending ? 'default' : 'pointer' }}
+                                      disabled={unlinkInvoiceMutation.isPending}
+                                      onClick={() => unlinkInvoiceMutation.mutate(inv.id)}
+                                      data-testid={`button-unlink-invoice-${inv.id}`}
+                                    >
+                                      Not mine
+                                    </button>
+                                    <button
+                                      className="btn-primary"
+                                      style={{ fontSize: 11, padding: '4px 10px', borderRadius: 7, opacity: canSave ? 1 : 0.45, cursor: canSave ? 'pointer' : 'default' }}
+                                      disabled={!canSave || claimInvoiceMutation.isPending || unlinkInvoiceMutation.isPending}
+                                      onClick={() => canSave && claimInvoiceMutation.mutate({ invoiceId: inv.id, houseId: effectiveHouseId! })}
+                                      data-testid={`button-claim-invoice-${inv.id}`}
+                                    >
+                                      Save to history
+                                    </button>
+                                  </div>
                                 </div>
                               )}
                             </div>

@@ -18739,6 +18739,30 @@ Respond as JSON with exactly this shape:
     }
   });
 
+  // Disconnect an invoice that was linked to the authenticated homeowner by mistake
+  app.patch('/api/homeowner/unlink-invoice/:invoiceId', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session.user.id;
+      const userRole = req.session.user.role;
+      const rawInvoiceId = req.params.invoiceId;
+      const invoiceId = Array.isArray(rawInvoiceId) ? rawInvoiceId[0] : rawInvoiceId;
+
+      if (userRole !== 'homeowner') {
+        return res.status(403).json({ message: "Only homeowners can unlink invoices" });
+      }
+
+      const unlinked = await storage.unlinkInvoiceFromHomeowner(invoiceId, userId);
+      if (!unlinked) {
+        return res.status(404).json({ message: "Invoice not found or not linked to your account" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      req.log?.error({ err: error }, "Error unlinking homeowner invoice");
+      res.status(500).json({ message: "Failed to unlink invoice" });
+    }
+  });
+
   // Claim a linked invoice into the homeowner's home history as a service record
   app.post('/api/claim-invoice/:invoiceId', isAuthenticated, async (req: any, res: any) => {
     try {

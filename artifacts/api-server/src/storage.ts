@@ -654,6 +654,7 @@ export interface IStorage {
   // different value another request may have since written.
   releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void>;
   getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
+  unlinkInvoiceFromHomeowner(invoiceId: string, homeownerId: string): Promise<boolean>;
   markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean>;
   markAllInvoicesViewed(homeownerId: string): Promise<void>;
   
@@ -1644,7 +1645,6 @@ export class MemStorage implements IStorage {
     this.products.set(id, newProduct);
     return newProduct;
   }
-
 
 
   async getHomeAppliances(homeownerId?: string, houseId?: string): Promise<HomeAppliance[]> {
@@ -6980,6 +6980,18 @@ export class MemStorage implements IStorage {
     return Array.from(this.crmInvoicesMap.values()).filter(inv => inv.homeownerId === homeownerId);
   }
 
+  async unlinkInvoiceFromHomeowner(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing || existing.homeownerId !== homeownerId) return false;
+    this.crmInvoicesMap.set(invoiceId, {
+      ...existing,
+      homeownerId: null,
+      houseId: null,
+      updatedAt: new Date(),
+    });
+    return true;
+  }
+
   async markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean> {
     const existing = this.crmInvoicesMap.get(invoiceId);
     if (!existing || existing.homeownerId !== homeownerId) return false;
@@ -10406,6 +10418,15 @@ class DbStorage implements IStorage {
   // CRM invoice methods — DATABASE BACKED for persistence
   async getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]> {
     return await db.select().from(crmInvoices).where(eq(crmInvoices.homeownerId, homeownerId));
+  }
+
+  async unlinkInvoiceFromHomeowner(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const result = await db
+      .update(crmInvoices)
+      .set({ homeownerId: null, houseId: null, updatedAt: new Date() })
+      .where(and(eq(crmInvoices.id, invoiceId), eq(crmInvoices.homeownerId, homeownerId)))
+      .returning({ id: crmInvoices.id });
+    return result.length > 0;
   }
 
   async markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean> {
