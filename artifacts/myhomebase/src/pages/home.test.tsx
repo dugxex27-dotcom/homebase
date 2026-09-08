@@ -34,8 +34,7 @@ const flags = vi.hoisted(() => ({
   savedRoofYear: null as number | null,
   savedHvacYear: null as number | null,
   savedWaterHeaterYear: null as number | null,
-  // Captured from the last useMutation({ onSuccess }) call in each render.
-  // patchInstallYearMutation is always the last useMutation registered per render.
+  // Captured from the install-year mutation in each render.
   patchOnSuccess: null as (() => void) | null,
   mutateSpy: vi.fn(),
   resetSpy: vi.fn(),
@@ -222,12 +221,14 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     ),
     useMutation: vi.fn(
       (opts?: {
+        mutationFn?: (...args: unknown[]) => unknown;
         onSuccess?: (...args: unknown[]) => void;
         [k: string]: unknown;
       }) => {
-        // patchInstallYearMutation is the last useMutation call per render,
-        // so this always ends up pointing to its onSuccess after each render.
-        if (opts?.onSuccess) {
+        const isInstallYearMutation = opts?.mutationFn
+          ?.toString()
+          .includes("/profile");
+        if (isInstallYearMutation && opts?.onSuccess) {
           flags.patchOnSuccess = opts.onSuccess as () => void;
         }
         return {
