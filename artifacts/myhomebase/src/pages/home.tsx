@@ -343,7 +343,22 @@ export default function Home() {
       const res = await fetch(`/api/homeowner/linked-invoices/mark-all-viewed`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to mark invoices as viewed');
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      const queryKey = ["/api/homeowner/linked-invoices/unclaimed-count"] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData<{ count: number }>(queryKey);
+      queryClient.setQueryData<{ count: number }>(queryKey, { count: 0 });
+      return { previousData };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ["/api/homeowner/linked-invoices/unclaimed-count"],
+          context.previousData,
+        );
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
     },
   });
