@@ -111,6 +111,13 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
   }
 }
 
+export interface AffiliatePayoutProcessedEmailData {
+  agentId: string;
+  referredUserId: string;
+  referredUserRole: string;
+  amount: string;
+  transferId: string;
+}
 export interface TeamMemberAccountChange {
   field: 'Name' | 'Role';
   oldValue: string;
@@ -1860,9 +1867,65 @@ export const emailService = {
   sendNewLinkedInvoiceEmail,
   sendInvoiceUpdatedEmail,
   sendInvoicePaymentConfirmationEmail,
+  sendAffiliatePayoutProcessedEmail,
   sendTechInviteEmail,
   sendDemoSeedingFailureAlert,
   sendAgentPayoutPaidEmail,
   getEmailHeader,
   wrapEmailContent,
 };
+
+export async function sendAffiliatePayoutProcessedEmail(
+  data: AffiliatePayoutProcessedEmailData,
+): Promise<boolean> {
+  const preferences = await db.select()
+    .from(notificationPreferences)
+    .where(and(
+      eq(notificationPreferences.userId, data.agentId),
+      eq(notificationPreferences.notificationType, 'affiliate_payout'),
+    ))
+    .limit(1);
+
+  const preference = preferences[0];
+  if (!preference?.isEnabled || !preference.channels.includes('email')) {
+    return false;
+  }
+
+  const [agent, referredUser] = await Promise.all([
+    storage.getUser(data.agentId),
+    storage.getUser(data.referredUserId),
+  ]);
+  if (!agent?.email) return false;
+
+  const agentName = escapeHtml(agent.firstName || 'there');
+  const referralName = referredUser
+    ? escapeHtml(`${referredUser.firstName || ''} ${referredUser.lastName || ''}`.trim() || 'Your referral')
+    : 'Your referral';
+  const referralRole = data.referredUserRole === 'contractor' ? 'Contractor' : 'Homeowner';
+  const amount = `$${Number(data.amount).toFixed(2)}`;
+
+  const html = wrapEmailContent(
+    getEmailHeader('Your referral payout was processed'),
+    `
+      <p>Hi ${agentName},</p>
+      <p>Your referral payout has been processed and transferred to your connected payout account.</p>
+      <div style="background: white; border: 1px solid #d1fae5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 12px;"><strong>Amount:</strong> <span style="color: #047857; font-size: 20px; font-weight: bold;">${amount}</span></p>
+        <p style="margin: 0 0 8px;"><strong>Referral:</strong> ${referralName}</p>
+        <p style="margin: 0 0 8px;"><strong>Referral type:</strong> ${referralRole}</p>
+        <p style="margin: 0;"><strong>Transfer confirmation:</strong> ${escapeHtml(data.transferId)}</p>
+      </div>
+      <p>No action is needed. You can view this payout in your agent dashboard.</p>
+      <p style="font-size: 12px; color: #666;">You can turn payout emails on or off in your agent account settings.</p>
+    `,
+  );
+
+  const text = `Hi ${agent.firstName || 'there'}, your ${amount} referral payout for ${referredUser ? `${referredUser.firstName || ''} ${referredUser.lastName || ''}`.trim() || 'your referral' : 'your referral'} (${referralRole}) was processed and transferred. Transfer confirmation: ${data.transferId}.`;
+
+  return sendEmail({
+    to: agent.email,
+    subject: `Your ${amount} referral payout was processed`,
+    text,
+    html,
+  });
+}

@@ -33,7 +33,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendAgentPayoutPaidEmail, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, type TeamMemberAccountChange } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
@@ -2851,16 +2851,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                           status: 'paid',
                         });
 
-                        const referredUserName = [user.firstName, user.lastName]
-                          .filter(Boolean)
-                          .join(' ')
-                          || user.email
-                          || 'your referred homeowner';
-                        await sendAgentPayoutPaidEmail(
-                          affiliateReferral.agentId,
-                          payout.amount || '15.00',
-                          referredUserName,
-                        );
+                        sendAffiliatePayoutProcessedEmail({
+                          agentId: affiliateReferral.agentId,
+                          referredUserId: affiliateReferral.referredUserId,
+                          referredUserRole: affiliateReferral.referredUserRole,
+                          amount: payout.amount,
+                          transferId: transfer.id,
+                        }).catch((emailError) => {
+                          console.error(`[AFFILIATE] Failed to send payout notification for payout ${payout.id}:`, emailError);
+                        });
 
                         console.log(`[AFFILIATE] Successfully transferred $15 to agent ${affiliateReferral.agentId}, transfer ID: ${transfer.id}`);
                       }
@@ -12892,6 +12891,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating agent profile:", error);
       res.status(500).json({ message: "Failed to update agent profile" });
+    }
+  });
+
+  app.get("/api/agent/notifications/preferences", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+
+      const [preference] = await db.select()
+        .from(notificationPreferences)
+        .where(and(
+          eq(notificationPreferences.userId, userId),
+          eq(notificationPreferences.notificationType, 'affiliate_payout'),
+        ))
+        .limit(1);
+
+      res.json({ payoutEmail: Boolean(preference?.isEnabled && preference.channels.includes('email')) });
+    } catch (error) {
+      console.error("Error fetching agent notification preferences:", error);
+      res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.patch("/api/agent/notifications/preferences", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (req.session?.user?.role !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+      if (typeof req.body?.payoutEmail !== 'boolean') {
+        return res.status(400).json({ message: "payoutEmail must be a boolean" });
+      }
+
+      await db.insert(notificationPreferences)
+        .values({
+          userId,
+          notificationType: 'affiliate_payout',
+          channels: req.body.payoutEmail ? ['email'] : [],
+          isEnabled: req.body.payoutEmail,
+        })
+        .onConflictDoUpdate({
+          target: [notificationPreferences.userId, notificationPreferences.notificationType],
+          set: {
+            channels: req.body.payoutEmail ? ['email'] : [],
+            isEnabled: req.body.payoutEmail,
+            updatedAt: new Date(),
+          },
+        });
+
+      res.json({ payoutEmail: req.body.payoutEmail });
+    } catch (error) {
+      console.error("Error updating agent notification preferences:", error);
+      res.status(500).json({ message: "Failed to update notification preferences" });
     }
   });
 
