@@ -26,6 +26,7 @@ import { insertProposalSchema } from "@shared/schema";
 import { z } from "zod";
 import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+import { contractorMatchesTaskCategory } from "@/lib/contractor-category-match";
 
 const ROLE_PALETTE = {
   homeowner: { bg: '#3C258E', eyebrow: '#B6A6F4', label: 'Homeowner' },
@@ -78,6 +79,8 @@ export default function Messages() {
   // Task context and house ID passed in via URL query params
   const [urlTaskContext, setUrlTaskContext] = useState("");
   const [urlHouseId, setUrlHouseId] = useState("");
+  const [urlTaskCategory, setUrlTaskCategory] = useState("");
+  const taskContractorsAutoSelectedRef = useRef(false);
   
   // Proposal form schema and setup
   const proposalFormSchema = z.object({
@@ -251,13 +254,14 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Read task context and house ID from URL query params (passed from maintenance page)
+  // Read task context, category, and house ID from URL query params (passed from maintenance page)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const taskTitle = params.get("taskTitle") ?? "";
     const taskDescription = params.get("taskDescription") ?? "";
+    const taskCategory = params.get("taskCategory") ?? "";
     const houseId = params.get("houseId") ?? "";
-    if (taskTitle) {
+    if (taskTitle && params.has("taskDescription")) {
       // Combine title + description for richer context; cap at 400 chars to stay prompt-friendly
       const combined = taskDescription
         ? `${taskTitle}: ${taskDescription}`.slice(0, 400).trim()
@@ -265,9 +269,25 @@ export default function Messages() {
       setUrlTaskContext(combined);
       setAiDraftIssue(combined);
       setAiComposeIssue(combined);
+      setIsComposeDialogOpen(true);
     }
+    if (taskCategory) setUrlTaskCategory(taskCategory);
     if (houseId) setUrlHouseId(houseId);
   }, []);
+
+  useEffect(() => {
+    if (!urlTaskCategory || contractors.length === 0 || taskContractorsAutoSelectedRef.current) return;
+
+    const matchingContractorIds = contractors
+      .filter((contractor) => contractorMatchesTaskCategory(contractor, urlTaskCategory))
+      .map((contractor) => contractor.id);
+
+    setComposeForm((prev) => ({
+      ...prev,
+      selectedContractors: Array.from(new Set([...prev.selectedContractors, ...matchingContractorIds])),
+    }));
+    taskContractorsAutoSelectedRef.current = true;
+  }, [contractors, urlTaskCategory]);
 
   // AI draft mutation (homeowners only)
   const draftMutation = useMutation({
@@ -732,26 +752,32 @@ export default function Messages() {
                             <p className="text-sm text-gray-500">No contractors available</p>
                           ) : (
                             <div className="space-y-2">
-                              {contractors.map((contractor) => (
-                                <div key={contractor.id} className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`contractor-${contractor.id}`}
-                                    checked={composeForm.selectedContractors.includes(contractor.id)}
-                                    onCheckedChange={(checked) => {
-                                      setComposeForm(prev => ({
-                                        ...prev,
-                                        selectedContractors: checked
-                                          ? [...prev.selectedContractors, contractor.id]
-                                          : prev.selectedContractors.filter(id => id !== contractor.id)
-                                      }));
-                                    }}
-                                    data-testid={`checkbox-contractor-${contractor.id}`}
-                                  />
-                                  <label htmlFor={`contractor-${contractor.id}`} className="text-sm font-medium leading-none">
-                                    {contractor.company} - {contractor.name}
-                                  </label>
-                                </div>
-                              ))}
+                              {contractors.map((contractor) => {
+                                const matchesTaskCategory = contractorMatchesTaskCategory(contractor, urlTaskCategory);
+                                return (
+                                  <div
+                                    key={contractor.id}
+                                    className={`flex items-center space-x-2 rounded-md px-2 py-1 ${matchesTaskCategory ? "bg-[#EEEDFE]" : ""}`}
+                                  >
+                                    <Checkbox
+                                      id={`contractor-${contractor.id}`}
+                                      checked={composeForm.selectedContractors.includes(contractor.id)}
+                                      onCheckedChange={(checked) => {
+                                        setComposeForm(prev => ({
+                                          ...prev,
+                                          selectedContractors: checked
+                                            ? [...prev.selectedContractors, contractor.id]
+                                            : prev.selectedContractors.filter(id => id !== contractor.id)
+                                        }));
+                                      }}
+                                      data-testid={`checkbox-contractor-${contractor.id}`}
+                                    />
+                                    <label htmlFor={`contractor-${contractor.id}`} className="text-sm font-medium leading-none">
+                                      {contractor.company} - {contractor.name}
+                                    </label>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </ScrollArea>

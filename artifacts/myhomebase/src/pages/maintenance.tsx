@@ -35,6 +35,7 @@ import "./home.css";
 import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getDueMaintenanceTasks } from "@shared/location-maintenance-data";
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
 import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared/cost-baselines";
+import { inferTaskTradeCategory } from "@/lib/contractor-category-match";
 
 // Google Maps API type declarations
 declare global {
@@ -1260,7 +1261,7 @@ function TaskDetailDialog({
                 </a>
                 {(
                   <a
-                    href={`/messages?taskTitle=${encodeURIComponent(task.title)}&taskDescription=${encodeURIComponent(task.description || '')}&houseId=${encodeURIComponent(selectedHouseId || '')}`}
+                    href={`/messages?taskTitle=${encodeURIComponent(task.title)}&taskDescription=${encodeURIComponent(task.description || '')}&taskCategory=${encodeURIComponent(inferTaskTradeCategory(task.title, task.category))}&houseId=${encodeURIComponent(selectedHouseId || '')}`}
                     className="flex items-center justify-center gap-2 w-full text-center py-3 px-4 bg-[#EEEDFE] text-[#3C258E] font-medium rounded-lg hover:bg-[#E6E3FC] transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
