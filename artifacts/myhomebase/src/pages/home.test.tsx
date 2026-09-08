@@ -753,6 +753,50 @@ describe("Install-year nudge — keyboard shortcuts", () => {
     ).toBeDefined();
   });
 
+  it("pressing Enter with a year far in the future does nothing and keeps the form open", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    const input = screen.getByTestId("input-install-year-roofInstalledYear");
+    await user.type(input, "2099");
+
+    await user.keyboard("{Enter}");
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("input-install-year-roofInstalledYear")).toBeDefined();
+  });
+
+  it("pressing Enter with a year before 1800 does nothing and keeps the form open", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    const input = screen.getByTestId("input-install-year-roofInstalledYear");
+    await user.type(input, "1799");
+
+    await user.keyboard("{Enter}");
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("input-install-year-roofInstalledYear")).toBeDefined();
+  });
+
+  it("pressing Enter after non-numeric text is rejected by the number input keeps the form open", async () => {
+    const user = userEvent.setup();
+    renderHome();
+
+    await user.click(screen.getByTestId("button-nudge-roofInstalledYear"));
+    const input = screen.getByTestId("input-install-year-roofInstalledYear");
+    await user.type(input, "not-a-year");
+
+    expect(input).toHaveValue(null);
+
+    await user.keyboard("{Enter}");
+
+    expect(flags.mutateSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId("input-install-year-roofInstalledYear")).toBeDefined();
+  });
+
   it("pressing Enter while isPending is true does not call mutate — roof", async () => {
     flags.isPending = true;
 
