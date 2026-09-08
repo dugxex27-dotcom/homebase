@@ -95,6 +95,24 @@ export default function HomeownerServiceRecords() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const homeownerId = (user as any)?.id || "";
+
+  useEffect(() => {
+    if (!homeownerId) return;
+
+    void fetch("/api/homeowner/linked-invoices/mark-all-viewed", {
+      method: "POST",
+    }).then((response) => {
+      if (!response.ok) return;
+      queryClient.setQueryData(
+        ["/api/homeowner/linked-invoices/unclaimed-count"],
+        { count: 0 },
+      );
+    }).finally(() => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"],
+      });
+    });
+  }, [homeownerId, queryClient]);
   
   const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
 

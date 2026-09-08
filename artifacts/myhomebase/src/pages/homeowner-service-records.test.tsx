@@ -9,7 +9,7 @@
  */
 
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { render, screen, cleanup, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 // ---------------------------------------------------------------------------
@@ -191,6 +191,14 @@ async function openAiDialog() {
 // Tests
 // ---------------------------------------------------------------------------
 
+beforeEach(() => {
+  global.fetch = vi.fn().mockResolvedValue({
+    status: 200,
+    ok: true,
+    json: async () => ({}),
+  } as Response);
+});
+
 afterEach(() => {
   cleanup();
   flags.invoiceAnalyses = [];
@@ -199,6 +207,25 @@ afterEach(() => {
   flags.invalidateQueriesSpy.mockClear();
   flags.setQueryDataSpy.mockClear();
   vi.restoreAllMocks();
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — linked invoice badge", () => {
+  it("marks all linked invoices viewed when the page mounts", async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/homeowner/linked-invoices/mark-all-viewed",
+        { method: "POST" },
+      );
+      expect(flags.setQueryDataSpy).toHaveBeenCalledWith(
+        ["/api/homeowner/linked-invoices/unclaimed-count"],
+        { count: 0 },
+      );
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -278,11 +305,20 @@ describe("Service Records — home area", () => {
 
 describe("Service Records — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
   it("shows 'Already Scanned' state and does NOT show a destructive toast", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      status: 409,
-      ok: false,
-      json: async () => ({ code: "DUPLICATE_INVOICE", analysisId: "ana-dup-001" }),
-    } as Response);
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/invoice-analyses/analyze") {
+        return {
+          status: 409,
+          ok: false,
+          json: async () => ({ code: "DUPLICATE_INVOICE", analysisId: "ana-dup-001" }),
+        } as Response;
+      }
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({}),
+      } as Response;
+    });
 
     await act(async () => { renderPage(); });
 
@@ -325,27 +361,36 @@ describe("Service Records — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
 
 describe("Service Records — AI invoice upload: 200 success path", () => {
   it("shows the 'Review Extracted Details' step after a successful analysis", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
-      status: 200,
-      ok: true,
-      json: async () => ({
-        id: "ana-001",
-        status: "pending",
-        serviceDescription: "HVAC tune-up",
-        serviceDate: "2025-04-10",
-        totalAmount: "199.00",
-        contractorName: "Bob",
-        contractorCompany: "Bob's HVAC",
-        homeArea: "hvac",
-        serviceType: "maintenance",
-        diyVerified: false,
-        maintenanceLogId: null,
-        houseId: "house-1",
-        homeownerId: "user-001",
-        createdAt: "2025-04-10T00:00:00.000Z",
-        updatedAt: "2025-04-10T00:00:00.000Z",
-      }),
-    } as Response);
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) !== "/api/invoice-analyses/analyze") {
+        return {
+          status: 200,
+          ok: true,
+          json: async () => ({}),
+        } as Response;
+      }
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({
+          id: "ana-001",
+          status: "pending",
+          serviceDescription: "HVAC tune-up",
+          serviceDate: "2025-04-10",
+          totalAmount: "199.00",
+          contractorName: "Bob",
+          contractorCompany: "Bob's HVAC",
+          homeArea: "hvac",
+          serviceType: "maintenance",
+          diyVerified: false,
+          maintenanceLogId: null,
+          houseId: "house-1",
+          homeownerId: "user-001",
+          createdAt: "2025-04-10T00:00:00.000Z",
+          updatedAt: "2025-04-10T00:00:00.000Z",
+        }),
+      } as Response;
+    });
 
     await act(async () => { renderPage(); });
 
@@ -365,7 +410,10 @@ describe("Service Records — AI invoice upload: 200 success path", () => {
       ["/api/invoice-analyses"],
       expect.any(Function),
     );
-    const updateHistory = flags.setQueryDataSpy.mock.calls[0][1] as (current: Array<{ id: string }>) => Array<{ id: string }>;
+    const historyUpdateCall = flags.setQueryDataSpy.mock.calls.find(
+      ([queryKey]) => (queryKey as string[])[0] === "/api/invoice-analyses",
+    );
+    const updateHistory = historyUpdateCall?.[1] as (current: Array<{ id: string }>) => Array<{ id: string }>;
     expect(updateHistory([{ id: "older-analysis" }]).map((analysis) => analysis.id)).toEqual([
       "ana-001",
       "older-analysis",
