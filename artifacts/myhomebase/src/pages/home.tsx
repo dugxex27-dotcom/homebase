@@ -176,7 +176,7 @@ export default function Home() {
   });
 
   // Houses
-  const { data: houses = [] } = useQuery<House[]>({
+  const { data: houses = [], isLoading: isLoadingHouses } = useQuery<House[]>({
     queryKey: ["/api/houses"],
     enabled: typedUser?.role === "homeowner",
   });
@@ -435,12 +435,14 @@ export default function Home() {
           </span>
           <div className="dash-title">Your dashboard</div>
           <div className="dash-subtitle">
-            {houses.length > 0
+            {isLoadingHouses
+              ? "Loading your properties…"
+              : houses.length > 0
               ? `${houses.length} ${houses.length === 1 ? "property" : "properties"} · ${totalSystems} systems tracked`
               : "Start by adding your first property"}
           </div>
 
-          {houses.length > 0 && (
+          {!isLoadingHouses && houses.length > 0 && (
             <div className="dash-chips">
               {houseScores.map(({ house, score }, i) => (
                 <button className="dash-chip dash-chip-btn" key={house.id} onClick={() => setHwsModalOpen(true)}>
@@ -476,7 +478,7 @@ export default function Home() {
       )}
 
       {/* ── FIRST-TIME: NO HOUSES YET ───────────────────────── */}
-      {typedUser?.role === "homeowner" && houses.length === 0 && (
+      {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length === 0 && (
         <div className="dash-body">
           <div style={{ textAlign: "center", padding: "40px 0" }}>
             <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--purple-deep)", marginBottom: 12 }}>
@@ -496,7 +498,7 @@ export default function Home() {
       )}
 
       {/* ── MAIN DASHBOARD BODY ─────────────────────────────── */}
-      {typedUser?.role === "homeowner" && houses.length > 0 && (
+      {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (
         <HomeownerFeatureGate featureName="Home Dashboard">
           <div className="dash-body">
 
