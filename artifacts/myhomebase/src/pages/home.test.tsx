@@ -50,6 +50,8 @@ const flags = vi.hoisted(() => ({
   contractorLeads: undefined as
     | Array<{ status: string; createdAt: string | null }>
     | undefined,
+  onboardingProgress: undefined as { completedAt: string | null } | undefined,
+  unreadNotifications: [] as Array<{ id: string; type: string }>,
 }));
 
 // ---------------------------------------------------------------------------
@@ -216,6 +218,14 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           };
         }
 
+        if (key0 === "/api/onboarding/progress") {
+          return { data: flags.onboardingProgress, isLoading: false };
+        }
+
+        if (key0 === "/api/notifications/unread") {
+          return { data: flags.unreadNotifications, isLoading: false };
+        }
+
         return { data: undefined, isLoading: false };
       },
     ),
@@ -306,9 +316,66 @@ afterEach(() => {
   flags.contractorProposals = undefined;
   flags.contractorRating = undefined;
   flags.contractorLeads = undefined;
+  flags.onboardingProgress = undefined;
+  flags.unreadNotifications = [];
+  sessionStorage.removeItem("mhb_onboarding_banner_dismissed:user-001");
 });
 
 // ---------------------------------------------------------------------------
+
+describe("Homeowner onboarding tour banner", () => {
+  it("shows for incomplete onboarding and hides after dismissing the matching reminder", async () => {
+    flags.onboardingProgress = { completedAt: null };
+    flags.unreadNotifications = [
+      { id: "onboarding-notification-1", type: "onboarding_reminder" },
+    ];
+    const user = userEvent.setup();
+
+    renderHome();
+
+    expect(screen.getByTestId("onboarding-tour-banner")).toBeDefined();
+    await user.click(screen.getByTestId("button-dismiss-onboarding-banner"));
+
+    expect(flags.mutateSpy).toHaveBeenCalledWith("onboarding-notification-1");
+    expect(screen.queryByTestId("onboarding-tour-banner")).toBeNull();
+  });
+
+  it("restarts the guided tour from the banner", async () => {
+    flags.onboardingProgress = { completedAt: null };
+    const restartSpy = vi.fn();
+    window.addEventListener("mhb:restart-homeowner-tour", restartSpy);
+    const user = userEvent.setup();
+
+    renderHome();
+    await user.click(screen.getByTestId("button-restart-onboarding-tour"));
+
+    expect(restartSpy).toHaveBeenCalledTimes(1);
+    window.removeEventListener("mhb:restart-homeowner-tour", restartSpy);
+  });
+
+  it("stays dismissed after the dashboard remounts in the same session", async () => {
+    flags.onboardingProgress = { completedAt: null };
+    flags.unreadNotifications = [
+      { id: "onboarding-notification-1", type: "onboarding_reminder" },
+    ];
+    const user = userEvent.setup();
+    const firstRender = renderHome();
+
+    await user.click(screen.getByTestId("button-dismiss-onboarding-banner"));
+    firstRender.unmount();
+    renderHome();
+
+    expect(screen.queryByTestId("onboarding-tour-banner")).toBeNull();
+  });
+
+  it("does not show after onboarding is complete", () => {
+    flags.onboardingProgress = { completedAt: "2026-09-08T12:00:00.000Z" };
+
+    renderHome();
+
+    expect(screen.queryByTestId("onboarding-tour-banner")).toBeNull();
+  });
+});
 
 describe("Contractor dashboard business stats", () => {
   it("sends a signed-in contractor to the dashboard while keeping the business summary visible", () => {

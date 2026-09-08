@@ -7,6 +7,7 @@ import { X, ChevronRight, CheckCircle2, Home, Wrench, ClipboardList, Package, Us
 import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
+import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
 import logoPath from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 
 const TOUR_STATE_KEY = "mhb_guided_tour";
@@ -541,6 +542,15 @@ export function GuidedTour() {
     setTourState(newState);
     setTargetRect(null);
   }, [setTourState]);
+
+  useEffect(() => {
+    const restartTour = () => {
+      navigatedForStepRef.current = null;
+      startTour();
+    };
+    window.addEventListener(RESTART_HOMEOWNER_TOUR_EVENT, restartTour);
+    return () => window.removeEventListener(RESTART_HOMEOWNER_TOUR_EVENT, restartTour);
+  }, [startTour]);
 
   const continueTour = useCallback(() => {
     setTourState({ ...tourState, phase: "tour" });

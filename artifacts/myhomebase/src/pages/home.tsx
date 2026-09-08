@@ -11,6 +11,7 @@ import type { User as UserType, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
 
@@ -52,6 +53,9 @@ type MaintenanceTasksResponse = {
   };
 };
 
+type OnboardingProgress = {
+  completedAt: string | null;
+};
 function getMechanicalAgeInfo(house: House) {
   const currentYear = new Date().getFullYear();
   return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
@@ -73,6 +77,14 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
   const queryClient = useQueryClient();
+  const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(false);
+
+  useEffect(() => {
+    if (!typedUser?.id) return;
+    setOnboardingBannerDismissed(
+      sessionStorage.getItem(`${ONBOARDING_BANNER_DISMISSED_KEY}:${typedUser.id}`) === "true",
+    );
+  }, [typedUser?.id]);
 
   // Redirect contractors and agents to their dashboards; redirect inactive homeowners to trial setup
   useEffect(() => {
@@ -173,6 +185,16 @@ export default function Home() {
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
     enabled: typedUser?.role === "homeowner",
+  });
+
+  const { data: onboardingProgress } = useQuery<OnboardingProgress>({
+    queryKey: ["/api/onboarding/progress"],
+    enabled: typedUser?.role === "homeowner" && !typedUser.id?.startsWith("demo-"),
+  });
+
+  const { data: unreadNotifications = [] } = useQuery<OnboardingReminder[]>({
+    queryKey: ["/api/notifications/unread"],
+    enabled: typedUser?.role === "homeowner" && !typedUser.id?.startsWith("demo-"),
   });
 
   // Houses
@@ -326,6 +348,20 @@ export default function Home() {
     },
   });
 
+  const dismissOnboardingBannerMutation = useMutation({
+    mutationFn: async (notificationId: string | undefined) => {
+      if (!notificationId) return;
+      const response = await fetch(`/api/notifications/${notificationId}/read`, {
+        method: "PATCH",
+      });
+      if (!response.ok) throw new Error("Failed to mark onboarding reminder as read");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications/unread"] });
+    },
+  });
+
   // Install-year inline nudge — must be the last useMutation call in this component
   const [activeNudge, setActiveNudge] = useState<string | null>(null);
   const [nudgeYear, setNudgeYear] = useState("");
@@ -424,6 +460,27 @@ export default function Home() {
     patchInstallYearMutation.mutate({ houseId: primaryHouse.id, field, year: nudgeYearNum });
   };
 
+  const onboardingReminder = unreadNotifications.find(
+    (notification) => notification.type === "onboarding_reminder",
+  );
+  const showOnboardingBanner =
+    typedUser?.role === "homeowner" &&
+    onboardingProgress !== undefined &&
+    onboardingProgress.completedAt === null &&
+    !onboardingBannerDismissed;
+
+  const dismissOnboardingBanner = () => {
+    if (typedUser?.id) {
+      sessionStorage.setItem(`${ONBOARDING_BANNER_DISMISSED_KEY}:${typedUser.id}`, "true");
+    }
+    setOnboardingBannerDismissed(true);
+    dismissOnboardingBannerMutation.mutate(onboardingReminder?.id);
+  };
+
+  const restartOnboardingTour = () => {
+    window.dispatchEvent(new Event(RESTART_HOMEOWNER_TOUR_EVENT));
+  };
+
   return (
     <div>
 
@@ -474,6 +531,47 @@ export default function Home() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {showOnboardingBanner && (
+        <div className="dash-body" style={{ paddingBottom: 0 }}>
+          <div
+            className="dash-light-card"
+            data-testid="onboarding-tour-banner"
+            style={{ borderLeft: "3px solid #7c3aed", marginBottom: 8 }}
+          >
+            <div className="dash-light-card-row">
+              <div className="dash-light-card-icon" style={{ background: "#ede9fe" }}>
+                <Sparkles size={18} style={{ color: "#7c3aed" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="dash-light-card-title">Finish setting up your home</div>
+                <div className="dash-light-card-sub">
+                  Take a quick tour to see everything MyHomeBase™ can do for you.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={dismissOnboardingBanner}
+                aria-label="Dismiss onboarding tour reminder"
+                data-testid="button-dismiss-onboarding-banner"
+                style={{ border: 0, background: "transparent", color: "#7B6FA0", cursor: "pointer", padding: 4 }}
+              >
+                <XIcon size={18} />
+              </button>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              onClick={restartOnboardingTour}
+              data-testid="button-restart-onboarding-tour"
+              style={{ marginTop: 10, background: "#7c3aed", color: "#fff" }}
+            >
+              Restart guided tour
+              <ChevronRight size={16} className="ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 
@@ -1350,3 +1448,10 @@ export default function Home() {
     </div>
   );
 }
+
+type OnboardingReminder = {
+  id: string;
+  type: string;
+};
+
+const ONBOARDING_BANNER_DISMISSED_KEY = "mhb_onboarding_banner_dismissed";

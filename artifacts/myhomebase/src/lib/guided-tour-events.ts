@@ -1,0 +1,1 @@
+export const RESTART_HOMEOWNER_TOUR_EVENT = "mhb:restart-homeowner-tour";
