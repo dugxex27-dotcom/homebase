@@ -48,6 +48,8 @@ const {
   mockAdvanceAffiliateReferralPayment,
   mockUpdateAffiliateReferral,
   mockGetAffiliatePayouts,
+  mockGetAffiliateReferral,
+  mockGetUser,
   mockCreateAffiliatePayout,
   mockClaimAffiliatePayoutForTransfer,
   mockUpdateAffiliatePayout,
@@ -154,6 +156,8 @@ const {
     mockAdvanceAffiliateReferralPayment,
     mockUpdateAffiliateReferral,
     mockGetAffiliatePayouts,
+    mockGetAffiliateReferral: vi.fn(),
+    mockGetUser: vi.fn(),
     mockCreateAffiliatePayout,
     mockClaimAffiliatePayoutForTransfer,
     mockUpdateAffiliatePayout,
@@ -196,6 +200,8 @@ vi.mock("../storage", async () => {
       advanceAffiliateReferralPayment: mockAdvanceAffiliateReferralPayment,
       updateAffiliateReferral: mockUpdateAffiliateReferral,
       getAffiliatePayouts: mockGetAffiliatePayouts,
+      getAffiliateReferral: mockGetAffiliateReferral,
+      getUser: mockGetUser,
       createAffiliatePayout: mockCreateAffiliatePayout,
       claimAffiliatePayoutForTransfer: mockClaimAffiliatePayoutForTransfer,
       updateAffiliatePayout: mockUpdateAffiliatePayout,
@@ -411,12 +417,18 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     mockAdvanceAffiliateReferralPayment.mockClear();
     mockUpdateAffiliateReferral.mockClear();
     mockGetAffiliatePayouts.mockClear();
+    mockGetAffiliateReferral.mockReset();
+    mockGetUser.mockReset();
     mockCreateAffiliatePayout.mockClear();
     mockClaimAffiliatePayoutForTransfer.mockClear();
     mockUpdateAffiliatePayout.mockClear();
     mockSendAgentPayoutPaidEmail.mockClear();
 
     app = express();
+    app.use((req: any, _res, next) => {
+      req.session = { user: { id: AGENT_ID, role: "agent" } };
+      next();
+    });
     await registerRoutes(app);
   });
 
@@ -456,6 +468,69 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
       transferId: expect.stringMatching(/^tr_/),
     });
     expect(mockSendAgentPayoutPaidEmail).not.toHaveBeenCalled();
+  });
+
+  it("exports only paid and pending payouts as a spreadsheet-safe CSV", async () => {
+    mockGetAffiliatePayouts.mockResolvedValueOnce([
+      {
+        id: "payout-paid",
+        affiliateReferralId: "ref-paid",
+        agentId: AGENT_ID,
+        amount: "15",
+        status: "paid",
+        paidAt: new Date("2026-08-15T18:00:00Z"),
+        createdAt: new Date("2026-08-10T10:00:00Z"),
+      },
+      {
+        id: "payout-pending",
+        affiliateReferralId: "ref-pending",
+        agentId: AGENT_ID,
+        amount: "20.5",
+        status: "pending",
+        paidAt: null,
+        createdAt: new Date("2026-08-12T10:00:00Z"),
+      },
+      {
+        id: "payout-failed",
+        affiliateReferralId: "ref-failed",
+        agentId: AGENT_ID,
+        amount: "99",
+        status: "failed",
+        paidAt: null,
+        createdAt: new Date("2026-08-11T10:00:00Z"),
+      },
+      {
+        id: "payout-processing",
+        affiliateReferralId: "ref-processing",
+        agentId: AGENT_ID,
+        amount: "30",
+        status: "processing",
+        paidAt: null,
+        createdAt: new Date("2026-08-09T10:00:00Z"),
+      },
+    ] as any);
+    mockGetAffiliateReferral.mockImplementation(async (id: string) => ({
+      id,
+      referredUserId: `user-${id}`,
+    }));
+    mockGetUser.mockImplementation(async (id: string) => id === "user-ref-paid"
+      ? { firstName: "=HYPERLINK(\"https://example.test\")", lastName: "Smith, Jr." }
+      : { firstName: "Pending", lastName: "Person" });
+
+    const res = await request(app).get("/api/agent/payouts/export");
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/^text\/csv/);
+    expect(res.headers["content-disposition"]).toMatch(/^attachment; filename="payout-history-\d{4}-\d{2}-\d{2}\.csv"$/);
+    expect(res.text).toContain("Date,Referral Name,Amount,Status");
+    expect(res.text).toContain("2026-08-15");
+    expect(res.text).toContain("15.00,Paid");
+    expect(res.text).toContain("2026-08-12,Pending Person,20.50,Pending");
+    expect(res.text).toContain(`\"'=HYPERLINK(\"\"https://example.test\"\") Smith, Jr.\"`);
+    expect(res.text).not.toContain("99.00");
+    expect(res.text).not.toContain("30.00");
+    expect(mockGetAffiliatePayouts).toHaveBeenCalledWith(AGENT_ID);
+    expect(mockGetAffiliateReferral).toHaveBeenCalledTimes(2);
   });
 
   it("two duplicate deliveries (different event IDs, same underlying referral state) result in exactly ONE payout and ONE real transfer", async () => {

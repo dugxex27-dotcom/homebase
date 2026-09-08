@@ -10801,6 +10801,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } else {
       str = String(value);
     }
+    // Prevent spreadsheet applications from evaluating user-controlled cells
+    // as formulas. The apostrophe is treated as a text marker by Excel/Sheets.
+    if (/^\s*[=+\-@]/.test(str)) {
+      str = `'${str}`;
+    }
     // RFC 4180: quote any field containing a comma, quote, or newline; double up embedded quotes.
     if (/[",\n\r]/.test(str)) {
       return `"${str.replace(/"/g, '""')}"`;
@@ -13171,6 +13176,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching agent payouts:", error);
       res.status(500).json({ message: "Failed to fetch agent payouts" });
+    }
+  });
+
+  // Export paid and pending agent payouts for bookkeeping and tax records
+  app.get("/api/agent/payouts/export", isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      const userRole = req.session?.user?.role;
+
+      if (userRole !== 'agent') {
+        return res.status(403).json({ message: "Forbidden: Agent access only" });
+      }
+
+      const payouts = await storage.getAffiliatePayouts(userId);
+      const exportablePayouts = payouts
+        .filter((payout) => payout.status === 'paid' || payout.status === 'pending')
+        .sort((a, b) => new Date(b.createdAt as any).getTime() - new Date(a.createdAt as any).getTime());
+
+      const rows = await Promise.all(exportablePayouts.map(async (payout) => {
+        const referral = await storage.getAffiliateReferral(payout.affiliateReferralId);
+        const referredUser = referral
+          ? await storage.getUser(referral.referredUserId)
+          : null;
+        const referralName = referredUser
+          ? `${referredUser.firstName ?? ''} ${referredUser.lastName ?? ''}`.trim() || 'Unknown'
+          : 'Unknown';
+        const payoutDate = payout.status === 'paid' && payout.paidAt
+          ? payout.paidAt
+          : payout.createdAt;
+
+        return {
+          date: new Date(payoutDate as any).toISOString().slice(0, 10),
+          referralName,
+          amount: Number(payout.amount).toFixed(2),
+          status: payout.status === 'paid' ? 'Paid' : 'Pending',
+        };
+      }));
+
+      const exportDate = new Date().toISOString().slice(0, 10);
+      sendCsvDownload(res, `payout-history-${exportDate}.csv`, rows, [
+        { key: 'date', header: 'Date' },
+        { key: 'referralName', header: 'Referral Name' },
+        { key: 'amount', header: 'Amount' },
+        { key: 'status', header: 'Status' },
+      ]);
+    } catch (error) {
+      req.log?.error({ error }, "Error exporting agent payouts");
+      res.status(500).json({ message: "Failed to export agent payouts" });
     }
   });
 

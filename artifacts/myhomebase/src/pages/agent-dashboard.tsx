@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, DollarSign, TrendingUp, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard } from "lucide-react";
+import { Users, DollarSign, TrendingUp, CheckCircle, Clock, XCircle, AlertCircle, ArrowRight, CreditCard, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import QRCode from "qrcode";
@@ -65,6 +65,7 @@ export default function AgentDashboard() {
   const typedUser = user as UserType | undefined;
   const { toast } = useToast();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>("");
+  const [isExportingPayouts, setIsExportingPayouts] = useState(false);
   const [location] = useLocation();
 
   // Check for Stripe success/refresh query params
@@ -151,6 +152,36 @@ export default function AgentDashboard() {
       title: "Copied!",
       description: "Referral link copied to clipboard",
     });
+  };
+
+  const handleExportPayouts = async () => {
+    setIsExportingPayouts(true);
+    try {
+      const response = await fetch('/api/agent/payouts/export', { credentials: 'include' });
+      if (!response.ok) {
+        throw new Error('Failed to export payout history');
+      }
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') ?? '';
+      const fileName = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'payout-history.csv';
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({
+        title: 'Export failed',
+        description: 'Payout history could not be downloaded. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExportingPayouts(false);
+    }
   };
 
   const handleShareLink = async () => {
@@ -407,7 +438,20 @@ export default function AgentDashboard() {
         </div>
 
         {/* Payout History */}
-        <span className="dash-section-label" style={{ marginTop: 8 }}>Payout History</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 8 }}>
+          <span className="dash-section-label" style={{ margin: 0 }}>Payout History</span>
+          <button
+            type="button"
+            onClick={handleExportPayouts}
+            disabled={isExportingPayouts}
+            className="dash-light-card-btn"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            data-testid="button-export-payouts"
+          >
+            <Download size={14} />
+            {isExportingPayouts ? 'Exporting…' : 'Export CSV'}
+          </button>
+        </div>
         {payouts.length === 0 ? (
           <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
             <DollarSign size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
