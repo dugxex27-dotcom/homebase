@@ -21,6 +21,7 @@ const flags = vi.hoisted(() => ({
   invalidateQueriesSpy: vi.fn(),
   setQueryDataSpy: vi.fn(),
   invoiceAnalyses: [] as Array<Record<string, unknown>>,
+  maintenanceLogs: [] as Array<Record<string, unknown>>,
 }));
 
 // ---------------------------------------------------------------------------
@@ -129,6 +130,9 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
       if (key0 === "/api/invoice-analyses") {
         return { data: flags.invoiceAnalyses, isLoading: false, isError: false };
       }
+      if (key0 === "/api/maintenance-logs") {
+        return { data: flags.maintenanceLogs, isLoading: false, isError: false };
+      }
       return { data: undefined, isLoading: false };
     }),
     useMutation: vi.fn(() => ({
@@ -190,6 +194,7 @@ async function openAiDialog() {
 afterEach(() => {
   cleanup();
   flags.invoiceAnalyses = [];
+  flags.maintenanceLogs = [];
   flags.toastSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
   flags.setQueryDataSpy.mockClear();
@@ -238,6 +243,34 @@ describe("Service Records — invoice scan history", () => {
     expect(screen.getByText("Review Extracted Details")).toBeDefined();
     expect((screen.getByDisplayValue("Furnace inspection") as HTMLInputElement).value).toBe("Furnace inspection");
     expect((screen.getByDisplayValue("145") as HTMLInputElement).value).toBe("145");
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — home area", () => {
+  it("shows a DIY record's home area alongside its date and service type", () => {
+    flags.maintenanceLogs = [
+      {
+        id: "diy-roof-record",
+        homeownerId: "user-001",
+        houseId: "house-1",
+        serviceDescription: "Replaced damaged shingles",
+        serviceDate: "2026-09-01T12:00:00.000Z",
+        homeArea: "roof",
+        serviceType: "repair",
+      },
+    ];
+
+    renderPage();
+
+    const record = document.querySelector('[data-log-id="diy-roof-record"]');
+    expect(record).not.toBeNull();
+    expect(record?.textContent).toContain("Roof");
+    expect(record?.textContent).toContain("Repair");
+    expect(record?.textContent).toContain(
+      new Date("2026-09-01T12:00:00.000Z").toLocaleDateString(),
+    );
   });
 });
 
