@@ -71,6 +71,13 @@
       "when": 1788019800000,
       "tag": "20260829-photo-verified-evidence",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788840000000,
+      "tag": "20260908-review-flag-deduplication",
+      "breakpoints": true
     }
   ]
 }

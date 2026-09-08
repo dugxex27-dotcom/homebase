@@ -58,6 +58,7 @@ import {
   resubmitMaintenanceEvidence,
 } from "../maintenance-evidence-review";
 import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
+import { handleCreateReviewFlag } from "./review-flag-handler";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -977,9 +978,9 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
   return results;
 }
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // Exported pure helpers and DB functions (tested in routes.test.ts)
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // Seat billing helpers
@@ -1814,14 +1815,14 @@ export async function executeTransferOwnership(
   };
 }
 
-// ============================================================================
+// ----------------------------------------------------------------------------
 // End of exported helpers
-// ============================================================================
+// ----------------------------------------------------------------------------
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  console.error('========================================');
+  console.error('----------------------------------------');
   console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
-  console.error('========================================');
+  console.error('----------------------------------------');
 
   // Per-user rate limit for the AI-powered diy-verify endpoint.
   // Configurable via DIY_VERIFY_RATE_LIMIT_PER_MINUTE (default: 5).
@@ -1907,9 +1908,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // NOTE: /api/test-email removed — dev-only endpoint was publicly reachable and could be abused
   // to send unlimited SendGrid mail at operator expense. Use internal tooling for email testing.
 
-  // ========================================
+  // ----------------------------------------
   // SUBSCRIPTION PLANS
-  // ========================================
+  // ----------------------------------------
   
   // Homeowner subscription tiers:
   // - Free: Contractor search, view past contractors, payments only (0 homes)
@@ -3504,9 +3505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     next();
   });
 
-  // ========================================
+  // ----------------------------------------
   // STRIPE CONNECT - Contractor Payment Processing
-  // ========================================
+  // ----------------------------------------
 
   // Create Stripe Connect account for contractor
   app.post('/api/contractor/stripe-connect/create', isAuthenticated, requireRole('contractor'), async (req: any, res: any) => {
@@ -8762,9 +8763,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ============================================
+  // --------------------------------------------
   // CRM Pro Tier Routes - Client Management, Jobs, Quotes, Invoices
-  // ============================================
+  // --------------------------------------------
 
   // Helper function to check Pro tier access
   async function hasCrmProAccess(user: any): Promise<boolean> {
@@ -11442,7 +11443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const services = servicesParam ? servicesParam.split(',').map(s => s.trim()).filter(s => s) : undefined;
       const maxDistance = req.query.maxDistance ? parseFloat(req.query.maxDistance as string) : undefined;
       
-      console.log('[CONTRACTOR SEARCH] ==================');
+      console.log('[CONTRACTOR SEARCH] ------------------');
       console.log('[CONTRACTOR SEARCH] Query:', query);
       console.log('[CONTRACTOR SEARCH] Location:', location);
       console.log('[CONTRACTOR SEARCH] Services param:', servicesParam);
@@ -11508,7 +11509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         services: c.services,
         businessLogo: (c as any).businessLogo
       })));
-      console.log('[CONTRACTOR SEARCH] ==================');
+      console.log('[CONTRACTOR SEARCH] ------------------');
       
       res.json(enrichedContractors);
     } catch (error) {
@@ -19565,40 +19566,11 @@ Respond with ONLY the message text. No subject line, no greeting prefix like "He
   });
 
   // Review flag API endpoints
-  app.post('/api/reviews/:id/flag', isAuthenticated, async (req: any, res: any) => {
-    try {
-      const userId = req.session.user.id;
-      const reviewId = req.params.id;
-      
-      // Check if review exists
-      const review = await storage.getReview(reviewId);
-      if (!review) {
-        return res.status(404).json({ message: "Review not found" });
-      }
-      
-      // Can't flag your own review
-      if (review.homeownerId === userId) {
-        return res.status(403).json({ message: "You cannot flag your own review" });
-      }
-      
-      const flagData = insertReviewFlagSchema.parse({
-        reviewId,
-        reportedBy: userId,
-        reason: req.body.reason,
-        notes: req.body.notes || null,
-        status: 'pending'
-      });
-      
-      const flag = await storage.createReviewFlag(flagData);
-      res.status(201).json(flag);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid flag data", errors: error.issues });
-      }
-      console.error("Error flagging review:", error);
-      res.status(500).json({ message: "Failed to flag review" });
-    }
-  });
+  app.post(
+    '/api/reviews/:id/flag',
+    isAuthenticated,
+    (req: any, res: any) => handleCreateReviewFlag(req, res, storage),
+  );
 
   app.get('/api/admin/review-flags', requireAdmin, async (req: any, res: any) => {
     try {

@@ -859,6 +859,7 @@ export const reviewFlags = pgTable("review_flags", {
   createdAt: timestamp("created_at").defaultNow(),
   resolvedAt: timestamp("resolved_at"),
 }, (table) => [
+  uniqueIndex("UX_review_flags_review_reporter").on(table.reviewId, table.reportedBy),
   index("IDX_review_flags_review").on(table.reviewId),
   index("IDX_review_flags_status").on(table.status),
   check("CHK_review_flags_reason", sql`reason IN ('fake', 'inappropriate', 'spam', 'other')`),

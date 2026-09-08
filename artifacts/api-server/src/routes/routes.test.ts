@@ -42,6 +42,10 @@ import {
   getContractorSubscriptionAccess,
   hasContractorDivisionAccess,
 } from "./routes";
+import {
+  handleCreateReviewFlag,
+  isDuplicateReviewFlagError,
+} from "./review-flag-handler";
 import { refreshUserSessionRole } from "../replitAuth";
 
 // Prevent real DB / pool connections during unit tests.
@@ -58,6 +62,82 @@ vi.mock("../db", () => ({
     }),
   },
 }));
+
+describe("isDuplicateReviewFlagError", () => {
+  it("recognizes the review-and-reporter unique constraint conflict", () => {
+    expect(isDuplicateReviewFlagError({
+      code: "23505",
+      constraint: "UX_review_flags_review_reporter",
+    })).toBe(true);
+  });
+
+  it("does not turn unrelated unique conflicts into duplicate review flags", () => {
+    expect(isDuplicateReviewFlagError({
+      code: "23505",
+      constraint: "some_other_constraint",
+    })).toBe(false);
+    expect(isDuplicateReviewFlagError(new Error("database unavailable"))).toBe(false);
+  });
+});
+
+describe("handleCreateReviewFlag", () => {
+  function responseRecorder() {
+    const response: any = {
+      statusCode: 200,
+      body: undefined,
+      status(code: number) {
+        response.statusCode = code;
+        return response;
+      },
+      json(body: unknown) {
+        response.body = body;
+        return response;
+      },
+    };
+    return response;
+  }
+
+  it("creates the first flag and returns a clear conflict for a duplicate", async () => {
+    const duplicateError = Object.assign(new Error("duplicate key"), {
+      code: "23505",
+      constraint: "UX_review_flags_review_reporter",
+    });
+    const createReviewFlag = vi.fn()
+      .mockResolvedValueOnce({
+        id: "flag-1",
+        reviewId: "review-1",
+        reportedBy: "reporter-1",
+        reason: "spam",
+        status: "pending",
+      })
+      .mockRejectedValueOnce(duplicateError);
+    const reviewStorage = {
+      getReview: vi.fn().mockResolvedValue({
+        id: "review-1",
+        homeownerId: "review-author",
+      }),
+      createReviewFlag,
+    } as any;
+    const request = {
+      session: { user: { id: "reporter-1" } },
+      params: { id: "review-1" },
+      body: { reason: "spam" },
+    };
+
+    const firstResponse = responseRecorder();
+    await handleCreateReviewFlag(request, firstResponse, reviewStorage);
+    expect(firstResponse.statusCode).toBe(201);
+
+    const duplicateResponse = responseRecorder();
+    await handleCreateReviewFlag(request, duplicateResponse, reviewStorage);
+    expect(duplicateResponse.statusCode).toBe(409);
+    expect(duplicateResponse.body).toEqual({
+      message: "You have already flagged this review",
+      code: "REVIEW_ALREADY_FLAGGED",
+    });
+    expect(createReviewFlag).toHaveBeenCalledTimes(2);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // calcBilledSeats — pure unit tests
