@@ -18,7 +18,7 @@ import {
 import {
   Shield, Loader2, AlertTriangle, RefreshCw, Copy, Printer,
   CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info, Mail,
-  History, Plus, ArrowLeft
+  History, Plus, ArrowLeft, Trash2
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -142,6 +142,7 @@ export function InsurancePrepTab({ houses }: Props) {
 
   const [view, setView] = useState<"form" | "result" | "past">("form");
   const [viewingPastId, setViewingPastId] = useState<string | null>(null);
+  const [packageToDelete, setPackageToDelete] = useState<PastPackage | null>(null);
 
   // Fetch past packages
   const { data: pastPackages = [], isLoading: pastLoading } = useQuery<PastPackage[]>({
@@ -170,6 +171,33 @@ export function InsurancePrepTab({ houses }: Props) {
       setView("result");
       setViewingPastId(null);
       queryClient.invalidateQueries({ queryKey: ["/api/houses", selectedHouseId, "insurance-claim-packages"] });
+    },
+  });
+
+  const deletePackageMutation = useMutation({
+    mutationFn: async (packageId: string) => {
+      await apiRequest(
+        `/api/houses/${selectedHouseId}/insurance-claim-packages/${packageId}`,
+        "DELETE",
+      );
+    },
+    onSuccess: (_data, packageId) => {
+      setPackageToDelete(null);
+      queryClient.setQueryData<PastPackage[]>(
+        ["/api/houses", selectedHouseId, "insurance-claim-packages"],
+        (current = []) => current.filter(pkg => pkg.id !== packageId),
+      );
+      toast({
+        title: "Report deleted",
+        description: "The saved claim package was permanently deleted.",
+      });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Could not delete report",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -511,7 +539,23 @@ export function InsurancePrepTab({ houses }: Props) {
                           )}
                         </div>
                       </div>
-                      <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0 rotate-[-90deg]" />
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                          aria-label={`Delete ${pkg.claimArea} claim report`}
+                          data-testid={`delete-past-report-${pkg.id}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPackageToDelete(pkg);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <ChevronDown className="w-4 h-4 text-gray-400 rotate-[-90deg]" />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -520,6 +564,44 @@ export function InsurancePrepTab({ houses }: Props) {
           )}
         </div>
       )}
+
+      <Dialog
+        open={packageToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletePackageMutation.isPending) setPackageToDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this saved report?</DialogTitle>
+            <DialogDescription>
+              {packageToDelete
+                ? `The ${packageToDelete.claimArea} claim package will be permanently deleted. This cannot be undone.`
+                : "This claim package will be permanently deleted."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deletePackageMutation.isPending}
+              onClick={() => setPackageToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!packageToDelete || deletePackageMutation.isPending}
+              onClick={() => packageToDelete && deletePackageMutation.mutate(packageToDelete.id)}
+              data-testid="confirm-delete-past-report"
+            >
+              {deletePackageMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Delete report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Results view */}
       {view === "result" && result && !generateMutation.isPending && (

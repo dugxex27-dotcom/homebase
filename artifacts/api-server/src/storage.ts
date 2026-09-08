@@ -699,6 +699,7 @@ export interface IStorage {
   saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage>;
   getInsuranceClaimPackages(houseId: string, homeownerId: string): Promise<InsuranceClaimPackage[]>;
   getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined>;
+  deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean>;
 
   // Insurance email log operations
   createInsuranceEmailLog(data: InsertInsuranceEmailLog): Promise<InsuranceEmailLog>;
@@ -7092,6 +7093,12 @@ export class MemStorage implements IStorage {
     return pkg;
   }
 
+  async deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean> {
+    const pkg = this.insuranceClaimPackagesMap.get(id);
+    if (!pkg || pkg.houseId !== houseId || pkg.homeownerId !== homeownerId) return false;
+    return this.insuranceClaimPackagesMap.delete(id);
+  }
+
   async createInsuranceEmailLog(data: InsertInsuranceEmailLog): Promise<InsuranceEmailLog> {
     const id = randomUUID();
     const log: InsuranceEmailLog = { ...data, id, sentAt: new Date() };
@@ -10123,6 +10130,17 @@ class DbStorage implements IStorage {
       .where(and(eq(insuranceClaimPackages.id, id), eq(insuranceClaimPackages.homeownerId, homeownerId)))
       .limit(1);
     return result[0];
+  }
+
+  async deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean> {
+    const deleted = await db.delete(insuranceClaimPackages)
+      .where(and(
+        eq(insuranceClaimPackages.id, id),
+        eq(insuranceClaimPackages.houseId, houseId),
+        eq(insuranceClaimPackages.homeownerId, homeownerId),
+      ))
+      .returning({ id: insuranceClaimPackages.id });
+    return deleted.length > 0;
   }
 
   // Insurance email log operations - DATABASE BACKED
