@@ -88,7 +88,34 @@ interface MaintenanceCoachResult {
     reason: string;
     expandedExplanation: string;
   }[];
+  generatedAt: string;
 }
+
+const getMaintenanceCoachStorageKey = (houseId: string, month: number) => {
+  const year = new Date().getFullYear();
+  return `maintenance-coach-plan-${houseId}-${year}-${String(month).padStart(2, "0")}`;
+};
+
+const readMaintenanceCoachPlan = (houseId: string, month: number): MaintenanceCoachResult | null => {
+  try {
+    const stored = localStorage.getItem(getMaintenanceCoachStorageKey(houseId, month));
+    if (!stored) return null;
+
+    const plan = JSON.parse(stored) as Partial<MaintenanceCoachResult>;
+    if (
+      typeof plan.briefing !== "string"
+      || !Array.isArray(plan.topTasks)
+      || typeof plan.generatedAt !== "string"
+      || Number.isNaN(Date.parse(plan.generatedAt))
+    ) {
+      return null;
+    }
+
+    return plan as MaintenanceCoachResult;
+  } catch {
+    return null;
+  }
+};
 
 
 
@@ -2569,11 +2596,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     }
   };
 
-  // Clear coach result when house changes so stale advice doesn't appear on a different property
+  // Restore this house/month's plan. The year-month key naturally expires prior plans.
   useEffect(() => {
-    setCoachResult(null);
+    setCoachResult(
+      selectedHouseId
+        ? readMaintenanceCoachPlan(selectedHouseId, selectedMonth)
+        : null,
+    );
+    setExpandedCoachTasks(new Set());
     setHighlightedTask(null);
-  }, [selectedHouseId]);
+  }, [selectedHouseId, selectedMonth]);
 
   // Load completed tasks for the selected house from localStorage
   useEffect(() => {
@@ -3691,13 +3723,23 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         month: selectedMonth,
         zone: selectedZone,
       };
+      const storageKey = getMaintenanceCoachStorageKey(requestedHouseId, selectedMonth);
       const res = await apiRequest(`/api/houses/${requestedHouseId}/maintenance-coach`, "POST", payload);
-      const data = await res.json() as MaintenanceCoachResult;
-      return { ...data, requestedHouseId };
+      const data = await res.json() as Omit<MaintenanceCoachResult, "generatedAt">;
+      return { ...data, requestedHouseId, storageKey, generatedAt: new Date().toISOString() };
     },
     onSuccess: (data, requestedHouseId) => {
-      if (requestedHouseId !== selectedHouseIdRef.current) return;
-      setCoachResult({ briefing: data.briefing, topTasks: data.topTasks });
+      const plan: MaintenanceCoachResult = {
+        briefing: data.briefing,
+        topTasks: data.topTasks,
+        generatedAt: data.generatedAt,
+      };
+      localStorage.setItem(data.storageKey, JSON.stringify(plan));
+      if (
+        requestedHouseId !== selectedHouseIdRef.current
+        || data.storageKey !== getMaintenanceCoachStorageKey(requestedHouseId, selectedMonth)
+      ) return;
+      setCoachResult(plan);
       setExpandedCoachTasks(new Set());
     },
     onError: () => {
@@ -4465,6 +4507,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       {coachResult && !coachMutation.isPending && (
                         <div className="space-y-4">
                           <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">{coachResult.briefing}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Last generated {new Intl.DateTimeFormat(undefined, {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            }).format(new Date(coachResult.generatedAt))}
+                          </p>
 
                           {coachResult.topTasks.length > 0 && (
                             <div className="space-y-2">
