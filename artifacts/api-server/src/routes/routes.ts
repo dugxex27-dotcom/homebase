@@ -17456,6 +17456,7 @@ ${esc(claimMemo)}
 
       const bodySchema = z.object({
         issueDescription: z.string().min(1).max(500),
+        tone: z.enum(["Urgent", "Friendly", "Formal"]).default("Friendly"),
         houseId: z.string().optional(),
         taskContext: z.string().optional(),
       });
@@ -17465,7 +17466,7 @@ ${esc(claimMemo)}
       } catch {
         return res.status(400).json({ message: "Invalid request body" });
       }
-      const { issueDescription, houseId, taskContext } = parsed;
+      const { issueDescription, tone, houseId, taskContext } = parsed;
 
       // Build house context if a valid house is provided
       let houseContext = "";
@@ -17486,18 +17487,27 @@ ${esc(claimMemo)}
       if (houseContext) contextParts.push(houseContext);
       contextParts.push(`Issue described by homeowner: ${issueDescription}`);
 
+      const toneGuidance = {
+        Urgent: "Use a direct, time-sensitive tone. Clearly communicate that prompt attention is needed without sounding alarmist or rude.",
+        Friendly: "Use a warm, approachable, conversational tone while remaining clear and professional.",
+        Formal: "Use a polished, businesslike tone with precise wording and an emphasis on written scope, expectations, and next steps.",
+      }[tone];
+
       const prompt = `You are helping a homeowner write a professional message to a contractor.
 
 Context:
 ${contextParts.join('\n')}
 
-Write a polite, clear, and specific message that the homeowner would send to a contractor. The message should:
+Selected tone: ${tone}
+Tone guidance: ${toneGuidance}
+
+Write a clear and specific message that the homeowner would send to a contractor. The message should:
 - Be 3-5 sentences
 - Describe the issue clearly using the homeowner's words
 - Mention relevant home details (age, system type) when available
-- Include a sense of urgency if the issue sounds urgent
 - Close with a request for an estimate or appointment
-- Sound like a real homeowner — not overly formal, not too casual
+- Follow the selected tone guidance consistently
+- Sound like a real homeowner
 - Be under 150 words
 
 Also suggest 2-3 short, useful follow-up questions the homeowner could ask this contractor to get a clearer quote or plan. Tailor them to the issue when possible and do not repeat a question already answered by the draft.
