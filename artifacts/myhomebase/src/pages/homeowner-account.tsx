@@ -173,6 +173,28 @@ export default function HomeownerAccount() {
     }
   });
 
+  const sendTestWeatherReminderMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('/api/homeowner/test-weather-forecast-reminder', 'POST');
+      return await response.json() as { success: true; taskTitle: string };
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Test Reminder Sent",
+        description: result?.taskTitle
+          ? `A test reminder was sent for “${result.taskTitle}”.`
+          : "Your test weather reminder was sent.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Test Reminder Not Sent",
+        description: error.message || "Failed to send a test weather reminder.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(profileData);
@@ -922,16 +944,28 @@ export default function HomeownerAccount() {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="font-medium" style={{ color: '#2c0f5b' }}>Weather Forecast Task Reminders</p>
                       <p className="text-sm text-gray-600">Get reminded to complete overdue maintenance tasks before approaching weather events (freezes, heavy rain, high winds, etc.)</p>
                     </div>
-                    <Switch
-                      data-testid="switch-weather-forecast-reminders"
-                      checked={notificationPrefs.weatherForecastReminders}
-                      onCheckedChange={(value) => handleNotificationChange('weatherForecastReminders', value)}
-                    />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        data-testid="button-test-weather-forecast-reminder"
+                        disabled={sendTestWeatherReminderMutation.isPending}
+                        onClick={() => sendTestWeatherReminderMutation.mutate()}
+                      >
+                        {sendTestWeatherReminderMutation.isPending ? "Sending..." : "Send Test"}
+                      </Button>
+                      <Switch
+                        data-testid="switch-weather-forecast-reminders"
+                        checked={notificationPrefs.weatherForecastReminders}
+                        onCheckedChange={(value) => handleNotificationChange('weatherForecastReminders', value)}
+                      />
+                    </div>
                   </div>
                 </div>
               </CardContent>

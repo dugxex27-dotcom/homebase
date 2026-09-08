@@ -59,6 +59,8 @@ import {
 } from "../maintenance-evidence-review";
 import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
 import { handleCreateReviewFlag } from "./review-flag-handler";
+import { sendForecastReminder } from "../weather-forecast-reminder-scheduler";
+import { findRelevantOverdueTasks, type ForecastTriggerResult } from "../weather-forecast-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -1841,6 +1843,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
     // Suppress the IPv6-fallback validation warning: we intentionally key by user ID,
     // not by IP, so there is no IPv6 bypass risk.
+    validate: { keyGeneratorIpFallback: false },
+  });
+
+  const testWeatherReminderLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 3,
+    keyGenerator: (req: any) => req.session?.user?.id ?? "anonymous",
+    message: { message: "Too many test reminders. Please wait 10 minutes and try again." },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: (req: any) => !req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner',
     validate: { keyGeneratorIpFallback: false },
   });
 
@@ -11219,6 +11232,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating notification preferences:", error);
       res.status(500).json({ message: "Failed to update notification preferences" });
+    }
+  });
+
+  app.post('/api/homeowner/test-weather-forecast-reminder', testWeatherReminderLimiter, async (req: any, res: any) => {
+    try {
+      if (!req.session?.isAuthenticated || req.session?.user?.role !== 'homeowner') {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const userId = req.session.user.id;
+      const [oldestHouse] = await db.select({
+        id: houses.id,
+        name: houses.name,
+        address: houses.address,
+      })
+        .from(houses)
+        .where(eq(houses.homeownerId, userId))
+        .orderBy(houses.createdAt)
+        .limit(1);
+
+      if (!oldestHouse) {
+        return res.status(404).json({ message: "Add a property before sending a test reminder." });
+      }
+
+      const testTrigger: ForecastTriggerResult = {
+        trigger: 'hard_freeze',
+        description: 'Test reminder: hard freeze expected — temperatures dropping to 24°F',
+        expectedDate: 'tonight',
+        temperatureF: 24,
+      };
+      const tasksByTrigger = await findRelevantOverdueTasks(userId, oldestHouse.id, [testTrigger]);
+      const oldestOverdueTask = tasksByTrigger.get(testTrigger.trigger)?.[0];
+
+      if (!oldestOverdueTask) {
+        return res.status(404).json({ message: "No overdue weather-related tasks are available for a test reminder." });
+      }
+
+      const sent = await sendForecastReminder(
+        { id: userId },
+        oldestHouse,
+        testTrigger,
+        [oldestOverdueTask],
+        { ignoreForecastToggle: true },
+      );
+
+      if (!sent) {
+        return res.status(502).json({ message: "The test reminder could not be delivered. Check that at least one notification channel is enabled." });
+      }
+
+      res.json({ success: true, taskTitle: oldestOverdueTask.title });
+    } catch (error) {
+      console.error("Error sending test weather forecast reminder:", error);
+      res.status(500).json({ message: "Failed to send test weather forecast reminder" });
     }
   });
 

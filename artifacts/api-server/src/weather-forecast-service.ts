@@ -245,6 +245,15 @@ export async function findRelevantOverdueTasks(
     return msSinceCompletion > annualWindowDays * 24 * 60 * 60 * 1000;
   }
 
+  function standardTaskDueAt(taskTitle: string, taskId: string): number {
+    const lastById = latestCompletionById.get(taskId);
+    const lastByTitle = latestCompletionByTitle.get(taskTitle.toLowerCase());
+    const last = lastById && lastByTitle
+      ? (lastById > lastByTitle ? lastById : lastByTitle)
+      : (lastById || lastByTitle);
+    return last ? last.getTime() + 330 * 24 * 60 * 60 * 1000 : Number.MIN_SAFE_INTEGER;
+  }
+
   function isOverdueCustom(taskId: string, taskTitle: string, frequencyType: string, frequencyValue: number | null): boolean {
     const windowDays = frequencyToDays(frequencyType, frequencyValue);
     const last = latestCompletionById.get(taskId) ?? latestCompletionByTitle.get(taskTitle.toLowerCase());
@@ -253,11 +262,18 @@ export async function findRelevantOverdueTasks(
     return msSinceCompletion > windowDays * 24 * 60 * 60 * 1000;
   }
 
+  function customTaskDueAt(taskId: string, taskTitle: string, frequencyType: string, frequencyValue: number | null): number {
+    const last = latestCompletionById.get(taskId) ?? latestCompletionByTitle.get(taskTitle.toLowerCase());
+    return last
+      ? last.getTime() + frequencyToDays(frequencyType, frequencyValue) * 24 * 60 * 60 * 1000
+      : Number.MIN_SAFE_INTEGER;
+  }
+
   for (const triggerResult of triggers) {
     const keywords = TRIGGER_KEYWORDS[triggerResult.trigger];
     if (!keywords || keywords.length === 0) continue;
 
-    const matchedTasks: RelevantTask[] = [];
+    const matchedTasks: Array<{ task: RelevantTask; dueAt: number }> = [];
 
     const orConditions = keywords.map(kw =>
       or(
@@ -278,7 +294,10 @@ export async function findRelevantOverdueTasks(
 
     for (const task of standardTasks) {
       if (isOverdueStandard(task.title, task.id)) {
-        matchedTasks.push({ ...task, taskType: 'maintenance' });
+        matchedTasks.push({
+          task: { ...task, taskType: 'maintenance' },
+          dueAt: standardTaskDueAt(task.title, task.id),
+        });
       }
     }
 
@@ -312,19 +331,28 @@ export async function findRelevantOverdueTasks(
     for (const task of customTasks) {
       if (isOverdueCustom(task.id, task.title, task.frequencyType, task.frequencyValue)) {
         matchedTasks.push({
-          id: task.id,
-          title: task.title,
-          category: task.category,
-          priority: task.priority,
-          taskType: 'custom',
+          task: {
+            id: task.id,
+            title: task.title,
+            category: task.category,
+            priority: task.priority,
+            taskType: 'custom',
+          },
+          dueAt: customTaskDueAt(task.id, task.title, task.frequencyType, task.frequencyValue),
         });
       }
     }
 
     if (matchedTasks.length > 0) {
-      const uniqueTasks = matchedTasks.filter(
-        (task, idx, arr) => arr.findIndex(t => t.title.toLowerCase() === task.title.toLowerCase()) === idx
-      ).slice(0, 6);
+      const uniqueTasks = matchedTasks
+        .sort((a, b) => a.dueAt - b.dueAt)
+        .filter(
+          (entry, idx, arr) => arr.findIndex(
+            candidate => candidate.task.title.toLowerCase() === entry.task.title.toLowerCase(),
+          ) === idx,
+        )
+        .slice(0, 6)
+        .map(entry => entry.task);
       result.set(triggerResult.trigger, uniqueTasks);
     }
   }

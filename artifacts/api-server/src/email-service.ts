@@ -1353,12 +1353,16 @@ export async function sendWeatherForecastReminderEmail(
   houseName: string,
   _houseAddress: string,
   triggerResult: { trigger: string; description: string; expectedDate: string },
-  tasks: Array<{ title: string; category: string; priority: string }>
+  tasks: Array<{ title: string; category: string; priority: string }>,
+  options: { ignoreForecastPreference?: boolean } = {},
 ): Promise<boolean> {
   const user = await storage.getUser(userId);
   if (!user?.email) return false;
 
-  const canSend = await canSendEmail(userId, 'weather_forecast_reminders');
+  const canSend = await canSendEmail(
+    userId,
+    options.ignoreForecastPreference ? 'email' : 'weather_forecast_reminders',
+  );
   if (!canSend) return false;
 
   const triggerEmojis: Record<string, string> = {

@@ -9,6 +9,8 @@ import {
   detectForecastTriggers,
   findRelevantOverdueTasks,
   TRIGGER_DISPLAY,
+  type ForecastTriggerResult,
+  type RelevantTask,
   type WeatherTrigger,
 } from './weather-forecast-service';
 import { sendWeatherForecastReminderEmail } from './email-service';
@@ -32,7 +34,10 @@ async function getOrGeocodeHouse(house: HouseRow): Promise<{ latitude: number; l
   return await geocodeAddress(house.address);
 }
 
-async function getForecastReminderPrefs(userId: string): Promise<{ enabled: boolean; email: boolean; sms: boolean; push: boolean }> {
+async function getForecastReminderPrefs(
+  userId: string,
+  ignoreForecastToggle = false,
+): Promise<{ enabled: boolean; email: boolean; sms: boolean; push: boolean }> {
   const rows = await db.select()
     .from(notificationPreferences)
     .where(eq(notificationPreferences.userId, userId));
@@ -47,13 +52,70 @@ async function getForecastReminderPrefs(userId: string): Promise<{ enabled: bool
   const emailEnabled = emailPref ? emailPref.isEnabled : true;
   const smsEnabled = smsPref ? smsPref.isEnabled : false;
   const pushEnabled = forecastPref ? forecastPref.channels.includes('push') : true;
+  const channelGate = enabled || ignoreForecastToggle;
 
   return {
     enabled,
-    email: enabled && emailEnabled,
-    sms: enabled && smsEnabled,
-    push: enabled && pushEnabled,
+    email: channelGate && emailEnabled,
+    sms: channelGate && smsEnabled,
+    push: channelGate && pushEnabled,
   };
+}
+
+export interface ForecastReminderRecipient {
+  id: string;
+}
+
+export interface ForecastReminderHouse {
+  id: string;
+  name: string;
+  address: string;
+}
+
+export async function sendForecastReminder(
+  homeowner: ForecastReminderRecipient,
+  house: ForecastReminderHouse,
+  triggerResult: ForecastTriggerResult,
+  tasks: RelevantTask[],
+  options: { ignoreForecastToggle?: boolean } = {},
+): Promise<boolean> {
+  const prefs = await getForecastReminderPrefs(homeowner.id, options.ignoreForecastToggle);
+  const display = TRIGGER_DISPLAY[triggerResult.trigger];
+  const sends: Promise<boolean>[] = [];
+
+  if (prefs.email) {
+    sends.push(sendWeatherForecastReminderEmail(
+      homeowner.id,
+      house.name,
+      house.address,
+      triggerResult,
+      tasks,
+      { ignoreForecastPreference: options.ignoreForecastToggle },
+    ));
+  }
+
+  if (prefs.sms) {
+    sends.push(smsService.sendWeatherForecastReminderSMS(
+      homeowner.id,
+      house.name,
+      triggerResult,
+      tasks,
+    ));
+  }
+
+  if (prefs.push) {
+    const taskList = tasks.slice(0, 3).map(task => task.title).join(', ');
+    sends.push(pushNotificationService.sendToUser(homeowner.id, {
+      title: `${display.emoji} ${display.label} Coming — ${house.name}`,
+      body: `${tasks.length} maintenance task${tasks.length > 1 ? 's' : ''} need attention before ${triggerResult.expectedDate.toLowerCase()}: ${taskList}`,
+      data: { type: 'weather_forecast_reminder', houseId: house.id, trigger: triggerResult.trigger },
+    }));
+  }
+
+  if (sends.length === 0) return false;
+
+  const results = await Promise.allSettled(sends);
+  return results.some(result => result.status === 'fulfilled' && result.value === true);
 }
 
 async function hasAlreadySentForecastReminder(userId: string, houseId: string, triggerType: WeatherTrigger): Promise<boolean> {
@@ -155,41 +217,7 @@ async function checkForecastRemindersForAllHomes(): Promise<void> {
               continue;
             }
 
-            const display = TRIGGER_DISPLAY[triggerResult.trigger];
-            const sends: Promise<boolean>[] = [];
-
-            if (prefs.email) {
-              sends.push(sendWeatherForecastReminderEmail(
-                homeowner.id,
-                house.name,
-                house.address,
-                triggerResult,
-                tasks
-              ));
-            }
-
-            if (prefs.sms) {
-              sends.push(smsService.sendWeatherForecastReminderSMS(
-                homeowner.id,
-                house.name,
-                triggerResult,
-                tasks
-              ));
-            }
-
-            if (prefs.push) {
-              const taskList = tasks.slice(0, 3).map(t => t.title).join(', ');
-              sends.push(pushNotificationService.sendToUser(homeowner.id, {
-                title: `${display.emoji} ${display.label} Coming — ${house.name}`,
-                body: `${tasks.length} maintenance task${tasks.length > 1 ? 's' : ''} need attention before ${triggerResult.expectedDate.toLowerCase()}: ${taskList}`,
-                data: { type: 'weather_forecast_reminder', houseId: house.id, trigger: triggerResult.trigger },
-              }));
-            }
-
-            if (sends.length === 0) continue;
-
-            const results = await Promise.allSettled(sends);
-            const anySucceeded = results.some(r => r.status === 'fulfilled' && r.value === true);
+            const anySucceeded = await sendForecastReminder(homeowner, house, triggerResult, tasks);
 
             if (anySucceeded) {
               await recordForecastReminderSent(homeowner.id, house.id, triggerResult.trigger);
