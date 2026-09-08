@@ -605,6 +605,8 @@ export default function ContractorDashboard() {
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
   const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
+  const [resentInviteResult, setResentInviteResult] = useState<{ inviteUrl: string; email: string } | null>(null);
+  const [copiedResentInviteUrl, setCopiedResentInviteUrl] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
   const [renewalBoostId, setRenewalBoostId] = useState<string | null>(null);
@@ -874,6 +876,22 @@ export default function ContractorDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (!resentInviteResult) return;
+    const timeoutId = window.setTimeout(() => {
+      setResentInviteResult(null);
+      setCopiedResentInviteUrl(false);
+    }, 8000);
+    return () => window.clearTimeout(timeoutId);
+  }, [resentInviteResult]);
+
+  const copyResentInviteUrl = () => {
+    if (!resentInviteResult?.inviteUrl) return;
+    navigator.clipboard.writeText(resentInviteResult.inviteUrl);
+    setCopiedResentInviteUrl(true);
+    window.setTimeout(() => setCopiedResentInviteUrl(false), 2000);
+  };
+
   const teamActionMutation = useMutation({
     mutationFn: async ({ userId, action }: { userId: string; action: 'suspend' | 'reactivate' | 'remove' }) => {
       const method = action === 'remove' ? 'DELETE' : 'PATCH';
@@ -925,6 +943,27 @@ export default function ContractorDashboard() {
       refetchTeam();
       setPendingCancelInviteMember(null);
       toast({ title: "Invite cancelled", description: "The invite link is no longer valid." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
+      const res = await fetch(`/api/contractor/team/${userId}/resend-invite`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to resend invite');
+      return { inviteUrl: data.inviteUrl as string, email };
+    },
+    onSuccess: (data) => {
+      refetchTeam();
+      setCopiedResentInviteUrl(false);
+      setResentInviteResult(data);
+      toast({ title: "Invite resent", description: `A new invitation email was sent to ${data.email}.` });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -1579,11 +1618,21 @@ export default function ContractorDashboard() {
                             ><PauseCircle size={12} />Suspend</button>
                           ) : null)}
                           {(!isAdmin || isOwner) && (isPending ? (
-                            <button
-                              onClick={() => setPendingCancelInviteMember(member)}
-                              disabled={cancelInviteMutation.isPending}
-                              style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
-                            >Cancel Invite</button>
+                            <>
+                              <button
+                                onClick={() => resendInviteMutation.mutate({ userId: member.id, email: member.email ?? 'the team member' })}
+                                disabled={resendInviteMutation.isPending && resendInviteMutation.variables?.userId === member.id}
+                                style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #bfdbfe', background: '#fff', color: '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3 }}
+                              >
+                                <RefreshCw size={12} className={resendInviteMutation.isPending && resendInviteMutation.variables?.userId === member.id ? 'animate-spin' : ''} />
+                                Resend Invite
+                              </button>
+                              <button
+                                onClick={() => setPendingCancelInviteMember(member)}
+                                disabled={cancelInviteMutation.isPending}
+                                style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
+                              >Cancel Invite</button>
+                            </>
                           ) : (
                             <button
                               onClick={() => setPendingRemoveMember(member)}
@@ -1995,6 +2044,51 @@ export default function ContractorDashboard() {
             variant="destructive"
             onConfirm={() => { if (pendingCancelInviteMember) cancelInviteMutation.mutate(pendingCancelInviteMember.id); }}
           />
+
+          {resentInviteResult && (
+            <div
+              role="status"
+              aria-live="polite"
+              style={{
+                position: 'fixed', right: 20, bottom: 20, zIndex: 250,
+                width: 'calc(100% - 40px)', maxWidth: 420, padding: 16,
+                background: '#fff', border: '1px solid #bfdbfe', borderRadius: 12,
+                boxShadow: '0 12px 32px rgba(15, 23, 42, 0.18)',
+              }}
+            >
+              <button
+                onClick={() => setResentInviteResult(null)}
+                aria-label="Dismiss invite link"
+                style={{ position: 'absolute', top: 10, right: 10, border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={16} />
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, paddingRight: 24 }}>
+                <CheckCircle size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#0C3460' }}>Invite resent</span>
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>
+                Share the new link with {resentInviteResult.email}:
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  readOnly
+                  value={resentInviteResult.inviteUrl}
+                  aria-label="New invite link"
+                  onFocus={(event) => event.currentTarget.select()}
+                  style={{ flex: 1, minWidth: 0, fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 10px', background: '#f8fafc', color: '#475569', outline: 'none' }}
+                />
+                <button
+                  onClick={copyResentInviteUrl}
+                  style={{ padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: 8, background: '#fff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+                  title="Copy invite link"
+                  aria-label="Copy new invite link"
+                >
+                  {copiedResentInviteUrl ? <Check size={15} style={{ color: '#16a34a' }} /> : <Copy size={15} />}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Invite modal */}
           {inviteModalOpen && (
