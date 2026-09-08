@@ -1452,6 +1452,27 @@ export default function ContractorDashboard() {
                             {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInvoiceTechFilter(member.id);
+                            setActiveTab('invoices');
+                          }}
+                          style={{
+                            all: 'unset',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            marginTop: 4,
+                            color: '#1560A2',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          See in Invoices tab
+                          <ChevronRight size={12} />
+                        </button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
