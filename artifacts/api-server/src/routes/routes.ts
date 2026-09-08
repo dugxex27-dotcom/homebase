@@ -23746,7 +23746,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         const [existingUser] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
         const cryptoMod = await import('crypto');
         const inviteToken = cryptoMod.randomBytes(32).toString('hex');
-        const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const lastInviteSentAt = new Date();
+        const inviteExpiresAt = new Date(lastInviteSentAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         if (existingUser) {
           // Only contractor-role accounts may join a contractor team; mutating homeowner/agent accounts is forbidden.
@@ -23765,6 +23766,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             status: 'pending_invite',
             inviteToken,
             inviteExpiresAt,
+            lastInviteSentAt,
             updatedAt: new Date(),
           } as any).where(eq(users.id, existingUser.id));
         } else {
@@ -23780,6 +23782,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             status: 'pending_invite',
             inviteToken,
             inviteExpiresAt,
+            lastInviteSentAt,
             accountStatus: 'active',
             subscriptionStatus: 'active',
             emailVerified: false,
@@ -23868,7 +23871,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       const cryptoMod = await import('crypto');
       const inviteToken = cryptoMod.randomBytes(32).toString('hex');
-      const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const lastInviteSentAt = new Date();
+      const inviteExpiresAt = new Date(lastInviteSentAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
       const resendTargetWhere = requesterRole === 'owner'
         ? and(
@@ -23886,6 +23890,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [updatedInvite] = await db.update(users).set({
           inviteToken,
           inviteExpiresAt,
+          lastInviteSentAt,
           updatedAt: new Date(),
         } as any)
         .where(resendTargetWhere)
@@ -23963,6 +23968,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         status: users.status,
         lastLoginAt: users.lastLoginAt,
         inviteExpiresAt: users.inviteExpiresAt,
+        lastInviteSentAt: users.lastInviteSentAt,
         createdAt: users.createdAt,
         invoiceCount: drizzleSql<number>`cast(count(${contractorInvoiceUploads.id}) as int)`,
         mostRecentJobDate: drizzleSql<string | null>`coalesce(max(${contractorInvoiceUploads.invoiceDate}), max(${contractorInvoiceUploads.createdAt})::text)`,
@@ -23975,7 +23981,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .where(teamWhereClause)
         .groupBy(
           users.id, users.email, users.firstName, users.lastName,
-          users.companyRole, users.divisionId, users.status, users.lastLoginAt, users.inviteExpiresAt, users.createdAt
+          users.companyRole, users.divisionId, users.status, users.lastLoginAt,
+          users.inviteExpiresAt, users.lastInviteSentAt, users.createdAt
         )
         .limit(limit).offset(offset);
 

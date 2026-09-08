@@ -83,6 +83,7 @@ interface TeamMember {
   status: string | null;
   lastLoginAt: string | null;
   inviteExpiresAt: string | null;
+  lastInviteSentAt: string | null;
   createdAt: string | null;
   invoiceCount: number;
   mostRecentJobDate: string | null;
@@ -1542,6 +1543,11 @@ export default function ContractorDashboard() {
                         {isPending && member.inviteExpiresAt && (
                           <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>
                             Invite expires {format(new Date(member.inviteExpiresAt), 'MMM d, yyyy')}
+                          </div>
+                        )}
+                        {isPending && member.lastInviteSentAt && (
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                            Invited {formatDistanceToNow(new Date(member.lastInviteSentAt), { addSuffix: true })}
                           </div>
                         )}
                         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>

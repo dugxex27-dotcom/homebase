@@ -241,6 +241,7 @@ export const users = pgTable("users", {
   status: text("company_status").default("active"), // "active" | "suspended" | "pending_invite" | "removed"
   inviteToken: varchar("invite_token").unique(),
   inviteExpiresAt: timestamp("invite_expires_at"),
+  lastInviteSentAt: timestamp("last_invite_sent_at", { withTimezone: true }),
   deletedAt: timestamp("company_left_at"), // Set when a tech is removed from company (preserves history)
   lastLoginAt: timestamp("last_login_at"), // Last successful login timestamp
   rememberToken: varchar("remember_token"), // SHA-256 hash of native app remember-me token
