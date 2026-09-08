@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Send, Clock, MessageCircle, CheckCircle, AlertCircle, Bot, Filter } from "lucide-react";
+import { ArrowLeft, Send, Clock, MessageCircle, CheckCircle, AlertCircle, Bot, Filter, Search } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
@@ -99,6 +100,7 @@ export default function AdminSupportPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Reply form
   const [replyContent, setReplyContent] = useState("");
@@ -110,12 +112,13 @@ export default function AdminSupportPage() {
 
   // Fetch tickets list
   const { data: tickets = [], isLoading: ticketsLoading, refetch: refetchTickets } = useQuery<SupportTicket[]>({
-    queryKey: ['/api/admin/support/tickets', statusFilter, categoryFilter, priorityFilter],
+    queryKey: ['/api/admin/support/tickets', statusFilter, categoryFilter, priorityFilter, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (categoryFilter !== 'all') params.set('category', categoryFilter);
       if (priorityFilter !== 'all') params.set('priority', priorityFilter);
+      if (searchQuery.trim()) params.set('searchQuery', searchQuery.trim());
       
       const query = params.toString();
       const url = `/api/admin/support/tickets${query ? `?${query}` : ''}`;
@@ -229,6 +232,21 @@ export default function AdminSupportPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-3">
+                <Label htmlFor="support-ticket-search">Keyword</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="support-ticket-search"
+                    type="search"
+                    placeholder="Search ticket subject or description..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-support-tickets"
+                  />
+                </div>
+              </div>
               <div>
                 <Label>Status</Label>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>

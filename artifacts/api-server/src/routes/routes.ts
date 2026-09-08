@@ -7949,13 +7949,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Support ticket routes - Admin endpoints
   app.get('/api/admin/support/tickets', requireAdmin, async (req: any, res: any) => {
     try {
-      const { status, category, priority, assignedToAdminId } = req.query;
+      const { status, category, priority, assignedToAdminId, searchQuery } = req.query;
       
       const tickets = await storage.getSupportTickets({
         status: status as string,
         category: category as string,
         priority: priority as string,
         assignedToAdminId: assignedToAdminId as string,
+        searchQuery: searchQuery as string,
       });
       
       res.json(tickets);

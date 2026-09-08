@@ -5,7 +5,7 @@ import { contracts, type Contract, type InsertContract } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count, ilike, type SQL } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
 const DEMO_ID_PREFIXES = [
@@ -784,7 +784,7 @@ export interface IStorage {
     category?: string;
     priority?: string;
     assignedToAdminId?: string;
-
+    searchQuery?: string;
   }): Promise<SupportTicket[]>;
 
   getSupportTicket(id: string): Promise<SupportTicket | undefined>;
@@ -6599,6 +6599,7 @@ export class MemStorage implements IStorage {
     category?: string;
     priority?: string;
     assignedToAdminId?: string;
+    searchQuery?: string;
   }): Promise<SupportTicket[]> {
     let tickets = Array.from(this.supportTickets.values());
     
@@ -6616,6 +6617,13 @@ export class MemStorage implements IStorage {
     }
     if (filters?.assignedToAdminId) {
       tickets = tickets.filter(t => t.assignedToAdminId === filters.assignedToAdminId);
+    }
+    if (filters?.searchQuery?.trim()) {
+      const searchQuery = filters.searchQuery.trim().toLowerCase();
+      tickets = tickets.filter(t =>
+        t.subject.toLowerCase().includes(searchQuery)
+        || t.description.toLowerCase().includes(searchQuery)
+      );
     }
     
     return tickets.sort((a, b) => 
@@ -11991,13 +11999,21 @@ export class DbStorage implements IStorage {
     category?: string;
     priority?: string;
     assignedToAdminId?: string;
+    searchQuery?: string;
   }): Promise<SupportTicket[]> {
-    const conditions: ReturnType<typeof eq>[] = [];
+    const conditions: SQL[] = [];
     if (filters?.userId) conditions.push(eq(supportTickets.userId, filters.userId));
     if (filters?.status) conditions.push(eq(supportTickets.status, filters.status));
     if (filters?.category) conditions.push(eq(supportTickets.category, filters.category));
     if (filters?.priority) conditions.push(eq(supportTickets.priority, filters.priority));
     if (filters?.assignedToAdminId) conditions.push(eq(supportTickets.assignedToAdminId, filters.assignedToAdminId));
+    if (filters?.searchQuery?.trim()) {
+      const pattern = `%${filters.searchQuery.trim()}%`;
+      conditions.push(or(
+        ilike(supportTickets.subject, pattern),
+        ilike(supportTickets.description, pattern),
+      ));
+    }
 
     const query = conditions.length > 0
       ? db.select().from(supportTickets).where(and(...conditions)).orderBy(desc(supportTickets.createdAt))
