@@ -36,6 +36,7 @@ import { US_MAINTENANCE_DATA, getRegionFromClimateZone, getDueMaintenanceTasks }
 import { enrichTasksWithCosts } from "@shared/cost-helpers";
 import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared/cost-baselines";
 import { inferTaskTradeCategory } from "@/lib/contractor-category-match";
+import { HouseLocationFields } from "@/components/house-location-fields";
 
 // Google Maps API type declarations
 declare global {
@@ -132,6 +133,9 @@ const houseFormSchema = z.object({
   name: z.string().min(1, "House name is required"),
   address: z.string().min(1, "Address is required"),
   climateZone: z.string().min(1, "Climate zone is required"),
+  countryId: z.string().min(1, "Country is required"),
+  regionId: z.string().min(1, "State or province is required"),
+  climateZoneId: z.string().min(1, "Climate zone is required"),
   homeSystems: z.array(z.string()).default([]),
   isDefault: z.boolean().default(false),
 });
@@ -2206,6 +2210,9 @@ export default function Maintenance() {
       name: "",
       address: "",
       climateZone: "",
+      countryId: "",
+      regionId: "",
+      climateZoneId: "",
       homeSystems: [],
       isDefault: false,
     },
@@ -2842,6 +2849,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       name: house.name,
       address: house.address,
       climateZone: house.climateZone,
+      countryId: house.countryId ?? "",
+      regionId: house.regionId ?? "",
+      climateZoneId: house.climateZoneId ?? "",
       homeSystems: house.homeSystems,
       isDefault: house.isDefault,
     });
@@ -2868,6 +2878,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       name: "",
       address: "",
       climateZone: "",
+      countryId: "",
+      regionId: "",
+      climateZoneId: "",
       homeSystems: [],
       isDefault: false,
     });
@@ -2922,10 +2935,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           const coords = await geocodeAddress(address);
           if (coords) {
             const detectedZone = getClimateZoneFromCoordinates(coords.lat, coords.lng);
-            houseForm.setValue('climateZone', detectedZone);
             toast({
               title: "Climate Zone Detected",
-              description: `Automatically set to ${CLIMATE_ZONES.find(z => z.value === detectedZone)?.label}`,
+              description: "Choose the matching seeded climate zone below.",
             });
           }
         } catch (error) {
@@ -2952,10 +2964,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         const coords = await geocodeAddress(suggestion.description);
         if (coords) {
           const detectedZone = getClimateZoneFromCoordinates(coords.lat, coords.lng);
-          houseForm.setValue('climateZone', detectedZone);
           toast({
             title: "Climate Zone Detected",
-            description: `Automatically set to ${CLIMATE_ZONES.find(z => z.value === detectedZone)?.label}`,
+            description: "Choose the matching seeded climate zone below.",
           });
         }
       } catch (error) {
@@ -5593,7 +5604,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address</FormLabel>
+                      <FormLabel>Street Address</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input 
@@ -5628,12 +5639,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           )}
                         </div>
                       </FormControl>
-                      {isGeocodingAddress && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <span className="animate-spin">⟳</span>
-                          Detecting climate zone...
-                        </p>
-                      )}
                       {addressSuggestions.length > 0 && !showAddressSuggestions && (
                         <p className="text-xs text-muted-foreground">
                           Click on the input to see {addressSuggestions.length} address suggestions
@@ -5643,6 +5648,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </FormItem>
                   )}
                 />
+
+                <HouseLocationFields form={houseForm} />
 
                 <FormField
                   control={houseForm.control}

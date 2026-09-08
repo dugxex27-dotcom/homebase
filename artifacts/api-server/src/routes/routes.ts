@@ -14,7 +14,7 @@ import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
-import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, insertServiceRecordSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
+import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, insertServiceRecordSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, countries, regions, climateZones, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
 import { createImmediateNotification, createInvoicePaymentNotification, createInvoiceUpdatedNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
 import { createGuestContactTicket } from "../contact-ticket-writer";
@@ -15584,6 +15584,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // House management routes
+  const validateHouseLocation = async (data: {
+    countryId?: string | null;
+    regionId?: string | null;
+    climateZoneId?: string | null;
+  }): Promise<{ error: string | null; climateZoneCode?: string }> => {
+    if (!data.countryId || !data.regionId || !data.climateZoneId) {
+      return { error: "Country, state/province, and climate zone are required" };
+    }
+    const [countryRows, regionRows, climateZoneRows] = await Promise.all([
+      db.select({ id: countries.id, code: countries.code }).from(countries).where(and(eq(countries.id, data.countryId), eq(countries.isActive, true))).limit(1),
+      db.select({ id: regions.id, countryId: regions.countryId }).from(regions).where(and(eq(regions.id, data.regionId), eq(regions.isActive, true))).limit(1),
+      db.select({ id: climateZones.id, countryId: climateZones.countryId, code: climateZones.code }).from(climateZones).where(and(eq(climateZones.id, data.climateZoneId), eq(climateZones.isActive, true))).limit(1),
+    ]);
+    const country = countryRows[0];
+    if (!country || !["US", "CA", "AU", "GB"].includes(country.code.toUpperCase())) {
+      return { error: "Country is not supported" };
+    }
+    if (!regionRows[0] || regionRows[0].countryId !== country.id) {
+      return { error: "State or province does not belong to the selected country" };
+    }
+    if (!climateZoneRows[0] || climateZoneRows[0].countryId !== country.id) {
+      return { error: "Climate zone does not belong to the selected country" };
+    }
+    return { error: null, climateZoneCode: climateZoneRows[0].code };
+  };
+
   app.get("/api/houses", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Always use authenticated user's ID, ignore query params
@@ -15619,6 +15645,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertHouseSchema.omit({ homeownerId: true }).parse(req.body);
+      const locationValidation = await validateHouseLocation(validatedData);
+      if (locationValidation.error) {
+        return res.status(400).json({ message: locationValidation.error });
+      }
       
       // Use authenticated user's ID, never trust client input
       const homeownerId = req.session.user.id;
@@ -15743,6 +15773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const newHouseId = randomUUID();
         const houseData = {
           ...validatedData,
+          climateZone: locationValidation.climateZoneCode!,
           id: newHouseId,
           homeownerId,
           isDefault: (validatedData as any).isDefault ?? false,
@@ -15799,9 +15830,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate request body (excluding homeownerId which cannot be changed)
       const validatedData = insertHouseSchema.omit({ homeownerId: true }).partial().parse(req.body);
+      const locationValidation = await validateHouseLocation({
+        countryId: validatedData.countryId ?? existingHouse.countryId,
+        regionId: validatedData.regionId ?? existingHouse.regionId,
+        climateZoneId: validatedData.climateZoneId ?? existingHouse.climateZoneId,
+      });
+      if (locationValidation.error) {
+        return res.status(400).json({ message: locationValidation.error });
+      }
       
       // If address is being updated, re-geocode it
-      let updateData = { ...validatedData };
+      let updateData = {
+        ...validatedData,
+        climateZone: locationValidation.climateZoneCode!,
+      };
       if (validatedData.address && validatedData.address !== existingHouse.address) {
         const geocoded = await geocodeAddress(validatedData.address);
         if (geocoded) {

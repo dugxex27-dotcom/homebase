@@ -23,9 +23,13 @@ import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } fro
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { PageHero } from "@/components/page-hero";
+import { HouseLocationFields } from "@/components/house-location-fields";
 
 // Form schema for house creation/editing
 const houseFormSchema = insertHouseSchema.extend({
+  countryId: z.string().min(1, "Country is required"),
+  regionId: z.string().min(1, "State or province is required"),
+  climateZoneId: z.string().min(1, "Climate zone is required"),
   homeSystems: z.array(z.string()).default([]),
   isDefault: z.boolean().default(false),
 });
@@ -260,6 +264,9 @@ export default function MyHome() {
       name: "",
       address: "",
       climateZone: "",
+      countryId: "",
+      regionId: "",
+      climateZoneId: "",
       homeSystems: [],
       isDefault: houses.length === 0,
     },
@@ -396,6 +403,9 @@ export default function MyHome() {
       name: `${templateHouse.name} - Copy`,
       address: "",
       climateZone: templateHouse.climateZone,
+      countryId: templateHouse.countryId ?? "",
+      regionId: templateHouse.regionId ?? "",
+      climateZoneId: templateHouse.climateZoneId ?? "",
       homeSystems: templateHouse.homeSystems || [],
       isDefault: false,
       homeownerId: (user as any)?.id,
@@ -423,6 +433,9 @@ export default function MyHome() {
       name: house.name,
       address: house.address,
       climateZone: house.climateZone,
+      countryId: house.countryId ?? "",
+      regionId: house.regionId ?? "",
+      climateZoneId: house.climateZoneId ?? "",
       homeSystems: house.homeSystems,
       isDefault: house.isDefault,
     });
@@ -850,49 +863,22 @@ export default function MyHome() {
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Address (US, UK, Canada, Australia supported)</FormLabel>
+                      <FormLabel>Street Address</FormLabel>
                       <FormControl>
                         <AddressAutocomplete
                           value={field.value}
                           onChange={field.onChange}
-                          onSelect={handleAddressSelect}
                           placeholder="Start typing an address…"
                           data-testid="input-house-address"
                           countryCodes="us,gb,ca,au"
                         />
                       </FormControl>
                       <FormMessage />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Climate zone is detected automatically when you select an address.
-                      </p>
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="climateZone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Climate Zone</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-climate-zone">
-                            <SelectValue placeholder="Select climate zone" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CLIMATE_ZONES.map((zone) => (
-                            <SelectItem key={zone.value} value={zone.value}>
-                              {zone.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <HouseLocationFields form={form} />
 
                 <FormField
                   control={form.control}
