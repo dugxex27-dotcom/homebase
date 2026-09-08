@@ -2,7 +2,7 @@
  * Unit tests for invoice-analysis-service.ts
  *
  * Covers:
- *  - tryExtractPdfText: successful extraction, failure fallback, short-text fallback
+ *  - extractInvoiceDataFromPDF: successful extraction, failure fallback, short-text fallback
  *  - extractInvoiceData: PDF text fast path vs vision fallback
  *  - extractInvoiceData: image/jpeg always uses vision path
  */
@@ -14,14 +14,20 @@ import { vi, describe, it, expect, beforeEach } from "vitest";
 // vi.mock() factory closures, which are hoisted to the top of the file by Vitest.
 // ---------------------------------------------------------------------------
 
-const { mockChatCompletionsCreate, mockGetText, MockPDFParse } = vi.hoisted(() => {
+const { mockChatCompletionsCreate, mockGetText, mockGetScreenshot, mockDestroy, MockPDFParse } = vi.hoisted(() => {
   const mockGetText = vi.fn();
+  const mockGetScreenshot = vi.fn();
+  const mockDestroy = vi.fn().mockResolvedValue(undefined);
   const MockPDFParse = vi.fn(function (this: any) {
     this.getText = mockGetText;
+    this.getScreenshot = mockGetScreenshot;
+    this.destroy = mockDestroy;
   });
   return {
     mockChatCompletionsCreate: vi.fn(),
     mockGetText,
+    mockGetScreenshot,
+    mockDestroy,
     MockPDFParse,
   };
 });
@@ -44,7 +50,7 @@ vi.mock("pdf-parse", () => ({
 import {
   extractInvoiceData,
   verifyDIYPhotos,
-  tryExtractPdfText,
+  extractInvoiceDataFromPDF,
   PDF_TEXT_MIN_LENGTH,
 } from "./invoice-analysis-service";
 
@@ -77,48 +83,51 @@ function makeGptCompletionResponse(content: string) {
 }
 
 // ---------------------------------------------------------------------------
-// tryExtractPdfText
+// extractInvoiceDataFromPDF
 // ---------------------------------------------------------------------------
 
-describe("tryExtractPdfText", () => {
+describe("extractInvoiceDataFromPDF", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDestroy.mockResolvedValue(undefined);
   });
 
   it("returns extracted text when pdf-parse succeeds and text is long enough", async () => {
     const longText = "A".repeat(PDF_TEXT_MIN_LENGTH + 10);
     mockGetText.mockResolvedValue({ text: longText });
 
-    const result = await tryExtractPdfText("dGVzdA=="); // base64("test")
+    const result = await extractInvoiceDataFromPDF("dGVzdA=="); // base64("test")
     expect(result).toBe(longText);
+    expect(mockDestroy).toHaveBeenCalledOnce();
   });
 
   it("returns null when extracted text is shorter than PDF_TEXT_MIN_LENGTH", async () => {
     const shortText = "A".repeat(PDF_TEXT_MIN_LENGTH - 1);
     mockGetText.mockResolvedValue({ text: shortText });
 
-    const result = await tryExtractPdfText("dGVzdA==");
+    const result = await extractInvoiceDataFromPDF("dGVzdA==");
     expect(result).toBeNull();
+    expect(mockDestroy).toHaveBeenCalledOnce();
   });
 
   it("returns null when extracted text is empty", async () => {
     mockGetText.mockResolvedValue({ text: "" });
 
-    const result = await tryExtractPdfText("dGVzdA==");
+    const result = await extractInvoiceDataFromPDF("dGVzdA==");
     expect(result).toBeNull();
   });
 
   it("returns null when pdf-parse throws (e.g. corrupted/scanned PDF)", async () => {
     mockGetText.mockRejectedValue(new Error("pdf parse error"));
 
-    const result = await tryExtractPdfText("dGVzdA==");
+    const result = await extractInvoiceDataFromPDF("dGVzdA==");
     expect(result).toBeNull();
   });
 
   it("returns null when result.text is undefined", async () => {
     mockGetText.mockResolvedValue({ text: undefined });
 
-    const result = await tryExtractPdfText("dGVzdA==");
+    const result = await extractInvoiceDataFromPDF("dGVzdA==");
     expect(result).toBeNull();
   });
 });
@@ -130,6 +139,7 @@ describe("tryExtractPdfText", () => {
 describe("extractInvoiceData — PDF mimeType", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockDestroy.mockResolvedValue(undefined);
   });
 
   it("uses the text extraction path (not vision) when PDF text is readable", async () => {
@@ -155,6 +165,9 @@ describe("extractInvoiceData — PDF mimeType", () => {
   it("falls back to vision when PDF text extraction returns null (scanned PDF)", async () => {
     // Simulate scanned PDF: pdf-parse returns text shorter than minimum
     mockGetText.mockResolvedValue({ text: "abc" });
+    mockGetScreenshot.mockResolvedValue({
+      pages: [{ dataUrl: "data:image/png;base64,c2Nhbm5lZC1wYWdl" }],
+    });
     mockChatCompletionsCreate.mockResolvedValue(
       makeGptCompletionResponse(makeGptResponse())
     );
@@ -167,11 +180,14 @@ describe("extractInvoiceData — PDF mimeType", () => {
     expect(Array.isArray(content)).toBe(true);
     const imageBlock = content.find((c: any) => c.type === "image_url");
     expect(imageBlock).toBeDefined();
-    expect(imageBlock.image_url.url).toMatch(/^data:application\/pdf;base64,/);
+    expect(imageBlock.image_url.url).toBe("data:image/png;base64,c2Nhbm5lZC1wYWdl");
   });
 
   it("falls back to vision when pdf-parse throws (corrupted/password-protected PDF)", async () => {
     mockGetText.mockRejectedValue(new Error("encrypted PDF"));
+    mockGetScreenshot.mockResolvedValue({
+      pages: [{ dataUrl: "data:image/png;base64,cmVuZGVyZWQtcGFnZQ==" }],
+    });
     mockChatCompletionsCreate.mockResolvedValue(
       makeGptCompletionResponse(makeGptResponse())
     );
@@ -183,6 +199,7 @@ describe("extractInvoiceData — PDF mimeType", () => {
     expect(Array.isArray(content)).toBe(true);
     const imageBlock = content.find((c: any) => c.type === "image_url");
     expect(imageBlock).toBeDefined();
+    expect(imageBlock.image_url.url).toBe("data:image/png;base64,cmVuZGVyZWQtcGFnZQ==");
   });
 
   it("correctly parses the GPT response from the text path", async () => {

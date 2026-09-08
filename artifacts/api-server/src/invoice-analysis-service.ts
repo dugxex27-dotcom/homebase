@@ -162,16 +162,42 @@ export const PDF_TEXT_MIN_LENGTH = 50;
  * Returns the trimmed text string, or null if extraction fails or the PDF
  * contains no readable text (i.e. it is a scanned/image-only PDF).
  */
-export async function tryExtractPdfText(pdfBase64: string): Promise<string | null> {
+export async function extractInvoiceDataFromPDF(pdfBase64: string): Promise<string | null> {
+  let parser: InstanceType<typeof import("pdf-parse").PDFParse> | null = null;
   try {
     const pdfBuffer = Buffer.from(pdfBase64, "base64");
     const { PDFParse, VerbosityLevel } = await import("pdf-parse");
-    const parser = new PDFParse({ data: pdfBuffer, verbosity: VerbosityLevel.ERRORS });
+    parser = new PDFParse({ data: pdfBuffer, verbosity: VerbosityLevel.ERRORS });
     const result = await parser.getText();
     const text = result.text?.trim() ?? "";
     return text.length >= PDF_TEXT_MIN_LENGTH ? text : null;
   } catch {
     return null;
+  } finally {
+    await parser?.destroy().catch(() => undefined);
+  }
+}
+
+async function renderPdfFirstPageAsPng(pdfBase64: string): Promise<string> {
+  let parser: InstanceType<typeof import("pdf-parse").PDFParse> | null = null;
+  try {
+    const pdfBuffer = Buffer.from(pdfBase64, "base64");
+    const { PDFParse, VerbosityLevel } = await import("pdf-parse");
+    parser = new PDFParse({ data: pdfBuffer, verbosity: VerbosityLevel.ERRORS });
+    const screenshot = await parser.getScreenshot({
+      first: 1,
+      last: 1,
+      desiredWidth: 1600,
+      imageDataUrl: true,
+      imageBuffer: false,
+    });
+    const dataUrl = screenshot.pages[0]?.dataUrl;
+    if (!dataUrl?.startsWith("data:image/png;base64,")) {
+      throw new Error("Could not render the PDF for invoice analysis");
+    }
+    return dataUrl.slice("data:image/png;base64,".length);
+  } finally {
+    await parser?.destroy().catch(() => undefined);
   }
 }
 
@@ -221,11 +247,13 @@ export async function extractInvoiceData(
   mimeType: string
 ): Promise<InvoiceExtraction> {
   const openai = createOpenAIClient();
+  let visionBase64 = imageBase64;
+  let visionMimeType = mimeType;
 
   // PDF fast path: text extraction is more reliable than vision for text-heavy
   // digital invoices. Only falls back to vision for scanned/image-only PDFs.
   if (mimeType === "application/pdf") {
-    const pdfText = await tryExtractPdfText(imageBase64);
+    const pdfText = await extractInvoiceDataFromPDF(imageBase64);
     if (pdfText !== null) {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -241,10 +269,12 @@ export async function extractInvoiceData(
       const raw = response.choices[0]?.message?.content ?? "{}";
       return parseExtractionResponse(raw);
     }
-    // pdfText is null: scanned/image-only PDF — fall through to vision
+    // Scanned/image-only PDF: render the first page to a supported vision image.
+    visionBase64 = await renderPdfFirstPageAsPng(imageBase64);
+    visionMimeType = "image/png";
   }
 
-  // Vision path: images and scanned PDFs (no readable text layer)
+  // Vision path: image uploads and rendered scanned PDFs.
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [
@@ -254,7 +284,7 @@ export async function extractInvoiceData(
           { type: "text", text: INVOICE_PROMPT },
           {
             type: "image_url",
-            image_url: { url: `data:${mimeType};base64,${imageBase64}` },
+            image_url: { url: `data:${visionMimeType};base64,${visionBase64}` },
           },
         ],
       },
