@@ -2,7 +2,7 @@ import { useState, useRef, lazy, Suspense } from "react";
 const DisclosuresContent = lazy(() => import("./disclosures"));
 import { InsurancePrepTab } from "./insurance-prep-tab";
 import ErrorBoundary from "@/components/error-boundary";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueries } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -120,6 +120,21 @@ export default function Documents() {
     queryKey: ["/api/houses"],
     enabled: !!(user as any)?.id,
   });
+
+  const insurancePackageQueries = useQueries({
+    queries: houses.map((house) => ({
+      queryKey: ["/api/houses", house.id, "insurance-claim-packages"],
+      queryFn: async (): Promise<unknown[]> => {
+        const res = await apiRequest(`/api/houses/${house.id}/insurance-claim-packages`);
+        return res.json();
+      },
+      enabled: !!(user as any)?.id,
+    })),
+  });
+  const insurancePackageCount = insurancePackageQueries.reduce(
+    (total, query) => total + (Array.isArray(query.data) ? query.data.length : 0),
+    0,
+  );
 
   const uploadMutation = useMutation({
     mutationFn: async ({ file, category, notes, fileName }: { file: File; category: string; notes: string; fileName: string }) => {
@@ -326,7 +341,7 @@ export default function Documents() {
             style={topSection === "insurance" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
             data-testid="tab-insurance-prep"
           >
-            Insurance Prep
+            Insurance Prep{insurancePackageCount > 0 && ` (${insurancePackageCount})`}
           </button>
         </div>
 
