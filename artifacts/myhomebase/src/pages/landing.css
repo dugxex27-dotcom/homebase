@@ -2137,7 +2137,7 @@ html {
    SECTION 04 — QUIZ ENTRY
 ══════════════════════════════════════ */
 .mhb-quiz-entry-section {
-  background: linear-gradient(160deg, #2C0F5B 0%, #3C258E 100%);
+  background: #f4efe7;
   padding: 72px 24px;
   display: flex;
   align-items: center;
@@ -2145,10 +2145,15 @@ html {
 }
 
 .mhb-quiz-entry-inner {
-  max-width: 600px;
+  max-width: 760px;
   width: 100%;
   text-align: center;
-  color: #fff;
+  color: #2C0F5B;
+  background: #fffaf3;
+  border: 1px solid #e6d9c8;
+  border-radius: 24px;
+  padding: 52px 56px;
+  box-shadow: 0 18px 50px rgba(75, 52, 35, 0.09);
 }
 
 .mhb-section-eyebrow {
@@ -2161,27 +2166,30 @@ html {
   text-align: center;
 }
 
-.mhb-quiz-eyebrow { color: #c4b5fd; }
+.mhb-quiz-eyebrow { color: #8b6643; }
 
 .mhb-quiz-entry-heading {
   font-size: clamp(26px, 4.5vw, 40px);
   font-weight: 800;
   line-height: 1.2;
   margin: 0 0 18px;
-  color: #fff;
+  color: #2C0F5B;
   letter-spacing: -0.02em;
 }
 
 .mhb-quiz-entry-body {
   font-size: 16px;
   line-height: 1.7;
-  color: rgba(255,255,255,0.75);
+  color: #65586f;
   margin: 0 0 32px;
 }
 
 .mhb-quiz-entry-cta {
-  background: #fff;
-  color: #2C0F5B;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #3C258E;
+  color: #fff;
   border: none;
   padding: 16px 40px;
   border-radius: 14px;
@@ -2189,14 +2197,15 @@ html {
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 20px rgba(60,37,142,0.22);
   transition: transform 0.15s, box-shadow 0.15s;
   letter-spacing: -0.01em;
+  text-decoration: none;
 }
 
 .mhb-quiz-entry-cta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  box-shadow: 0 8px 28px rgba(60,37,142,0.28);
 }
 
 .mhb-quiz-trust {
@@ -2207,11 +2216,38 @@ html {
   gap: 8px;
   margin-top: 44px;
   font-size: 19.5px;
-  color: #ffffff;
+  color: #70637a;
 }
 
 .mhb-quiz-trust-item { white-space: nowrap; }
 .mhb-quiz-trust-dot { opacity: 0.6; }
+
+@media (max-width: 600px) {
+  .mhb-quiz-entry-section {
+    padding: 48px 16px;
+  }
+
+  .mhb-quiz-entry-inner {
+    padding: 40px 22px;
+    border-radius: 20px;
+  }
+
+  .mhb-quiz-entry-cta {
+    width: 100%;
+    padding: 15px 24px;
+  }
+
+  .mhb-quiz-trust {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 30px;
+    font-size: 14px;
+  }
+
+  .mhb-quiz-trust-dot {
+    display: none;
+  }
+}
 
 /* ══════════════════════════════════════
    SECTION 05 — HOW IT WORKS

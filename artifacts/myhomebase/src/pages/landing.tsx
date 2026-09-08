@@ -743,19 +743,19 @@ export default function Landing() {
       <section id="quiz" className="mhb-quiz-entry-section">
         <div className="mhb-quiz-entry-inner">
           <p className="mhb-section-eyebrow mhb-quiz-eyebrow">Free 2-minute quiz</p>
-          <h2 className="mhb-quiz-entry-heading">How well do you know your home?</h2>
+          <h2 className="mhb-quiz-entry-heading">Find out your Home Health Score</h2>
           <p className="mhb-quiz-entry-body">
-            10 questions about your home's systems and maintenance habits. Get a personalized risk score — and find out exactly where you might be leaving your biggest investment exposed.
+            Answer 10 quick questions about your home's systems and maintenance habits to get a personalized score and see where your home may need attention.
           </p>
-          <button className="mhb-quiz-entry-cta" onClick={() => setQuizOpen(true)}>
-            Start the quiz →
-          </button>
+          <a className="mhb-quiz-entry-cta" href="/quiz.html" data-testid="link-home-health-quiz">
+            Get my score →
+          </a>
           <div className="mhb-quiz-trust">
-            <span className="mhb-quiz-trust-item">⏱ ~2 minutes</span>
+            <span className="mhb-quiz-trust-item">About 2 minutes</span>
             <span className="mhb-quiz-trust-dot">·</span>
-            <span className="mhb-quiz-trust-item">🔓 No account needed</span>
+            <span className="mhb-quiz-trust-item">No account needed</span>
             <span className="mhb-quiz-trust-dot">·</span>
-            <span className="mhb-quiz-trust-item">📊 Personalized result</span>
+            <span className="mhb-quiz-trust-item">Personalized result</span>
           </div>
         </div>
       </section>
