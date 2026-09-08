@@ -292,6 +292,7 @@ import {
   maintenanceLogs  as maintenanceLogsTable,
   homeAppliances   as homeAppliancesTable,
   homeSystems      as homeSystemsTable,
+  houseTransfers    as houseTransfersTable,
 } from "@workspace/db";
 
 // ---------------------------------------------------------------------------
@@ -359,8 +360,11 @@ const ACCEPTED_HOUSE_TRANSFER = Object.freeze({
 /** Handoff package with a real houseId — triggers the transactional transfer path. */
 const PKG_FIXTURE = Object.freeze({
   id:              PKG_ID,
+  agentId:         "agent-transfer-001",
+  buyerEmail:      `${OWNER_B_ID}@homebase.com`,
   inviteToken:     TOKEN,
   houseId:         HOUSE_ID,
+  houseEverLinked: true,
   status:          "sent",
   claimedAt:       null,
   claimedByUserId: null,
@@ -368,6 +372,16 @@ const PKG_FIXTURE = Object.freeze({
   createdAt:       new Date("2026-04-01T00:00:00Z"),
   updatedAt:       new Date("2026-04-01T00:00:00Z"),
 });
+
+const OWNER_AUTHORIZED_TRANSFER = Object.freeze({
+  id: "owner-authorized-transfer-001",
+  houseId: HOUSE_ID,
+  fromHomeownerId: OWNER_A_ID,
+  toHomeownerEmail: `${OWNER_B_ID}@homebase.com`,
+  status: "pending",
+  expiresAt: new Date("2099-01-01T00:00:00Z"),
+});
+let atomicPackageClaimRows: Array<{ id: string }> = [{ id: PKG_ID }];
 
 /** Audit row returned by the transaction's INSERT into handoff_transfers. */
 const TRANSFER_ROW = Object.freeze({
@@ -410,6 +424,15 @@ async function buildApp(store: { rows: Array<Record<string, any>> }) {
       execute: vi.fn().mockResolvedValue({
         rows: [{ id: HOUSE_ID, homeowner_id: OWNER_A_ID }],
       }),
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockImplementation((table: any) => ({
+          where: vi.fn().mockReturnValue(
+            table === houseTransfersTable
+              ? { limit: vi.fn().mockResolvedValue([OWNER_AUTHORIZED_TRANSFER]) }
+              : { limit: vi.fn().mockResolvedValue([]) },
+          ),
+        })),
+      }),
       update: vi.fn().mockImplementation((table: any) => ({
         set: vi.fn().mockImplementation((values: any) => ({
           where: vi.fn().mockImplementation((condition: any) => {
@@ -435,7 +458,9 @@ async function buildApp(store: { rows: Array<Record<string, any>> }) {
                 if (params.includes(row.houseId)) row.homeownerId = values.homeownerId;
               }
             }
-            return Promise.resolve(undefined);
+            const result: any = Promise.resolve(undefined);
+            result.returning = vi.fn().mockImplementation(async () => atomicPackageClaimRows);
+            return result;
           }),
         })),
       })),
@@ -502,6 +527,14 @@ async function buildApp(store: { rows: Array<Record<string, any>> }) {
           };
         }
 
+        if (table === houseTransfersTable) {
+          return {
+            where: vi.fn().mockReturnValue(
+              makeWhereResult([OWNER_AUTHORIZED_TRANSFER]),
+            ),
+          };
+        }
+
         // ── houses: preflight or post-commit count ────────────────────────
         // Preflight: await db.select({ id, homeownerId }).from(houses).where(...)
         // Post-commit: db.select({ n: count }).from(houses).where(and(...))
@@ -551,6 +584,7 @@ describe("POST /api/handoff/:token/claim + GET /api/invoice-analyses — ownersh
     maintenanceLogStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.maintenanceLog }];
     applianceStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.appliance }];
     homeSystemStore.rows = [{ ...TRANSFERRED_RECORD_FIXTURES.homeSystem }];
+    atomicPackageClaimRows = [{ id: PKG_ID }];
     mockGetUser.mockImplementation(async (userId: string) => ({
       id: userId,
       email: `${userId}@homebase.com`,
@@ -597,6 +631,18 @@ describe("POST /api/handoff/:token/claim + GET /api/invoice-analyses — ownersh
   });
 
   // ── Claim route drives the transfer ────────────────────────────────────
+
+  it("rejects a concurrent replay when the package was already consumed atomically", async () => {
+    atomicPackageClaimRows = [];
+
+    const claimRes = await request(app)
+      .post(`/api/handoff/${TOKEN}/claim`)
+      .set("x-test-user", "owner-b")
+      .send({});
+
+    expect(claimRes.status).toBe(409);
+    expect(analysisStore.rows[0].homeownerId).toBe(OWNER_A_ID);
+  });
 
   it("claim route succeeds and ownerB sees the analysis; ownerA does not", async () => {
     // ownerB claims the handoff package — this triggers the transactional transfer

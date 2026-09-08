@@ -21109,6 +21109,33 @@ If the document contains no relevant home information, return the structure with
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
 
+      if (parsed.data.houseId !== undefined && parsed.data.houseId !== null) {
+        const [house] = await db.select({ id: houses.id, homeownerId: houses.homeownerId })
+          .from(houses)
+          .where(eq(houses.id, parsed.data.houseId))
+          .limit(1);
+        if (!house) {
+          return res.status(404).json({ message: "House not found" });
+        }
+
+        const [ownerTransfer] = await db.select()
+          .from(houseTransfers)
+          .where(and(
+            eq(houseTransfers.houseId, house.id),
+            eq(houseTransfers.fromHomeownerId, house.homeownerId),
+            eq(houseTransfers.status, "pending"),
+          ))
+          .limit(1);
+        const packageBuyerEmail = (parsed.data.buyerEmail ?? pkg.buyerEmail).trim().toLowerCase();
+        if (
+          !ownerTransfer
+          || ownerTransfer.toHomeownerEmail.trim().toLowerCase() !== packageBuyerEmail
+          || new Date(ownerTransfer.expiresAt) <= new Date()
+        ) {
+          return res.status(404).json({ message: "House not found" });
+        }
+      }
+
       const updates: Record<string, any> = { updatedAt: new Date() };
       if (parsed.data.propertyAddress !== undefined) updates.propertyAddress = parsed.data.propertyAddress;
       if (parsed.data.buyerName !== undefined) updates.buyerName = parsed.data.buyerName;
@@ -21270,7 +21297,7 @@ If the document contains no relevant home information, return the structure with
       // ─── Three-way dispatch: houseId is null at this point ──────────────────────
       // Case 2: houseId null + houseEverLinked true → house was deleted after linking.
       //   ON DELETE SET NULL fired; do NOT create a blank fallback. Return 410 Gone.
-      if (pkg.houseEverLinked) {
+      if (!pkg.houseId && pkg.houseEverLinked) {
         return res.status(410).json({
           message: "The home record originally linked to this handoff has been removed and can no longer be claimed. Please contact the agent who sent this invitation.",
         });
@@ -21378,6 +21405,25 @@ If the document contains no relevant home information, return the structure with
       if (preflight.homeownerId === userId) {
         return res.status(409).json({ message: "You are already the owner of this house — transfer is not needed" });
       }
+      const claimant = await storage.getUser(userId);
+      if (!claimant?.email || claimant.email.trim().toLowerCase() !== pkg.buyerEmail.trim().toLowerCase()) {
+        return res.status(404).json({ message: "Package not found or link is invalid" });
+      }
+      const [preflightOwnerTransfer] = await db.select()
+        .from(houseTransfers)
+        .where(and(
+          eq(houseTransfers.houseId, houseId),
+          eq(houseTransfers.fromHomeownerId, preflight.homeownerId),
+          eq(houseTransfers.status, "pending"),
+        ))
+        .limit(1);
+      if (
+        !preflightOwnerTransfer
+        || preflightOwnerTransfer.toHomeownerEmail.trim().toLowerCase() !== claimant.email.trim().toLowerCase()
+        || new Date(preflightOwnerTransfer.expiresAt) <= new Date()
+      ) {
+        return res.status(404).json({ message: "Package not found or link is invalid" });
+      }
 
       // Count rows to be reassigned — outside the transaction (reads only, no lock needed)
       const [mlCount, srCount, haCount, hsCount, cmtCount, ciCount, iaCount] = await Promise.all([
@@ -21421,10 +21467,33 @@ If the document contains no relevant home information, return the structure with
       // hoisted here so the catch block and post-commit verification can reference it.
       let transferRow: typeof handoffTransfers.$inferSelect | null = null;
       let capturedPreviousOwner: string | null = null;
-      let txPreflightError: { status: number; message: string } | null = null;
+      const txOutcome: {
+        preflightError: { status: number; message: string } | null;
+      } = { preflightError: null };
 
       try {
         await db.transaction(async (tx) => {
+          // Atomically consume the package before changing ownership. A second
+          // concurrent claimant blocks on this row and then receives no row.
+          const [claimedPackage] = await tx.update(homeHandoffPackages)
+            .set({
+              status: "claimed",
+              claimedByUserId: userId,
+              claimedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(homeHandoffPackages.id, pkg.id),
+              eq(homeHandoffPackages.inviteToken, req.params.token),
+              eq(homeHandoffPackages.houseId, houseId),
+              isNull(homeHandoffPackages.claimedAt),
+            ))
+            .returning({ id: homeHandoffPackages.id });
+          if (!claimedPackage) {
+            txOutcome.preflightError = { status: 409, message: "This handoff package has already been claimed" };
+            throw new Error("HANDOFF_TX_PRECONDITION");
+          }
+
           // SELECT FOR UPDATE: lock the house row for the duration of the transaction,
           // closing the race window between reading homeownerId and writing it.
           // previousHomeownerId is captured from this locked read, not from the preflight above.
@@ -21435,16 +21504,33 @@ If the document contains no relevant home information, return the structure with
 
           // Re-validate against the authoritative locked state (a concurrent claim may have changed ownership)
           if (!locked) {
-            txPreflightError = { status: 422, message: "The house linked to this package no longer exists" };
-            return;
+            txOutcome.preflightError = { status: 422, message: "The house linked to this package no longer exists" };
+            throw new Error("HANDOFF_TX_PRECONDITION");
           }
           if (!locked.homeowner_id) {
-            txPreflightError = { status: 422, message: "This house has no current owner on record — transfer cannot proceed" };
-            return;
+            txOutcome.preflightError = { status: 422, message: "This house has no current owner on record — transfer cannot proceed" };
+            throw new Error("HANDOFF_TX_PRECONDITION");
           }
           if (locked.homeowner_id === userId) {
-            txPreflightError = { status: 409, message: "You are already the owner of this house — transfer is not needed" };
-            return;
+            txOutcome.preflightError = { status: 409, message: "You are already the owner of this house — transfer is not needed" };
+            throw new Error("HANDOFF_TX_PRECONDITION");
+          }
+          const [lockedOwnerTransfer] = await tx.select()
+            .from(houseTransfers)
+            .where(and(
+              eq(houseTransfers.id, preflightOwnerTransfer.id),
+              eq(houseTransfers.houseId, houseId),
+              eq(houseTransfers.fromHomeownerId, locked.homeowner_id),
+              eq(houseTransfers.status, "pending"),
+            ))
+            .limit(1);
+          if (
+            !lockedOwnerTransfer
+            || lockedOwnerTransfer.toHomeownerEmail.trim().toLowerCase() !== claimant.email!.trim().toLowerCase()
+            || new Date(lockedOwnerTransfer.expiresAt) <= new Date()
+          ) {
+            txOutcome.preflightError = { status: 404, message: "Package not found or link is invalid" };
+            throw new Error("HANDOFF_TX_PRECONDITION");
           }
 
           // Authoritative previous owner, captured from the locked row
@@ -21478,13 +21564,13 @@ If the document contains no relevant home information, return the structure with
           await tx.update(invoiceAnalyses)
             .set({ homeownerId: userId })
             .where(eq(invoiceAnalyses.houseId, houseId));
-          // 3. Mark package claimed
-          await tx.update(homeHandoffPackages).set({
-            status: "claimed",
-            claimedByUserId: userId,
-            claimedAt: new Date(),
+          // 3. Consume the homeowner's property-specific transfer authorization.
+          await tx.update(houseTransfers).set({
+            status: "completed",
+            toHomeownerId: userId,
+            completedAt: new Date(),
             updatedAt: new Date(),
-          }).where(eq(homeHandoffPackages.id, pkg.id));
+          }).where(eq(houseTransfers.id, lockedOwnerTransfer.id));
           // 4. Audit row — inside the transaction so it rolls back with everything else on failure
           const [inserted] = await tx.insert(handoffTransfers).values({
             packageId: pkg.id,
@@ -21497,6 +21583,9 @@ If the document contains no relevant home information, return the structure with
           transferRow = inserted;
         });
       } catch (txErr: any) {
+        if (txOutcome.preflightError) {
+          return res.status(txOutcome.preflightError.status).json({ message: txOutcome.preflightError.message });
+        }
         // Transaction rolled back — insert failure record OUTSIDE so it survives the rollback
         await db.insert(handoffTransfers).values({
           packageId: pkg.id,
@@ -21515,8 +21604,8 @@ If the document contains no relevant home information, return the structure with
       // Pre-condition failed inside the transaction (re-validation against the locked row)
       // TypeScript narrows async-mutated let bindings to 'never' in this control-flow path;
       // explicitly cast to recover the actual runtime type.
-      if (txPreflightError) {
-        const err = txPreflightError as { status: number; message: string };
+      if (txOutcome.preflightError) {
+        const err = txOutcome.preflightError;
         return res.status(err.status).json({ message: err.message });
       }
 
