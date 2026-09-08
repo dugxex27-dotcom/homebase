@@ -231,8 +231,6 @@ export default function Billing() {
           </p>
         </div>
 
-        {isNativePlatform && !isContractor && <ActivatingPlanBanner />}
-
         {/* Trial Alert */}
         {isTrialActive && (
           <Alert className={`mb-6 ${isContractor ? 'border-red-200 bg-red-50' : 'border-[#CECBF6] bg-[#EEEDFE]'}`}>

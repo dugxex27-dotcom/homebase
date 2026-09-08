@@ -93,6 +93,7 @@ import { ActivatingPlanBanner } from "./activating-plan-banner";
 
 const FAST_POLL_INTERVAL_MS = 5_000;
 const MAX_FAST_POLL_MS = 60_000;
+const RESOLVED_DEBOUNCE_MS = 1_500;
 
 // ---------------------------------------------------------------------------
 // Test QueryClient factory
@@ -653,6 +654,82 @@ describe("ActivatingPlanBanner — poll expiry after MAX_FAST_POLL_MS (60 s)", (
     });
 
     expect(network.callCounts["/api/contractor/subscription"]).toBe(callsAfterExpiry);
+  });
+});
+
+describe("ActivatingPlanBanner — post-expiry status transitions", () => {
+  it("keeps fastPollExpired true when isActivating briefly bounces false then true", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+
+    await act(async () => {
+      seedActiveHomeowner();
+      client.setQueryData(["/api/auth/user"], network.responses["/api/auth/user"]);
+      client.setQueryData(["/api/user"], { subscriptionStatus: "active" });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RESOLVED_DEBOUNCE_MS - 1);
+      seedInactiveHomeowner(client);
+      client.setQueryData(["/api/auth/user"], network.responses["/api/auth/user"]);
+      client.setQueryData(["/api/user"], { subscriptionStatus: "inactive" });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+    expect(screen.queryByText(/your subscription is activating/i)).toBeNull();
+  });
+
+  it("opens a fresh window after a genuine inactive-to-active resolution and later reactivation", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveHomeowner(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
+
+    await act(async () => {
+      seedActiveHomeowner();
+      client.setQueryData(["/api/auth/user"], network.responses["/api/auth/user"]);
+      client.setQueryData(["/api/user"], { subscriptionStatus: "active" });
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(RESOLVED_DEBOUNCE_MS);
+    });
+    expect(screen.queryByRole("status")).toBeNull();
+
+    await act(async () => {
+      seedInactiveHomeowner(client);
+      client.setQueryData(["/api/auth/user"], network.responses["/api/auth/user"]);
+      client.setQueryData(["/api/user"], { subscriptionStatus: "inactive" });
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(screen.getByText(/your subscription is activating/i)).toBeDefined();
+    expect(screen.queryByText(/taking longer than expected/i)).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(MAX_FAST_POLL_MS);
+    });
+
+    expect(screen.getByText(/taking longer than expected/i)).toBeDefined();
   });
 });
 
