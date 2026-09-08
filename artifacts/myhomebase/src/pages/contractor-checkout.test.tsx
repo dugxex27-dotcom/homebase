@@ -27,6 +27,11 @@ import { render, screen, cleanup, act, fireEvent } from "@testing-library/react"
 const authFlags = vi.hoisted(() => ({
   user: null as { id: string; role: string } | null,
 }));
+const nativeFlags = vi.hoisted(() => ({
+  isNative: false,
+  isPending: false,
+}));
+const setLocationSpy = vi.hoisted(() => vi.fn());
 
 // ---------------------------------------------------------------------------
 // Module mocks — must appear before subject import
@@ -41,14 +46,16 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 vi.mock("wouter", () => ({
-  useLocation: () => ["/contractor-checkout", vi.fn()],
+  useLocation: () => ["/contractor-checkout", setLocationSpy],
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => (
     <a href={href}>{children}</a>
   ),
 }));
 
 vi.mock("@/lib/nativeBrowser", () => ({
-  isNativePlatform: false,
+  get isNativePlatform() {
+    return nativeFlags.isNative;
+  },
   openPaymentUrl: vi.fn(),
   onBackButton: () => () => {},
   onAppStateChange: () => () => {},
@@ -66,7 +73,9 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     ...actual,
     useMutation: vi.fn(() => ({
       mutate: mutateSpy,
-      isPending: false,
+      get isPending() {
+        return nativeFlags.isPending;
+      },
       isError: false,
     })),
   };
@@ -84,7 +93,10 @@ import ContractorCheckout from "./contractor-checkout";
 
 beforeEach(() => {
   authFlags.user = null;
+  nativeFlags.isNative = false;
+  nativeFlags.isPending = false;
   mutateSpy.mockClear();
+  setLocationSpy.mockClear();
   vi.useFakeTimers();
 });
 
@@ -129,6 +141,7 @@ describe("ContractorCheckout — 10 s auth timeout", () => {
 
     expect(screen.getByText(/taking too long to load/i)).toBeTruthy();
     expect(screen.getByTestId("button-retry-auth")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeTruthy();
   });
 
   it("does NOT show the timeout state when user resolves before 10 s", async () => {
@@ -174,5 +187,61 @@ describe("ContractorCheckout — retry button", () => {
     fireEvent.click(retryButton);
 
     expect(reloadSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ContractorCheckout — timeout escape actions", () => {
+  it("navigates to contractor sign in from the auth timeout state", async () => {
+    render(<ContractorCheckout />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_001);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(setLocationSpy).toHaveBeenCalledWith("/signin/contractor");
+  });
+
+  it("shows the native checkout timeout after a mutation stays pending for 10 seconds", async () => {
+    authFlags.user = { id: "ctr-001", role: "contractor" };
+    nativeFlags.isNative = true;
+    nativeFlags.isPending = true;
+
+    render(<ContractorCheckout />);
+
+    expect(screen.queryByText(/taking too long to load/i)).toBeNull();
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_001);
+    });
+
+    expect(screen.getByText(/couldn't start your checkout session in time/i)).toBeTruthy();
+    expect(screen.getByTestId("button-retry-native-checkout")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /sign in/i })).toBeTruthy();
+  });
+
+  it("reloads or navigates to sign in from the native checkout timeout state", async () => {
+    const reloadSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { reload: reloadSpy, search: "" },
+      writable: true,
+      configurable: true,
+    });
+    authFlags.user = { id: "ctr-001", role: "contractor" };
+    nativeFlags.isNative = true;
+    nativeFlags.isPending = true;
+
+    render(<ContractorCheckout />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(10_001);
+    });
+
+    fireEvent.click(screen.getByTestId("button-retry-native-checkout"));
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    expect(setLocationSpy).toHaveBeenCalledWith("/signin/contractor");
   });
 });
