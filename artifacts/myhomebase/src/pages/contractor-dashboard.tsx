@@ -667,6 +667,39 @@ export default function ContractorDashboard() {
     enabled: isAdminRole && !!typedUser,
   });
 
+  const invoiceSummary = React.useMemo(() => {
+    const technicianTotals = new Map<string, { key: string; name: string; count: number; amount: number }>();
+    let totalAmount = 0;
+
+    for (const invoice of adminInvoices) {
+      const parsedAmount = Number.parseFloat(invoice.amount ?? '0');
+      const amount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+      const technicianName =
+        [invoice.uploaderFirstName, invoice.uploaderLastName].filter(Boolean).join(' ') ||
+        invoice.uploaderEmail ||
+        'Unknown technician';
+      const technicianKey = invoice.uploaderEmail ?? technicianName;
+      const current = technicianTotals.get(technicianKey) ?? {
+        key: technicianKey,
+        name: technicianName,
+        count: 0,
+        amount: 0,
+      };
+
+      totalAmount += amount;
+      current.count += 1;
+      current.amount += amount;
+      technicianTotals.set(technicianKey, current);
+    }
+
+    return {
+      totalAmount,
+      byTechnician: Array.from(technicianTotals.values()).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    };
+  }, [adminInvoices]);
+
   const { data: myBoosts = [], isLoading: isLoadingBoosts } = useQuery<ContractorBoostItem[]>({
     queryKey: ['/api/contractors/boost'],
     queryFn: async () => {
@@ -2014,6 +2047,60 @@ export default function ContractorDashboard() {
       {isAdminRole && activeTab === 'invoices' && (
         <div className="dash-body">
           <span className="dash-section-label">Tech Invoices</span>
+          <div className="dash-light-card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div style={{ minWidth: 110 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Total invoices
+                </div>
+                <div style={{ marginTop: 4, fontSize: 24, lineHeight: 1.1, fontWeight: 700, color: '#0C3460' }}>
+                  {isLoadingInvoices ? '—' : adminInvoices.length}
+                </div>
+              </div>
+              <div style={{ minWidth: 130 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Total value
+                </div>
+                <div style={{ marginTop: 4, fontSize: 24, lineHeight: 1.1, fontWeight: 700, color: '#09694a' }}>
+                  {isLoadingInvoices
+                    ? '—'
+                    : invoiceSummary.totalAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </div>
+              </div>
+              <div style={{ flex: '1 1 260px', minWidth: 220 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  By technician
+                </div>
+                {isLoadingInvoices ? (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#94a3b8' }}>Loading totals…</div>
+                ) : invoiceSummary.byTechnician.length === 0 ? (
+                  <div style={{ marginTop: 6, fontSize: 12, color: '#94a3b8' }}>No invoices match these filters</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {invoiceSummary.byTechnician.map(technician => (
+                      <div
+                        key={technician.key}
+                        style={{
+                          padding: '5px 8px',
+                          borderRadius: 7,
+                          border: '1px solid #e2e8f0',
+                          background: '#f8fafc',
+                          fontSize: 12,
+                          color: '#475569',
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: '#111827' }}>{technician.name}</span>
+                        {' · '}
+                        {technician.count} invoice{technician.count !== 1 ? 's' : ''}
+                        {' · '}
+                        {technician.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               <select
