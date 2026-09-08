@@ -62,6 +62,7 @@ const TRIGGER_KEYWORDS: Record<WeatherTrigger, string[]> = {
   snow_storm: ['furnace', 'heating', 'generator', 'walkway', 'driveway', 'ice', 'snow', 'shovel', 'salt', 'de-ice'],
 };
 
+export const WEATHER_TRIGGERS = Object.keys(TRIGGER_KEYWORDS) as WeatherTrigger[];
 function frequencyToDays(frequencyType: string, frequencyValue: number | null): number {
   switch (frequencyType) {
     case 'monthly': return 30;
@@ -360,6 +361,20 @@ export async function findRelevantOverdueTasks(
   return result;
 }
 
+export async function getWeatherForecastTaskPreview(
+  homeownerId: string,
+  houseId: string,
+): Promise<Map<WeatherTrigger, RelevantTask[]>> {
+  return findRelevantOverdueTasks(
+    homeownerId,
+    houseId,
+    WEATHER_TRIGGERS.map((trigger) => ({
+      trigger,
+      description: '',
+      expectedDate: '',
+    })),
+  );
+}
 export const TRIGGER_DISPLAY: Record<WeatherTrigger, { emoji: string; label: string }> = {
   hard_freeze:  { emoji: '🧊', label: 'Hard Freeze' },
   heavy_rain:   { emoji: '🌧️', label: 'Heavy Rain' },

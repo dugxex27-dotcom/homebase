@@ -101,6 +101,14 @@ export default function HomeownerAccount() {
     enabled: !!user,
   });
 
+  const {
+    data: weatherForecastPreview,
+    isLoading: isWeatherForecastPreviewLoading,
+  } = useQuery<WeatherForecastPreview>({
+    queryKey: ['/api/homeowner/weather-forecast-preview'],
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (serverNotifPrefs) {
       setNotificationPrefs(prev => ({ ...prev, ...serverNotifPrefs }));
@@ -967,6 +975,67 @@ export default function HomeownerAccount() {
                       />
                     </div>
                   </div>
+
+                  {notificationPrefs.weatherForecastReminders && (
+                    <div
+                      className="rounded-lg border bg-slate-50 p-4 space-y-4"
+                      data-testid="weather-forecast-task-preview"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold" style={{ color: '#2c0f5b' }}>
+                          Tasks linked to weather reminders
+                        </p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          We only send a reminder when one of these tasks is overdue and matching weather is forecast.
+                        </p>
+                      </div>
+
+                      {isWeatherForecastPreviewLoading ? (
+                        <p className="text-sm text-gray-500" data-testid="status-weather-preview-loading">
+                          Checking your maintenance tasks…
+                        </p>
+                      ) : weatherForecastPreview?.houses.some(house =>
+                        house.triggers.some(trigger => trigger.tasks.length > 0)
+                      ) ? (
+                        weatherForecastPreview.houses.map(house => {
+                          const relevantTriggers = house.triggers.filter(trigger => trigger.tasks.length > 0);
+                          if (relevantTriggers.length === 0) return null;
+
+                          return (
+                            <div key={house.houseId} className="space-y-3">
+                              {weatherForecastPreview.houses.length > 1 && (
+                                <p
+                                  className="text-xs font-semibold uppercase tracking-wide text-gray-500"
+                                  data-testid={`text-weather-preview-house-${house.houseId}`}
+                                >
+                                  {house.houseName}
+                                </p>
+                              )}
+                              {relevantTriggers.map(trigger => (
+                                <div
+                                  key={trigger.trigger}
+                                  data-testid={`weather-preview-trigger-${house.houseId}-${trigger.trigger}`}
+                                >
+                                  <p className="text-sm text-gray-700">
+                                    If a <span className="font-medium">{trigger.label.toLowerCase()}</span> is forecast, we'd remind you about:
+                                  </p>
+                                  <ul className="mt-1 ml-5 list-disc text-sm text-gray-600">
+                                    {trigger.tasks.map(task => (
+                                      <li key={`${task.taskType}-${task.id}`}>{task.title}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500" data-testid="status-weather-preview-empty">
+                          No overdue tasks currently match a weather reminder.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -1557,3 +1626,21 @@ export default function HomeownerAccount() {
     </div>
   );
 }
+
+type WeatherForecastPreview = {
+  houses: Array<{
+    houseId: string;
+    houseName: string;
+    triggers: Array<{
+      trigger: string;
+      label: string;
+      tasks: Array<{
+        id: string;
+        title: string;
+        category: string;
+        priority: string;
+        taskType: 'maintenance' | 'custom';
+      }>;
+    }>;
+  }>;
+};

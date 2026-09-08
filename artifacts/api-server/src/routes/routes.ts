@@ -61,7 +61,13 @@ import {
 import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
 import { handleCreateReviewFlag } from "./review-flag-handler";
 import { sendForecastReminder } from "../weather-forecast-reminder-scheduler";
-import { findRelevantOverdueTasks, type ForecastTriggerResult } from "../weather-forecast-service";
+import {
+  findRelevantOverdueTasks,
+  getWeatherForecastTaskPreview,
+  TRIGGER_DISPLAY,
+  WEATHER_TRIGGERS,
+  type ForecastTriggerResult,
+} from "../weather-forecast-service";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -11143,6 +11149,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching homeowner notification preferences:", error);
       res.status(500).json({ message: "Failed to fetch notification preferences" });
+    }
+  });
+
+  app.get('/api/homeowner/weather-forecast-preview', isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
+    try {
+      const homeownerId = req.user?.claims?.sub || req.session?.user?.id;
+      if (!homeownerId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const homeownerHouses = await storage.getHousesByHomeowner(homeownerId);
+      const housePreviews = await Promise.all(
+        homeownerHouses.map(async (house) => {
+          const tasksByTrigger = await getWeatherForecastTaskPreview(homeownerId, house.id);
+
+          return {
+            houseId: house.id,
+            houseName: house.name || house.address || 'Home',
+            triggers: WEATHER_TRIGGERS.map((trigger) => ({
+              trigger,
+              label: TRIGGER_DISPLAY[trigger].label,
+              tasks: tasksByTrigger.get(trigger) ?? [],
+            })),
+          };
+        }),
+      );
+
+      res.json({ houses: housePreviews });
+    } catch (error) {
+      req.log?.error({ err: error }, "Failed to build weather forecast task preview");
+      res.status(500).json({ message: "Failed to load weather forecast preview" });
     }
   });
 
