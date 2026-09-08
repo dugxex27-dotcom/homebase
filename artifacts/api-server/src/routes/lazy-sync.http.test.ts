@@ -374,6 +374,68 @@ describe("GET /api/user — lazy background subscription sync", () => {
     );
   });
 
+  it.each([
+    { unitAmount: 4000, expectedTier: "contractor_pro" },
+    { unitAmount: 3999, expectedTier: "contractor_basic" },
+  ])(
+    "activates a contractor as $expectedTier for a $unitAmount price",
+    async ({ unitAmount, expectedTier }) => {
+      const contractor = {
+        ...BASE_USER,
+        role: "contractor" as const,
+        email: "contractor@test.com",
+      };
+      mockGetUser
+        .mockResolvedValueOnce(contractor)
+        .mockResolvedValue({ ...contractor, subscriptionStatus: "active" });
+      mockSubscriptionsList.mockResolvedValue({
+        data: [{
+          ...ACTIVE_SUBSCRIPTION,
+          items: {
+            data: [{
+              price: {
+                id: PRICE_ID,
+                unit_amount: unitAmount,
+              },
+            }],
+          },
+        }],
+      });
+
+      await request(app).get("/api/user");
+      await drainAsync();
+
+      expect(mockUpdateUserStripeSubscription).toHaveBeenCalledWith(USER_ID, SUB_ID, PRICE_ID);
+      expect(mockUpdateUserSubscriptionStatus).toHaveBeenCalledWith(USER_ID, "active");
+      expect(mockUpsertUser).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: "contractor",
+          subscriptionStatus: "active",
+          subscriptionTier: expectedTier,
+        }),
+      );
+    },
+  );
+
+  it("activates an agent subscription without applying homeowner or contractor tier fields", async () => {
+    const agent = {
+      ...BASE_USER,
+      role: "agent" as const,
+      email: "agent@test.com",
+    };
+    mockGetUser
+      .mockResolvedValueOnce(agent)
+      .mockResolvedValue({ ...agent, subscriptionStatus: "active" });
+    mockSubscriptionsList.mockResolvedValue({ data: [ACTIVE_SUBSCRIPTION] });
+
+    await request(app).get("/api/user");
+    await drainAsync();
+
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledWith(USER_ID, SUB_ID, PRICE_ID);
+    expect(mockUpdateUserSubscriptionStatus).toHaveBeenCalledWith(USER_ID, "active");
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
   it("does NOT trigger a second Stripe call within the 5-minute cooldown window", async () => {
     mockGetUser.mockResolvedValue(BASE_USER);
     mockSubscriptionsList.mockResolvedValue({ data: [] });
