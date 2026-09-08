@@ -67,6 +67,7 @@ vi.mock("../replitAuth", async (importOriginal) => {
       }
       next();
     }),
+    requireNotSuspended: vi.fn(() => (_req: any, _res: any, next: any) => next()),
     evictStatusCache: vi.fn(),
   };
 });

@@ -280,65 +280,45 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
       .send({ zipCode: "10001", role: "agent" });
 
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ intent: "agent" });
+    expect(res.status).toBe(401);
   });
 
-  it("rejects a submitted role that disagrees with the session intent", async () => {
+  it("returns 400 when zipCode is missing", async () => {
     const app = await buildApp();
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
+      .set("x-test-user", "agent-intent")
+      .send({ role: "agent" });
 
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ intent: "agent" });
-  });
-
-  it("rejects a submitted role that disagrees with the session intent", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ intent: "agent" });
-  });
-
-  it("rejects a submitted role that disagrees with the session intent", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
-
-    expect(res.status).toBe(403);
-    expect(res.body.code).toBe("ROLE_INTENT_MISMATCH");
+    expect(res.status).toBe(400);
     expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
-  it("completes as an agent from session intent without relying on a URL param", async () => {
-    const agent = { ...BASE_USER, role: "agent" as const };
-    const updatedUser = { ...agent, zipCode: "90210" };
-    mockGetUser.mockResolvedValue(agent);
-    mockUpsertUser.mockResolvedValue(updatedUser);
-
+  it("returns 400 when role is missing", async () => {
     const app = await buildApp();
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "10001" });
 
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ intent: "agent" });
+    expect(res.status).toBe(400);
+    expect(mockUpsertUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for an invalid role", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/auth/complete-profile")
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "10001", role: "admin" });
+
+    expect(res.status).toBe(400);
+    expect(mockUpsertUser).not.toHaveBeenCalled();
   });
 
   it("rejects a submitted role that disagrees with the session intent", async () => {
@@ -346,20 +326,8 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
 
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ intent: "agent" });
-  });
-
-  it("rejects a submitted role that disagrees with the session intent", async () => {
-    const app = await buildApp();
-
-    const res = await request(app)
-      .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "10001", role: "homeowner" });
 
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("ROLE_INTENT_MISMATCH");
@@ -375,8 +343,8 @@ describe("POST /api/auth/complete-profile — agent intent role assignment", () 
     const app = await buildApp();
     const res = await request(app)
       .post("/api/auth/complete-profile")
-      .set("x-test-user", "homeowner")
-      .send({ zipCode: "10001", role: "agent" });
+      .set("x-test-user", "agent-intent")
+      .send({ zipCode: "90210", role: "agent" });
 
     expect(res.status).toBe(200);
     expect(res.body.role).toBe("agent");

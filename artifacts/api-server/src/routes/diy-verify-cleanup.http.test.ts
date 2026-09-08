@@ -68,6 +68,7 @@ vi.mock("../replitAuth", async (importOriginal) => {
       return _res.status(401).json({ message: "Unauthorized" });
     }),
     requirePropertyOwner: vi.fn((_req: any, _res: any, next: any) => next()),
+    requireNotSuspended: vi.fn(() => (_req: any, _res: any, next: any) => next()),
     evictStatusCache: vi.fn(),
   };
 });
