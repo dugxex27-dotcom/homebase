@@ -1156,7 +1156,7 @@ export class MemStorage implements IStorage {
   // subscriptionPlansMap: seeded via _seedSubscriptionPlans() — parity-complete for dev
   private subscriptionPlansMap: Map<string, SubscriptionPlan>;
 
-  // taskCompletionsMap: starts empty; demo completions go to DB seed but not here (see task #127)
+  // taskCompletionsMap: seeded with demo completions in development and populated at runtime
   private taskCompletionsMap: Map<string, TaskCompletion>;
 
   private achievementsMap: Map<string, Achievement>;
@@ -4068,11 +4068,22 @@ export class MemStorage implements IStorage {
       },
     ];
 
-    // Insert task completions into database
+    // Insert task completions into database and mirror them into the in-memory
+    // store used by achievement progress calculations.
     try {
       await Promise.all(taskCompletionsData.map(async (task) => {
         await db.insert(taskCompletions).values(task).onConflictDoNothing();
       }));
+      taskCompletionsData.forEach((task) => {
+        this.taskCompletionsMap.set(task.id, {
+          ...task,
+          taskId: null,
+          taskCategory: task.taskCategory ?? null,
+          estimatedCost: null,
+          actualCost: null,
+          documentsUploaded: 0,
+        });
+      });
       console.log('[DEMO DATA] Inserted 15 task completions for Sarah Anderson');
     } catch (error) {
       console.error('[DEMO DATA] Error inserting task completions:', error);
