@@ -242,6 +242,13 @@ function findInvoiceInsertValues(valuesMock: ReturnType<typeof vi.fn>) {
   return valuesMock.mock.calls.map((c: any[]) => c[0]).find((v: any) => v && "fileName" in v);
 }
 
+function collectSqlValues(value: unknown, seen = new WeakSet<object>()): unknown[] {
+  if (value == null || typeof value !== "object") return [value];
+  if (seen.has(value)) return [];
+  seen.add(value);
+  return Object.values(value).flatMap((child) => collectSqlValues(child, seen));
+}
+
 async function buildApp() {
   const app = express();
   app.use(express.json());
@@ -347,5 +354,66 @@ describe("POST /api/contractor/invoices/upload — homeownerId + amount validati
     expect(res.status).toBe(201);
     const insertedValues = findInvoiceInsertValues(valuesMock);
     expect(insertedValues?.amount).toBeNull();
+  });
+});
+
+describe("GET /api/contractor/invoices — CSV export", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    OWNER_SESSION.user.companyRole = "owner";
+  });
+
+  afterEach(() => {
+    OWNER_SESSION.user.companyRole = "owner";
+  });
+
+  it("rejects CSV export for technicians", async () => {
+    OWNER_SESSION.user.companyRole = "tech";
+    const app = await buildApp();
+
+    const res = await request(app).get("/api/contractor/invoices?format=csv");
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toMatch(/admins/i);
+    expect(mockDbSelect).not.toHaveBeenCalled();
+  });
+
+  it("exports CSV for admins and preserves every active filter", async () => {
+    const whereMock = vi.fn().mockReturnValue({
+      orderBy: vi.fn().mockResolvedValue([{
+        invoiceDate: "2026-09-05",
+        createdAt: "2026-09-06T00:00:00.000Z",
+        uploaderFirstName: "Terry",
+        uploaderLastName: "Tech",
+        uploaderEmail: "terry@example.com",
+        homeownerFirstName: "Hana",
+        homeownerLastName: "Homeowner",
+        amount: "99.50",
+        fileName: "invoice.pdf",
+        notes: "Paid",
+      }]),
+    });
+    mockDbSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        leftJoin: vi.fn().mockReturnValue({ where: whereMock }),
+      }),
+    });
+    const app = await buildApp();
+
+    const res = await request(app).get(
+      "/api/contractor/invoices?format=csv&techId=tech-22"
+      + "&startDate=2026-09-01&endDate=2026-09-30&homeownerName=Hana",
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toMatch(/text\/csv/);
+    expect(res.headers["content-disposition"]).toMatch(/attachment/);
+    expect(res.text).toContain('"Terry Tech","Hana Homeowner","99.50","invoice.pdf","Paid"');
+
+    const appliedValues = collectSqlValues(whereMock.mock.calls[0][0]);
+    expect(appliedValues).toContain("tech-22");
+    expect(appliedValues).toContain("2026-09-01");
+    expect(appliedValues).toContain("2026-09-30");
+    expect(appliedValues).toContain("%hana%");
   });
 });

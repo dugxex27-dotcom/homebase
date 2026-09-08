@@ -54,6 +54,7 @@ import {
   Building2,
   Zap,
   RefreshCw,
+  Download,
 } from "lucide-react";
 import type { User as UserType, Proposal, ContractorAppointment } from "@shared/schema";
 import { Link, useLocation, useSearch } from "wouter";
@@ -591,6 +592,7 @@ export default function ContractorDashboard() {
   const [invoiceStartDate, setInvoiceStartDate] = useState('');
   const [invoiceEndDate, setInvoiceEndDate] = useState('');
   const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
+  const [isExportingInvoices, setIsExportingInvoices] = useState(false);
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -666,6 +668,40 @@ export default function ContractorDashboard() {
     },
     enabled: isAdminRole && !!typedUser,
   });
+
+  const exportInvoicesCsv = async () => {
+    setIsExportingInvoices(true);
+    try {
+      const params = new URLSearchParams({ format: 'csv' });
+      if (invoiceTechFilter) params.set('techId', invoiceTechFilter);
+      if (invoiceStartDate) params.set('startDate', invoiceStartDate);
+      if (invoiceEndDate) params.set('endDate', invoiceEndDate);
+      if (invoiceHomeownerName) params.set('homeownerName', invoiceHomeownerName);
+
+      const response = await fetch(`/api/contractor/invoices?${params}`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to export invoices');
+
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') ?? '';
+      const fileName = disposition.match(/filename="([^"]+)"/)?.[1] ?? 'invoice-history.csv';
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({
+        title: 'Export failed',
+        description: 'Invoice history could not be downloaded. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExportingInvoices(false);
+    }
+  };
 
   const invoiceSummary = React.useMemo(() => {
     const technicianTotals = new Map<string, { key: string; name: string; count: number; amount: number }>();
@@ -2123,7 +2159,7 @@ export default function ContractorDashboard() {
             </div>
           </div>
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <select
                 value={invoiceTechFilter}
                 onChange={e => setInvoiceTechFilter(e.target.value)}
@@ -2147,6 +2183,16 @@ export default function ContractorDashboard() {
               <input type="date" value={invoiceEndDate} onChange={e => setInvoiceEndDate(e.target.value)}
                 style={{ flex: 1, minWidth: 130, padding: '7px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, outline: 'none' }}
               />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={exportInvoicesCsv}
+                disabled={isExportingInvoices}
+                style={{ flexShrink: 0 }}
+              >
+                {isExportingInvoices ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {isExportingInvoices ? 'Exporting…' : 'Export CSV'}
+              </Button>
             </div>
           </div>
 

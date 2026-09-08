@@ -57,6 +57,7 @@ import {
   recordMaintenanceEvidenceReview,
   resubmitMaintenanceEvidence,
 } from "../maintenance-evidence-review";
+import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -24735,7 +24736,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   });
 
   // List invoices — admins see all company invoices; techs see only their own
-  // Query params: techId, homeownerId, homeownerName, startDate, endDate
+  // Query params: techId, homeownerId, homeownerName, startDate, endDate, format
   app.get('/api/contractor/invoices', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'tech'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
@@ -24744,7 +24745,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       const isAdmin = sessionUser.companyRole === 'owner' || sessionUser.companyRole === 'admin';
-      const { techId, homeownerId, homeownerName, startDate, endDate } = req.query as Record<string, string | undefined>;
+      const { techId, homeownerId, homeownerName, startDate, endDate, format } = req.query as Record<string, string | undefined>;
+      if (format === 'csv' && !isAdmin) {
+        return res.status(403).json({ message: "Only company admins can export invoice history" });
+      }
 
       const conditions: any[] = [eq(contractorInvoiceUploads.companyId, sessionUser.companyId)];
       if (!isAdmin) {
@@ -24777,6 +24781,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .leftJoin(users, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
         .where(and(...conditions))
         .orderBy(desc(contractorInvoiceUploads.createdAt));
+
+      if (format === 'csv') {
+        const fileDate = new Date().toISOString().slice(0, 10);
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="invoice-history-${fileDate}.csv"`);
+        return res.send(`\uFEFF${serializeContractorInvoicesCsv(invoiceList)}`);
+      }
 
       res.json(invoiceList);
     } catch (error) {
