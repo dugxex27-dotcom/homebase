@@ -538,4 +538,43 @@ describe("MemStorage.expireStaleBoosts", () => {
 
     expect(expired).toBe(0);
   });
+
+  it("deletes boosts only after the 30-day audit grace period", async () => {
+    const oldEndDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
+    const recentEndDate = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000);
+
+    const oldBoost = await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "plumbing",
+      businessAddress: "123 Old Boost St",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: new Date("2026-01-01"),
+      endDate: oldEndDate,
+      amount: "49.99",
+      status: "expired",
+      isActive: false,
+    });
+    const recentBoost = await storage.createContractorBoost({
+      contractorId: CONTRACTOR_ID,
+      serviceCategory: "hvac",
+      businessAddress: "456 Recent Boost Ave",
+      businessLatitude: "39.7817",
+      businessLongitude: "-89.6501",
+      boostRadius: 25,
+      startDate: new Date("2026-01-01"),
+      endDate: recentEndDate,
+      amount: "49.99",
+      status: "expired",
+      isActive: false,
+    });
+
+    const { deleted } = await storage.expireStaleBoosts();
+    const remaining = await storage.getContractorBoosts(CONTRACTOR_ID);
+
+    expect(deleted).toBe(1);
+    expect(remaining.some((boost) => boost.id === oldBoost.id)).toBe(false);
+    expect(remaining.some((boost) => boost.id === recentBoost.id)).toBe(true);
+  });
 });

@@ -3,17 +3,21 @@ import { logger } from './lib/logger';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // Run every hour
 
-export async function runBoostExpiryCleanup(): Promise<{ expired: number }> {
+export async function runBoostExpiryCleanup(): Promise<{ expired: number; deleted: number }> {
   logger.info('[BOOST-EXPIRY] Starting stale boost expiry run');
 
   try {
-    const { expired } = await storage.expireStaleBoosts();
+    const { expired, deleted } = await storage.expireStaleBoosts();
+    if (deleted > 0) {
+      logger.info({ deleted }, '[BOOST-EXPIRY] Deleted boosts beyond 30-day retention window');
+    }
     if (expired > 0) {
       logger.info({ expired }, '[BOOST-EXPIRY] Marked expired boosts inactive');
-    } else {
+    }
+    if (expired === 0 && deleted === 0) {
       logger.info('[BOOST-EXPIRY] No stale boosts found');
     }
-    return { expired };
+    return { expired, deleted };
   } catch (err) {
     logger.error({ err }, '[BOOST-EXPIRY] Run failed');
     throw err;

@@ -1023,6 +1023,8 @@ export const contractorBoosts = pgTable("contractor_boosts", {
   stripePaymentIntentIdUnique: uniqueIndex("contractor_boosts_stripe_pi_id_unique")
     .on(t.stripePaymentIntentId)
     .where(sql`${t.stripePaymentIntentId} IS NOT NULL`),
+  statusEndDateIdx: index("IDX_contractor_boosts_status_end_date")
+    .on(t.status, t.endDate),
 }));
 
 // Task completions tracking for achievements and streak calculation

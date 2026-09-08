@@ -298,7 +298,7 @@ export interface IStorage {
   updateContractorBoost(id: string, boost: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined>;
   deleteContractorBoost(id: string): Promise<boolean>;
   checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null>;
-  expireStaleBoosts(): Promise<{ expired: number }>;
+  expireStaleBoosts(): Promise<{ expired: number; deleted: number }>;
 
   // House transfer operations
   createHouseTransfer(transfer: InsertHouseTransfer): Promise<HouseTransfer>;
@@ -3971,18 +3971,25 @@ export class MemStorage implements IStorage {
     return this.contractorBoosts.delete(id);
   }
 
-  async expireStaleBoosts(): Promise<{ expired: number }> {
+  async expireStaleBoosts(): Promise<{ expired: number; deleted: number }> {
     // MemStorage is not the primary store; expiry is handled by DbStorage.
-    // Update in-memory mirrors so any in-flight reads see consistent data.
+    // Keep its mirror consistent for tests and any legacy in-memory callers.
     const now = new Date();
+    const retentionCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     let expired = 0;
+    let deleted = 0;
     for (const boost of this.contractorBoosts.values()) {
+      if (new Date(boost.endDate) < retentionCutoff) {
+        this.contractorBoosts.delete(boost.id);
+        deleted++;
+        continue;
+      }
       if (boost.status === 'active' && new Date(boost.endDate) < now) {
         this.contractorBoosts.set(boost.id, { ...boost, status: 'expired', isActive: false, updatedAt: now });
         expired++;
       }
     }
-    return { expired };
+    return { expired, deleted };
   }
 
   /** Returns all boost records currently held in memory (regardless of status). */
@@ -7461,8 +7468,18 @@ class DbStorage implements IStorage {
     return result.length > 0;
   }
 
-  async expireStaleBoosts(): Promise<{ expired: number }> {
+  async expireStaleBoosts(): Promise<{ expired: number; deleted: number }> {
     const now = new Date();
+    const retentionCutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const deletedRows = await db
+      .delete(contractorBoosts)
+      .where(lt(contractorBoosts.endDate, retentionCutoff))
+      .returning({ id: contractorBoosts.id });
+
+    for (const { id } of deletedRows) {
+      this.memStorage.deleteContractorBoostFromMemory(id);
+    }
+
     const result = await db
       .update(contractorBoosts)
       .set({ status: 'expired', isActive: false, updatedAt: now })
@@ -7480,7 +7497,7 @@ class DbStorage implements IStorage {
       }
     }
 
-    return { expired: result.length };
+    return { expired: result.length, deleted: deletedRows.length };
   }
 
   async checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null> {

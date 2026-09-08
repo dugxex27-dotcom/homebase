@@ -277,6 +277,16 @@ export async function runMigrations() {
     console.warn('[MIGRATE] handoff_transfers table warning (non-fatal):', err?.message ?? err);
   }
 
+  // Supports active-boost lookups and the hourly 30-day retention cleanup.
+  try {
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_contractor_boosts_status_end_date"
+        ON "contractor_boosts" ("status", "end_date");
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] contractor_boosts retention index warning (non-fatal):', err?.message ?? err);
+  }
+
   await pool.end();
 }
 
