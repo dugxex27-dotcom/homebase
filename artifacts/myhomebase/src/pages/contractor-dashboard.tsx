@@ -952,7 +952,7 @@ export default function ContractorDashboard() {
   const resendInviteMutation = useMutation({
     mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
       const res = await fetch(`/api/contractor/team/${userId}/resend-invite`, {
-        method: 'POST',
+        method: 'PATCH',
         credentials: 'include',
       });
       const data = await res.json();

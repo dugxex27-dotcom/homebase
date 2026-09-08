@@ -23742,8 +23742,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.post('/api/contractor/invite-team-member', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), inviteTeamMemberHandler);
   app.post('/api/contractor/invite-tech', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), inviteTeamMemberHandler);
 
-  // Resend invite email to a pending tech (admin/owner only)
-  app.post('/api/contractor/team/:userId/resend-invite', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
+  // Resend invite email to a pending team member (admin/owner only).
+  // PATCH is canonical; POST remains as a compatibility alias for older clients.
+  const resendTeamInviteHandler = async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
 
@@ -23752,8 +23753,23 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const actorGuardErrResend = checkActorActiveGuard(actorStatusResend?.status);
       if (actorGuardErrResend) return res.status(actorGuardErrResend.status).json({ message: actorGuardErrResend.message });
       // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege escalation
-      const [actorRoleFreshResend] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      void actorRoleFreshResend; // consumed for demotion-guard call count
+      let requesterRole: string | null = null;
+      const actorRoleError = await verifyRequestorRoleFromDb(
+        adminUser.id,
+        adminUser.companyId,
+        async (requestorId, companyId) => {
+          const [actor] = await db
+            .select({ companyRole: users.companyRole })
+            .from(users)
+            .where(and(eq(users.id, requestorId), eq(users.companyId, companyId)))
+            .limit(1);
+          requesterRole = actor?.companyRole ?? null;
+          return requesterRole;
+        },
+      );
+      if (actorRoleError) {
+        return res.status(actorRoleError.status).json({ message: actorRoleError.message });
+      }
 
       if (adminUser.role !== 'contractor' || !adminUser.companyId) {
         return res.status(400).json({ message: "You must be a contractor with a company to resend invites" });
@@ -23771,34 +23787,76 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if ((techUser as any).status !== 'pending_invite') {
         return res.status(400).json({ message: "Invite can only be resent to pending members" });
       }
+      if (
+        requesterRole !== 'owner'
+        && (techUser.companyRole === 'admin' || techUser.companyRole === 'owner')
+      ) {
+        return res.status(403).json({
+          message: "Only the company owner can resend an admin invitation",
+        });
+      }
+      if (!techUser.email) {
+        return res.status(400).json({ message: "Pending member does not have an email address" });
+      }
 
       const cryptoMod = await import('crypto');
       const inviteToken = cryptoMod.randomBytes(32).toString('hex');
       const inviteExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-      await db.update(users).set({
-        inviteToken,
-        inviteExpiresAt,
-        updatedAt: new Date(),
-      } as any).where(eq(users.id, userId));
+      const resendTargetWhere = requesterRole === 'owner'
+        ? and(
+            eq(users.id, userId),
+            eq(users.companyId, adminUser.companyId),
+            eq(users.status, 'pending_invite'),
+          )
+        : and(
+            eq(users.id, userId),
+            eq(users.companyId, adminUser.companyId),
+            eq(users.status, 'pending_invite'),
+            ne(users.companyRole, 'admin'),
+            ne(users.companyRole, 'owner'),
+          );
+      const [updatedInvite] = await db.update(users).set({
+          inviteToken,
+          inviteExpiresAt,
+          updatedAt: new Date(),
+        } as any)
+        .where(resendTargetWhere)
+        .returning({ id: users.id });
+      if (!updatedInvite) {
+        return res.status(409).json({
+          message: "This invitation is no longer pending. Refresh the team list and try again.",
+        });
+      }
 
       const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
       const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
 
       await emailService.sendTechInviteEmail(
-        techUser.email!,
+        techUser.email,
         companyRow?.name || 'Your Company',
         adminUser.firstName || 'Your manager',
         inviteUrl
       );
 
-      res.json({ message: "Invite resent successfully", inviteUrl });
+      res.json({
+        message: "Invite resent successfully",
+        inviteUrl,
+        inviteExpiresAt: inviteExpiresAt.toISOString(),
+      });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error resending tech invite');
       res.status(500).json({ message: "Failed to resend invite" });
     }
-  });
+  };
+  const resendTeamInviteMiddleware = [
+    isAuthenticated,
+    requireNotSuspended(),
+    requireCompanyRole('owner', 'admin'),
+  ] as const;
+  app.patch('/api/contractor/team/:userId/resend-invite', ...resendTeamInviteMiddleware, resendTeamInviteHandler);
+  app.post('/api/contractor/team/:userId/resend-invite', ...resendTeamInviteMiddleware, resendTeamInviteHandler);
 
   // Get team members with seat usage (admin/owner only)
   app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {

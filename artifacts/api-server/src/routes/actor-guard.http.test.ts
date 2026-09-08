@@ -33,9 +33,11 @@ import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 
 const {
   mockDbLimit,
+  mockDbUpdateReturning,
   mockGetRecentStripeProcessedEventIds,
 } = vi.hoisted(() => ({
   mockDbLimit: vi.fn().mockResolvedValue([]),
+  mockDbUpdateReturning: vi.fn().mockResolvedValue([{ id: "target-tech-001" }]),
   mockGetRecentStripeProcessedEventIds: vi
     .fn()
     .mockResolvedValue(new Map<string, number>()),
@@ -205,7 +207,9 @@ vi.mock("../db", () => ({
     }),
     update: vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue(undefined),
+        where: vi.fn().mockReturnValue({
+          returning: mockDbUpdateReturning,
+        }),
       }),
     }),
     delete: vi.fn().mockReturnValue({
@@ -271,7 +275,7 @@ const TARGET_ID = "target-tech-001";
  * The session reports the actor as 'active' — simulating a valid but stale
  * session cookie that has not yet picked up the DB suspension.
  */
-async function buildApp(): Promise<express.Express> {
+async function buildApp(companyRole: "owner" | "admin" = "owner"): Promise<express.Express> {
   const app = express();
   app.use(express.json());
 
@@ -286,7 +290,7 @@ async function buildApp(): Promise<express.Express> {
         id: ACTOR_ID,
         role: "contractor",
         companyId: COMPANY_ID,
-        companyRole: "owner",
+        companyRole,
         status: "active", // stale — DB may say 'suspended'
         email: "actor@example.com",
         firstName: "Actor",
@@ -433,6 +437,67 @@ describe("checkActorActiveGuard — POST /api/contractor/team/:userId/resend-inv
     expect(res.status).toBe(404);
   });
 });
+
+describe.each(["patch", "post"] as const)(
+  "%s /api/contractor/team/:userId/resend-invite — target-role authorization",
+  (method) => {
+    beforeEach(() => {
+      mockGetRecentStripeProcessedEventIds.mockResolvedValue(new Map());
+      mockDbLimit.mockReset().mockResolvedValue([]);
+      mockDbUpdateReturning.mockReset().mockResolvedValue([{ id: TARGET_ID }]);
+    });
+
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("blocks a company admin from resending a pending admin invitation", async () => {
+      const app = await buildApp("admin");
+      mockDbLimit
+        .mockResolvedValueOnce([{ status: "active" }])
+        .mockResolvedValueOnce([{ companyRole: "admin" }])
+        .mockResolvedValueOnce([{
+          id: TARGET_ID,
+          companyId: COMPANY_ID,
+          companyRole: "admin",
+          status: "pending_invite",
+          email: "pending-admin@example.com",
+        }]);
+
+      const res = await request(app)[method](
+        `/api/contractor/team/${TARGET_ID}/resend-invite`,
+      ).send({});
+
+      expect(res.status).toBe(403);
+      expect(res.body.message).toMatch(/only the company owner/i);
+      expect(mockDbUpdateReturning).not.toHaveBeenCalled();
+    });
+
+    it("allows the fresh company owner to resend a pending admin invitation", async () => {
+      const app = await buildApp("owner");
+      mockDbLimit
+        .mockResolvedValueOnce([{ status: "active" }])
+        .mockResolvedValueOnce([{ companyRole: "owner" }])
+        .mockResolvedValueOnce([{
+          id: TARGET_ID,
+          companyId: COMPANY_ID,
+          companyRole: "admin",
+          status: "pending_invite",
+          email: "pending-admin@example.com",
+        }])
+        .mockResolvedValueOnce([{ name: "Test Company" }]);
+
+      const res = await request(app)[method](
+        `/api/contractor/team/${TARGET_ID}/resend-invite`,
+      ).send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toMatch(/resent successfully/i);
+      expect(res.body.inviteExpiresAt).toBeTruthy();
+      expect(mockDbUpdateReturning).toHaveBeenCalledOnce();
+    });
+  },
+);
 
 describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId (role-change)", () => {
   let app: express.Express;
