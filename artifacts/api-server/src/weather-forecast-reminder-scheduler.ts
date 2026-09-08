@@ -232,6 +232,15 @@ export const weatherForecastReminderScheduler = {
   _stopped: false,
 
   start() {
+    if (
+      this._initialTimeout !== null ||
+      this._checkInterval !== null ||
+      this._cleanupInterval !== null
+    ) {
+      console.log('[FORECAST] Weather forecast reminder scheduler already running — start skipped');
+      return;
+    }
+
     this._stopped = false;
     console.log('[FORECAST] Weather forecast reminder scheduler started (daily at 8 AM)');
 

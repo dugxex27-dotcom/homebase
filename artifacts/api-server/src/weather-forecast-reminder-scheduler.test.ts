@@ -55,6 +55,25 @@ describe('weatherForecastReminderScheduler', () => {
     expect(weatherForecastReminderScheduler._cleanupInterval).not.toBeNull();
   });
 
+  it('does not create duplicate timer handles when start() is called twice', () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout');
+    const setIntervalSpy = vi.spyOn(globalThis, 'setInterval');
+
+    weatherForecastReminderScheduler.start();
+    const initialTimeout = weatherForecastReminderScheduler._initialTimeout;
+    const cleanupInterval = weatherForecastReminderScheduler._cleanupInterval;
+
+    weatherForecastReminderScheduler.start();
+
+    expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+    expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+    expect(weatherForecastReminderScheduler._initialTimeout).toBe(initialTimeout);
+    expect(weatherForecastReminderScheduler._cleanupInterval).toBe(cleanupInterval);
+
+    setTimeoutSpy.mockRestore();
+    setIntervalSpy.mockRestore();
+  });
+
   it('clears all handles after stop()', () => {
     weatherForecastReminderScheduler.start();
     weatherForecastReminderScheduler.stop();

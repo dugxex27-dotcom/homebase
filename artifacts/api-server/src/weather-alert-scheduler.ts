@@ -307,6 +307,15 @@ export const weatherAlertScheduler = {
   _cleanupInterval: null as NodeJS.Timeout | null,
 
   start() {
+    if (
+      this._initialTimeout !== null ||
+      this._checkInterval !== null ||
+      this._cleanupInterval !== null
+    ) {
+      console.log('[WEATHER] Weather alert scheduler already running — start skipped');
+      return;
+    }
+
     console.log('[WEATHER] Weather alert scheduler started (2-hour interval)');
 
     this._initialTimeout = setTimeout(async () => {
