@@ -1,18 +1,6 @@
 /**
- * Unit tests for the contractor-checkout page covering the auth-resolution race.
- *
- * Test 1 — delayed auth resolve:
- *   When `user` is null on mount and becomes non-null later, checkoutMutation.mutate()
- *   must be called (via the useEffect that watches `user`). No modal is shown —
- *   the component redirects to Stripe-hosted checkout directly.
- *
- * Test 2 — 10 s auth timeout:
- *   When `user` stays null for 10 000 ms the component renders the
- *   "Taking too long to load" error state with the retry button.
- *
- * Test 3 — retry button calls window.location.reload:
- *   Clicking the "Try again" button inside the timeout error state must call
- *   window.location.reload().
+ * Unit tests for contractor checkout auth resolution, request failures,
+ * native checkout startup, and timeout recovery actions.
  *
  * All external dependencies are mocked so tests run without a server.
  */
@@ -20,22 +8,17 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, act, fireEvent } from "@testing-library/react";
 
-// ---------------------------------------------------------------------------
-// Hoisted mutable flags — set before any module is processed by vi.mock
-// ---------------------------------------------------------------------------
-
 const authFlags = vi.hoisted(() => ({
   user: null as { id: string; role: string } | null,
 }));
+
 const nativeFlags = vi.hoisted(() => ({
   isNative: false,
   isPending: false,
 }));
-const setLocationSpy = vi.hoisted(() => vi.fn());
 
-// ---------------------------------------------------------------------------
-// Module mocks — must appear before subject import
-// ---------------------------------------------------------------------------
+const setLocationSpy = vi.hoisted(() => vi.fn());
+const mutateSpy = vi.hoisted(() => vi.fn());
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -65,31 +48,39 @@ vi.mock("@/lib/queryClient", () => ({
   apiRequest: vi.fn(),
 }));
 
-const mutateSpy = vi.hoisted(() => vi.fn());
-
 vi.mock("@tanstack/react-query", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+  const React = await import("react");
+
   return {
     ...actual,
-    useMutation: vi.fn(() => ({
-      mutate: mutateSpy,
-      get isPending() {
-        return nativeFlags.isPending;
-      },
-      isError: false,
-    })),
+    useMutation: vi.fn((options: {
+      mutationFn: () => Promise<unknown>;
+      onSuccess?: (data: any) => void | Promise<void>;
+      onError?: (error: Error) => void;
+    }) => {
+      const [isPending, setIsPending] = React.useState(false);
+      const mutate = () => {
+        mutateSpy();
+        setIsPending(true);
+        void options.mutationFn()
+          .then((data) => options.onSuccess?.(data))
+          .catch((error) => options.onError?.(error))
+          .finally(() => setIsPending(false));
+      };
+
+      return {
+        mutate,
+        isPending: nativeFlags.isPending || isPending,
+        isError: false,
+      };
+    }),
   };
 });
 
-// ---------------------------------------------------------------------------
-// Subject under test — imported after all mocks are registered
-// ---------------------------------------------------------------------------
-
 import ContractorCheckout from "./contractor-checkout";
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+import { openPaymentUrl } from "@/lib/nativeBrowser";
+import { apiRequest } from "@/lib/queryClient";
 
 beforeEach(() => {
   authFlags.user = null;
@@ -97,6 +88,11 @@ beforeEach(() => {
   nativeFlags.isPending = false;
   mutateSpy.mockClear();
   setLocationSpy.mockClear();
+  vi.mocked(openPaymentUrl).mockClear();
+  vi.mocked(apiRequest).mockReset();
+  vi.mocked(apiRequest).mockResolvedValue({
+    json: async () => ({}),
+  } as Response);
   vi.useFakeTimers();
 });
 
@@ -107,34 +103,28 @@ afterEach(() => {
 
 describe("ContractorCheckout — delayed auth resolve", () => {
   it("calls mutate() when user resolves after initial render", async () => {
-    // Render with null user — should show the loading spinner, mutate not called yet.
     const { rerender } = render(<ContractorCheckout />);
 
     expect(mutateSpy).not.toHaveBeenCalled();
     expect(screen.getByText(/preparing your checkout/i)).toBeTruthy();
 
-    // Simulate auth resolving: update flag and re-render.
     authFlags.user = { id: "ctr-001", role: "contractor" };
 
     await act(async () => {
       rerender(<ContractorCheckout />);
     });
 
-    // The useEffect fires mutate() to start the hosted Stripe checkout redirect.
     expect(mutateSpy).toHaveBeenCalledTimes(1);
-    // Loading spinner still visible while mutation is in flight.
     expect(screen.getByText(/preparing your checkout/i)).toBeTruthy();
   });
 });
 
 describe("ContractorCheckout — 10 s auth timeout", () => {
-  it("shows the AuthTimedOut error state after 10 000 ms with null user", async () => {
+  it("shows the auth timeout state after 10 seconds with no user", async () => {
     render(<ContractorCheckout />);
 
-    // Before timeout: still shows loading spinner.
     expect(screen.queryByText(/taking too long/i)).toBeNull();
 
-    // Advance fake timers past the 10 s threshold.
     await act(async () => {
       vi.advanceTimersByTime(10_001);
     });
@@ -144,10 +134,9 @@ describe("ContractorCheckout — 10 s auth timeout", () => {
     expect(screen.getByRole("button", { name: /sign in/i })).toBeTruthy();
   });
 
-  it("does NOT show the timeout state when user resolves before 10 s", async () => {
+  it("does not show the timeout state when user resolves before 10 seconds", async () => {
     render(<ContractorCheckout />);
 
-    // User resolves at 5 s — well within the timeout window.
     await act(async () => {
       vi.advanceTimersByTime(5_000);
     });
@@ -155,15 +144,72 @@ describe("ContractorCheckout — 10 s auth timeout", () => {
     authFlags.user = { id: "ctr-001", role: "contractor" };
 
     await act(async () => {
-      // Re-render with resolved user so useEffect re-runs.
       cleanup();
       render(<ContractorCheckout />);
     });
 
-    // Timeout error state must not appear.
     expect(screen.queryByText(/taking too long/i)).toBeNull();
-    // mutate() was called to kick off the hosted checkout redirect.
     expect(mutateSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ContractorCheckout — checkout failure", () => {
+  it("shows the checkout error state and starts a fresh request on retry", async () => {
+    vi.mocked(apiRequest)
+      .mockRejectedValueOnce(new Error("Stripe session failed"))
+      .mockResolvedValueOnce({ json: async () => ({}) } as Response)
+      .mockResolvedValueOnce({ json: async () => ({}) } as Response);
+    authFlags.user = { id: "ctr-001", role: "contractor" };
+
+    render(<ContractorCheckout />);
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Checkout didn't load")).toBeTruthy();
+    const retryButton = screen.getByTestId("button-retry-checkout");
+
+    await act(async () => {
+      fireEvent.click(retryButton);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mutateSpy).toHaveBeenCalledTimes(2);
+    const checkoutCalls = vi.mocked(apiRequest).mock.calls.filter(
+      ([path]) => path === "/api/create-subscription-checkout",
+    );
+    expect(checkoutCalls).toHaveLength(2);
+    expect(checkoutCalls[0]?.[1]).toBe("POST");
+    expect(checkoutCalls[0]?.[2]).toEqual(expect.objectContaining({ plan: "basic" }));
+  });
+});
+
+describe("ContractorCheckout — native checkout", () => {
+  it("starts checkout when the user resolves and opens the returned URL natively", async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      json: async () => ({ url: "https://checkout.stripe.test/session" }),
+    } as Response);
+    nativeFlags.isNative = true;
+    const { rerender } = render(<ContractorCheckout />);
+
+    authFlags.user = { id: "ctr-001", role: "contractor" };
+    await act(async () => {
+      rerender(<ContractorCheckout />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mutateSpy).toHaveBeenCalledTimes(1);
+    const checkoutCalls = vi.mocked(apiRequest).mock.calls.filter(
+      ([path]) => path === "/api/create-subscription-checkout",
+    );
+    expect(checkoutCalls).toHaveLength(1);
+    expect(checkoutCalls[0]?.[1]).toBe("POST");
+    expect(checkoutCalls[0]?.[2]).toEqual(expect.objectContaining({ plan: "basic" }));
+    expect(openPaymentUrl).toHaveBeenCalledWith("https://checkout.stripe.test/session");
   });
 });
 
@@ -178,13 +224,11 @@ describe("ContractorCheckout — retry button", () => {
 
     render(<ContractorCheckout />);
 
-    // Advance past the timeout.
     await act(async () => {
       vi.advanceTimersByTime(10_001);
     });
 
-    const retryButton = screen.getByTestId("button-retry-auth");
-    fireEvent.click(retryButton);
+    fireEvent.click(screen.getByTestId("button-retry-auth"));
 
     expect(reloadSpy).toHaveBeenCalledTimes(1);
   });
