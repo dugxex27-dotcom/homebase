@@ -399,6 +399,67 @@
       margin-bottom: 28px;
       text-align: left;
     }
+
+    .share-section {
+      padding: 18px;
+      margin-bottom: 24px;
+      background: rgba(60,37,142,0.04);
+      border: 1.5px solid rgba(60,37,142,0.14);
+      border-radius: 12px;
+    }
+    .share-title {
+      margin-bottom: 12px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+    .share-buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .share-btn {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 9px 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      background: var(--card);
+      color: var(--primary);
+      font: inherit;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+    .share-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--accent);
+      background: rgba(60,37,142,0.04);
+    }
+    .share-btn:focus-visible {
+      outline: 3px solid rgba(60,37,142,0.2);
+      outline-offset: 2px;
+    }
+    .share-btn.primary {
+      grid-column: 1 / -1;
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-size: 12px;
+    }
+    .share-btn.primary:hover { background: var(--primary); }
+    .share-status {
+      min-height: 16px;
+      margin-top: 8px;
+      color: var(--good);
+      font-size: 10px;
+      font-weight: 700;
+    }
     .score-breakdown-label {
       font-size: 10px;
       font-weight: 700;
@@ -601,6 +662,17 @@
         </div>
       </div>
 
+      <div class="share-section">
+        <div class="share-title">Share your Home Health Score</div>
+        <div class="share-buttons">
+          <button class="share-btn primary" type="button" id="shareScoreBtn">Share my score</button>
+          <button class="share-btn" type="button" id="shareXBtn" aria-label="Share your score on X">𝕏 <span>Share</span></button>
+          <button class="share-btn" type="button" id="shareFacebookBtn" aria-label="Share your score on Facebook">f <span>Facebook</span></button>
+          <button class="share-btn" type="button" id="copyLinkBtn">⧉ <span>Copy link</span></button>
+        </div>
+        <div class="share-status" id="shareStatus" role="status" aria-live="polite"></div>
+      </div>
+
       <a class="cta-btn" href="/signin/homeowner" target="_top" id="ctaBtn">Get Started with MyHomeBase →</a>
       <div class="cta-sub">
         Already have an account? <a href="/signin/homeowner" target="_top">Sign in</a>
@@ -646,6 +718,72 @@
     const resultHeadline = document.getElementById('resultHeadline');
     const resultMsg    = document.getElementById('resultMsg');
     const scoreBarFill = document.getElementById('scoreBarFill');
+    const shareStatus  = document.getElementById('shareStatus');
+    let finalScore     = 0;
+
+    function getShareDetails() {
+      const quizUrl = new URL('.', window.location.href).href;
+      return {
+        title: 'My Home Health Score',
+        text: 'I scored ' + finalScore + '/100 on my Home Health Score — how does yours compare?',
+        url: quizUrl
+      };
+    }
+
+    function setShareStatus(message) {
+      shareStatus.textContent = message;
+      window.setTimeout(function() {
+        if (shareStatus.textContent === message) shareStatus.textContent = '';
+      }, 3000);
+    }
+
+    function copyShareLink() {
+      const share = getShareDetails();
+      const content = share.text + ' ' + share.url;
+      if (navigator.clipboard && window.isSecureContext) {
+        return navigator.clipboard.writeText(content).then(function() {
+          setShareStatus('Score and link copied!');
+        });
+      }
+
+      const textArea = document.createElement('textarea');
+      textArea.value = content;
+      textArea.style.position = 'fixed';
+      textArea.style.opacity = '0';
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      textArea.remove();
+      setShareStatus('Score and link copied!');
+      return Promise.resolve();
+    }
+
+    document.getElementById('shareScoreBtn').addEventListener('click', function() {
+      const share = getShareDetails();
+      if (navigator.share) {
+        navigator.share(share).catch(function(error) {
+          if (error && error.name !== 'AbortError') copyShareLink();
+        });
+      } else {
+        copyShareLink();
+      }
+    });
+
+    document.getElementById('shareXBtn').addEventListener('click', function() {
+      const share = getShareDetails();
+      window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(share.text) + '&url=' + encodeURIComponent(share.url), '_blank', 'noopener,noreferrer');
+    });
+
+    document.getElementById('shareFacebookBtn').addEventListener('click', function() {
+      const share = getShareDetails();
+      window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(share.url) + '&quote=' + encodeURIComponent(share.text), '_blank', 'noopener,noreferrer');
+    });
+
+    document.getElementById('copyLinkBtn').addEventListener('click', function() {
+      copyShareLink().catch(function() {
+        setShareStatus('Could not copy automatically. Please copy the page address.');
+      });
+    });
 
     function startQuiz() {
       currentIndex = 0;
@@ -703,6 +841,7 @@
 
     function showResults() {
       const pct = Math.round((totalScore / MAX_SCORE) * 100);
+      finalScore = pct;
 
       applyResultsToDOM(pct, {
         scoreNumber:    scoreNumber,
