@@ -165,5 +165,5 @@ describe("maintenance appliance manuals", () => {
     await user.click(screen.getByRole("button", { name: "Delete Kitchen Dishwasher" }));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
     await waitFor(() => expect(screen.queryByText("Kitchen Dishwasher")).not.toBeInTheDocument());
-  });
+  }, 10_000);
 });

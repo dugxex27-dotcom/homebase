@@ -11,6 +11,7 @@ import * as zod from "zod";
  * @summary Get the authenticated user
  */
 export const GetAuthUserResponse = zod.object({
+  email: zod.string().nullish(),
   firstName: zod.string().nullish(),
   lastName: zod.string().nullish(),
   phone: zod.string().nullish(),

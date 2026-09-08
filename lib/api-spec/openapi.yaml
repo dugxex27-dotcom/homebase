@@ -64,6 +64,8 @@ components:
     AuthUser:
       type: object
       properties:
+        email:
+          type: ["string", "null"]
         firstName:
           type: ["string", "null"]
         lastName:

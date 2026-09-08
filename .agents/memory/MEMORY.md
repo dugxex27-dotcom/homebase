@@ -45,3 +45,4 @@
 - [Evidence and invoice scoring concurrency](linked-evidence-review-concurrency.md) — preserve evidence-group ordering; score dedup uses a canonical house/type/year lock
 - [Fleet-wide alert cooldowns](fleet-alert-cooldowns.md) — claim alerts atomically with unique tokens; health must fail closed when shared state is absent
 - [Payment completion idempotency](payment-completion-idempotency.md) — webhook and browser return paths must converge on one atomic persistence claim
+- [Validated API responses strip omitted fields](validated-api-response-fields.md) — frontend safeParse only preserves fields declared in OpenAPI; keep response contracts complete
