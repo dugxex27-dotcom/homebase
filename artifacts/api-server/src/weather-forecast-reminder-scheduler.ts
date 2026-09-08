@@ -1,6 +1,6 @@
 import { db } from './db';
 import { eq, and, gte, lt } from 'drizzle-orm';
-import { users, houses, notificationPreferences, weatherForecastRemindersSent } from '@workspace/db';
+import { users, houses, notifications, notificationPreferences, weatherForecastRemindersSent } from '@workspace/db';
 import { geocodeAddress } from './geocoding-service';
 import { isDemoId } from './storage';
 // removed unused storage import
@@ -152,6 +152,35 @@ async function recordForecastReminderSent(userId: string, houseId: string, trigg
   }
 }
 
+export async function createForecastNotification(
+  homeownerId: string,
+  house: HouseRow,
+  triggerResult: { trigger: WeatherTrigger; expectedDate: string },
+  taskCount: number,
+): Promise<boolean> {
+  const display = TRIGGER_DISPLAY[triggerResult.trigger];
+  const now = new Date().toISOString();
+
+  try {
+    await db.insert(notifications).values({
+      homeownerId,
+      houseId: house.id,
+      type: `weather_forecast_${triggerResult.trigger}`,
+      category: 'weather',
+      title: `${display.emoji} ${display.label} Coming — ${house.name}`,
+      message: `${taskCount} maintenance task${taskCount === 1 ? '' : 's'} need attention before ${triggerResult.expectedDate.toLowerCase()}.`,
+      scheduledFor: now,
+      sentAt: now,
+      priority: 'high',
+      actionUrl: '/maintenance',
+    });
+    return true;
+  } catch (error) {
+    console.error('[FORECAST] Error creating in-app forecast notification:', error);
+    return false;
+  }
+}
+
 async function cleanupOldReminders(): Promise<void> {
   try {
     const thirtyDaysAgo = new Date();
@@ -217,7 +246,11 @@ async function checkForecastRemindersForAllHomes(): Promise<void> {
               continue;
             }
 
-            const anySucceeded = await sendForecastReminder(homeowner, house, triggerResult, tasks);
+            const results = await Promise.all([
+              sendForecastReminder(homeowner, house, triggerResult, tasks),
+              createForecastNotification(homeowner.id, house, triggerResult, tasks.length),
+            ]);
+            const anySucceeded = results.some(Boolean);
 
             if (anySucceeded) {
               await recordForecastReminderSent(homeowner.id, house.id, triggerResult.trigger);

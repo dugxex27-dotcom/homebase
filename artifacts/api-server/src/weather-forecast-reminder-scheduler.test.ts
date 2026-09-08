@@ -4,6 +4,7 @@ vi.mock('./db', () => ({ db: {} }));
 vi.mock('@workspace/db', () => ({
   users: {},
   houses: {},
+  notifications: {},
   notificationPreferences: {},
   weatherForecastRemindersSent: {},
 }));
@@ -15,6 +16,7 @@ vi.mock('./weather-forecast-service', () => ({
   findRelevantOverdueTasks: vi.fn(),
   TRIGGER_DISPLAY: {
     hard_freeze: { emoji: '🧊', label: 'Hard Freeze' },
+    heavy_rain: { emoji: '🌧️', label: 'Heavy Rain' },
   },
 }));
 vi.mock('./email-service', () => ({
@@ -33,8 +35,13 @@ vi.mock('drizzle-orm', () => ({
   lt: vi.fn(),
 }));
 
-import { sendForecastReminder, weatherForecastReminderScheduler } from './weather-forecast-reminder-scheduler';
+import {
+  createForecastNotification,
+  sendForecastReminder,
+  weatherForecastReminderScheduler,
+} from './weather-forecast-reminder-scheduler';
 import { db } from './db';
+import { notifications } from '@workspace/db';
 import { sendWeatherForecastReminderEmail } from './email-service';
 import { smsService } from './sms-service';
 import { pushNotificationService } from './push-notification-service';
@@ -230,5 +237,43 @@ describe('sendForecastReminder', () => {
       { ignoreForecastPreference: true },
     );
     expect(smsService.sendWeatherForecastReminderSMS).not.toHaveBeenCalled();
+  });
+});
+
+describe('createForecastNotification', () => {
+  it('creates a persistent weather bell notification with trigger, task count, and maintenance link', async () => {
+    const values = vi.fn().mockResolvedValue(undefined);
+    const insert = vi.fn().mockReturnValue({ values });
+    (db as any).insert = insert;
+
+    const created = await createForecastNotification(
+      'homeowner-1',
+      {
+        id: 'house-1',
+        name: 'Main Home',
+        address: '123 Main St',
+        latitude: '40',
+        longitude: '-75',
+      },
+      {
+        trigger: 'heavy_rain' as any,
+        expectedDate: 'Friday',
+      },
+      3,
+    );
+
+    expect(created).toBe(true);
+    expect(insert).toHaveBeenCalledWith(notifications);
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      homeownerId: 'homeowner-1',
+      houseId: 'house-1',
+      type: 'weather_forecast_heavy_rain',
+      category: 'weather',
+      title: '🌧️ Heavy Rain Coming — Main Home',
+      message: '3 maintenance tasks need attention before friday.',
+      actionUrl: '/maintenance',
+    }));
+
+    delete (db as any).insert;
   });
 });

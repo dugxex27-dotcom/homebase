@@ -75,7 +75,9 @@ export function Notifications({ homeownerId }: NotificationsProps) {
   };
 
   const getNotificationIcon = (notification: Notification) => {
-    if (notification.type === "message") {
+    if (notification.category === "weather") {
+      return <span className="text-base leading-none" aria-label="Weather reminder">🌦️</span>;
+    } else if (notification.type === "message") {
       return <MessageCircle className="w-4 h-4 text-blue-600" />;
     } else if (notification.category === "maintenance") {
       switch (notification.type) {
@@ -102,7 +104,9 @@ export function Notifications({ homeownerId }: NotificationsProps) {
   };
 
   const getNotificationColor = (notification: Notification) => {
-    if (notification.category === "maintenance") {
+    if (notification.category === "weather") {
+      return "border-l-sky-500";
+    } else if (notification.category === "maintenance") {
       switch (notification.type) {
         case "maintenance_overdue":
           return "border-l-red-800";
@@ -127,7 +131,9 @@ export function Notifications({ homeownerId }: NotificationsProps) {
   };
 
   const formatRelativeTime = (notification: Notification) => {
-    if (notification.category === "maintenance") {
+    if (notification.category === "weather") {
+      return "Weather reminder";
+    } else if (notification.category === "maintenance") {
       // For maintenance tasks, show current status
       if (notification.type === "maintenance_overdue") {
         return "Overdue";
@@ -214,7 +220,7 @@ export function Notifications({ homeownerId }: NotificationsProps) {
                           </p>
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>
-                              {notification.category === "maintenance" ? 
+                              {notification.category === "maintenance" || notification.category === "weather" ?
                                 formatRelativeTime(notification) :
                                 `Scheduled ${formatRelativeTime(notification)}`
                               }
