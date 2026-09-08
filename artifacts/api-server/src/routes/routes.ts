@@ -211,9 +211,17 @@ export function verifyInvoicePaymentToken(
 }
 
 // Rate-limit background Stripe subscription syncs to avoid hitting the API on every /api/user call.
-// Maps userId -> timestamp of last background sync attempt.
+// After Stripe has confirmed no subscription three times, stop retrying until the user
+// explicitly creates another checkout session.
 export const backgroundSyncCooldownMs = 5 * 60 * 1000; // 5 minutes
+export const maxBackgroundSyncMisses = 3;
 export const lastBackgroundSyncAttempt = new Map<string, number>();
+export const backgroundSyncMissCount = new Map<string, number>();
+
+function resetBackgroundSyncRetryState(userId: string): void {
+  lastBackgroundSyncAttempt.delete(userId);
+  backgroundSyncMissCount.delete(userId);
+}
 
 // Configure multer for memory storage
 const upload = multer({ 
@@ -4342,7 +4350,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ) {
         const now = Date.now();
         const lastAttempt = lastBackgroundSyncAttempt.get(userId);
-        if (!lastAttempt || now - lastAttempt > backgroundSyncCooldownMs) {
+        const missCount = backgroundSyncMissCount.get(userId) ?? 0;
+        if (
+          missCount < maxBackgroundSyncMisses &&
+          (!lastAttempt || now - lastAttempt > backgroundSyncCooldownMs)
+        ) {
           lastBackgroundSyncAttempt.set(userId, now);
           const stripeCustomerId = user.stripeCustomerId;
           const userRole = user.role;
@@ -4380,11 +4392,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                       } as any);
                     }
                   }
+                  resetBackgroundSyncRetryState(userId);
                   req.log.info({ userId, status: sub.status }, '[LAZY-SYNC] Background subscription sync succeeded');
                   return;
                 }
               }
-              req.log.info({ userId }, '[LAZY-SYNC] No active/trialing Stripe subscription found in background sync');
+              const nextMissCount = (backgroundSyncMissCount.get(userId) ?? 0) + 1;
+              backgroundSyncMissCount.set(userId, nextMissCount);
+              req.log.info(
+                { userId, missCount: nextMissCount, maxMisses: maxBackgroundSyncMisses },
+                '[LAZY-SYNC] No active/trialing Stripe subscription found in background sync',
+              );
             } catch (syncErr: any) {
               req.log.warn({ err: syncErr?.message, userId }, '[LAZY-SYNC] Background subscription sync failed');
             }
@@ -4546,6 +4564,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...trialData,
           return_url: `${baseUrl}/subscription-success?session_id={CHECKOUT_SESSION_ID}&role=${userRole}${trialMode ? '&trial=true' : ''}`,
         });
+        resetBackgroundSyncRetryState(userId);
         console.log(`[SUBSCRIPTION] Created embedded checkout session for user ${user.email}, plan: ${plan}`);
         return res.json({ clientSecret: session.client_secret });
       }
@@ -4569,6 +4588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cancel_url: `${baseUrl}/${userRole === 'homeowner' ? 'homeowner-pricing?onboarding=true' : 'contractor-dashboard'}?subscription=cancelled`,
       });
 
+      resetBackgroundSyncRetryState(userId);
       console.log(`[SUBSCRIPTION] Created hosted checkout session for user ${user.email}, plan: ${plan}`);
       return res.json({ url: session.url });
     } catch (error: any) {

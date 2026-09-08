@@ -7,7 +7,8 @@
  *   2. A second /api/user call within the 5-minute cooldown does NOT trigger
  *      another Stripe subscriptions.list() call.
  *   3. Apple IAP users (subscriptionSource = 'apple') are skipped entirely.
- *   4. After a successful sync the DB is updated (updateUserStripeSubscription +
+ *   4. After three confirmed misses, further background syncs are suppressed.
+ *   5. After a successful sync the DB is updated (updateUserStripeSubscription +
  *      updateUserSubscriptionStatus + upsertUser called).
  */
 
@@ -232,7 +233,12 @@ vi.mock("../db", () => ({
 
 import express from "express";
 import request from "supertest";
-import { registerRoutes, lastBackgroundSyncAttempt } from "./routes";
+import {
+  backgroundSyncMissCount,
+  maxBackgroundSyncMisses,
+  registerRoutes,
+  lastBackgroundSyncAttempt,
+} from "./routes";
 import { json as expressJson } from "express";
 
 // ---------------------------------------------------------------------------
@@ -302,8 +308,9 @@ describe("GET /api/user — lazy background subscription sync", () => {
     mockUpdateUserSubscriptionStatus.mockResolvedValue(undefined);
     mockUpsertUser.mockResolvedValue(undefined);
 
-    // Clear the cooldown map so each test starts fresh.
+    // Clear retry state so each test starts fresh.
     lastBackgroundSyncAttempt.clear();
+    backgroundSyncMissCount.clear();
 
     process.env.STRIPE_SECRET_KEY = "sk_test_lazy_sync_placeholder";
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_lazy_sync_placeholder";
@@ -400,6 +407,35 @@ describe("GET /api/user — lazy background subscription sync", () => {
     await drainAsync();
 
     expect(mockSubscriptionsList.mock.calls.length).toBeGreaterThan(firstCallCount);
+  });
+
+  it("gives up after three confirmed misses even after the cooldown expires", async () => {
+    mockGetUser.mockResolvedValue(BASE_USER);
+    mockSubscriptionsList.mockResolvedValue({ data: [] });
+
+    for (let attempt = 0; attempt < maxBackgroundSyncMisses; attempt++) {
+      await request(app).get("/api/user");
+      await drainAsync();
+      lastBackgroundSyncAttempt.set(USER_ID, Date.now() - 6 * 60 * 1000);
+    }
+
+    expect(backgroundSyncMissCount.get(USER_ID)).toBe(maxBackgroundSyncMisses);
+    const callCountAfterBudget = mockSubscriptionsList.mock.calls.length;
+
+    await request(app).get("/api/user");
+    await drainAsync();
+
+    expect(mockSubscriptionsList.mock.calls.length).toBe(callCountAfterBudget);
+  });
+
+  it("does not consume the confirmed-miss budget when Stripe errors", async () => {
+    mockGetUser.mockResolvedValue(BASE_USER);
+    mockSubscriptionsList.mockRejectedValue(new Error("Stripe network error"));
+
+    await request(app).get("/api/user");
+    await drainAsync();
+
+    expect(backgroundSyncMissCount.has(USER_ID)).toBe(false);
   });
 
   it("fires a background sync when subscriptionStatus is explicitly 'inactive' (not just null)", async () => {
