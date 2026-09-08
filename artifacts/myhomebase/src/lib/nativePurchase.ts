@@ -43,6 +43,23 @@ type PurchaseVerifiedListener = (result: { plan: NativePlanKey; productId: strin
 type PurchaseFailedListener = (result: { message: string }) => void;
 const verifiedListeners = new Set<PurchaseVerifiedListener>();
 const failedListeners = new Set<PurchaseFailedListener>();
+const activationPendingListeners = new Set<() => void>();
+let activationPending = false;
+
+function setNativeActivationPending(pending: boolean): void {
+  if (activationPending === pending) return;
+  activationPending = pending;
+  activationPendingListeners.forEach((listener) => listener());
+}
+
+export function subscribeToNativeActivationPending(listener: () => void): () => void {
+  activationPendingListeners.add(listener);
+  return () => activationPendingListeners.delete(listener);
+}
+
+export function getNativeActivationPending(): boolean {
+  return activationPending;
+}
 
 /**
  * Subscribe to native purchase verification success. Returns an unsubscribe
@@ -103,6 +120,7 @@ export async function initNativePurchase(): Promise<boolean> {
       );
 
       store.when().approved(async (transaction: CdvPurchase.Transaction) => {
+        setNativeActivationPending(true);
         log(
           'Transaction approved:',
           transaction.transactionId,
@@ -112,6 +130,7 @@ export async function initNativePurchase(): Promise<boolean> {
         try {
           await verifyAndFinishTransaction(transaction);
         } catch (err) {
+          setNativeActivationPending(false);
           const message = err instanceof Error ? err.message : 'Failed to verify purchase with server';
           logError('Failed to verify/finish approved transaction:', err);
           failedListeners.forEach((listener) => listener({ message }));
@@ -258,6 +277,7 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
         log('Finishing transaction after silent restore+retry:', transaction.transactionId);
         await transaction.finish();
         log('Transaction finished:', transaction.transactionId);
+        setNativeActivationPending(false);
         verifiedListeners.forEach((listener) => listener({ plan, productId }));
         return;
       }
@@ -328,6 +348,7 @@ async function verifyAndFinishTransaction(transaction: CdvPurchase.Transaction):
   await transaction.finish();
   log('Transaction finished:', transaction.transactionId);
 
+  setNativeActivationPending(false);
   verifiedListeners.forEach((listener) => listener({ plan, productId }));
 }
 
@@ -379,8 +400,10 @@ export async function purchaseNativePlan(plan: NativePlanKey, userId: string): P
   }
 
   log('Ordering offer:', offer.id, 'for product:', productId);
+  setNativeActivationPending(true);
   const result = await store.order(offer);
   if (result) {
+    setNativeActivationPending(false);
     logError('store.order() returned an error:', result.code, result.message);
     throw new Error(result.message || 'Purchase could not be started');
   }

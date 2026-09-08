@@ -19,6 +19,7 @@ import {
   isNativePurchaseSupported,
   type NativePlanKey,
 } from "@/lib/nativePurchase";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { CheckoutModal } from "@/components/CheckoutModal";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
@@ -256,6 +257,8 @@ export default function HomeownerPricing() {
             </>
           )}
         </div>
+
+        {isNativePlatform && <ActivatingPlanBanner />}
 
         {/* Recovery banner — shown after a native purchase verification failure */}
         {purchaseFailedOnce && isNativePlatform && !hasActiveSubscription && (

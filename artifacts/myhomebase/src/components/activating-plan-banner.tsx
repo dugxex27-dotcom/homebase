@@ -1,14 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Loader2, RefreshCw, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { getQueryFn } from "@/lib/queryClient";
+import { isNativePlatform } from "@/lib/nativeBrowser";
+import {
+  getNativeActivationPending,
+  subscribeToNativeActivationPending,
+} from "@/lib/nativePurchase";
 
 const FAST_POLL_INTERVAL_MS = 5_000;
 const MAX_FAST_POLL_MS = 60_000;
 
 function useActivatingPlanStatus(): boolean {
   const { user } = useAuth();
+  const nativeActivationPending = useSyncExternalStore(
+    subscribeToNativeActivationPending,
+    getNativeActivationPending,
+    () => false,
+  );
   const typedUser = user as any;
   const role: string | undefined = typedUser?.role;
   const stripeCustomerId: string | undefined = typedUser?.stripeCustomerId;
@@ -25,7 +35,7 @@ function useActivatingPlanStatus(): boolean {
     enabled: !!stripeCustomerId && role === "contractor",
   });
 
-  if (!stripeCustomerId) return false;
+  if (!stripeCustomerId && !(isNativePlatform && nativeActivationPending)) return false;
 
   if (role === "homeowner") {
     const status = homeownerUserData?.subscriptionStatus ?? typedUser?.subscriptionStatus;

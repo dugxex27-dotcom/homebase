@@ -20,6 +20,7 @@ import {
   onNativePurchaseVerified,
   onNativePurchaseFailed,
 } from "@/lib/nativePurchase";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 
 type Plan = 'trial' | 'base' | 'premium' | 'premium_plus' | 'contractor' | 'contractor_pro' | 'grandfathered';
 
@@ -229,6 +230,8 @@ export default function Billing() {
             }
           </p>
         </div>
+
+        {isNativePlatform && !isContractor && <ActivatingPlanBanner />}
 
         {/* Trial Alert */}
         {isTrialActive && (
