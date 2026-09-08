@@ -1289,6 +1289,46 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     expect(tcInsert).toBeUndefined();
   });
 
+  it("does not create a taskCompletion for a DIY confirm when that serviceType already scored", async () => {
+    const DIY_ANALYSIS_ID = "analysis-diy-duplicate";
+    const { mockInsertValues } = buildInsertMock();
+
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+
+    const diyAnalysis = recentAnalysisFixture(DIY_ANALYSIS_ID, {
+      completionMethod: "diy",
+      serviceDescription: "DIY plumbing repair",
+      homeArea: "plumbing",
+      serviceType: "repair",
+      diyVerified: true,
+      beforePhotoUrls: ["https://storage.example.com/before.jpg"],
+      afterPhotoUrls: ["https://storage.example.com/after.jpg"],
+    });
+    queueInvoiceConfirmQueries(
+      diyAnalysis,
+      [{ id: LOG_ID, serviceType: "repair", taskCompletionId: TC_ID }],
+    );
+
+    const mockUpdateSet = vi.fn().mockReturnValueOnce({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: DIY_ANALYSIS_ID, status: "confirmed" }]),
+      }),
+    });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${DIY_ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.duplicateScoring).toBe(true);
+    expect(findTaskCompletionInsert(mockInsertValues)).toBeUndefined();
+  });
+
   it("does not create a second taskCompletion even when serviceDescription differs between the two analyses", async () => {
     /**
      * The duplicate check is on serviceType (a standardised enum-like value),
