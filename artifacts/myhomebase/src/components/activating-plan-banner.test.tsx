@@ -349,6 +349,37 @@ describe("ActivatingPlanBanner — auto-dismiss after fast-poll resolves with ac
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  it("unmounts the contractor banner when auth becomes active even if the contractor cache stays inactive", async () => {
+    vi.useFakeTimers();
+    const client = makeTestClient();
+    seedInactiveContractor(client);
+
+    renderBanner(client);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(screen.getByRole("status")).toBeDefined();
+
+    network.responses["/api/auth/user"] = {
+      id: "user-002",
+      role: "contractor",
+      stripeCustomerId: "cus_contractor456",
+      subscriptionStatus: "active",
+    };
+    // Simulate a slow or expired role-specific poll retaining stale data.
+    network.responses["/api/contractor/subscription"] = {
+      subscriptionStatus: "inactive",
+    };
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(FAST_POLL_INTERVAL_MS);
+    });
+
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("does not require the Refresh now button to be clicked before the banner disappears", async () => {
     vi.useFakeTimers();
     const client = makeTestClient();

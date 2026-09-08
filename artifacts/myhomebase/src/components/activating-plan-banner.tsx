@@ -37,6 +37,11 @@ function useActivatingPlanStatus(): boolean {
 
   if (!stripeCustomerId && !(isNativePlatform && nativeActivationPending)) return false;
 
+  // The auth session is refreshed independently of the role-specific queries.
+  // If it already confirms activation, do not let an older inactive cache entry
+  // keep the banner visible on a slow connection.
+  if (typedUser?.subscriptionStatus === "active") return false;
+
   if (role === "homeowner") {
     const status = homeownerUserData?.subscriptionStatus ?? typedUser?.subscriptionStatus;
     return status === "inactive";

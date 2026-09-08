@@ -401,7 +401,13 @@ export async function purchaseNativePlan(plan: NativePlanKey, userId: string): P
 
   log('Ordering offer:', offer.id, 'for product:', productId);
   setNativeActivationPending(true);
-  const result = await store.order(offer);
+  let result;
+  try {
+    result = await store.order(offer);
+  } catch (error) {
+    setNativeActivationPending(false);
+    throw error;
+  }
   if (result) {
     setNativeActivationPending(false);
     logError('store.order() returned an error:', result.code, result.message);
