@@ -1804,6 +1804,42 @@ export async function sendCheckoutFailureEmail(
   });
 }
 
+export async function sendAgentPayoutPaidEmail(
+  agentId: string,
+  amount: string,
+  referredUserName: string,
+): Promise<boolean> {
+  const agent = await storage.getUser(agentId);
+  if (!agent?.email) return false;
+
+  const agentName = agent.firstName || 'there';
+  const safeAgentName = escapeHtml(agentName);
+  const safeAmount = escapeHtml(amount);
+  const safeReferredUserName = escapeHtml(referredUserName);
+  const dashboardUrl = 'https://gotohomebase.com/agent-dashboard';
+
+  const html = wrapEmailContent(
+    getEmailHeader('Your referral payout was deposited'),
+    `
+      <p>Hi ${safeAgentName},</p>
+      <p>Your <strong>$${safeAmount}</strong> referral payout for <strong>${safeReferredUserName}</strong> has been deposited.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${dashboardUrl}" style="background: #09694A; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View your agent dashboard</a>
+      </div>
+      <p>- The HomeBase Team</p>
+    `,
+  );
+
+  const text = `Hi ${agentName}, your $${amount} referral payout for ${referredUserName} has been deposited. View your agent dashboard: ${dashboardUrl}`;
+
+  return sendEmail({
+    to: agent.email,
+    subject: `Your $${amount} HomeBase referral payout was deposited`,
+    text,
+    html,
+  });
+}
+
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -1826,6 +1862,7 @@ export const emailService = {
   sendInvoicePaymentConfirmationEmail,
   sendTechInviteEmail,
   sendDemoSeedingFailureAlert,
+  sendAgentPayoutPaidEmail,
   getEmailHeader,
   wrapEmailContent,
 };

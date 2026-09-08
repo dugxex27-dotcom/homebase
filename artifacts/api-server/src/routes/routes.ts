@@ -33,7 +33,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, type TeamMemberAccountChange } from "../email-service";
+import { sendEmail, emailService, sendAgentPayoutPaidEmail, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, type TeamMemberAccountChange } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
@@ -2850,6 +2850,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         await storage.updateAffiliateReferral(affiliateReferral.id, {
                           status: 'paid',
                         });
+
+                        const referredUserName = [user.firstName, user.lastName]
+                          .filter(Boolean)
+                          .join(' ')
+                          || user.email
+                          || 'your referred homeowner';
+                        await sendAgentPayoutPaidEmail(
+                          affiliateReferral.agentId,
+                          payout.amount || '15.00',
+                          referredUserName,
+                        );
 
                         console.log(`[AFFILIATE] Successfully transferred $15 to agent ${affiliateReferral.agentId}, transfer ID: ${transfer.id}`);
                       }

@@ -51,6 +51,7 @@ const {
   mockCreateAffiliatePayout,
   mockClaimAffiliatePayoutForTransfer,
   mockUpdateAffiliatePayout,
+  mockSendAgentPayoutPaidEmail,
 } = vi.hoisted(() => {
   const AGENT_ID = "agent-001";
   const USER_ID = "user-referred-001";
@@ -155,6 +156,7 @@ const {
     mockCreateAffiliatePayout,
     mockClaimAffiliatePayoutForTransfer,
     mockUpdateAffiliatePayout,
+    mockSendAgentPayoutPaidEmail: vi.fn().mockResolvedValue(true),
   };
 });
 
@@ -250,6 +252,7 @@ vi.mock("../notification-orchestrator", () => ({
 }));
 vi.mock("../email-service", () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
+  sendAgentPayoutPaidEmail: mockSendAgentPayoutPaidEmail,
   emailService: { send: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock("../sms-service", () => ({
@@ -335,6 +338,8 @@ import { processedWebhookEventIds, inFlightWebhookEventIds, registerRoutes } fro
 const REFERRED_USER = {
   id: USER_ID,
   email: "referred-homeowner@test.com",
+  firstName: "Jamie",
+  lastName: "Homeowner",
   stripeCustomerId: "cus_test_referred_001",
 };
 
@@ -406,6 +411,7 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     mockCreateAffiliatePayout.mockClear();
     mockClaimAffiliatePayoutForTransfer.mockClear();
     mockUpdateAffiliatePayout.mockClear();
+    mockSendAgentPayoutPaidEmail.mockClear();
 
     app = express();
     await registerRoutes(app);
@@ -438,6 +444,12 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     expect(mockCreateAffiliatePayout).toHaveBeenCalledOnce();
     expect(payoutState).toMatchObject({ status: "paid", agentId: AGENT_ID });
     expect(referralState).toMatchObject({ status: "paid", consecutiveMonthsPaid: 4 });
+    expect(mockSendAgentPayoutPaidEmail).toHaveBeenCalledOnce();
+    expect(mockSendAgentPayoutPaidEmail).toHaveBeenCalledWith(
+      AGENT_ID,
+      "15.00",
+      "Jamie Homeowner",
+    );
   });
 
   it("two duplicate deliveries (different event IDs, same underlying referral state) result in exactly ONE payout and ONE real transfer", async () => {
@@ -504,6 +516,7 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
 
     // The critical assertion: only ONE real Stripe transfer was ever attempted.
     expect(mockTransfersCreate).toHaveBeenCalledOnce();
+    expect(mockSendAgentPayoutPaidEmail).toHaveBeenCalledOnce();
 
     // Final state: exactly one $15 payout, marked paid, referral fully advanced
     // to 4 consecutive months and 'paid' — not double-counted to 5/6/etc.
