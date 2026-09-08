@@ -689,7 +689,7 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
     expect(mockCreateContractorBoost).not.toHaveBeenCalled();
   });
 
-  it("returns 409 when the payment intent is already recorded on an existing boost", async () => {
+  it("returns the existing boost when the webhook already recorded the payment intent", async () => {
     mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
     mockGetContractorBoosts.mockResolvedValue([
       BOOST_A_FIXTURE,
@@ -701,14 +701,19 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
       .set("x-test-user", "contractor-a")
       .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
-    expect(res.status).toBe(409);
-    expect(res.body.message).toMatch(/already been used/i);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ stripePaymentIntentId: VALID_PI_ID });
     expect(mockCreateContractorBoost).not.toHaveBeenCalled();
   });
 
-  it("returns 409 when a concurrent renewal already claimed the payment intent", async () => {
+  it("returns the completed boost when a concurrent renewal claims the payment intent", async () => {
     mockPaymentIntentsRetrieve.mockResolvedValue(SUCCEEDED_PI);
-    mockGetContractorBoosts.mockResolvedValue([BOOST_A_FIXTURE]);
+    mockGetContractorBoosts
+      .mockResolvedValueOnce([BOOST_A_FIXTURE])
+      .mockResolvedValueOnce([
+        BOOST_A_FIXTURE,
+        { ...RENEWED_BOOST_FIXTURE, stripePaymentIntentId: VALID_PI_ID },
+      ]);
     mockCreateContractorBoost.mockRejectedValue(
       Object.assign(new Error("duplicate key value violates unique constraint"), {
         code: "23505",
@@ -721,8 +726,8 @@ describe("POST /api/contractors/boost/:boostId/renew — payment gate + ownershi
       .set("x-test-user", "contractor-a")
       .send({ durationDays: 30, stripePaymentIntentId: VALID_PI_ID });
 
-    expect(res.status).toBe(409);
-    expect(res.body.message).toMatch(/already been used/i);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ stripePaymentIntentId: VALID_PI_ID });
     expect(mockCreateContractorBoost).toHaveBeenCalledTimes(1);
   });
 

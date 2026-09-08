@@ -715,7 +715,11 @@ export default function ContractorDashboard() {
         const renewData = await renewRes.json();
         if (!renewRes.ok) throw new Error(renewData.message || 'Could not activate renewed boost');
 
-        await queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors/boost'] });
+        await Promise.all([
+          queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors/boost'] }),
+          queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors'] }),
+          queryClientInstance.invalidateQueries({ queryKey: ['/api/contractors/search'] }),
+        ]);
         toast({ title: "Boost renewed", description: "Your visibility boost is active for another 30 days." });
       } catch (error) {
         processedRenewalSessionRef.current = null;
@@ -2195,7 +2199,7 @@ export default function ContractorDashboard() {
                           </div>
                           <div style={{ fontSize: 11, color: isExpired ? '#dc2626' : '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
                             {isExpired
-                              ? <><AlertCircle size={10} /> Expired {endLabel}</>
+                              ? <><AlertCircle size={10} /> Boost available · expired {endLabel}</>
                               : <><Clock size={10} /> Active until {endLabel}</>
                             }
                           </div>
@@ -2213,7 +2217,7 @@ export default function ContractorDashboard() {
                               }}
                             >
                               <RefreshCw size={11} />
-                              Renew
+                              {isExpired ? 'Buy boost' : 'Renew'}
                             </button>
                           )}
                           {!isExpired && (

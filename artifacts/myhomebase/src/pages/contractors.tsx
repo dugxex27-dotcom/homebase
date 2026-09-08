@@ -286,6 +286,10 @@ export default function Contractors() {
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
     enabled: hasAppliedFilters, // Only fetch when user has explicitly applied filters
+    // Boost purchases can change ranking at any time. Do not preserve a
+    // previously cached directory order when the homeowner revisits search.
+    staleTime: 0,
+    refetchOnMount: true,
     queryFn: async () => {
       const params = new URLSearchParams();
       

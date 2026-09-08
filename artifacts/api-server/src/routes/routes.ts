@@ -12122,7 +12122,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error?.code === "23505" &&
           error?.constraint === "contractor_boosts_stripe_pi_id_unique"
         ) {
-          return res.status(409).json({ message: "This payment has already been used for a boost" });
+          // A Stripe webhook and the browser return can finish at the same
+          // time. The unique index selects the winner; the loser should still
+          // report success rather than showing an "already boosted" error
+          // after the customer's payment was activated correctly.
+          const refreshedBoosts = await storage.getContractorBoosts(userId as string);
+          const completedRenewal = refreshedBoosts.find(
+            existing => existing.stripePaymentIntentId === paymentIntent.id,
+          );
+          if (completedRenewal) {
+            return res.json(completedRenewal);
+          }
         }
         throw error;
       }
