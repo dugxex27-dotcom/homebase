@@ -4,6 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -263,6 +264,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
   const [copied, setCopied] = useState(false);
   const [sectionCopied, setSectionCopied] = useState(false);
   const [aiSuggestedKeys, setAiSuggestedKeys] = useState<Set<string>>(new Set());
+  const [refreshAllConfirmOpen, setRefreshAllConfirmOpen] = useState(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [autosaving, setAutosaving] = useState(false);
@@ -396,7 +398,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
   });
 
   const aiSuggestMutation = useMutation({
-    mutationFn: async (requestedHouseId: string) => {
+    mutationFn: async ({ requestedHouseId, overwriteExisting = false }: { requestedHouseId: string; overwriteExisting?: boolean }) => {
       const questions = activeSections.flatMap(s =>
         s.questions.map(q => ({
           id: q.id,
@@ -407,18 +409,18 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
       );
       const res = await apiRequest(`/api/houses/${requestedHouseId}/disclosure/ai-suggest`, "POST", { questions });
       const body = await res.json() as { suggestions: Record<string, string | number> };
-      return { ...body, requestedHouseId };
+      return { ...body, requestedHouseId, overwriteExisting };
     },
-    onSuccess: (data, requestedHouseId) => {
+    onSuccess: (data) => {
       // Guard: discard response if the user has switched to a different property since the request was sent
-      if (requestedHouseId !== houseIdRef.current) return;
+      if (data.requestedHouseId !== houseIdRef.current) return;
       const newSuggestions = data.suggestions ?? {};
       const newAiKeys = new Set<string>();
       setAnswers(prev => {
         const updated = { ...prev };
         for (const [key, value] of Object.entries(newSuggestions)) {
           const existing = prev[key];
-          if (existing === null || existing === undefined || existing === "") {
+          if (data.overwriteExisting || existing === null || existing === undefined || existing === "") {
             updated[key] = value;
             newAiKeys.add(key);
           }
@@ -439,6 +441,16 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
       toast({ title: "AI suggestion failed", description: "Unable to generate suggestions. Please try again.", variant: "destructive" });
     },
   });
+
+  const suggestBlankAnswers = () => {
+    if (houseId) aiSuggestMutation.mutate({ requestedHouseId: houseId });
+  };
+
+  const refreshAllAnswers = () => {
+    if (!houseId) return;
+    setRefreshAllConfirmOpen(false);
+    aiSuggestMutation.mutate({ requestedHouseId: houseId, overwriteExisting: true });
+  };
 
   const saveMutationRef = useRef(saveMutation);
   useEffect(() => { saveMutationRef.current = saveMutation; }, [saveMutation]);
@@ -661,20 +673,32 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                 {stateCode !== "UNKNOWN" ? `${stateCode} Form` : "Generic Form"}
               </Badge>
             </div>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
-              disabled={aiSuggestMutation.isPending || !houseId}
-              className="h-8 px-3 text-xs font-medium"
-              style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
-            >
-              {aiSuggestMutation.isPending ? (
-                <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analyzing…</>
-              ) : (
-                <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Suggest with AI</>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={suggestBlankAnswers}
+                disabled={aiSuggestMutation.isPending || !houseId}
+                className="h-8 px-3 text-xs font-medium"
+                style={{ borderColor: 'var(--purple-border)', color: 'var(--hw-primary)' }}
+              >
+                {aiSuggestMutation.isPending ? (
+                  <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Analyzing…</>
+                ) : (
+                  <><Sparkles className="w-3.5 h-3.5 mr-1.5" />Suggest with AI</>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setRefreshAllConfirmOpen(true)}
+                disabled={aiSuggestMutation.isPending || !houseId}
+                className="h-8 px-3 text-xs font-medium"
+                style={{ color: 'var(--hw-primary)' }}
+              >
+                Refresh All Answers
+              </Button>
+            </div>
           </div>
           <p className="text-sm text-gray-500">
             {formTitle} — guided walkthrough
@@ -763,7 +787,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { if (houseId) aiSuggestMutation.mutate(houseId); }}
+                  onClick={suggestBlankAnswers}
                   disabled={aiSuggestMutation.isPending || !houseId}
                   className="text-xs h-7 px-2"
                   style={{ color: 'var(--hw-primary)' }}
@@ -828,6 +852,15 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
             })}
           </CardContent>
         </Card>
+        <ConfirmDialog
+          open={refreshAllConfirmOpen}
+          onOpenChange={setRefreshAllConfirmOpen}
+          title="Refresh all answers?"
+          description="This will overwrite existing answers with AI suggestions. Continue?"
+          confirmText="Refresh All Answers"
+          variant="default"
+          onConfirm={refreshAllAnswers}
+        />
 
         {/* Navigation */}
         <div className="mt-4 flex items-center justify-between gap-3">
