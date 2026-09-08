@@ -1204,6 +1204,7 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
 function makeSubscriptionUpdatedEventWithStatus(
   eventId: string,
   status: string,
+  previousStatus: string = "incomplete",
 ): Stripe.Event {
   return {
     id: eventId,
@@ -1226,7 +1227,7 @@ function makeSubscriptionUpdatedEventWithStatus(
           ],
         },
       },
-      previous_attributes: { status: "incomplete" },
+      previous_attributes: { status: previousStatus },
     },
     livemode: false,
     pending_webhooks: 0,
@@ -1479,6 +1480,74 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
       FAKE_USER.id,
       "past_due",
+      expect.any(Date),
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+      expect.any(Date),
+    );
+  });
+
+  it("trialing→past_due: a failed first payment after trial expiry does not grant active entitlement", async () => {
+    const EVENT_ID = "evt_trial_ended_payment_failed_001";
+    const event = makeSubscriptionUpdatedEventWithStatus(
+      EVENT_ID,
+      "past_due",
+      "trialing",
+    );
+    mockGetUserByStripeCustomerId2.mockResolvedValue({
+      ...FAKE_USER,
+      subscriptionStatus: "trialing",
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "past_due",
+      expect.any(Date),
+    );
+    expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "active",
+      expect.any(Date),
+    );
+  });
+
+  it("trialing→canceled: a trial canceled by the user is stored as cancelled and never active", async () => {
+    const EVENT_ID = "evt_trial_canceled_by_user_001";
+    const event = makeSubscriptionUpdatedEventWithStatus(
+      EVENT_ID,
+      "canceled",
+      "trialing",
+    );
+    mockGetUserByStripeCustomerId2.mockResolvedValue({
+      ...FAKE_USER,
+      subscriptionStatus: "trialing",
+    });
+    mockConstructEvent.mockReset().mockReturnValue(event);
+
+    const res = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ received: true });
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      "cancelled",
       expect.any(Date),
     );
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
