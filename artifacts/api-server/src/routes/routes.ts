@@ -16743,9 +16743,13 @@ Respond with ONLY valid JSON (no markdown, no code fences):
 {
   "briefing": "2-4 personalized sentences: month/season focus, overdue mention if any, wellness observation",
   "topTasks": [
-    { "title": "<exact title from THIS MONTH list>", "reason": "<1 sentence: why this task matters right now>" },
-    { "title": "...", "reason": "..." },
-    { "title": "...", "reason": "..." }
+    {
+      "title": "<exact title from THIS MONTH list>",
+      "reason": "<1 sentence: why this task matters right now>",
+      "expandedExplanation": "<2-3 short sentences: consequence of skipping it, recommended timing and any basic tools, whether it is DIY-friendly or needs a professional, and how completing it supports the wellness score>"
+    },
+    { "title": "...", "reason": "...", "expandedExplanation": "..." },
+    { "title": "...", "reason": "...", "expandedExplanation": "..." }
   ]
 }
 Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null entries.`}`;
@@ -16764,7 +16768,10 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
 
       const raw = completion.choices[0]?.message?.content ?? "";
 
-      let result: { briefing: string; topTasks: { title: string; reason: string }[] };
+      let result: {
+        briefing: string;
+        topTasks: { title: string; reason: string; expandedExplanation: string }[];
+      };
       try {
         result = JSON.parse(raw);
       } catch {
@@ -16773,7 +16780,14 @@ Include up to 3 tasks (fewer if fewer than 3 are pending). Do not include null e
 
       // Validate topTasks: must be current-month, pending (non-completed) tasks
       const validatedTopTasks = (result.topTasks ?? [])
-        .filter(t => t && typeof t.title === "string" && typeof t.reason === "string" && validTitles.has(t.title))
+        .filter(t =>
+          t
+          && typeof t.title === "string"
+          && typeof t.reason === "string"
+          && typeof t.expandedExplanation === "string"
+          && t.expandedExplanation.trim().length > 0
+          && validTitles.has(t.title)
+        )
         .slice(0, 3);
 
       res.json({ briefing: result.briefing ?? "", topTasks: validatedTopTasks });

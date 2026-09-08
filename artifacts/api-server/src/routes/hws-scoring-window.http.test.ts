@@ -524,6 +524,9 @@ describe("HWS scoring consumers use photo_verified parity", () => {
     const prompt = mockOpenAIChatCreate.mock.calls[0][0].messages[0].content;
     expect(prompt).toContain("Home wellness score: 4");
     expect(prompt).toContain("1 verified tasks @4pts, 0 self-reported @2.4pts");
+    expect(prompt).toContain('"expandedExplanation"');
+    expect(prompt).toContain("consequence of skipping it");
+    expect(prompt).toContain("DIY-friendly or needs a professional");
   });
 
   it("uses the shared photo_verified weight in resale readiness", async () => {

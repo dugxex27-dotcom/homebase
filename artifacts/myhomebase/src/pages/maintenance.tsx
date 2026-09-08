@@ -81,6 +81,15 @@ interface TaskCompletionRecord {
   year: number;
 }
 
+interface MaintenanceCoachResult {
+  briefing: string;
+  topTasks: {
+    title: string;
+    reason: string;
+    expandedExplanation: string;
+  }[];
+}
+
 
 
 // Form schema for maintenance log creation/editing
@@ -1710,7 +1719,8 @@ export default function Maintenance() {
 
   // AI Maintenance Coach state
   const [coachOpen, setCoachOpen] = useState(false);
-  const [coachResult, setCoachResult] = useState<{ briefing: string; topTasks: { title: string; reason: string }[] } | null>(null);
+  const [coachResult, setCoachResult] = useState<MaintenanceCoachResult | null>(null);
+  const [expandedCoachTasks, setExpandedCoachTasks] = useState<Set<string>>(new Set());
   const [highlightedTask, setHighlightedTask] = useState<string | null>(null);
   const selectedHouseIdRef = useRef(selectedHouseId);
   useEffect(() => { selectedHouseIdRef.current = selectedHouseId; }, [selectedHouseId]);
@@ -3682,12 +3692,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         zone: selectedZone,
       };
       const res = await apiRequest(`/api/houses/${requestedHouseId}/maintenance-coach`, "POST", payload);
-      const data = await res.json() as { briefing: string; topTasks: { title: string; reason: string }[] };
+      const data = await res.json() as MaintenanceCoachResult;
       return { ...data, requestedHouseId };
     },
     onSuccess: (data, requestedHouseId) => {
       if (requestedHouseId !== selectedHouseIdRef.current) return;
       setCoachResult({ briefing: data.briefing, topTasks: data.topTasks });
+      setExpandedCoachTasks(new Set());
     },
     onError: () => {
       toast({ title: "Coach unavailable", description: "Unable to generate advice right now. Please try again.", variant: "destructive" });
@@ -4458,30 +4469,58 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           {coachResult.topTasks.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--hw-primary)' }}>Focus on these first</p>
-                              {coachResult.topTasks.map((t, i) => (
-                                <button
-                                  key={t.title}
-                                  type="button"
-                                  onClick={() => {
-                                    const el = document.querySelector<HTMLElement>(`[data-task-title="${CSS.escape(t.title)}"]`);
-                                    if (el) {
-                                      el.scrollIntoView({ behavior: "smooth", block: "center" });
-                                      setHighlightedTask(t.title);
-                                      setTimeout(() => setHighlightedTask(null), 2500);
-                                    }
-                                  }}
-                                  className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-white border border-[#CECBF6] transition-colors group/task"
-                                >
-                                  <span className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center mt-0.5" style={{ background: 'var(--purple-border)', color: 'var(--hw-primary)' }}>
-                                    {i + 1}
-                                  </span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 transition-colors">{t.title}</p>
-                                    <p className="text-xs text-muted-foreground mt-0.5">{t.reason}</p>
+                              {coachResult.topTasks.map((t, i) => {
+                                const isExpanded = expandedCoachTasks.has(t.title);
+                                const explanationId = `coach-task-explanation-${i}`;
+                                return (
+                                  <div key={t.title} className="rounded-lg bg-white border border-[#CECBF6] overflow-hidden">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const el = document.querySelector<HTMLElement>(`[data-task-title="${CSS.escape(t.title)}"]`);
+                                        if (el) {
+                                          el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                          setHighlightedTask(t.title);
+                                          setTimeout(() => setHighlightedTask(null), 2500);
+                                        }
+                                      }}
+                                      className="w-full text-left flex items-start gap-3 p-3 pb-2 transition-colors group/task"
+                                    >
+                                      <span className="flex-shrink-0 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center mt-0.5" style={{ background: 'var(--purple-border)', color: 'var(--hw-primary)' }}>
+                                        {i + 1}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 transition-colors">{t.title}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{t.reason}</p>
+                                      </div>
+                                      <ChevronRight className="w-4 h-4 text-[#3C258E] flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      aria-expanded={isExpanded}
+                                      aria-controls={explanationId}
+                                      onClick={() => {
+                                        setExpandedCoachTasks(previous => {
+                                          const next = new Set(previous);
+                                          if (next.has(t.title)) next.delete(t.title);
+                                          else next.add(t.title);
+                                          return next;
+                                        });
+                                      }}
+                                      className="ml-11 mb-2 inline-flex items-center gap-1 text-xs font-medium hover:underline"
+                                      style={{ color: 'var(--hw-primary)' }}
+                                    >
+                                      {isExpanded ? "Show less" : "Tell me more"}
+                                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                    </button>
+                                    {isExpanded && (
+                                      <div id={explanationId} className="mx-3 mb-3 ml-11 rounded-md bg-[#F7F6FF] p-3 text-xs leading-relaxed text-gray-700">
+                                        {t.expandedExplanation}
+                                      </div>
+                                    )}
                                   </div>
-                                  <ChevronRight className="w-4 h-4 text-[#3C258E] flex-shrink-0 mt-1 opacity-0 group-hover/task:opacity-100 transition-opacity" />
-                                </button>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
 
