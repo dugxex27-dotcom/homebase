@@ -4,8 +4,10 @@ import {
   regions,
   climateZones,
   regulatoryBodies,
+  regionalMaintenanceTasks,
 } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { REGIONAL_MAINTENANCE_TASKS } from "./regional-maintenance-task-data";
 
 // ─── Country definitions ────────────────────────────────────────────────────
 
@@ -432,6 +434,8 @@ export async function seedRegionalData(): Promise<void> {
     climateZonesSkipped: 0,
     regulatoryBodiesInserted: 0,
     regulatoryBodiesSkipped: 0,
+    regionalTasksInserted: 0,
+    regionalTasksSkipped: 0,
   };
 
   // One-time check: is the regulatory_bodies table present in this DB?
@@ -521,6 +525,50 @@ export async function seedRegionalData(): Promise<void> {
     }
     summary.climateZonesSkipped += countryZones.length - missingZones.length;
 
+    // ── Insert missing regional maintenance tasks ─────────────────────────
+    // Resolve zones again after insertion so templates always use persisted IDs.
+    const persistedZones = await db
+      .select({ id: climateZones.id, code: climateZones.code })
+      .from(climateZones)
+      .where(eq(climateZones.countryId, countryId));
+    const zoneIdByCode = new Map(persistedZones.map((zone) => [zone.code, zone.id]));
+
+    for (const [zoneCode, templates] of Object.entries(
+      REGIONAL_MAINTENANCE_TASKS[countryDef.code] ?? {},
+    )) {
+      const climateZoneId = zoneIdByCode.get(zoneCode);
+      if (!climateZoneId) {
+        throw new Error(
+          `[seed-regional-data] Cannot seed tasks: climate zone ${countryDef.code}/${zoneCode} is missing`,
+        );
+      }
+
+      const existingTasks = await db
+        .select({ taskId: regionalMaintenanceTasks.taskId })
+        .from(regionalMaintenanceTasks)
+        .where(
+          and(
+            eq(regionalMaintenanceTasks.countryId, countryId),
+            eq(regionalMaintenanceTasks.climateZoneId, climateZoneId),
+          ),
+        );
+      const existingTaskIds = new Set(existingTasks.map((task) => task.taskId));
+      const missingTasks = templates.filter((task) => !existingTaskIds.has(task.taskId));
+
+      if (missingTasks.length > 0) {
+        await db.insert(regionalMaintenanceTasks).values(
+          missingTasks.map((task) => ({
+            countryId,
+            climateZoneId,
+            ...task,
+            isActive: true,
+          })),
+        );
+        summary.regionalTasksInserted += missingTasks.length;
+      }
+      summary.regionalTasksSkipped += templates.length - missingTasks.length;
+    }
+
     // ── Check / insert regulatory bodies ──────────────────────────────────
     if (!regBodyTableExists) {
       continue;
@@ -573,6 +621,7 @@ export async function seedRegionalData(): Promise<void> {
     `Countries inserted: ${summary.countriesInserted}. ` +
     `Regions: ${summary.regionsInserted} inserted, ${summary.regionsSkipped} already present. ` +
     `Climate zones: ${summary.climateZonesInserted} inserted, ${summary.climateZonesSkipped} already present. ` +
+    `Regional tasks: ${summary.regionalTasksInserted} inserted, ${summary.regionalTasksSkipped} already present. ` +
     (regBodyTableExists
       ? `Regulatory bodies: ${summary.regulatoryBodiesInserted} inserted, ${summary.regulatoryBodiesSkipped} already present.`
       : `Regulatory bodies: skipped (table not yet migrated).`)
