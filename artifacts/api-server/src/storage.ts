@@ -8483,8 +8483,18 @@ export class DbStorage implements IStorage {
   }
 
   // ─── getCustomerServiceRecords — DATABASE BACKED ─────────────────────────
-  async getCustomerServiceRecords(_customerId?: string, _customerEmail?: string, _customerAddress?: string): Promise<ServiceRecord[]> {
-    return db.select().from(serviceRecords);
+  async getCustomerServiceRecords(customerId?: string, customerEmail?: string, customerAddress?: string): Promise<ServiceRecord[]> {
+    const customerFilters = [
+      customerId ? eq(serviceRecords.homeownerId, customerId) : undefined,
+      customerEmail ? eq(serviceRecords.customerEmail, customerEmail) : undefined,
+      customerAddress ? eq(serviceRecords.customerAddress, customerAddress) : undefined,
+    ].filter((filter): filter is NonNullable<typeof filter> => filter !== undefined);
+
+    if (customerFilters.length === 0) {
+      return db.select().from(serviceRecords);
+    }
+
+    return db.select().from(serviceRecords).where(or(...customerFilters));
   }
 
   // ─── getContactedHomeowners — DATABASE BACKED ────────────────────────────
