@@ -78,7 +78,10 @@ export function CheckoutModal({ plan, fromPlan, trialMode, onClose }: CheckoutMo
 
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    if (!vv) {
+      overlayRef.current?.classList.add("checkout-overlay--legacy-viewport");
+      return;
+    }
 
     const update = () => {
       const el = overlayRef.current;

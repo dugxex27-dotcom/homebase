@@ -130,6 +130,12 @@
     max-width: 100%;
   }
 
+  /* Older iPhones without visualViewport keep the sheet above the keyboard
+     instead of relying on vh units that continue to include the obscured area. */
+  .checkout-overlay--legacy-viewport .checkout-sheet {
+    max-height: 60vh;
+  }
+
   .checkout-header {
     padding: 14px 16px 10px;
   }
