@@ -16,7 +16,7 @@ import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
 import { insertHomeApplianceSchema, insertHomeApplianceManualSchema, insertMaintenanceLogSchema, insertContractorAppointmentSchema, insertConversationSchema, insertMessageSchema, insertContractorReviewSchema, insertCustomMaintenanceTaskSchema, insertProposalSchema, insertHomeSystemSchema, insertContractorBoostSchema, insertHouseSchema, insertHouseTransferSchema, insertContractorAnalyticsSchema, insertTaskOverrideSchema, insertTaskCompletionSchema, insertCompanySchema, insertCompanyInviteCodeSchema, insertServiceRecordSchema, updateHouseholdProfileSchema, passwordResetTokens, taskCompletions, customMaintenanceTasks, insertSupportTicketSchema, completeTaskSchema, insertCrmClientSchema, insertCrmJobSchema, insertCrmQuoteSchema, insertCrmInvoiceSchema, insertCrmLeadSchema, insertCrmNoteSchema, notificationPreferences, subscriptionPlans, securitySessions, referralCredits, referralFreeMonths, promoCodes, agentProfiles, users, siteContent, maintenanceLogs, homeAppliances, homeSystems, houses, taskOverrides, homeHandoffPackages, handoffDocuments, serviceRecords, contractorReviews, reviewRequests, insertReviewRequestSchema, insertReviewFlagSchema, homeDocuments, quizResults, crmInvoices, handoffTransfers, houseTransfers, demoLeads, insertDemoLeadSchema, type House } from "@workspace/db";
 import { calculateDIYSavingsAmount } from "../shared/cost-helpers";
-import { createImmediateNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
+import { createImmediateNotification, createInvoicePaymentNotification, createInvoiceUpdatedNotification, createNotificationSafely, notificationCategories, type ImmediateNotificationInput } from "../notification-writers";
 import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
@@ -2723,6 +2723,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Extracted so recoverIncompleteStripeEvents can re-run them and so tests
   // can assert they fire exactly once per event ID.
   async function processStripeEventSideEffects(event: Stripe.Event): Promise<void> {
+    async function notifyStripeInvoicePaid(
+      invoice: typeof crmInvoices.$inferSelect,
+      paymentAmountCents: number | null | undefined,
+    ): Promise<void> {
+      if (!invoice.homeownerId) return;
+      const paymentAmount = `$${((paymentAmountCents ?? 0) / 100).toFixed(2)}`;
+      await createNotificationSafely(
+        storage,
+        createInvoicePaymentNotification({
+          homeownerId: invoice.homeownerId,
+          houseId: invoice.houseId,
+          invoiceId: invoice.id,
+          invoiceTitle: invoice.title,
+          paymentAmount,
+          isPaid: true,
+        }),
+        `Stripe invoice payment notification for invoice ${invoice.id}`,
+      );
+    }
+
     switch (event.type) {
       case 'invoice.paid': {
           const invoice = event.data.object as Stripe.Invoice;
@@ -3371,15 +3391,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (invoiceId) {
               const invoice = await storage.getCrmInvoice(invoiceId);
               if (invoice) {
-                // Update invoice status to paid
-                await storage.updateCrmInvoice(invoiceId, {
-                  status: 'paid',
+                // The conditional transition is the shared claim across
+                // checkout.session.completed and payment_intent.succeeded.
+                // Only the event that changes unpaid -> paid emits the alert.
+                const paidInvoice = await storage.markCrmInvoicePaidIfUnpaid(invoiceId, {
                   paidAt: new Date(),
                   paymentMethod: 'credit_card',
                   paymentNotes: `Paid via Stripe checkout session: ${session.id}`,
                 });
-                
-                console.log('[STRIPE WEBHOOK] Invoice paid:', invoiceId, 'Amount:', session.amount_total);
+                if (paidInvoice) {
+                  await notifyStripeInvoicePaid(paidInvoice, session.amount_total);
+                  console.log('[STRIPE WEBHOOK] Invoice paid:', invoiceId, 'Amount:', session.amount_total);
+                }
               }
             }
           }
@@ -3484,15 +3507,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const invoiceId = paymentIntent.metadata.invoiceId;
             const invoice = await storage.getCrmInvoice(invoiceId);
             
-            if (invoice && invoice.status !== 'paid') {
-              await storage.updateCrmInvoice(invoiceId, {
-                status: 'paid',
+            if (invoice) {
+              const paidInvoice = await storage.markCrmInvoicePaidIfUnpaid(invoiceId, {
                 paidAt: new Date(),
                 paymentMethod: 'credit_card',
                 paymentNotes: `Payment intent: ${paymentIntent.id}`,
               });
-              
-              console.log('[STRIPE WEBHOOK] Payment intent succeeded for invoice:', invoiceId);
+              if (paidInvoice) {
+                await notifyStripeInvoicePaid(
+                  paidInvoice,
+                  paymentIntent.amount_received || paymentIntent.amount,
+                );
+                console.log('[STRIPE WEBHOOK] Payment intent succeeded for invoice:', invoiceId);
+              }
             }
           }
           break;
@@ -9965,6 +9992,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             contractorCompany,
             materialChanges
           ).catch((err) => console.error('[EMAIL] Failed to send invoice updated email:', err));
+
+          await createNotificationSafely(
+            storage,
+            createInvoiceUpdatedNotification({
+              homeownerId: existingInvoice.homeownerId,
+              houseId: existingInvoice.houseId ?? undefined,
+              invoiceId: existingInvoice.id,
+              invoiceTitle: updatedInvoice?.title || existingInvoice.title,
+            }),
+            `invoice update notification for invoice ${existingInvoice.id}`,
+          );
         }
       }
 
@@ -10187,6 +10225,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           contractorCompany,
           newStatus === 'paid'
         ).catch((err) => console.error('[EMAIL] Failed to send invoice payment confirmation email:', err));
+
+        await createNotificationSafely(
+          storage,
+          createInvoicePaymentNotification({
+            homeownerId: existingInvoice.homeownerId,
+            houseId: existingInvoice.houseId ?? undefined,
+            invoiceId: existingInvoice.id,
+            invoiceTitle: existingInvoice.title,
+            paymentAmount: formatAmount(paymentAmount),
+            isPaid: newStatus === 'paid',
+          }),
+          `invoice payment notification for invoice ${existingInvoice.id}`,
+        );
       }
 
       res.json(updatedInvoice);

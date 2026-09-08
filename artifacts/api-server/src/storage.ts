@@ -635,6 +635,7 @@ export interface IStorage {
   getCrmInvoice(id: string): Promise<CrmInvoice | undefined>;
   createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice>;
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
+  markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
   deleteCrmInvoice(id: string): Promise<boolean>;
   // Atomic claim of the Stripe Checkout session slot for an invoice+amount —
   // see the schema comment on crmInvoices.stripeCheckoutSessionId. Prevents
@@ -6922,6 +6923,12 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
+    const existing = this.crmInvoicesMap.get(id);
+    if (!existing || existing.status === 'paid') return undefined;
+    return this.updateCrmInvoice(id, { ...invoice, status: 'paid' });
+  }
+
   async claimInvoiceCheckoutSession(invoiceId: string, amount: string, claimTtlMs: number): Promise<
     | { outcome: "claimed" }
     | { outcome: "existing"; sessionId: string }
@@ -10838,6 +10845,21 @@ class DbStorage implements IStorage {
     };
 
     const result = await db.update(crmInvoices).set(updates).where(eq(crmInvoices.id, id)).returning();
+    return result[0];
+  }
+
+  async markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
+    const now = new Date();
+    const result = await db
+      .update(crmInvoices)
+      .set({
+        ...invoice,
+        status: 'paid',
+        paidAt: invoice.paidAt ?? now,
+        updatedAt: now,
+      })
+      .where(and(eq(crmInvoices.id, id), ne(crmInvoices.status, 'paid')))
+      .returning();
     return result[0];
   }
 

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createImmediateNotification,
+  createInvoicePaymentNotification,
+  createInvoiceUpdatedNotification,
   createNotificationSafely,
   notificationCategories,
 } from "./notification-writers";
@@ -23,6 +25,41 @@ function buildNotification(category: string, actionUrl: string) {
 }
 
 describe("notification writer safeguards", () => {
+  it("builds an invoice update bell notification linking to the invoice", () => {
+    expect(createInvoiceUpdatedNotification({
+      homeownerId: "homeowner-1",
+      houseId: "house-1",
+      invoiceId: "invoice-1",
+      invoiceTitle: "Roof repair",
+    }, new Date("2026-09-08T12:00:00.000Z"))).toMatchObject({
+      homeownerId: "homeowner-1",
+      houseId: "house-1",
+      type: "invoice_updated",
+      category: "invoices",
+      title: "Invoice updated",
+      message: "\"Roof repair\" was updated. Review the latest details.",
+      actionUrl: "/pay/invoice/invoice-1",
+      scheduledFor: "2026-09-08T12:00:00.000Z",
+    });
+  });
+
+  it("builds a paid invoice bell notification with the recorded amount", () => {
+    expect(createInvoicePaymentNotification({
+      homeownerId: "homeowner-1",
+      invoiceId: "invoice-1",
+      invoiceTitle: "Roof repair",
+      paymentAmount: "$125.00",
+      isPaid: true,
+    })).toMatchObject({
+      homeownerId: "homeowner-1",
+      type: "invoice_payment",
+      category: "invoices",
+      title: "Invoice paid",
+      message: "$125.00 was recorded for \"Roof repair\".",
+      actionUrl: "/pay/invoice/invoice-1",
+    });
+  });
+
   it.each([
     ["homeowner-targeted proposal creation", notificationCategories.proposal, "/messages"],
     ["sending an existing draft proposal", notificationCategories.proposal, "/messages"],

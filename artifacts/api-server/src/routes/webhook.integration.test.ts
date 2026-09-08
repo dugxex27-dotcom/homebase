@@ -42,6 +42,9 @@ const {
   mockUpsertPendingSeatSync,
   mockDeletePendingSeatSync,
   mockSendEmail,
+  mockGetCrmInvoice,
+  mockMarkCrmInvoicePaidIfUnpaid,
+  mockCreateNotification,
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockEventsRetrieve: vi.fn(),
@@ -74,6 +77,9 @@ const {
   mockUpsertPendingSeatSync: vi.fn().mockResolvedValue(undefined),
   mockDeletePendingSeatSync: vi.fn().mockResolvedValue(undefined),
   mockSendEmail: vi.fn().mockResolvedValue(true),
+  mockGetCrmInvoice: vi.fn().mockResolvedValue(undefined),
+  mockMarkCrmInvoicePaidIfUnpaid: vi.fn().mockResolvedValue(undefined),
+  mockCreateNotification: vi.fn().mockResolvedValue(undefined),
 }));
 
 mockApplyUserStripeSubscriptionState.mockImplementation(
@@ -148,6 +154,9 @@ vi.mock("../storage", async () => {
       updateUserMaxHousesAllowed: mockUpdateUserMaxHousesAllowed,
       upsertPendingSeatSync: mockUpsertPendingSeatSync,
       deletePendingSeatSync: mockDeletePendingSeatSync,
+      getCrmInvoice: mockGetCrmInvoice,
+      markCrmInvoicePaidIfUnpaid: mockMarkCrmInvoicePaidIfUnpaid,
+      createNotification: mockCreateNotification,
     }),
   };
 });
@@ -782,6 +791,127 @@ function makeCheckoutSessionCompletedEvent(eventId: string): Stripe.Event {
     api_version: "2025-08-27.basil",
   } as unknown as Stripe.Event;
 }
+
+function makeCrmInvoiceCheckoutCompletedEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_invoice_01",
+        object: "checkout.session",
+        mode: "payment",
+        payment_status: "paid",
+        amount_total: 12500,
+        metadata: {
+          type: "crm_invoice_payment",
+          invoiceId: "invoice-001",
+        },
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeCrmInvoicePaymentIntentSucceededEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "payment_intent.succeeded",
+    data: {
+      object: {
+        id: "pi_invoice_01",
+        object: "payment_intent",
+        amount: 12500,
+        amount_received: 12500,
+        metadata: { invoiceId: "invoice-001" },
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+describe("Stripe CRM invoice payment notifications", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+    processedWebhookEventIds.clear();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockCreateNotification.mockReset().mockResolvedValue(undefined);
+
+    const invoice = {
+      id: "invoice-001",
+      homeownerId: "homeowner-001",
+      houseId: "house-001",
+      title: "Roof repair",
+      status: "sent",
+    };
+    mockGetCrmInvoice.mockReset().mockResolvedValue(invoice);
+    mockMarkCrmInvoicePaidIfUnpaid
+      .mockReset()
+      .mockResolvedValueOnce({ ...invoice, status: "paid" })
+      .mockResolvedValueOnce(undefined);
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it("creates one linked-homeowner alert across overlapping Stripe payment event types", async () => {
+    const checkoutEvent = makeCrmInvoiceCheckoutCompletedEvent("evt_invoice_checkout_01");
+    mockConstructEvent.mockReset().mockReturnValue(checkoutEvent);
+
+    const checkoutResponse = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(checkoutEvent));
+
+    expect(checkoutResponse.status).toBe(200);
+
+    const paymentIntentEvent = makeCrmInvoicePaymentIntentSucceededEvent("evt_invoice_pi_01");
+    mockConstructEvent.mockReturnValue(paymentIntentEvent);
+
+    const paymentIntentResponse = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(paymentIntentEvent));
+
+    expect(paymentIntentResponse.status).toBe(200);
+    expect(mockMarkCrmInvoicePaidIfUnpaid).toHaveBeenCalledTimes(2);
+    expect(mockCreateNotification).toHaveBeenCalledOnce();
+    expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({
+      homeownerId: "homeowner-001",
+      houseId: "house-001",
+      type: "invoice_payment",
+      category: "invoices",
+      title: "Invoice paid",
+      message: "$125.00 was recorded for \"Roof repair\".",
+      actionUrl: "/pay/invoice/invoice-001",
+    }));
+  });
+});
 
 function makeSubscriptionUpdatedEvent(eventId: string): Stripe.Event {
   return {
