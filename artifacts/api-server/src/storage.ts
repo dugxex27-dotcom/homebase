@@ -497,6 +497,7 @@ export interface IStorage {
     emailClicks: number;
     topReferrers: { referrer: string; count: number }[];
     dailyBreakdown: { day: number; views: number; uniqueVisitors: number }[];
+  }>;
 
   getTaskOverrides(homeownerId: string, houseId: string): Promise<TaskOverride[]>;
 
@@ -655,6 +656,7 @@ export interface IStorage {
     agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
+  }>;
 
   getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>>;
 
@@ -667,12 +669,14 @@ export interface IStorage {
     totalRevenue: number;
     revenueByPlan: Array<{ plan: string; revenue: number }>;
     revenueSeries: Array<{ date: string; amount: number }>;
+  }>;
 
   getChurnMetrics(days: number): Promise<{
     churnRate: number;
     churnedUsers: number;
     totalActiveUsers: number;
     churnSeries: Array<{ date: string; rate: number }>;
+  }>;
 
   getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>>;
 
@@ -742,6 +746,7 @@ export interface IStorage {
     totalEarnings: number;
     pendingEarnings: number;
     nextPayoutDate: string | null;
+  }>;
 
   submitAgentVerification(agentId: string, data: {
     licenseNumber: string;
@@ -800,6 +805,7 @@ export interface IStorage {
     ticket: SupportTicket;
     replies: TicketReply[];
     user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
+  }>;
 
   getCrmLeads(contractorUserId: string, filters?: {
     status?: string;
@@ -850,6 +856,7 @@ export interface IStorage {
   getCrmLeadWithNotes(id: string): Promise<{
     lead: CrmLead;
     notes: CrmNote[];
+  }>;
 
   getCrmClients(contractorUserId: string, filters?: {
     status?: string;
@@ -961,6 +968,7 @@ export interface IStorage {
     revenueThisMonth: string;
     jobsThisMonth: number;
     conversionRate: number;
+  }>;
 
   getErrorLogs(filters?: {
     errorType?: string;
@@ -988,6 +996,7 @@ export interface IStorage {
   getErrorLogWithBreadcrumbs(id: string): Promise<{
     error: ErrorLog;
     breadcrumbs: ErrorBreadcrumb[];
+  }>;
 
   getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined>;
 
@@ -7558,7 +7567,7 @@ export class MemStorage implements IStorage {
 }
 
 // Database-backed storage for users (OAuth persistence)
-class DbStorage implements IStorage {
+export class DbStorage implements IStorage {
   private memStorage: MemStorage;
   
   // Upload metadata storage (in-memory for file upload tracking)
