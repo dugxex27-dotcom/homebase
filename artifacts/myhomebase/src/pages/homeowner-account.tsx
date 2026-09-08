@@ -44,6 +44,7 @@ import {
 import AddressAutocomplete from "@/components/address-autocomplete";
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
+import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import "./home.css";
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
@@ -478,6 +479,7 @@ export default function HomeownerAccount() {
 
       <div className="dash-body">
         <div className="space-y-4 max-w-2xl mx-auto">
+          <ActivatingPlanBanner />
 
           {quizResult && (
             <>
