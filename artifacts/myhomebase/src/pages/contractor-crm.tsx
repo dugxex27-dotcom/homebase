@@ -17,6 +17,7 @@ import {
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
   Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User, Home as HomeIcon,
   RefreshCw, KeyRound
+  , Upload
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -449,6 +450,16 @@ export default function ContractorCRMPage() {
   const [sthEquipment, setSthEquipment] = useState<Array<{ name: string; brand: string; model: string; serialNumber: string; installedYear: string }>>([]);
   const [sthNextServiceDate, setSthNextServiceDate] = useState('');
   const [sthNotes, setSthNotes] = useState('');
+  const [invoiceUploadJob, setInvoiceUploadJob] = useState<CrmJob | null>(null);
+  const [invoiceUploadOpen, setInvoiceUploadOpen] = useState(false);
+  const [invoiceUploadCode, setInvoiceUploadCode] = useState('');
+  const [invoiceUploadHomeowner, setInvoiceUploadHomeowner] = useState<{
+    id: string; name: string; email: string;
+    houses: Array<{ id: string; name: string; address: string }>;
+  } | null>(null);
+  const [invoiceUploadHouseId, setInvoiceUploadHouseId] = useState('');
+  const [invoiceUploadFile, setInvoiceUploadFile] = useState<File | null>(null);
+  const [isValidatingUploadCode, setIsValidatingUploadCode] = useState(false);
 
   // Check Pro tier access
   const { data: proAccessData, error: proAccessError, isLoading: isCheckingProAccess } = useQuery<CrmClient[]>({
@@ -1011,6 +1022,57 @@ export default function ContractorCRMPage() {
       setIsValidatingInvoice(false);
     }
   };
+
+  const validateUploadConnectionCode = async () => {
+    setIsValidatingUploadCode(true);
+    try {
+      const response = await fetch('/api/permanent-connection-code/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: invoiceUploadCode.toUpperCase() }),
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      setInvoiceUploadHomeowner({ id: data.homeownerId, name: data.homeownerName, email: data.homeownerEmail, houses: data.houses || [] });
+      setInvoiceUploadHouseId(data.houses?.length === 1 ? data.houses[0].id : '');
+    } catch {
+      toast({ title: "Validation Failed", description: "Invalid connection code. Please check and try again.", variant: "destructive" });
+    } finally {
+      setIsValidatingUploadCode(false);
+    }
+  };
+
+  const uploadInvoiceAnalysisMutation = useMutation({
+    mutationFn: async () => {
+      if (!invoiceUploadJob || !invoiceUploadHomeowner || !invoiceUploadHouseId || !invoiceUploadFile) {
+        throw new Error("Choose a homeowner, property, and invoice file.");
+      }
+      const fileData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error("Could not read the invoice file."));
+        reader.readAsDataURL(invoiceUploadFile);
+      });
+      return apiRequest('/api/invoice-analyses/analyze', 'POST', {
+        homeownerId: invoiceUploadHomeowner.id,
+        houseId: invoiceUploadHouseId,
+        crmJobId: invoiceUploadJob.id,
+        connectionCode: invoiceUploadCode,
+        completionMethod: 'contractor',
+        invoiceFiles: [{ fileData, fileName: invoiceUploadFile.name, fileType: invoiceUploadFile.type }],
+      });
+    },
+    onSuccess: () => {
+      toast({ title: "Invoice uploaded", description: "The homeowner was notified and can now review the invoice." });
+      setInvoiceUploadOpen(false);
+      setInvoiceUploadJob(null);
+      setInvoiceUploadHomeowner(null);
+      setInvoiceUploadFile(null);
+      setInvoiceUploadCode('');
+      setInvoiceUploadHouseId('');
+    },
+    onError: (error: Error) => toast({ title: "Upload failed", description: error.message, variant: "destructive" }),
+  });
 
   const addLineItem = (setter: typeof setQuoteLineItems) => {
     setter(prev => [...prev, { description: "", quantity: 1, unitPrice: 0, total: 0 }]);
@@ -2141,6 +2203,16 @@ export default function ContractorCRMPage() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                onClick={() => { setInvoiceUploadJob(job); setInvoiceUploadOpen(true); }}
+                                data-testid={`button-upload-invoice-${job.id}`}
+                              >
+                                <Upload className="h-4 w-4 mr-2" />Upload Invoice & Notify Homeowner
+                              </Button>
+                            )}
+                            {job.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
                                 className="border-green-300 text-green-700 hover:bg-green-50"
                                 onClick={() => { setSendToHomeownerJob(job); setSendToHomeownerOpen(true); setSthConnectionCode(''); setSthLinkedHomeowner(null); setSthSelectedHouseId(''); setSthEquipment([]); setSthNextServiceDate(''); setSthNotes(''); }}
                                 data-testid={`button-send-to-homeowner-${job.id}`}
@@ -2972,6 +3044,55 @@ export default function ContractorCRMPage() {
         onConfirm={() => { if (jobToDelete) deleteJobMutation.mutate(jobToDelete.id); setDeleteJobConfirmOpen(false); setJobToDelete(null); }}
         variant="destructive"
       />
+
+      {/* Send Dialog for Quotes/Invoices/Jobs */}
+      <Dialog open={invoiceUploadOpen} onOpenChange={setInvoiceUploadOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Invoice & Notify Homeowner</DialogTitle>
+            <DialogDescription>
+              Scan the invoice for {invoiceUploadJob?.title}. The homeowner will review it before it is added to their records.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!invoiceUploadHomeowner ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Homeowner connection code</label>
+                <div className="flex gap-2">
+                  <Input value={invoiceUploadCode} onChange={(event) => setInvoiceUploadCode(event.target.value.toUpperCase())} maxLength={8} placeholder="8-character code" />
+                  <Button type="button" onClick={validateUploadConnectionCode} disabled={invoiceUploadCode.length !== 8 || isValidatingUploadCode}>
+                    {isValidatingUploadCode ? "Checking…" : "Connect"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                Connected to <strong>{invoiceUploadHomeowner.name}</strong>
+              </div>
+            )}
+            {invoiceUploadHomeowner && invoiceUploadHomeowner.houses.length > 1 && (
+              <Select value={invoiceUploadHouseId} onValueChange={setInvoiceUploadHouseId}>
+                <SelectTrigger><SelectValue placeholder="Select the property" /></SelectTrigger>
+                <SelectContent>
+                  {invoiceUploadHomeowner.houses.map((house) => <SelectItem key={house.id} value={house.id}>{house.name || house.address}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            )}
+            {invoiceUploadHomeowner && (
+              <Input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setInvoiceUploadFile(event.target.files?.[0] || null)} />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInvoiceUploadOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => uploadInvoiceAnalysisMutation.mutate()}
+              disabled={!invoiceUploadFile || !invoiceUploadHouseId || uploadInvoiceAnalysisMutation.isPending}
+            >
+              {uploadInvoiceAnalysisMutation.isPending ? "Analyzing…" : "Upload & Notify"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Send Dialog for Quotes/Invoices/Jobs */}
       <Dialog open={sendDialogOpen} onOpenChange={setSendDialogOpen}>

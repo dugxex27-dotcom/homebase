@@ -592,6 +592,8 @@ export const invoiceAnalyses = pgTable("invoice_analyses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   homeownerId: text("homeowner_id").notNull(),
   houseId: text("house_id").notNull(),
+  contractorId: text("contractor_id"),
+  crmJobId: text("crm_job_id"),
   status: text("status").notNull().default("pending"), // "pending" | "confirmed" | "rejected"
   completionMethod: text("completion_method").notNull().default("contractor"), // "contractor" | "diy"
   // Uploaded files

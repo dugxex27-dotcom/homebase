@@ -562,6 +562,26 @@ export default function HomeownerServiceRecords() {
     }
   };
 
+  const rejectContractorAnalysis = async () => {
+    if (!aiAnalysis?.contractorId) return;
+    setAiConfirming(true);
+    try {
+      await apiRequest(`/api/invoice-analyses/${aiAnalysis.id}/reject`, "PATCH");
+      await queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
+      setAiInvoiceOpen(false);
+      setAiAnalysis(null);
+      toast({ title: "Invoice rejected", description: "The invoice was not added to your service records." });
+    } catch (error) {
+      toast({
+        title: "Could not reject invoice",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAiConfirming(false);
+    }
+  };
+
   const onSubmitMaintenanceLog = async (data: MaintenanceLogFormData) => {
     try {
       setIsUploadingFiles(true);
@@ -841,7 +861,7 @@ export default function HomeownerServiceRecords() {
                             onClick={() => reReviewInvoiceAnalysis(analysis)}
                             data-testid={`button-rereview-invoice-${analysis.id}`}
                           >
-                            Re-review
+                            {analysis.contractorId ? "Review contractor invoice" : "Re-review"}
                           </Button>
                         )}
                       </div>
@@ -1432,7 +1452,11 @@ export default function HomeownerServiceRecords() {
                 </div>
 
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setAiStep("upload")}>Back</Button>
+                  {aiAnalysis.contractorId ? (
+                    <Button variant="outline" onClick={rejectContractorAnalysis} disabled={aiConfirming}>Reject</Button>
+                  ) : (
+                    <Button variant="outline" onClick={() => setAiStep("upload")}>Back</Button>
+                  )}
                   <Button
                     onClick={confirmAiAnalysis}
                     disabled={aiConfirming || !aiEditDescription}

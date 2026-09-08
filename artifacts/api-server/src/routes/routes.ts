@@ -22714,6 +22714,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const {
         houseId,
+        homeownerId,
+        crmJobId,
+        connectionCode,
         completionMethod = "contractor",
         invoiceFiles = [],   // [{ fileData: base64, fileName, fileType }]
         receiptFiles = [],
@@ -22721,6 +22724,45 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } = req.body;
 
       if (!houseId) return res.status(400).json({ message: "houseId is required" });
+
+      const isContractorUpload = req.session.user.role === "contractor";
+      let targetHomeownerId = req.session.user.id;
+      let effectiveCompletionMethod = completionMethod;
+      if (isContractorUpload) {
+        if (!homeownerId || !crmJobId || !connectionCode) {
+          return res.status(400).json({ message: "homeownerId, crmJobId, and connectionCode are required for contractor uploads" });
+        }
+        const job = await storage.getCrmJob(crmJobId);
+        if (!job || !canAccessCrmResource(req.session.user, job)) {
+          return res.status(404).json({ message: "Completed job not found" });
+        }
+        if (job.status !== "completed") {
+          return res.status(400).json({ message: "Invoices can only be uploaded for completed jobs" });
+        }
+        if (completionMethod !== "contractor") {
+          return res.status(400).json({ message: "Contractor uploads must use contractor completion method" });
+        }
+        const connection = await storage.validatePermanentConnectionCode(connectionCode);
+        if (!connection || connection.homeownerId !== homeownerId) {
+          return res.status(403).json({ message: "Homeowner connection is no longer valid" });
+        }
+        const homeowner = await storage.getUser(homeownerId);
+        if (!homeowner || homeowner.role !== "homeowner") {
+          return res.status(400).json({ message: "Invalid homeowner" });
+        }
+        const client = await storage.getCrmClient(job.clientId);
+        if (
+          !client?.email
+          || !homeowner.email
+          || client.email.trim().toLowerCase() !== homeowner.email.trim().toLowerCase()
+        ) {
+          return res.status(403).json({ message: "This completed job is not linked to the selected homeowner" });
+        }
+        targetHomeownerId = homeownerId;
+        effectiveCompletionMethod = "contractor";
+      } else if (req.session.user.role !== "homeowner") {
+        return res.status(403).json({ message: "Only homeowners and contractors can analyze invoices" });
+      }
 
       // Limit file count per request to prevent abuse
       const totalFiles = invoiceFiles.length + receiptFiles.length;
@@ -22752,12 +22794,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       // Contractor work requires at least one invoice file; DIY receipt is fully optional
-      if (completionMethod === "contractor" && invoiceFiles.length === 0) {
+      if (effectiveCompletionMethod === "contractor" && invoiceFiles.length === 0) {
         return res.status(400).json({ message: "Please upload at least one invoice photo for contractor work." });
       }
 
       const house = await storage.getHouse(houseId);
-      if (!house || house.homeownerId !== req.session.user.id) {
+      if (!house || house.homeownerId !== targetHomeownerId) {
         return res.status(403).json({ message: "Access denied to house" });
       }
 
@@ -22865,10 +22907,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       // Create invoice_analyses record
       const [analysis] = await db.insert(invoiceAnalyses).values({
-        homeownerId: req.session.user.id,
+        homeownerId: targetHomeownerId,
         houseId,
+        contractorId: isContractorUpload ? req.session.user.id : null,
+        crmJobId: isContractorUpload ? crmJobId : null,
         status: "pending",
-        completionMethod,
+        completionMethod: effectiveCompletionMethod,
         invoiceUrls: storedInvoiceUrls,
         beforePhotoUrls: [],
         afterPhotoUrls: [],
@@ -22888,6 +22932,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         taskCompletionId: null,
         invoiceHash: invoiceHash,
       }).returning();
+
+      if (isContractorUpload) {
+        await createNotificationSafely(
+          storage,
+          {
+            homeownerId: targetHomeownerId,
+            houseId,
+            type: "contractor_invoice_uploaded",
+            category: "maintenance",
+            title: "Contractor Invoice Ready",
+            message: "Your contractor uploaded an invoice — review it to add to your records",
+            scheduledFor: new Date().toISOString(),
+            priority: "medium",
+            actionUrl: "/service-records",
+          },
+          "contractor invoice upload notification",
+        );
+      }
 
       res.status(201).json(analysis);
     } catch (err: any) {

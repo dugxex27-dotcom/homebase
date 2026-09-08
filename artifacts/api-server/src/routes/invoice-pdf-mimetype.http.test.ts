@@ -19,6 +19,10 @@ const {
   ANALYSIS_ID,
   mockGetUser,
   mockGetHouse,
+  mockGetCrmJob,
+  mockGetCrmClient,
+  mockValidatePermanentConnectionCode,
+  mockCreateNotification,
   mockDbSelect,
   mockDbInsert,
 } = vi.hoisted(() => ({
@@ -27,6 +31,10 @@ const {
   ANALYSIS_ID: "analysis-pdf-test-001",
   mockGetUser: vi.fn(),
   mockGetHouse: vi.fn(),
+  mockGetCrmJob: vi.fn(),
+  mockGetCrmClient: vi.fn(),
+  mockValidatePermanentConnectionCode: vi.fn(),
+  mockCreateNotification: vi.fn(),
   mockDbSelect: vi.fn(),
   mockDbInsert: vi.fn(),
 }));
@@ -38,6 +46,17 @@ const OWNER_SESSION = {
     email: "owner@homebase.com",
     role: "homeowner",
     status: "active",
+  },
+};
+
+const CONTRACTOR_SESSION = {
+  isAuthenticated: true,
+  user: {
+    id: "contractor-pdf-test-001",
+    email: "contractor@homebase.com",
+    role: "contractor",
+    status: "active",
+    companyId: "company-pdf-test-001",
   },
 };
 
@@ -53,6 +72,10 @@ vi.mock("../replitAuth", async (importOriginal) => {
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
       if (req.headers?.["x-test-user"] === "owner") {
         req.session = OWNER_SESSION;
+        return next();
+      }
+      if (req.headers?.["x-test-user"] === "contractor") {
+        req.session = CONTRACTOR_SESSION;
         return next();
       }
       return _res.status(401).json({ message: "Unauthorized" });
@@ -189,6 +212,10 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getUser: mockGetUser,
       getHouse: mockGetHouse,
+      getCrmJob: mockGetCrmJob,
+      getCrmClient: mockGetCrmClient,
+      validatePermanentConnectionCode: mockValidatePermanentConnectionCode,
+      createNotification: mockCreateNotification,
     }),
   };
 });
@@ -565,5 +592,115 @@ describe("POST /api/invoice-analyses/analyze — mimeType forwarding to extractI
     // and the hash was computed from the raw bytes (checked in the dedicated hash test)
     expect(vi.mocked(invoiceAnalysisService.extractInvoiceData).mock.calls[0][1]).toBe("application/pdf");
     expect(expectedHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+describe("POST /api/invoice-analyses/analyze — contractor uploads", () => {
+  beforeEach(() => {
+    buildInsertMock();
+    mockGetUser.mockImplementation(async (id: string) => id === OWNER_ID
+      ? USER_FIXTURE
+      : { ...CONTRACTOR_SESSION.user, subscriptionStatus: "active" });
+    mockGetHouse.mockResolvedValue(HOUSE_FIXTURE);
+    mockGetCrmJob.mockResolvedValue({
+      id: "crm-job-001",
+      clientId: "crm-client-001",
+      contractorUserId: "another-company-member",
+      companyId: CONTRACTOR_SESSION.user.companyId,
+      status: "completed",
+    });
+    mockGetCrmClient.mockResolvedValue({ id: "crm-client-001", email: USER_FIXTURE.email });
+    mockValidatePermanentConnectionCode.mockResolvedValue({ homeownerId: OWNER_ID });
+    mockCreateNotification.mockResolvedValue({});
+    mockNoDuplicate();
+    vi.mocked(invoiceAnalysisService.extractInvoiceData).mockResolvedValue(VALID_EXTRACTION);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("allows a company member to upload for a completed shared job and notifies the homeowner", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "contractor")
+      .send({
+        homeownerId: OWNER_ID,
+        houseId: HOUSE_ID,
+        crmJobId: "crm-job-001",
+        connectionCode: "ABCD1234",
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_JPEG_FILE],
+        receiptFiles: [],
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockDbInsert).toHaveBeenCalled();
+    expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      type: "contractor_invoice_uploaded",
+    }));
+  });
+
+  it("rejects an upload when the connection code belongs to another homeowner", async () => {
+    const app = await buildApp();
+    mockValidatePermanentConnectionCode.mockResolvedValueOnce({ homeownerId: "different-homeowner" });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "contractor")
+      .send({
+        homeownerId: OWNER_ID,
+        houseId: HOUSE_ID,
+        crmJobId: "crm-job-001",
+        connectionCode: "ABCD1234",
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_JPEG_FILE],
+      });
+
+    expect(res.status).toBe(403);
+    expect(mockCreateNotification).not.toHaveBeenCalled();
+  });
+
+  it("rejects an upload when the completed job belongs to a different CRM client", async () => {
+    const app = await buildApp();
+    mockGetCrmClient.mockResolvedValueOnce({ id: "crm-client-001", email: "someone-else@example.com" });
+
+    const res = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "contractor")
+      .send({
+        homeownerId: OWNER_ID,
+        houseId: HOUSE_ID,
+        crmJobId: "crm-job-001",
+        connectionCode: "ABCD1234",
+        completionMethod: "contractor",
+        invoiceFiles: [FAKE_JPEG_FILE],
+      });
+
+    expect(res.status).toBe(403);
+    expect(invoiceAnalysisService.extractInvoiceData).not.toHaveBeenCalled();
+  });
+
+  it("rejects DIY semantics and empty invoices from contractors", async () => {
+    const app = await buildApp();
+
+    const diyResponse = await request(app)
+      .post("/api/invoice-analyses/analyze")
+      .set("x-test-user", "contractor")
+      .send({
+        homeownerId: OWNER_ID,
+        houseId: HOUSE_ID,
+        crmJobId: "crm-job-001",
+        connectionCode: "ABCD1234",
+        completionMethod: "diy",
+        invoiceFiles: [],
+      });
+
+    expect(diyResponse.status).toBe(400);
+    expect(invoiceAnalysisService.extractInvoiceData).not.toHaveBeenCalled();
   });
 });

@@ -85,6 +85,13 @@
       "when": 1788840000001,
       "tag": "20260908-last-invite-sent-at",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788840000002,
+      "tag": "20260908-contractor-invoice-analysis",
+      "breakpoints": true
     }
   ]
 }
