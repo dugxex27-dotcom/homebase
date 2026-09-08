@@ -6,6 +6,9 @@ import { apiRequest } from "@/lib/queryClient";
 import { openPaymentUrl, isNativePlatform } from "@/lib/nativeBrowser";
 import { Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+const NATIVE_CHECKOUT_REQUEST_TIMEOUT_MS = 15_000;
+
 export default function ContractorCheckout() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -24,8 +27,24 @@ export default function ContractorCheckout() {
     mutationFn: async () => {
       setCheckoutError(null);
       const deviceFingerprint = btoa([navigator.userAgent, navigator.language, screen.width, screen.height, new Date().getTimezoneOffset()].join('|')).slice(0, 40);
-      const res = await apiRequest("/api/create-subscription-checkout", "POST", { plan, trialMode, deviceFingerprint });
-      return res.json();
+      const controller = isNativePlatform ? new AbortController() : undefined;
+      const timeout = controller
+        ? window.setTimeout(() => controller.abort(), NATIVE_CHECKOUT_REQUEST_TIMEOUT_MS)
+        : undefined;
+
+      try {
+        const res = await apiRequest(
+          "/api/create-subscription-checkout",
+          "POST",
+          { plan, trialMode, deviceFingerprint },
+          controller?.signal,
+        );
+        return res.json();
+      } finally {
+        if (timeout !== undefined) {
+          window.clearTimeout(timeout);
+        }
+      }
     },
     onSuccess: async (data) => {
       if (data.url) {

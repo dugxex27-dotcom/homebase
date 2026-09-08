@@ -60,12 +60,14 @@ export async function apiRequest(
   url: string,
   method: string = "GET",
   data?: unknown | undefined,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const res = await fetch(`${API_BASE}${url}`, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    signal,
   });
 
   await throwIfResNotOk(res);
