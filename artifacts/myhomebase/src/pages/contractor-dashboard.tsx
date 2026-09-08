@@ -87,6 +87,7 @@ interface TeamMember {
   invoiceCount: number;
   mostRecentJobDate: string | null;
   divisionId?: string | null;
+  totalBilled: string;
 }
 
 type TeamSort = 'name' | 'invoices' | 'recent-job';
@@ -1498,6 +1499,13 @@ export default function ContractorDashboard() {
                 const avatarLetter = (member.firstName?.[0] || member.email?.[0] || '?').toUpperCase();
                 const isExpanded = expandedMemberId === member.id;
                 const hasInvoices = member.invoiceCount > 0;
+                const totalBilled = Number(member.totalBilled ?? 0);
+                const formattedTotalBilled = new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 2,
+                }).format(Number.isFinite(totalBilled) ? totalBilled : 0);
                 const isEditing = editingMemberId === member.id;
                 const INACTIVE_THRESHOLD_MS = 90 * 24 * 60 * 60 * 1000;
                 const isInactiveAdmin = isAdmin && (
@@ -1543,7 +1551,7 @@ export default function ContractorDashboard() {
                         </div>
                         {hasInvoices && (
                           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                            {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} submitted
+                            {member.invoiceCount} invoice{member.invoiceCount !== 1 ? 's' : ''} · {formattedTotalBilled} total
                           </div>
                         )}
                         <button

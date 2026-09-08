@@ -6,6 +6,7 @@ import { storage, type IStorage } from "../storage";
 import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { isConversationParticipant } from "./conversation-access";
 import { ensureHomeownerContactLead } from "./homeowner-contact-lead";
+import { contractorTeamInvoiceJoinCondition } from "./team-invoice-aggregation";
 import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
@@ -23965,8 +23966,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         createdAt: users.createdAt,
         invoiceCount: drizzleSql<number>`cast(count(${contractorInvoiceUploads.id}) as int)`,
         mostRecentJobDate: drizzleSql<string | null>`coalesce(max(${contractorInvoiceUploads.invoiceDate}), max(${contractorInvoiceUploads.createdAt})::text)`,
+        totalBilled: drizzleSql<string>`coalesce(sum(${contractorInvoiceUploads.amount}), 0)`,
       } as any).from(users)
-        .leftJoin(contractorInvoiceUploads, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
+        .leftJoin(
+          contractorInvoiceUploads,
+          contractorTeamInvoiceJoinCondition(),
+        )
         .where(teamWhereClause)
         .groupBy(
           users.id, users.email, users.firstName, users.lastName,
