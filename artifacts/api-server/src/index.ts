@@ -1,6 +1,10 @@
 import { type Request, type Response, type NextFunction } from "express";
 import app from "./app";
-import { registerRoutes, recoverPendingSeatSyncs } from "./routes/routes";
+import {
+  registerRoutes,
+  recoverIncompleteStripeEvents,
+  recoverPendingSeatSyncs,
+} from "./routes/routes";
 import { registerOnboardingRoutes } from "./routes/onboardingRoutes";
 import { logger } from "./lib/logger";
 import { runMigrations } from "./migrate";
@@ -281,6 +285,52 @@ app.get("/info/*path", proxyToSquarespace);
 
   registerOnboardingRoutes(app);
   const server = await registerRoutes(app);
+
+  // Recover Stripe webhook events left pending by a process crash. This must
+  // run after registerRoutes wires the webhook side-effect handler used by
+  // recoverIncompleteStripeEvents. The periodic leader-only scheduler remains
+  // a second safety net during normal uptime.
+  const stripeRecoveryOlderThanMinutes = 5;
+  logger.info(
+    { olderThanMinutes: stripeRecoveryOlderThanMinutes },
+    "[STRIPE-RECOVERY] Running startup recovery scan",
+  );
+  try {
+    const results = await recoverIncompleteStripeEvents(
+      stripeRecoveryOlderThanMinutes,
+    );
+    const recovered = results.filter(
+      (result) => result.outcome === "recovered",
+    ).length;
+    const failed = results.filter(
+      (result) => result.outcome === "failed",
+    ).length;
+    const missing = results.filter(
+      (result) => result.outcome === "not_found_in_stripe",
+    ).length;
+
+    logger.info(
+      { total: results.length, recovered, failed, missing },
+      "[STRIPE-RECOVERY] Startup recovery scan finished",
+    );
+    if (failed > 0 || missing > 0) {
+      logger.error(
+        {
+          failed,
+          missing,
+          results: results.filter(
+            (result) => result.outcome !== "recovered",
+          ),
+        },
+        "[STRIPE-RECOVERY] Some startup recovery events require operator attention",
+      );
+    }
+  } catch (err) {
+    logger.error(
+      { err },
+      "[STRIPE-RECOVERY] Startup recovery scan failed — server will still start",
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Global Express error handler — registered AFTER all routes so it can
