@@ -26,6 +26,7 @@ const {
   mockCacheHouseCoordinatesIfAddressMatches,
   mockCreateMaintenanceLog,
   mockCreateTaskCompletion,
+  mockArchiveMaintenanceNotificationForTask,
   mockCheckAndAwardAchievements,
   mockSearchPublicObject,
   mockExifrGps,
@@ -40,6 +41,7 @@ const {
   mockCacheHouseCoordinatesIfAddressMatches: vi.fn(),
   mockCreateMaintenanceLog: vi.fn(),
   mockCreateTaskCompletion: vi.fn(),
+  mockArchiveMaintenanceNotificationForTask: vi.fn().mockResolvedValue(1),
   mockCheckAndAwardAchievements: vi.fn().mockResolvedValue([]),
   // ObjectStorageService.searchPublicObject — controlled per test
   mockSearchPublicObject: vi.fn(),
@@ -235,6 +237,7 @@ vi.mock("../storage", async () => {
       cacheHouseCoordinatesIfAddressMatches: mockCacheHouseCoordinatesIfAddressMatches,
       createMaintenanceLog: mockCreateMaintenanceLog,
       createTaskCompletion: mockCreateTaskCompletion,
+      archiveMaintenanceNotificationForTask: mockArchiveMaintenanceNotificationForTask,
       checkAndAwardAchievements: mockCheckAndAwardAchievements,
     }),
   };
@@ -388,6 +391,10 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     expect(res.status).toBe(201);
     expect(mockDbInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: "us-northeast-hvac-filter" }),
+    );
+    expect(mockArchiveMaintenanceNotificationForTask).toHaveBeenCalledWith(
+      HOMEOWNER_ID,
+      "us-northeast-hvac-filter",
     );
   });
 
@@ -821,5 +828,26 @@ describe("public record writes cannot forge server-owned verification evidence",
       ]),
     });
     expect(mockCreateTaskCompletion).not.toHaveBeenCalled();
+  });
+
+  it("archives the matching maintenance reminder after direct task-completion creation", async () => {
+    const app = await buildAppWithSession();
+    mockCreateTaskCompletion.mockResolvedValue({ id: "completion-1" });
+
+    const res = await request(app)
+      .post("/api/task-completions")
+      .send({
+        houseId: HOUSE_ID,
+        taskId: "us-northeast-hvac-filter",
+        taskType: "maintenance",
+        taskTitle: "Replace HVAC filter",
+        completionMethod: "diy",
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockArchiveMaintenanceNotificationForTask).toHaveBeenCalledWith(
+      HOMEOWNER_ID,
+      "us-northeast-hvac-filter",
+    );
   });
 });

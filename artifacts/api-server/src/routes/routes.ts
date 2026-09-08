@@ -14329,6 +14329,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       await db.insert(taskCompletions).values(taskCompletionData);
+
+      if (taskId) {
+        await storage.archiveMaintenanceNotificationForTask(req.session.user.id, taskId);
+      }
       
       // Check and award achievements after task completion
       const newlyUnlocked = await storage.checkAndAwardAchievements(req.session.user.id);
@@ -20391,6 +20395,10 @@ Respond as JSON with exactly this shape:
       });
 
       const completion = await storage.createTaskCompletion(completionData);
+
+      if (completionData.taskId) {
+        await storage.archiveMaintenanceNotificationForTask(homeownerId, completionData.taskId);
+      }
 
       // Check and award achievements using new system
       let newAchievements: any[] = [];

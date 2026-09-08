@@ -258,6 +258,7 @@ export interface IStorage {
   markNotificationAsRead(id: string): Promise<boolean>;
 
   createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void>;
+  archiveMaintenanceNotificationForTask(homeownerId: string, taskId: string): Promise<number>;
   // Marks prior-month unread "maintenance" category notifications as read so recurring
   // monthly reminders (which mint a fresh maintenanceTaskId/id each month) don't pile up
   // forever for homeowners who never open the notification bell. Returns count archived.
@@ -2560,6 +2561,22 @@ export class MemStorage implements IStorage {
         });
       }
     }
+  }
+
+  async archiveMaintenanceNotificationForTask(homeownerId: string, taskId: string): Promise<number> {
+    let archived = 0;
+    for (const notification of this.notifications.values()) {
+      if (
+        notification.homeownerId === homeownerId &&
+        notification.category === "maintenance" &&
+        notification.maintenanceTaskId === taskId &&
+        !notification.isRead
+      ) {
+        notification.isRead = true;
+        archived++;
+      }
+    }
+    return archived;
   }
 
   // Method to get pending maintenance notifications
@@ -12360,6 +12377,21 @@ class DbStorage implements IStorage {
           eq(notifications.category, "maintenance"),
           eq(notifications.isRead, false),
           lt(notifications.createdAt, startOfMonth),
+        )
+      )
+      .returning({ id: notifications.id });
+    return archived.length;
+  }
+
+  async archiveMaintenanceNotificationForTask(homeownerId: string, taskId: string): Promise<number> {
+    const archived = await db.update(notifications)
+      .set({ isRead: true })
+      .where(
+        and(
+          eq(notifications.homeownerId, homeownerId),
+          eq(notifications.category, "maintenance"),
+          eq(notifications.maintenanceTaskId, taskId),
+          eq(notifications.isRead, false),
         )
       )
       .returning({ id: notifications.id });
