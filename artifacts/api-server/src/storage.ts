@@ -1721,14 +1721,8 @@ export class MemStorage implements IStorage {
     let contractors = Array.from(this.contractors.values());
 
     if (filters) {
-      if (filters.services && filters.services.length > 0) {
-        contractors = contractors.filter(contractor =>
-          filters.services!.some(service =>
-            contractor.services.some(contractorService =>
-              contractorService.toLowerCase().includes(service.toLowerCase())
-            )
-          )
-        );
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
       }
 
       if (filters.minRating) {
@@ -1795,199 +1789,162 @@ export class MemStorage implements IStorage {
   }
 
   async getContractorByUserId(userId: string): Promise<Contractor | undefined> {
-    for (const contractor of this.contractors.values()) {
-      if ((contractor as any).userId === userId) {
-        return contractor;
+      for (const def of definitions) {
+        const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+        results.push({
+          achievementKey: def.achievementKey,
+          progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+          isUnlocked: userAchiev?.isUnlocked || false,
+          unlockedAt: userAchiev?.unlockedAt,
+          metadata: userAchiev?.metadata
+        });
       }
-    }
-    return undefined;
-  }
-
-  async createContractor(contractor: InsertContractor): Promise<Contractor> {
-    const id = randomUUID();
-    const newContractor: Contractor = { 
-      ...contractor, 
-      id,
-      distance: contractor.distance || null,
-      profileImage: contractor.profileImage || null,
-      reviewCount: contractor.reviewCount || 0,
-      isLicensed: contractor.isLicensed ?? true,
-      hasEmergencyServices: contractor.hasEmergencyServices ?? false,
-      serviceRadius: contractor.serviceRadius ?? 25,
-      businessLogo: contractor.businessLogo || null,
-      projectPhotos: contractor.projectPhotos || [],
-      googleBusinessUrl: contractor.googleBusinessUrl || null,
-      createdAt: new Date()
-    };
-    this.contractors.set(id, newContractor);
-    return newContractor;
-  }
-
-  // Contractor license methods
-  async getContractorLicenses(contractorId: string): Promise<ContractorLicense[]> {
-    const licenses = Array.from(this.contractorLicenses.values())
-      .filter(license => license.contractorId === contractorId && license.isActive);
-    return licenses;
-  }
-
-  async getContractorLicense(id: string): Promise<ContractorLicense | undefined> {
-    return this.contractorLicenses.get(id);
-  }
-
-  async createContractorLicense(license: InsertContractorLicense): Promise<ContractorLicense> {
-    const id = randomUUID();
-    const newLicense: ContractorLicense = {
-      ...license,
-      id,
-      licenseType: license.licenseType ?? 'General Contractor',
-      isActive: license.isActive ?? true,
-      expiryDate: license.expiryDate ?? null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.contractorLicenses.set(id, newLicense);
-    return newLicense;
-  }
-
-  async updateContractorLicense(id: string, contractorId: string, licenseData: Partial<InsertContractorLicense>): Promise<ContractorLicense | undefined> {
-    const existingLicense = this.contractorLicenses.get(id);
-    if (!existingLicense || existingLicense.contractorId !== contractorId) {
-      return undefined;
-    }
-
-    const updatedLicense: ContractorLicense = {
-      ...existingLicense,
-      ...licenseData,
-      updatedAt: new Date()
-    };
-    this.contractorLicenses.set(id, updatedLicense);
-    return updatedLicense;
-  }
-
-  async deleteContractorLicense(id: string, contractorId: string): Promise<boolean> {
-    const existingLicense = this.contractorLicenses.get(id);
-    if (!existingLicense || existingLicense.contractorId !== contractorId) {
-      return false;
-    }
-
-    return this.contractorLicenses.delete(id);
-  }
-
-  // Company methods
-  async getCompany(id: string): Promise<Company | undefined> {
-    return this.companies.get(id);
-  }
-
-  async createCompany(companyData: InsertCompany): Promise<Company> {
-    const newCompany: Company = {
-      ...companyData,
-      id: randomUUID(),
-      rating: "0",
-      reviewCount: 0,
-      // Ensure required fields have default values to prevent NOT NULL constraint violations
-      licenseNumber: companyData.licenseNumber || '',
-      licenseMunicipality: companyData.licenseMunicipality || '',
-      bio: companyData.bio || '',
-      location: companyData.location || '',
-      phone: companyData.phone || '',
-      email: companyData.email || '',
-      services: companyData.services || [],
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.companies.set(newCompany.id, newCompany);
-    return newCompany;
-  }
-
-  async updateCompany(id: string, companyData: Partial<InsertCompany>): Promise<Company | undefined> {
-    const existingCompany = this.companies.get(id);
-    if (!existingCompany) {
-      return undefined;
-    }
-
-    const updatedCompany: Company = {
-      ...existingCompany,
-      ...companyData,
-      updatedAt: new Date()
-    };
-    this.companies.set(id, updatedCompany);
-    return updatedCompany;
-  }
-
-  async getCompanyEmployees(companyId: string): Promise<User[]> {
-    const employees: User[] = [];
-    for (const user of this.users.values()) {
-      if (user.companyId === companyId) {
-        employees.push(user);
-      }
-    }
-    return employees;
-  }
-
-  // Company invite code methods
-  async createCompanyInviteCode(inviteCodeData: InsertCompanyInviteCode): Promise<CompanyInviteCode> {
-    const newInviteCode: CompanyInviteCode = {
-      ...inviteCodeData,
-      id: randomUUID(),
-      isActive: inviteCodeData.isActive ?? true,
-      usedBy: inviteCodeData.usedBy ?? null,
-      usedAt: inviteCodeData.usedAt ?? null,
-      expiresAt: inviteCodeData.expiresAt ?? null,
-      createdAt: new Date()
-    };
-    this.companyInviteCodes.set(newInviteCode.id, newInviteCode);
-    return newInviteCode;
-  }
-
-  async getCompanyInviteCode(id: string): Promise<CompanyInviteCode | undefined> {
-    return this.companyInviteCodes.get(id);
-  }
-
-  async getCompanyInviteCodeByCode(code: string): Promise<CompanyInviteCode | undefined> {
-    for (const inviteCode of this.companyInviteCodes.values()) {
-      if (inviteCode.code === code) {
-        return inviteCode;
-      }
-    }
     return undefined;
   }
 
   async getCompanyInviteCodes(companyId: string): Promise<CompanyInviteCode[]> {
     const codes: CompanyInviteCode[] = [];
     for (const inviteCode of this.companyInviteCodes.values()) {
-      if (inviteCode.companyId === companyId) {
-        codes.push(inviteCode);
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
+      }
+          // Guarded by the DB's unique (homeownerId, achievementKey) index:
+          // if a concurrent check already inserted this achievement between
+          // our read of `userAchievs` above and this insert, `created` comes
+          // back undefined. Skip silently rather than pushing a duplicate
+          // into `newlyUnlocked` (which would fire a second badge/notification
+          // for the same award) — the row already exists, so this request
+          // simply lost the race and has nothing left to do.
+          const created = await this.createUserAchievementIfAbsent({
+            homeownerId,
+            achievementKey: def.achievementKey,
+            progress: "100",
+            isUnlocked: true,
+            unlockedAt: new Date()
+          });
+          if (created) newlyUnlocked.push(created);
+        }
+      } else if (!existing && progress > 0) {
+        // Create progress tracking (same conflict-safe guard: a concurrent
+        // call may have already created this row).
+        await this.createUserAchievementIfAbsent({
+          homeownerId,
+          achievementKey: def.achievementKey,
+          progress: progress.toString(),
+          isUnlocked: false
+        });
+      } else if (existing && progress > parseFloat(existing.progress?.toString() || "0")) {
+        // Update progress
+        await this.updateUserAchievementProgress(homeownerId, def.achievementKey, progress);
       }
     }
-    return codes;
+    
+    return newlyUnlocked;
   }
 
-  async updateCompanyInviteCode(id: string, inviteCodeData: Partial<InsertCompanyInviteCode>): Promise<CompanyInviteCode | undefined> {
-    const existingInviteCode = this.companyInviteCodes.get(id);
-    if (!existingInviteCode) {
-      return undefined;
+  async checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]> {
+    return this.checkAndAwardAchievements(homeownerId);
+  }
+
+  async calculateAchievementsProgress(
+    homeownerId: string,
+    houseId?: string
+  ): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>> {
+    const results: Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }> = [];
+    
+    // Get all achievement definitions
+    const definitions = await this.getAllAchievementDefinitions();
+    
+    // Get user's current achievements for unlocked status
+    const userAchievs = await this.getUserAchievements(homeownerId);
+    
+    // If filtering by house, only calculate house-specific achievements
+    // Otherwise, use the full calculation from checkAndAwardAchievements
+    if (!houseId) {
+      // No house filter - return user's actual achievement progress
+      for (const def of definitions) {
+        const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+        results.push({
+          achievementKey: def.achievementKey,
+          progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+          isUnlocked: userAchiev?.isUnlocked || false,
+          unlockedAt: userAchiev?.unlockedAt,
+          metadata: userAchiev?.metadata
+        });
+      }
+    return undefined;
+  }
+
+  async getCompanyInviteCodes(companyId: string): Promise<CompanyInviteCode[]> {
+    const codes: CompanyInviteCode[] = [];
+    for (const inviteCode of this.companyInviteCodes.values()) {
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
+      }
+      return { outcome: "pending" };
     }
 
-    const updatedInviteCode: CompanyInviteCode = {
-      ...existingInviteCode,
-      ...inviteCodeData
-    };
-    this.companyInviteCodes.set(id, updatedInviteCode);
-    return updatedInviteCode;
+    (existing as any).stripeCheckoutSessionId = 'pending';
+    (existing as any).stripeCheckoutSessionAmount = amount;
+    (existing as any).stripeCheckoutSessionExpiresAt = new Date(now.getTime() + claimTtlMs);
+    this.crmInvoicesMap.set(invoiceId, existing);
+    return { outcome: "claimed" };
   }
 
-  async getProducts(filters?: {
-    category?: string;
-    featured?: boolean;
-    search?: string;
-  }): Promise<Product[]> {
-    let products = Array.from(this.products.values());
+  async finalizeInvoiceCheckoutSession(invoiceId: string, sessionId: string, amount: string, expiresAt: Date): Promise<void> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing) return;
+    (existing as any).stripeCheckoutSessionId = sessionId;
+    (existing as any).stripeCheckoutSessionAmount = amount;
+    (existing as any).stripeCheckoutSessionExpiresAt = expiresAt;
+    this.crmInvoicesMap.set(invoiceId, existing);
+  }
 
-    if (filters) {
-      if (filters.category) {
-        products = products.filter(product =>
-          product.category.toLowerCase().includes(filters.category!.toLowerCase())
-        );
+  async releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing) return;
+    if ((existing as any).stripeCheckoutSessionId === expectedSessionId) {
+      (existing as any).stripeCheckoutSessionId = null;
+      (existing as any).stripeCheckoutSessionAmount = null;
+      (existing as any).stripeCheckoutSessionExpiresAt = null;
+      this.crmInvoicesMap.set(invoiceId, existing);
+    }
+  }
+
+  async deleteCrmInvoice(id: string): Promise<boolean> {
+    return this.crmInvoicesMap.delete(id);
+  }
+
+  async getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]> {
+    return Array.from(this.crmInvoicesMap.values()).filter(inv => inv.homeownerId === homeownerId);
+  }
+
+  async unlinkInvoiceFromHomeowner(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing || existing.homeownerId !== homeownerId) return false;
+    this.crmInvoicesMap.set(invoiceId, {
+      ...existing,
+      homeownerId: null,
+      houseId: null,
+      updatedAt: new Date(),
+    });
+    return true;
+  }
+
+  async markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean> {
+    const existing = this.crmInvoicesMap.get(invoiceId);
+    if (!existing || existing.homeownerId !== homeownerId) return false;
+    if (existing.viewedAt) return true;
+    const updated: CrmInvoice = { ...existing, viewedAt: new Date(), updatedAt: new Date() };
+    this.crmInvoicesMap.set(invoiceId, updated);
+    return true;
+  }
+
+  async markAllInvoicesViewed(homeownerId: string): Promise<void> {
+    const now = new Date();
+    for (const [id, inv] of this.crmInvoicesMap.entries()) {
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
       }
 
       if (filters.featured !== undefined) {
@@ -2028,106 +1985,88 @@ export class MemStorage implements IStorage {
     const appliances = Array.from(this.homeAppliances.values());
     
     if (homeownerId && houseId) {
-      return appliances.filter(appliance => appliance.homeownerId === homeownerId && appliance.houseId === houseId);
-    } else if (homeownerId) {
-      return appliances.filter(appliance => appliance.homeownerId === homeownerId);
-    } else if (houseId) {
-      return appliances.filter(appliance => appliance.houseId === houseId);
-    }
-    
-    return appliances;
+    return Array.from(this.affiliateReferralsMap.values()).filter(r => r.agentId === agentId);
   }
 
-  async getHomeAppliance(id: string): Promise<HomeAppliance | undefined> {
-    return this.homeAppliances.get(id);
+  async getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined> {
+    return this.affiliateReferralsMap.get(id);
   }
 
-  async createHomeAppliance(appliance: InsertHomeAppliance): Promise<HomeAppliance> {
-    const id = randomUUID();
-    const newAppliance: HomeAppliance = {
-      ...appliance,
-      id,
-      yearInstalled: appliance.yearInstalled ?? null,
-      serialNumber: appliance.serialNumber ?? null,
-      notes: appliance.notes ?? null,
-      location: appliance.location ?? null,
-      warrantyExpiration: appliance.warrantyExpiration ?? null,
-      lastServiceDate: appliance.lastServiceDate ?? null,
-      createdAt: new Date()
-    };
-    this.homeAppliances.set(id, newAppliance);
-    return newAppliance;
+  async getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined> {
+    return Array.from(this.affiliateReferralsMap.values()).find(r => r.referredUserId === userId);
   }
 
-  async updateHomeAppliance(id: string, appliance: Partial<InsertHomeAppliance>): Promise<HomeAppliance | undefined> {
-    const existing = this.homeAppliances.get(id);
-    if (!existing) {
-      return undefined;
+  async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
+    if (homeownerId === 'demo-homeowner-permanent-id') {
+      return {
+        firstName: 'Jessica',
+        lastName: 'Morgan',
+        email: 'jessica.morgan@seattlerealty.com',
+        phone: '(206) 555-0142',
+        website: 'https://seattlerealty.com/jessica-morgan',
+        officeAddress: '1201 Third Ave, Suite 900, Seattle, WA 98101',
+        referralCode: 'JESSICA2024',
+        profileImageUrl: '/demo-agent-jessica.png',
+      };
     }
 
-    const updated: HomeAppliance = {
-      ...existing,
-      ...appliance
+    const referral = await this.getAffiliateReferralByUserId(homeownerId);
+    if (!referral) return undefined;
+
+    const agent = await this.getUser(referral.agentId);
+    if (!agent) return undefined;
+
+    const agentProfile = await this.getAgentProfile(referral.agentId);
+
+    return {
+      firstName: agent.firstName || 'Agent',
+      lastName: agent.lastName || '',
+      email: agent.email,
+      phone: agentProfile?.phone || null,
+      website: agentProfile?.website || null,
+      officeAddress: agentProfile?.officeAddress || null,
+      referralCode: agent.referralCode,
+      profileImageUrl: agent.profileImageUrl,
     };
-    this.homeAppliances.set(id, updated);
-    return updated;
   }
 
-  async deleteHomeAppliance(id: string): Promise<boolean> {
-    return this.homeAppliances.delete(id);
+  async createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral> {
+    const created = { ...referral, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(created.id, created);
+    return created;
   }
 
-  // Appliance manual methods implementation
-  async getHomeApplianceManuals(applianceId: string): Promise<HomeApplianceManual[]> {
-    const manuals = Array.from(this.homeApplianceManuals.values());
-    return manuals.filter(manual => manual.applianceId === applianceId);
-  }
-
-  async getHomeApplianceManual(id: string): Promise<HomeApplianceManual | undefined> {
-    return this.homeApplianceManuals.get(id);
-  }
-
-  async createHomeApplianceManual(manual: InsertHomeApplianceManual): Promise<HomeApplianceManual> {
-    const newManual: HomeApplianceManual = {
-      id: randomUUID(),
-      ...manual,
-      createdAt: new Date(),
-    };
-    this.homeApplianceManuals.set(newManual.id, newManual);
-    return newManual;
-  }
-
-  async updateHomeApplianceManual(id: string, manual: Partial<InsertHomeApplianceManual>): Promise<HomeApplianceManual | undefined> {
-    const existing = this.homeApplianceManuals.get(id);
+  async updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined> {
+    const existing = this.affiliateReferralsMap.get(id);
     if (!existing) return undefined;
-
-    const updated: HomeApplianceManual = {
-      ...existing,
-      ...manual,
-    };
-    this.homeApplianceManuals.set(id, updated);
+    const updated = { ...existing, ...referral, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
     return updated;
   }
 
-  async deleteHomeApplianceManual(id: string): Promise<boolean> {
-    return this.homeApplianceManuals.delete(id);
+  async advanceAffiliateReferralPayment(
+    id: string,
+    expectedStatus: string,
+    updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+  ): Promise<AffiliateReferral | undefined> {
+    const existing = this.affiliateReferralsMap.get(id);
+    if (!existing || existing.status !== expectedStatus) return undefined;
+    const updated = { ...existing, ...updates, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
+    return updated;
   }
 
-  // Maintenance log methods
-  async getMaintenanceLogs(homeownerId?: string, houseId?: string): Promise<MaintenanceLog[]> {
-    const logs = Array.from(this.maintenanceLogs.values());
-    
-    let filtered = logs;
-    
-    if (homeownerId) {
-      filtered = filtered.filter(log => log.homeownerId === homeownerId);
-    }
-    
-    if (houseId) {
-      filtered = filtered.filter(log => log.houseId === houseId);
-    }
-    
-    return filtered.sort((a, b) => new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime());
+  // Subscription cycle event operations (in-memory stubs — MemStorage is dev/test only)
+  private subscriptionCycleEventsArr: SubscriptionCycleEvent[] = [];
+
+  async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {
+    return this.subscriptionCycleEventsArr.filter(e => e.userId === userId);
+  }
+
+  async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
+    const created = { ...event, id: crypto.randomUUID(), createdAt: new Date() } as SubscriptionCycleEvent;
+    this.subscriptionCycleEventsArr.push(created);
+    return created;
   }
 
   async getMaintenanceLog(id: string): Promise<MaintenanceLog | undefined> {
@@ -2378,85 +2317,112 @@ export class MemStorage implements IStorage {
     const notifications = Array.from(this.notifications.values());
     
     if (homeownerId) {
-      return notifications.filter(notification => notification.homeownerId === homeownerId);
-    }
-    
-    return notifications.sort((a, b) => new Date(b.createdAt || new Date()).getTime() - new Date(a.createdAt || new Date()).getTime());
+    return Array.from(this.affiliateReferralsMap.values()).filter(r => r.agentId === agentId);
   }
 
-  async getNotification(id: string): Promise<Notification | undefined> {
-    return this.notifications.get(id);
+  async getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined> {
+    return this.affiliateReferralsMap.get(id);
   }
 
-  async createNotification(notification: InsertNotification): Promise<Notification> {
-    const id = randomUUID();
-    const newNotification: Notification = {
-      ...notification,
-      id,
-      houseId: notification.houseId ?? null,
-      appointmentId: notification.appointmentId ?? null,
-      maintenanceTaskId: notification.maintenanceTaskId ?? null,
-      sentAt: notification.sentAt ?? null,
-      isRead: notification.isRead ?? false,
-      priority: notification.priority ?? "medium",
-      actionUrl: notification.actionUrl ?? null,
-      createdAt: new Date()
-    };
-    this.notifications.set(id, newNotification);
-    return newNotification;
+  async getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined> {
+    return Array.from(this.affiliateReferralsMap.values()).find(r => r.referredUserId === userId);
   }
 
-  async updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined> {
-    const existing = this.notifications.get(id);
-    if (!existing) {
-      return undefined;
+  async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {
+    if (homeownerId === 'demo-homeowner-permanent-id') {
+      return {
+        firstName: 'Jessica',
+        lastName: 'Morgan',
+        email: 'jessica.morgan@seattlerealty.com',
+        phone: '(206) 555-0142',
+        website: 'https://seattlerealty.com/jessica-morgan',
+        officeAddress: '1201 Third Ave, Suite 900, Seattle, WA 98101',
+        referralCode: 'JESSICA2024',
+        profileImageUrl: '/demo-agent-jessica.png',
+      };
     }
 
-    const updated: Notification = {
-      ...existing,
-      ...notification
+    const referral = await this.getAffiliateReferralByUserId(homeownerId);
+    if (!referral) return undefined;
+
+    const agent = await this.getUser(referral.agentId);
+    if (!agent) return undefined;
+
+    const agentProfile = await this.getAgentProfile(referral.agentId);
+
+    return {
+      firstName: agent.firstName || 'Agent',
+      lastName: agent.lastName || '',
+      email: agent.email,
+      phone: agentProfile?.phone || null,
+      website: agentProfile?.website || null,
+      officeAddress: agentProfile?.officeAddress || null,
+      referralCode: agent.referralCode,
+      profileImageUrl: agent.profileImageUrl,
     };
-    this.notifications.set(id, updated);
+  }
+
+  async createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral> {
+    const created = { ...referral, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(created.id, created);
+    return created;
+  }
+
+  async updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined> {
+    const existing = this.affiliateReferralsMap.get(id);
+    if (!existing) return undefined;
+    const updated = { ...existing, ...referral, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
     return updated;
   }
 
-  async deleteNotification(id: string): Promise<boolean> {
-    return this.notifications.delete(id);
+  async advanceAffiliateReferralPayment(
+    id: string,
+    expectedStatus: string,
+    updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+  ): Promise<AffiliateReferral | undefined> {
+    const existing = this.affiliateReferralsMap.get(id);
+    if (!existing || existing.status !== expectedStatus) return undefined;
+    const updated = { ...existing, ...updates, updatedAt: new Date() } as AffiliateReferral;
+    this.affiliateReferralsMap.set(id, updated);
+    return updated;
   }
 
-  async getUnreadNotifications(homeownerId: string): Promise<Notification[]> {
-    const notifications = Array.from(this.notifications.values());
-    return notifications.filter(notification => 
-      notification.homeownerId === homeownerId && !notification.isRead
-    ).sort((a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime());
+  // Subscription cycle event operations (in-memory stubs — MemStorage is dev/test only)
+  private subscriptionCycleEventsArr: SubscriptionCycleEvent[] = [];
+
+  async getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]> {
+    return this.subscriptionCycleEventsArr.filter(e => e.userId === userId);
+  }
+
+  async createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent> {
+    const created = { ...event, id: crypto.randomUUID(), createdAt: new Date() } as SubscriptionCycleEvent;
+    this.subscriptionCycleEventsArr.push(created);
+    return created;
   }
 
   async getContractorNotifications(contractorId: string): Promise<Notification[]> {
-    const notifications = Array.from(this.notifications.values());
-    return notifications.filter(notification => 
-      notification.contractorId === contractorId
-    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const rows = await db
+      .select({ notification: notifications })
+      .from(notifications)
+      .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
+      .where(eq(contractorAppointments.contractorId, contractorId))
+      .orderBy(desc(notifications.createdAt));
+    return rows.map(r => r.notification);
   }
 
   async getUnreadContractorNotifications(contractorId: string): Promise<Notification[]> {
-    const notifications = Array.from(this.notifications.values());
-    return notifications.filter(notification => 
-      notification.contractorId === contractorId && !notification.isRead
-    );
+    const rows = await db
+      .select({ notification: notifications })
+      .from(notifications)
+      .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
+      .where(and(eq(contractorAppointments.contractorId, contractorId), eq(notifications.isRead, false)));
+    return rows.map(r => r.notification);
   }
 
   async markNotificationAsRead(id: string): Promise<boolean> {
-    const notification = this.notifications.get(id);
-    if (!notification) {
-      return false;
-    }
-
-    const updated: Notification = {
-      ...notification,
-      isRead: true
-    };
-    this.notifications.set(id, updated);
-    return true;
+    const result = await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id)).returning();
+    return result.length > 0;
   }
 
   // Helper method to create notifications for an appointment
@@ -5307,8 +5273,7 @@ export class MemStorage implements IStorage {
     const userAchievs = await this.getUserAchievements(homeownerId);
     const unlockedKeys = new Set(userAchievs.filter(a => a.isUnlocked).map(a => a.achievementKey));
     
-    // Use storage accessors rather than MemStorage's private maps so this
-    // shared evaluator also works when DbStorage borrows it.
+    // Load achievement inputs through DbStorage's database-backed accessors.
     const [allCompletions, allLogs, allProposals, userHouses] = await Promise.all([
       this.getTaskCompletions(homeownerId),
       this.getMaintenanceLogs(homeownerId),
@@ -5737,10 +5702,9 @@ export class MemStorage implements IStorage {
       const existing = userAchievs.find(a => a.achievementKey === def.achievementKey);
       
       if (isCompleted) {
-        if (existing) {
-          const unlocked = await this.unlockUserAchievement(homeownerId, def.achievementKey);
-          if (unlocked) newlyUnlocked.push(unlocked);
-        } else {
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
+      }
           // Guarded by the DB's unique (homeownerId, achievementKey) index:
           // if a concurrent check already inserted this achievement between
           // our read of `userAchievs` above and this insert, `created` comes
@@ -5934,8 +5898,8 @@ export class MemStorage implements IStorage {
   // Authentication methods
   async getUserByEmail(email: string): Promise<User | undefined> {
     for (const user of this.users.values()) {
-      if (user.email === email) {
-        return user;
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
       }
     }
     return undefined;
@@ -6455,58 +6419,23 @@ export class MemStorage implements IStorage {
     stateIdFileSize: number;
     stateIdChecksum: string;
   }): Promise<AgentProfile | undefined> {
-    return this.updateAgentProfile(agentId, {
-      licenseNumber: data.licenseNumber,
-      licenseState: data.licenseState,
-      licenseExpiration: data.licenseExpiration,
-      stateIdStorageKey: data.stateIdStorageKey,
-      stateIdOriginalFilename: data.stateIdOriginalFilename,
-      stateIdMimeType: data.stateIdMimeType,
-      stateIdFileSize: data.stateIdFileSize,
-      stateIdChecksum: data.stateIdChecksum,
-      stateIdUploadedAt: new Date(),
-      verificationStatus: 'pending_review',
-      verificationRequestedAt: new Date(),
-      verifiedAt: null,
-      lastRejectedAt: null,
-      reviewedByAdminId: null,
-      reviewNotes: null,
-    });
-  }
-
-  async getAgentVerificationStatus(agentId: string): Promise<{
-    verificationStatus: string;
-    licenseNumber?: string | null;
-    licenseState?: string | null;
-    licenseExpiration?: Date | null;
-    verificationRequestedAt?: Date | null;
-    reviewNotes?: string | null;
-  } | undefined> {
-    const profile = this.agentProfilesMap.get(agentId);
-    if (!profile) return undefined;
-    return {
-      verificationStatus: profile.verificationStatus,
-      licenseNumber: profile.licenseNumber,
-      licenseState: profile.licenseState,
-      licenseExpiration: profile.licenseExpiration,
-      verificationRequestedAt: profile.verificationRequestedAt,
-      reviewNotes: profile.reviewNotes,
-    };
+  async updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined> {
+    const [updated] = await db.update(agentProfiles).set({ ...profile, updatedAt: new Date() }).where(eq(agentProfiles.agentId, agentId)).returning();
+    return updated;
   }
 
   // Agent verification audit operations (in-memory stubs — MemStorage is dev/test only)
   private agentVerificationAuditsArr: AgentVerificationAudit[] = [];
 
   async createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit> {
-    const created = { ...audit, id: crypto.randomUUID(), createdAt: new Date() } as AgentVerificationAudit;
-    this.agentVerificationAuditsArr.push(created);
-    return created;
+    const result = await db.insert(agentVerificationAudits).values({ ...audit, id: randomUUID() }).returning();
+    return result[0];
   }
 
   async getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]> {
-    return this.agentVerificationAuditsArr
-      .filter(a => a.agentId === agentId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return db.select().from(agentVerificationAudits)
+      .where(eq(agentVerificationAudits.agentId, agentId))
+      .orderBy(desc(agentVerificationAudits.createdAt));
   }
 
   // Affiliate referral operations (in-memory stubs — MemStorage is dev/test only)
@@ -6805,12 +6734,12 @@ export class MemStorage implements IStorage {
     if (filters?.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       leads = leads.filter(l => {
-        const firstName = l.firstName?.toLowerCase() || '';
-        const lastName = l.lastName?.toLowerCase() || '';
-        const email = l.email?.toLowerCase() || '';
-        const phone = l.phone?.toLowerCase() || '';
+        const firstName = c.firstName?.toLowerCase() || '';
+        const lastName = c.lastName?.toLowerCase() || '';
+        const email = c.email?.toLowerCase() || '';
+        const phone = c.phone?.toLowerCase() || '';
         const projectType = l.projectType?.toLowerCase() || '';
-        const tags = l.tags?.map(t => t.toLowerCase()).join(' ') || '';
+        const tags = c.tags?.map(t => t.toLowerCase()).join(' ') || '';
         
         return firstName.includes(query) ||
           lastName.includes(query) ||
@@ -7109,9 +7038,9 @@ export class MemStorage implements IStorage {
     if (filters?.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       jobs = jobs.filter(j => {
-        const title = j.title?.toLowerCase() || '';
-        const description = j.description?.toLowerCase() || '';
-        const serviceType = j.serviceType?.toLowerCase() || '';
+        const title = i.title?.toLowerCase() || '';
+        const description = i.description?.toLowerCase() || '';
+        const serviceType = q.serviceType?.toLowerCase() || '';
         const address = j.address?.toLowerCase() || '';
         
         return title.includes(query) ||
@@ -7189,8 +7118,8 @@ export class MemStorage implements IStorage {
     if (filters?.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
       quotes = quotes.filter(q => {
-        const title = q.title?.toLowerCase() || '';
-        const description = q.description?.toLowerCase() || '';
+        const title = i.title?.toLowerCase() || '';
+        const description = i.description?.toLowerCase() || '';
         const quoteNumber = q.quoteNumber?.toLowerCase() || '';
         const serviceType = q.serviceType?.toLowerCase() || '';
         
@@ -7345,8 +7274,8 @@ export class MemStorage implements IStorage {
       currentAmount !== amount;
 
     if (!isReclaimable) {
-      if (currentSessionId && currentSessionId !== 'pending') {
-        return { outcome: "existing", sessionId: currentSessionId };
+      if (inv.homeownerId === homeownerId && !inv.viewedAt) {
+        this.crmInvoicesMap.set(id, { ...inv, viewedAt: now, updatedAt: now });
       }
       return { outcome: "pending" };
     }
@@ -8416,15 +8345,617 @@ export class DbStorage implements IStorage {
   }
 
   async checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]> {
-    return this.memStorage.checkAndAwardAchievements.call(this, homeownerId);
+    const newlyUnlocked: UserAchievement[] = [];
+
+    // Get all achievement definitions
+    const definitions = await this.getAllAchievementDefinitions();
+
+    // Get user's current achievements
+    const userAchievs = await this.getUserAchievements(homeownerId);
+    const unlockedKeys = new Set(userAchievs.filter(a => a.isUnlocked).map(a => a.achievementKey));
+
+    // Use storage accessors rather than MemStorage's private maps so this
+    // shared evaluator also works when DbStorage borrows it.
+    const [allCompletions, allLogs, allProposals, userHouses] = await Promise.all([
+      this.getTaskCompletions(homeownerId),
+      this.getMaintenanceLogs(homeownerId),
+      this.getProposals(undefined, homeownerId),
+      this.getHouses(homeownerId),
+    ]);
+    const currentYear = new Date().getFullYear();
+    const currentYearCompletions = allCompletions.filter(c => c.year === currentYear);
+
+    // PRE-AGGREGATE all savings data once to avoid repeated queries
+    const savingsCompletions = allCompletions.filter(c => c.costSavings != null);
+
+    const tasksWithSavings = savingsCompletions.filter(c =>
+      c.costSavings && parseFloat(c.costSavings.toString()) > 0
+    );
+
+    // Calculate aggregated savings metrics once
+    const savingsMetrics = {
+      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
+      underBudgetCount: tasksWithSavings.length,
+      avgSavingsPerTask: tasksWithSavings.length > 0
+        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
+        : 0,
+      monthsWithSavings: new Map<string, number>(),
+      quarterSavings: new Map<string, number>(),
+      maxConsecutiveMonths: 0
+    };
+
+    // Group by month and quarter
+    for (const completion of tasksWithSavings) {
+      if (completion.completedAt) {
+        const year = completion.completedAt.getFullYear();
+        const month = completion.completedAt.getMonth() + 1;
+        const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+        const quarter = Math.floor((month - 1) / 3) + 1;
+        const quarterKey = `${year}-Q${quarter}`;
+
+        savingsMetrics.monthsWithSavings.set(monthKey, (savingsMetrics.monthsWithSavings.get(monthKey) || 0) + 1);
+
+        const savings = parseFloat(completion.costSavings!.toString());
+        savingsMetrics.quarterSavings.set(quarterKey, (savingsMetrics.quarterSavings.get(quarterKey) || 0) + savings);
+      }
+    }
+
+    // Calculate consecutive month streak using proper calendar arithmetic
+    if (savingsMetrics.monthsWithSavings.size > 0) {
+      const sortedMonths = Array.from(savingsMetrics.monthsWithSavings.keys()).sort();
+      let currentStreak = 1;
+      let maxStreak = 1;
+
+      for (let i = 1; i < sortedMonths.length; i++) {
+        const [prevYear, prevMonth] = sortedMonths[i - 1].split('-').map(Number);
+        const [currYear, currMonth] = sortedMonths[i].split('-').map(Number);
+
+        // Check if months are consecutive using proper calendar arithmetic
+        let isConsecutive = false;
+        if (currYear === prevYear && currMonth === prevMonth + 1) {
+          isConsecutive = true;
+        } else if (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1) {
+          // Handle year rollover
+          isConsecutive = true;
+        }
+
+        if (isConsecutive) {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+
+      savingsMetrics.maxConsecutiveMonths = maxStreak;
+    }
+
+    for (const def of definitions) {
+      // Skip if already unlocked
+      if (unlockedKeys.has(def.achievementKey)) continue;
+
+      const criteria = JSON.parse(def.criteria);
+      let isCompleted = false;
+      let progress = 0;
+
+      // Check each achievement type
+      switch (criteria.type) {
+        case 'seasonal_tasks': {
+          // Get tasks for this season
+          const seasonMonths: Record<string, number[]> = {
+            winter: [12, 1, 2],
+            spring: [3, 4, 5],
+            summer: [6, 7, 8],
+            fall: [9, 10, 11]
+          };
+
+          const months = seasonMonths[criteria.season] || [];
+
+          // Count completed seasonal tasks (use pre-loaded current year data)
+          const seasonalCompletions = currentYearCompletions.filter(c => months.includes(c.month));
+
+          const requiredCount = criteria.count || 5;
+          progress = Math.min(100, (seasonalCompletions.length / requiredCount) * 100);
+          isCompleted = seasonalCompletions.length >= requiredCount;
+          break;
+        }
+
+        case 'all_seasons': {
+          // Check if user completed tasks in all 4 seasons in current year
+          const seasonMonths: Record<string, number[]> = {
+            winter: [12, 1, 2],
+            spring: [3, 4, 5],
+            summer: [6, 7, 8],
+            fall: [9, 10, 11]
+          };
+
+          const seasonsCompleted = new Set<string>();
+          for (const completion of currentYearCompletions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) {
+                seasonsCompleted.add(season);
+              }
+            }
+          }
+
+          progress = Math.min(100, (seasonsCompleted.size / 4) * 100);
+          isCompleted = seasonsCompleted.size === 4;
+          break;
+        }
+
+        case 'seasonal_peak': {
+          // Check if user completed X+ tasks in any single season
+          const seasonMonths: Record<string, number[]> = {
+            winter: [12, 1, 2],
+            spring: [3, 4, 5],
+            summer: [6, 7, 8],
+            fall: [9, 10, 11]
+          };
+
+          const seasonCounts: Record<string, number> = {
+            winter: 0,
+            spring: 0,
+            summer: 0,
+            fall: 0
+          };
+
+          for (const completion of currentYearCompletions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) {
+                seasonCounts[season]++;
+              }
+            }
+          }
+
+          const maxSeasonalTasks = Math.max(...Object.values(seasonCounts));
+          progress = Math.min(100, (maxSeasonalTasks / criteria.count) * 100);
+          isCompleted = maxSeasonalTasks >= criteria.count;
+          break;
+        }
+
+        case 'year_round':
+        case 'seasonal_consistency': {
+          // Check if user completed min tasks in each season
+          const seasonMonths: Record<string, number[]> = {
+            winter: [12, 1, 2],
+            spring: [3, 4, 5],
+            summer: [6, 7, 8],
+            fall: [9, 10, 11]
+          };
+
+          const seasonCounts: Record<string, number> = {
+            winter: 0,
+            spring: 0,
+            summer: 0,
+            fall: 0
+          };
+
+          for (const completion of currentYearCompletions) {
+            for (const [season, months] of Object.entries(seasonMonths)) {
+              if (months.includes(completion.month)) {
+                seasonCounts[season]++;
+              }
+            }
+          }
+
+          const minPerSeason = criteria.min_per_season || 3;
+          const seasonsMetTarget = Object.values(seasonCounts).filter(count => count >= minPerSeason).length;
+
+          progress = Math.min(100, (seasonsMetTarget / 4) * 100);
+          isCompleted = seasonsMetTarget === 4;
+          break;
+        }
+
+        case 'under_budget': {
+          // Use pre-aggregated data
+          progress = Math.min(100, (savingsMetrics.underBudgetCount / criteria.count) * 100);
+          isCompleted = savingsMetrics.underBudgetCount >= criteria.count;
+          break;
+        }
+
+        case 'total_savings': {
+          // Use pre-aggregated data
+          progress = Math.min(100, (savingsMetrics.totalSavings / criteria.amount) * 100);
+          isCompleted = savingsMetrics.totalSavings >= criteria.amount;
+          break;
+        }
+
+        case 'consecutive_savings_months': {
+          // Use pre-calculated streak (now with proper calendar arithmetic)
+          progress = Math.min(100, (savingsMetrics.maxConsecutiveMonths / criteria.count) * 100);
+          isCompleted = savingsMetrics.maxConsecutiveMonths >= criteria.count;
+          break;
+        }
+
+        case 'average_savings_per_task': {
+          // Improved progress visibility
+          const minTasks = criteria.min_tasks || 10;
+
+          if (tasksWithSavings.length < minTasks) {
+            // Show progress toward reaching minimum tasks required
+            progress = (tasksWithSavings.length / minTasks) * 50; // First 50% is reaching min tasks
+            isCompleted = false;
+            break;
+          }
+
+          // Once min tasks met, show progress based on average savings
+          const taskProgress = 50; // Already met min tasks
+          const avgProgress = Math.min(50, (savingsMetrics.avgSavingsPerTask / criteria.amount) * 50);
+          progress = taskProgress + avgProgress;
+          isCompleted = savingsMetrics.avgSavingsPerTask >= criteria.amount;
+          break;
+        }
+
+        case 'quarterly_savings': {
+          // Use pre-aggregated quarterly data
+          const maxQuarterlySavings = savingsMetrics.quarterSavings.size > 0
+            ? Math.max(...Array.from(savingsMetrics.quarterSavings.values()))
+            : 0;
+
+          progress = Math.min(100, (maxQuarterlySavings / criteria.amount) * 100);
+          isCompleted = maxQuarterlySavings >= criteria.amount;
+          break;
+        }
+
+        case 'documents_uploaded': {
+          const docsCount = allLogs.reduce((sum, log) =>
+            sum + (log.receiptUrls?.length || 0), 0
+          );
+
+          progress = Math.min(100, (docsCount / criteria.count) * 100);
+          isCompleted = docsCount >= criteria.count;
+          break;
+        }
+
+        case 'logs_created': {
+          progress = Math.min(100, (allLogs.length / criteria.count) * 100);
+          isCompleted = allLogs.length >= criteria.count;
+          break;
+        }
+
+        case 'detailed_logs': {
+          // Count logs with detailed descriptions (50+ characters)
+          const detailedLogs = allLogs.filter(log =>
+            log.description && log.description.length >= 50
+          );
+
+          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
+          isCompleted = detailedLogs.length >= criteria.count;
+          break;
+        }
+
+        case 'photos_uploaded': {
+          const photosCount = allLogs.reduce((sum, log) =>
+            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0
+          );
+
+          // Count pairs of before/after photos
+          const pairsCount = Math.floor(photosCount / 2);
+          progress = Math.min(100, (pairsCount / criteria.count) * 100);
+          isCompleted = pairsCount >= criteria.count;
+          break;
+        }
+
+        case 'referrals': {
+          // Get user's referral count
+          const user = await this.getUser(homeownerId);
+          const referralCount = user?.referralCount || 0;
+
+          progress = Math.min(100, (referralCount / criteria.count) * 100);
+          isCompleted = referralCount >= criteria.count;
+          break;
+        }
+
+        case 'contractor_hired': {
+          // Count unique contractor hires
+          const acceptedProposals = allProposals.filter(
+            p => p.homeownerId === homeownerId && p.status === 'accepted'
+          );
+
+          progress = Math.min(100, (acceptedProposals.length / criteria.count) * 100);
+          isCompleted = acceptedProposals.length >= criteria.count;
+          break;
+        }
+
+        case 'multi_property': {
+          // Count user's houses
+          progress = Math.min(100, (userHouses.length / criteria.count) * 100);
+          isCompleted = userHouses.length >= criteria.count;
+          break;
+        }
+
+        case 'profile_complete': {
+          // Check if user has added home systems
+          if (userHouses.length === 0) {
+            progress = 0;
+            isCompleted = false;
+            break;
+          }
+
+          const systemsData = await this.getHomeSystems(homeownerId, userHouses[0].id);
+
+          progress = Math.min(100, (systemsData.length / criteria.systems) * 100);
+          isCompleted = systemsData.length >= criteria.systems;
+          break;
+        }
+
+        case 'streak': {
+          // Calculate consecutive months with task completions
+          const completions = allCompletions;
+
+          if (completions.length === 0) {
+            progress = 0;
+            isCompleted = false;
+            break;
+          }
+
+          // Group by year-month
+          const monthSet = new Set(
+            completions.map(c => `${c.year}-${c.month}`)
+          );
+          const uniqueMonths = Array.from(monthSet).sort();
+
+          // Calculate longest streak
+          let currentStreak = 1;
+          let maxStreak = 1;
+
+          for (let i = 1; i < uniqueMonths.length; i++) {
+            const [prevYear, prevMonth] = uniqueMonths[i - 1].split('-').map(Number);
+            const [currYear, currMonth] = uniqueMonths[i].split('-').map(Number);
+
+            // Check if consecutive
+            let isConsecutive = false;
+            if (currYear === prevYear && currMonth === prevMonth + 1) {
+              isConsecutive = true;
+            } else if (currYear === prevYear + 1 && prevMonth === 12 && currMonth === 1) {
+              isConsecutive = true;
+            }
+
+            if (isConsecutive) {
+              currentStreak++;
+              maxStreak = Math.max(maxStreak, currentStreak);
+            } else {
+              currentStreak = 1;
+            }
+          }
+
+          progress = Math.min(100, (maxStreak / criteria.months) * 100);
+          isCompleted = maxStreak >= criteria.months;
+          break;
+        }
+
+        case 'first_task': {
+          // Check if user has completed any task
+          progress = allCompletions.length > 0 ? 100 : 0;
+          isCompleted = allCompletions.length > 0;
+          break;
+        }
+
+        case 'total_tasks': {
+          // Count total completed tasks
+          progress = Math.min(100, (allCompletions.length / criteria.count) * 100);
+          isCompleted = allCompletions.length >= criteria.count;
+          break;
+        }
+
+        case 'high_priority_safety': {
+          // Count high-priority safety task completions
+          const completions = allCompletions;
+
+          // Filter for high-priority tasks (would need task data to verify)
+          // For now, assume tasks with specific safety keywords
+          const safetyTasks = completions.filter(c =>
+            c.taskTitle?.toLowerCase().includes('smoke') ||
+            c.taskTitle?.toLowerCase().includes('carbon') ||
+            c.taskTitle?.toLowerCase().includes('detector') ||
+            c.taskTitle?.toLowerCase().includes('safety') ||
+            c.taskTitle?.toLowerCase().includes('emergency')
+          );
+
+          progress = Math.min(100, (safetyTasks.length / criteria.count) * 100);
+          isCompleted = safetyTasks.length >= criteria.count;
+          break;
+        }
+
+        case 'early_adopter': {
+          // Check if user signed up before cutoff date
+          const user = await this.getUser(homeownerId);
+          const cutoffDate = new Date(criteria.before);
+          const userCreatedAt = user?.createdAt ? new Date(user.createdAt) : new Date();
+
+          isCompleted = userCreatedAt < cutoffDate;
+          progress = isCompleted ? 100 : 0;
+          break;
+        }
+
+        case 'premium_subscription': {
+          // Check if user has premium subscription
+          const user = await this.getUser(homeownerId);
+          const isPremium = user?.subscriptionStatus === 'active' &&
+            (user?.subscriptionPlanId === 'premium' || user?.subscriptionPlanId === 'premium_plus');
+
+          isCompleted = isPremium;
+          progress = isPremium ? 100 : 0;
+          break;
+        }
+      }
+
+      // Create or update user achievement
+      const existing = userAchievs.find(a => a.achievementKey === def.achievementKey);
+
+      if (isCompleted) {
+        if (existing) {
+          const unlocked = await this.unlockUserAchievement(homeownerId, def.achievementKey);
+          if (unlocked) newlyUnlocked.push(unlocked);
+        } else {
+          // Guarded by the DB's unique (homeownerId, achievementKey) index:
+          // if a concurrent check already inserted this achievement between
+          // our read of `userAchievs` above and this insert, `created` comes
+          // back undefined. Skip silently rather than pushing a duplicate
+          // into `newlyUnlocked` (which would fire a second badge/notification
+          // for the same award) — the row already exists, so this request
+          // simply lost the race and has nothing left to do.
+          const created = await this.createUserAchievementIfAbsent({
+            homeownerId,
+            achievementKey: def.achievementKey,
+            progress: "100",
+            isUnlocked: true,
+            unlockedAt: new Date()
+          });
+          if (created) newlyUnlocked.push(created);
+        }
+      } else if (!existing && progress > 0) {
+        // Create progress tracking (same conflict-safe guard: a concurrent
+        // call may have already created this row).
+        await this.createUserAchievementIfAbsent({
+          homeownerId,
+          achievementKey: def.achievementKey,
+          progress: progress.toString(),
+          isUnlocked: false
+        });
+      } else if (existing && progress > parseFloat(existing.progress?.toString() || "0")) {
+        // Update progress
+        await this.updateUserAchievementProgress(homeownerId, def.achievementKey, progress);
+      }
+    }
+
+    return newlyUnlocked;
   }
+
 
   async checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]> {
     return this.checkAndAwardAchievements(homeownerId);
   }
 
-  async calculateAchievementsProgress(homeownerId: string): Promise<any> {
-    return this.memStorage.calculateAchievementsProgress.call(this, homeownerId);
+  async calculateAchievementsProgress(
+    homeownerId: string,
+    houseId?: string
+  ): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>> {
+    const results: Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }> = [];
+
+    // Get all achievement definitions
+    const definitions = await this.getAllAchievementDefinitions();
+
+    // Get user's current achievements for unlocked status
+    const userAchievs = await this.getUserAchievements(homeownerId);
+
+    // If filtering by house, only calculate house-specific achievements
+    // Otherwise, use the full calculation from checkAndAwardAchievements
+    if (!houseId) {
+      // No house filter - return user's actual achievement progress
+      for (const def of definitions) {
+        const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+        results.push({
+          achievementKey: def.achievementKey,
+          progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
+          isUnlocked: userAchiev?.isUnlocked || false,
+          unlockedAt: userAchiev?.unlockedAt,
+          metadata: userAchiev?.metadata
+        });
+      }
+      return results;
+    }
+
+    // House-specific filtering - calculate progress based on house data only
+    const [houseTaskCompletions, houseMaintenanceLogs] = await Promise.all([
+      this.getTaskCompletions(homeownerId, houseId),
+      this.getMaintenanceLogs(homeownerId, houseId),
+    ]);
+
+    // Calculate house-specific savings metrics
+    const tasksWithSavings = houseTaskCompletions.filter(c =>
+      c.costSavings && parseFloat(c.costSavings.toString()) > 0
+    );
+
+    const houseSavingsMetrics = {
+      totalSavings: tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0),
+      underBudgetCount: tasksWithSavings.length,
+      avgSavingsPerTask: tasksWithSavings.length > 0
+        ? tasksWithSavings.reduce((sum, c) => sum + parseFloat(c.costSavings!.toString()), 0) / tasksWithSavings.length
+        : 0,
+    };
+
+    // Calculate progress for each achievement based on house data
+    for (const def of definitions) {
+      const criteria = typeof def.criteria === 'string' ? JSON.parse(def.criteria) : def.criteria;
+      let progress = 0;
+      const userAchiev = userAchievs.find(ua => ua.achievementKey === def.achievementKey);
+
+      // Calculate progress based on achievement type
+      switch (criteria.type) {
+        case 'seasonal_tasks': {
+          const tasksForSeason = houseTaskCompletions.filter(c => {
+            if (!c.completedAt) return false;
+            const month = c.completedAt.getMonth() + 1;
+            return (
+              (criteria.season === 'winter' && (month === 12 || month <= 2)) ||
+              (criteria.season === 'spring' && month >= 3 && month <= 5) ||
+              (criteria.season === 'summer' && month >= 6 && month <= 8) ||
+              (criteria.season === 'fall' && month >= 9 && month <= 11)
+            );
+          });
+          progress = Math.min(100, (tasksForSeason.length / criteria.count) * 100);
+          break;
+        }
+
+        case 'total_savings': {
+          progress = Math.min(100, (houseSavingsMetrics.totalSavings / criteria.amount) * 100);
+          break;
+        }
+
+        case 'under_budget': {
+          progress = Math.min(100, (houseSavingsMetrics.underBudgetCount / criteria.count) * 100);
+          break;
+        }
+
+        case 'logs_created': {
+          progress = Math.min(100, (houseMaintenanceLogs.length / criteria.count) * 100);
+          break;
+        }
+
+        case 'documents_uploaded': {
+          const docsCount = houseMaintenanceLogs.filter(log => log.receiptUrls && log.receiptUrls.length > 0).length;
+          progress = Math.min(100, (docsCount / criteria.count) * 100);
+          break;
+        }
+
+        case 'photos_uploaded': {
+          const photosCount = houseMaintenanceLogs.reduce((sum, log) =>
+            sum + (log.beforePhotoUrls?.length || 0) + (log.afterPhotoUrls?.length || 0), 0
+          );
+          const pairsCount = Math.floor(photosCount / 2);
+          progress = Math.min(100, (pairsCount / criteria.count) * 100);
+          break;
+        }
+
+        case 'detailed_logs': {
+          const detailedLogs = houseMaintenanceLogs.filter(log =>
+            log.description && log.description.length >= 50
+          );
+          progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
+          break;
+        }
+
+        // For non-house-specific achievements (referrals, subscriptions, etc.), return 0 or use user's actual progress
+        default: {
+          progress = userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0;
+          break;
+        }
+      }
+
+      // For house filtering, determine unlock status based on house-specific progress
+      const isHouseUnlocked = progress >= 100;
+
+      results.push({
+        achievementKey: def.achievementKey,
+        progress,
+        isUnlocked: isHouseUnlocked,
+        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? userAchiev.unlockedAt : undefined,
+        metadata: userAchiev?.metadata
+      });
+    }
+
+    return results;
   }
 
   async getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }> {
