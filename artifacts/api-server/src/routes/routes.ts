@@ -14078,7 +14078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body with Zod schema
       const validatedData = completeTaskSchema.parse(req.body);
       const {
-        houseId, taskId, taskTitle, completionMethod, costEstimate, contractorCost: providedCost,
+        houseId, taskId, taskTitle, completionMethod, homeArea, costEstimate, contractorCost: providedCost,
         gpsLat, gpsLng, deviceTimestamp, beforePhotoHashes, afterPhotoHashes,
         beforePhotoUrls, afterPhotoUrls,
         contractorBusinessName, contractorLicenseNumber, contractorJobDate,
@@ -14317,7 +14317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const logData = {
         homeownerId: req.session.user.id,
         houseId,
-        homeArea: 'General Maintenance',
+        homeArea: homeArea ?? 'General Maintenance',
         serviceDate: new Date().toISOString().split('T')[0],
         serviceType: taskTitle,
         serviceDescription: `Completed ${completionMethod === 'diy' ? 'DIY' : 'by contractor'}`,

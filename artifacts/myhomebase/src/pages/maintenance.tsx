@@ -1764,6 +1764,7 @@ export default function Maintenance() {
 
   // DIY completion dialog state
   const [pendingDiyTask, setPendingDiyTask] = useState<MaintenanceTask | null>(null);
+  const [diyHomeArea, setDiyHomeArea] = useState("");
   const [diyBeforeFile, setDiyBeforeFile] = useState<File | null>(null);
   const [diyAfterFile, setDiyAfterFile] = useState<File | null>(null);
   const [diyCompletePending, setDiyCompletePending] = useState(false);
@@ -2098,6 +2099,7 @@ export default function Maintenance() {
       taskId?: string;
       taskTitle: string; 
       completionMethod: 'diy' | 'contractor';
+      homeArea?: string;
       costEstimate?: {
         proLow?: number;
         proHigh?: number;
@@ -3168,6 +3170,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   const handleDiyCompletion = (task: MaintenanceTask) => {
     setPendingDiyTask(task);
+    setDiyHomeArea("");
     setDiyBeforeFile(null);
     setDiyAfterFile(null);
   };
@@ -3207,6 +3210,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   const submitDiyCompletion = async () => {
     if (!pendingDiyTask) return;
+    if (!diyHomeArea) {
+      toast({
+        title: "Select a home area",
+        description: "Choose which part of your home this DIY task covered.",
+        variant: "destructive",
+      });
+      return;
+    }
     setDiyCompletePending(true);
     try {
       let beforePhotoHashes: string[] = [];
@@ -3237,6 +3248,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         taskId: pendingDiyTask.id,
         taskTitle: pendingDiyTask.title,
         completionMethod: 'diy',
+        homeArea: diyHomeArea,
         costEstimate: pendingDiyTask.costEstimate,
         beforePhotoHashes,
         afterPhotoHashes,
@@ -3248,6 +3260,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       });
 
       setPendingDiyTask(null);
+      setDiyHomeArea("");
       setDiyBeforeFile(null);
       setDiyAfterFile(null);
     } catch {
@@ -6339,7 +6352,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         <Dialog
           open={!!pendingDiyTask}
           onOpenChange={(open) => {
-            if (!open) { setPendingDiyTask(null); setDiyBeforeFile(null); setDiyAfterFile(null); }
+            if (!open) { setPendingDiyTask(null); setDiyHomeArea(""); setDiyBeforeFile(null); setDiyAfterFile(null); }
           }}
         >
           <DialogContent className="max-w-md">
@@ -6350,6 +6363,23 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
+              <div>
+                <label className="text-sm font-medium">
+                  Home Area <span className="text-red-500">*</span>
+                </label>
+                <Select value={diyHomeArea} onValueChange={setDiyHomeArea}>
+                  <SelectTrigger className="mt-1" data-testid="select-diy-home-area">
+                    <SelectValue placeholder="Select home area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOME_AREAS.map((area) => (
+                      <SelectItem key={area.value} value={area.value}>
+                        {area.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <p className="text-sm font-medium mb-1">Before Photo (optional)</p>
                 <input
@@ -6384,7 +6414,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <DialogFooter className="gap-2 flex-col sm:flex-row">
               <Button
                 variant="outline"
-                onClick={() => { setPendingDiyTask(null); setDiyBeforeFile(null); setDiyAfterFile(null); }}
+                onClick={() => { setPendingDiyTask(null); setDiyHomeArea(""); setDiyBeforeFile(null); setDiyAfterFile(null); }}
                 disabled={diyCompletePending}
               >
                 Cancel

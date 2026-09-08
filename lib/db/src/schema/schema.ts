@@ -1248,6 +1248,7 @@ export const completeTaskSchema = z.object({
   taskId: z.string().min(1).optional(),
   taskTitle: z.string().min(1, "Task title is required"),
   completionMethod: z.enum(['diy', 'contractor']),
+  homeArea: z.string().trim().min(1, "Home area is required").optional(),
   costEstimate: z.object({
     proLow: z.number().optional(),
     proHigh: z.number().optional(),
