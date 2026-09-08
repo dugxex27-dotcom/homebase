@@ -7497,8 +7497,6 @@ export class MemStorage implements IStorage {
 
 // Database-backed storage for users (OAuth persistence)
 export class DbStorage implements IStorage {
-  private memStorage: MemStorage;
-  
   // Upload metadata storage (in-memory for file upload tracking)
   private uploadedFiles = new Map<string, {
     userId: string;
@@ -7511,7 +7509,6 @@ export class DbStorage implements IStorage {
   }>();
 
   constructor() {
-    this.memStorage = new MemStorage();
     // All methods are now database-backed (implemented as class methods below)
     // No MemStorage delegation needed
   }
