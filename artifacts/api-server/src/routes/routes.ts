@@ -32,7 +32,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendCheckoutFailureEmail } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, type TeamMemberAccountChange } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
@@ -24022,6 +24022,34 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       await db.update(users).set(updates).where(eq(users.id, userId));
+
+      const accountChanges: TeamMemberAccountChange[] = [];
+      const oldName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || 'Not set';
+      const newName = [
+        parsed.data.firstName ?? (targetUser as any).firstName,
+        parsed.data.lastName ?? (targetUser as any).lastName,
+      ].filter(Boolean).join(' ') || 'Not set';
+      if (newName !== oldName) {
+        accountChanges.push({ field: 'Name', oldValue: oldName, newValue: newName });
+      }
+
+      const oldRole = (targetUser as any).companyRole;
+      if (parsed.data.companyRole !== undefined && parsed.data.companyRole !== oldRole) {
+        accountChanges.push({
+          field: 'Role',
+          oldValue: oldRole || 'Not assigned',
+          newValue: parsed.data.companyRole,
+        });
+      }
+
+      if (accountChanges.length > 0 && (targetUser as any).email) {
+        await sendTeamMemberAccountUpdatedEmail(
+          (targetUser as any).email,
+          newName === 'Not set' ? 'there' : newName,
+          accountChanges,
+        );
+      }
+
       res.json({ message: "Team member updated" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error updating team member');

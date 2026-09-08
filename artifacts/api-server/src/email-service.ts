@@ -111,6 +111,61 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
   }
 }
 
+export interface TeamMemberAccountChange {
+  field: 'Name' | 'Role';
+  oldValue: string;
+  newValue: string;
+}
+
+export async function sendTeamMemberAccountUpdatedEmail(
+  email: string,
+  recipientName: string,
+  changes: TeamMemberAccountChange[],
+): Promise<boolean> {
+  if (changes.length === 0) return false;
+
+  const safeRecipientName = escapeHtml(recipientName || 'there');
+  const changeRows = changes.map((change) => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHtml(change.field)}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; color: #666;">${escapeHtml(change.oldValue)}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #e5e7eb; font-weight: 600;">${escapeHtml(change.newValue)}</td>
+    </tr>
+  `).join('');
+
+  const html = wrapEmailContent(
+    getEmailHeader('Your account details were updated'),
+    `
+      <p>Hi ${safeRecipientName},</p>
+      <p>Your HomeBase account details were updated by your company admin.</p>
+      <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: white;">
+        <thead>
+          <tr style="background: #f3f4f6;">
+            <th style="padding: 10px; text-align: left;">Detail</th>
+            <th style="padding: 10px; text-align: left;">Previous</th>
+            <th style="padding: 10px; text-align: left;">Updated</th>
+          </tr>
+        </thead>
+        <tbody>${changeRows}</tbody>
+      </table>
+      <p>If you weren't expecting this change, please contact your company admin.</p>
+      <p>- The HomeBase Team</p>
+    `,
+  );
+
+  const changeSummary = changes
+    .map((change) => `${change.field}: ${change.oldValue} → ${change.newValue}`)
+    .join('; ');
+  const text = `Hi ${recipientName || 'there'}, your HomeBase account details were updated by your company admin. ${changeSummary}. If you weren't expecting this change, please contact your company admin.`;
+
+  return sendEmail({
+    to: email,
+    subject: 'Your HomeBase account details were updated',
+    text,
+    html,
+  });
+}
+
 export async function sendWelcomeEmail(userId: string, userName: string, userRole: string): Promise<boolean> {
   const user = await storage.getUser(userId);
   if (!user?.email) return false;
