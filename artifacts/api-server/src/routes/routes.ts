@@ -365,38 +365,6 @@ export function normalizeInvoiceServiceType(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-export const CRM_INVOICE_DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
-
-export function findRecentDuplicateCrmInvoice(
-  existingInvoices: Array<{
-    contractorUserId: string;
-    homeownerId?: string | null;
-    title?: string | null;
-    amountDue?: string | number | null;
-    createdAt?: Date | string | null;
-  }>,
-  candidate: {
-    contractorUserId: string;
-    homeownerId?: string | null;
-    title?: string | null;
-    amountDue?: string | number | null;
-  },
-  now = Date.now(),
-) {
-  const toNumeric = (value: string | number | null | undefined) =>
-    parseFloat(String(value ?? "0")) || 0;
-
-  return existingInvoices.find((existing) => {
-    if (existing.contractorUserId !== candidate.contractorUserId) return false;
-    if ((existing.homeownerId ?? null) !== (candidate.homeownerId ?? null)) return false;
-    if ((existing.title ?? "") !== (candidate.title ?? "")) return false;
-    if (toNumeric(existing.amountDue) !== toNumeric(candidate.amountDue)) return false;
-
-    const age = now - new Date(existing.createdAt || 0).getTime();
-    return age >= 0 && age <= CRM_INVOICE_DUPLICATE_WINDOW_MS;
-  });
-}
-
 function resolveInvoiceScoringDate(
   stored: unknown,
   requested: unknown,
@@ -3266,6 +3234,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   <p>If you recently updated your payment method, no further action may be needed.</p>
                 </div>
               `,
+              deduplication: {
+                key: `subscription-payment-failed:${invoice.id}`,
+                windowMs: 24 * 60 * 60 * 1000,
+              },
             });
             if (!sent) {
               console.error('[STRIPE WEBHOOK] Payment-failure email could not be delivered for user:', user.email);
@@ -7677,6 +7649,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               </div>
             </div>
           `,
+          deduplication: {
+            key: `agent-verification:${agentId}:${verificationStatus}:${createHash('sha256').update(notes || '').digest('hex')}`,
+          },
         });
       }
 
@@ -9780,50 +9755,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const duplicateLockKey = companyIdToAdvisoryLockKey(JSON.stringify([
-        validationResult.data.contractorUserId,
-        validationResult.data.homeownerId ?? null,
-        validationResult.data.title ?? "",
-        validationResult.data.amountDue ?? "0",
-      ]));
-      const persistenceResult = await withDbAdvisoryLock(
-        duplicateLockKey,
-        pool,
-        async () => {
-          const latestInvoices = await storage.getCrmInvoices(req.session.user.id, {});
-          const duplicateInvoice = findRecentDuplicateCrmInvoice(
-            latestInvoices,
-            validationResult.data,
-          );
-          if (duplicateInvoice) {
-            return { invoice: duplicateInvoice, created: false } as const;
-          }
-
-          return {
-            invoice: await storage.createCrmInvoice(validationResult.data),
-            created: true,
-          } as const;
-        },
-      );
-      if (!persistenceResult.created) {
-        return res.status(200).json(persistenceResult.invoice);
-      }
-      const invoice = persistenceResult.invoice;
+      const invoice = await storage.createCrmInvoice(validationResult.data);
 
       if (resolvedHomeownerId) {
-        const now = Date.now();
-        const toNumeric = (v: string | number | null | undefined) => parseFloat(String(v ?? '0')) || 0;
-        const isDuplicate = existingInvoices.some((existing) => {
-          if (existing.homeownerId !== resolvedHomeownerId) return false;
-          if ((existing.title || '') !== (invoice.title || '')) return false;
-          if (toNumeric(existing.amountDue) !== toNumeric(invoice.amountDue)) return false;
-          const age = now - new Date(existing.createdAt || 0).getTime();
-          return age <= CRM_INVOICE_DUPLICATE_WINDOW_MS;
-        });
-
-        if (isDuplicate) {
-          console.warn('[EMAIL] Skipping duplicate linked invoice email: same contractor, homeowner, title, and amount within 5 minutes. Invoice ID:', invoice.id);
-        } else {
           const contractorUser = req.session.user;
           const contractorName = `${contractorUser.firstName || ''} ${contractorUser.lastName || ''}`.trim() || 'Your Contractor';
           let contractorCompany: string | undefined;
@@ -9841,9 +9775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             invoice.title || 'Invoice',
             formatAmount(invoice.amountDue),
             contractorName,
-            contractorCompany
+            contractorCompany,
+            `created:${req.session.user.id}:${resolvedHomeownerId}:${invoice.title || ''}:${invoice.amountDue || '0'}`,
           ).catch((err) => console.error('[EMAIL] Failed to send new linked invoice email:', err));
-        }
       }
 
       res.status(201).json(invoice);
@@ -17611,6 +17545,16 @@ ${esc(claimMemo)}
         text: textBody,
         html: htmlBody,
         ...(ccEmail ? { cc: ccEmail } : {}),
+        deduplication: {
+          key: `insurance-claim:${req.session.user.id}:${createHash('sha256').update(JSON.stringify([
+            adjusterEmail.toLowerCase(),
+            claimArea,
+            claimMemo,
+            evidenceTimeline,
+            documentsToGather,
+            ccSelf === true,
+          ])).digest('hex')}`,
+        },
       });
 
       if (!sent) {
@@ -18964,6 +18908,9 @@ Respond as JSON with exactly this shape:
               <p><strong>${contractorName}${contractorCompany ? ` (${contractorCompany})` : ''}</strong> just completed a job and sent you a service record for <strong>${job.serviceType}</strong>.</p>
               <p>Log into your MyHomeBase dashboard to review and accept the record — it will be permanently saved to your home's history.</p>
               <p><a href="https://gotohomebase.com" style="background:#7c3aed;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:600;">View in MyHomeBase →</a></p>`,
+            deduplication: {
+              key: `contractor-job-record:${userId}:${homeownerId}:${jobId}`,
+            },
           });
         } catch (emailErr) {
           console.error('[send-to-homeowner] Email failed:', emailErr);
@@ -19448,7 +19395,8 @@ Respond as JSON with exactly this shape:
         emailService.sendNewMessageEmail(
           conversation.contractorId,
           homeownerName,
-          req.body.content || ''
+          req.body.content || '',
+          message.id,
         ).catch(err => console.error('[EMAIL] Error sending to contractor:', err));
       }
       
@@ -19481,7 +19429,8 @@ Respond as JSON with exactly this shape:
         emailService.sendNewMessageEmail(
           conversation.homeownerId,
           contractorName,
-          req.body.content || ''
+          req.body.content || '',
+          message.id,
         ).catch(err => console.error('[EMAIL] Error sending to homeowner:', err));
       }
       
@@ -21622,6 +21571,7 @@ If the document contains no relevant home information, return the structure with
         subject: `Your home record for ${pkg.propertyAddress} is ready`,
         text: `Hi ${pkg.buyerName}, your agent ${agentName} has prepared your home record. Claim it at: ${claimUrl}`,
         html: emailHtml,
+        deduplication: { key: `handoff-package:${pkg.id}:${pkg.buyerEmail.toLowerCase()}` },
       });
 
       if (!emailSent) {
@@ -24679,6 +24629,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           (targetUser as any).email,
           newName === 'Not set' ? 'there' : newName,
           accountChanges,
+          `${userId}:${JSON.stringify(accountChanges)}`,
         );
       }
 

@@ -4,6 +4,7 @@ import { isSyntheticAccountUserId } from './qa-access';
 import { db } from './db';
 import { notificationPreferences } from '@workspace/db';
 import { eq, and } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 
 const apiKey = process.env.SENDGRID_API_KEY;
 const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@gotohomebase.com';
@@ -23,6 +24,28 @@ interface EmailData {
   text: string;
   html: string;
   cc?: string | string[];
+  replyTo?: string;
+  /**
+   * Required for transactional email triggered by a user-facing write.
+   * Use a stable business-event identifier (record/payment/invite ID), not a
+   * random request ID. The reservation is removed when delivery fails so a
+   * later retry can still send.
+   */
+  deduplication?: {
+    key: string;
+    windowMs?: number;
+  };
+}
+
+export const DEFAULT_EMAIL_DEDUP_WINDOW_MS = 5 * 60 * 1000;
+interface EmailDeduplicationEntry {
+  expiresAt: number;
+  result: Promise<boolean>;
+}
+const recentEmailSends = new Map<string, EmailDeduplicationEntry>();
+
+export function clearEmailDeduplicationForTests(): void {
+  recentEmailSends.clear();
 }
 
 // Logo URL for email templates
@@ -88,7 +111,8 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
     return false;
   }
 
-  try {
+  const deliver = async (): Promise<boolean> => {
+    try {
     const recipientEmail = testEmailOverride || data.to;
     const subjectPrefix = testEmailOverride ? `[TEST - Original: ${data.to}] ` : '';
     
@@ -99,16 +123,48 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
       text: data.text,
       html: data.html,
       ...(data.cc && !testEmailOverride ? { cc: data.cc } : {}),
+      ...(data.replyTo ? { replyTo: data.replyTo } : {}),
       trackingSettings: {
         clickTracking: { enable: false, enableText: false },
       },
     });
     console.log('[EMAIL] Email sent to:', recipientEmail, testEmailOverride ? `(redirected from ${data.to})` : '');
     return true;
-  } catch (error) {
-    console.error('[EMAIL] Failed to send email:', error);
-    return false;
+    } catch (error) {
+      console.error('[EMAIL] Failed to send email:', error);
+      return false;
+    }
+  };
+
+  const dedupKey = data.deduplication?.key;
+  if (!dedupKey) return deliver();
+
+  const now = Date.now();
+  const existing = recentEmailSends.get(dedupKey);
+  if (existing && now < existing.expiresAt) {
+    console.log('[EMAIL] Reusing transactional email delivery result:', dedupKey);
+    return existing.result;
   }
+  if (existing) recentEmailSends.delete(dedupKey);
+
+  const windowMs = data.deduplication?.windowMs ?? DEFAULT_EMAIL_DEDUP_WINDOW_MS;
+  const entry: EmailDeduplicationEntry = {
+    expiresAt: now + windowMs,
+    result: deliver(),
+  };
+  recentEmailSends.set(dedupKey, entry);
+
+  if (recentEmailSends.size > 10_000) {
+    for (const [key, candidate] of recentEmailSends) {
+      if (now >= candidate.expiresAt) recentEmailSends.delete(key);
+    }
+  }
+
+  const delivered = await entry.result;
+  if (!delivered && recentEmailSends.get(dedupKey) === entry) {
+    recentEmailSends.delete(dedupKey);
+  }
+  return delivered;
 }
 
 export interface AffiliatePayoutProcessedEmailData {
@@ -128,6 +184,7 @@ export async function sendTeamMemberAccountUpdatedEmail(
   email: string,
   recipientName: string,
   changes: TeamMemberAccountChange[],
+  eventKey?: string,
 ): Promise<boolean> {
   if (changes.length === 0) return false;
 
@@ -170,6 +227,9 @@ export async function sendTeamMemberAccountUpdatedEmail(
     subject: 'Your HomeBase account details were updated',
     text,
     html,
+    deduplication: {
+      key: `team-member-updated:${eventKey || `${email.toLowerCase()}:${changeSummary}`}`,
+    },
   });
 }
 
@@ -219,6 +279,7 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
     subject: 'Welcome to HomeBase! 🏠',
     text,
     html,
+    deduplication: { key: `welcome:${userId}`, windowMs: 24 * 60 * 60 * 1000 },
   });
 }
 
@@ -327,6 +388,7 @@ export async function sendAgentSignupNotification(
     subject: '🏠 New Real Estate Agent Signup - Verification Needed',
     text,
     html,
+    deduplication: { key: `agent-signup:${agentId}`, windowMs: 24 * 60 * 60 * 1000 },
   });
 }
 
@@ -408,6 +470,7 @@ export async function sendQuoteEmail(data: CrmDocumentEmailData): Promise<boolea
     subject: `Quote #${data.documentNumber} from ${data.contractorCompany || data.contractorName}`,
     text,
     html,
+    deduplication: { key: `crm-quote:${data.clientEmail.toLowerCase()}:${data.documentNumber}` },
   });
 }
 
@@ -445,6 +508,9 @@ export async function sendJobNotificationEmail(data: CrmDocumentEmailData & { sc
     subject: `Job Update: ${data.documentTitle} - ${data.contractorCompany || data.contractorName}`,
     text,
     html,
+    deduplication: {
+      key: `crm-job:${data.clientEmail.toLowerCase()}:${data.documentNumber}:${data.status || ''}:${data.scheduledDate || ''}`,
+    },
   });
 }
 
@@ -510,6 +576,7 @@ export async function sendInvoiceEmail(data: CrmDocumentEmailData): Promise<bool
     subject: `Invoice #${data.documentNumber} from ${data.contractorCompany || data.contractorName} - ${data.total} Due`,
     text,
     html,
+    deduplication: { key: `crm-invoice:${data.clientEmail.toLowerCase()}:${data.documentNumber}` },
   });
 }
 
@@ -559,22 +626,18 @@ export async function sendBulkWelcomeFeedbackEmail(
     const text = `Hi ${userName}, we hope you're enjoying HomeBase! We'd love to hear your feedback. How has your experience been? Any features you'd like to see? Questions or concerns? Email us at ${replyToEmail} - The HomeBase Team`;
 
     try {
-      const recipientEmail = testEmailOverride || user.email;
-      const subjectPrefix = testEmailOverride ? `[TEST - Original: ${user.email}] ` : '';
-      
-      await sgMail.send({
-        to: recipientEmail,
-        from: { email: fromEmail, name: fromName },
+      const delivered = await sendEmail({
+        to: user.email,
         replyTo: replyToEmail,
-        subject: subjectPrefix + 'How are you enjoying HomeBase?',
+        subject: 'How are you enjoying HomeBase?',
         text,
         html,
-        trackingSettings: {
-          clickTracking: { enable: false, enableText: false },
+        deduplication: {
+          key: `bulk-welcome-feedback:${user.id || user.email.toLowerCase()}`,
         },
       });
-      console.log('[EMAIL] Bulk email sent to:', recipientEmail);
-      sent++;
+      if (delivered) sent++;
+      else failed++;
       
       // Rate limiting: add 100ms delay between emails to avoid hitting SendGrid limits
       if (i < users.length - 1) {
@@ -618,6 +681,10 @@ export async function sendBulkCustomEmail(
   // Escape and format body for HTML (convert newlines to <br>)
   const escapedBody = escapeHtml(body).replace(/\n/g, '<br>');
 
+  const campaignHash = createHash('sha256')
+    .update(JSON.stringify([subject, body, imageUrl || '', replyToEmail]))
+    .digest('hex');
+
   for (let i = 0; i < users.length; i++) {
     const user = users[i];
     if (!user.email) {
@@ -647,22 +714,18 @@ export async function sendBulkCustomEmail(
     const text = personalizedTextBody;
 
     try {
-      const recipientEmail = testEmailOverride || user.email;
-      const subjectPrefix = testEmailOverride ? `[TEST - Original: ${user.email}] ` : '';
-      
-      await sgMail.send({
-        to: recipientEmail,
-        from: { email: fromEmail, name: fromName },
+      const delivered = await sendEmail({
+        to: user.email,
         replyTo: replyToEmail,
-        subject: subjectPrefix + subject,
+        subject,
         text,
         html,
-        trackingSettings: {
-          clickTracking: { enable: false, enableText: false },
+        deduplication: {
+          key: `bulk-custom:${campaignHash}:${user.id || user.email.toLowerCase()}`,
         },
       });
-      console.log('[EMAIL] Custom bulk email sent to:', recipientEmail);
-      sent++;
+      if (delivered) sent++;
+      else failed++;
       
       // Rate limiting: add 100ms delay between emails to avoid hitting SendGrid limits
       if (i < users.length - 1) {
@@ -686,7 +749,8 @@ export async function sendBulkCustomEmail(
 export async function sendNewMessageEmail(
   userId: string,
   senderName: string,
-  messagePreview: string
+  messagePreview: string,
+  messageId?: string,
 ): Promise<boolean> {
   if (await isSyntheticAccountUserId(userId)) {
     console.log('[EMAIL] Skipping new-message email for QA/demo recipient');
@@ -735,6 +799,10 @@ export async function sendNewMessageEmail(
     subject: `New message from ${senderName}`,
     html,
     text,
+    deduplication: {
+      key: `new-message:${userId}:${messageId || `${senderName}:${messagePreview}`}`,
+      windowMs: messageId ? 24 * 60 * 60 * 1000 : DEFAULT_EMAIL_DEDUP_WINDOW_MS,
+    },
   });
 }
 
@@ -1446,7 +1514,8 @@ export async function sendNewLinkedInvoiceEmail(
   invoiceTitle: string,
   invoiceAmount: string,
   contractorName: string,
-  contractorCompany?: string
+  contractorCompany?: string,
+  eventKey?: string,
 ): Promise<boolean> {
   if (!apiKey) {
     console.log('[EMAIL] SendGrid not configured, skipping linked invoice email');
@@ -1494,6 +1563,7 @@ export async function sendNewLinkedInvoiceEmail(
     subject: `New invoice from ${displayName} — ${invoiceAmount}`,
     html,
     text,
+    deduplication: { key: `linked-invoice:${eventKey || `${homeownerId}:${invoiceId}`}` },
   });
 }
 
@@ -1583,6 +1653,9 @@ export async function sendInvoiceUpdatedEmail(
     subject: `Invoice updated by ${displayName} — ${invoiceAmount}`,
     html,
     text,
+    deduplication: {
+      key: `invoice-updated:${homeownerId}:${invoiceId}:${changesSummary || `${invoiceTitle}:${invoiceAmount}`}`,
+    },
   });
 }
 
@@ -1647,6 +1720,9 @@ export async function sendInvoicePaymentConfirmationEmail(
       : `Payment recorded on your invoice — ${invoiceTitle}`,
     html,
     text,
+    deduplication: {
+      key: `invoice-payment:${homeownerId}:${invoiceId}:${amountPaid}:${totalAmount}:${isFullyPaid ? 'full' : 'partial'}`,
+    },
   });
 }
 
@@ -1672,7 +1748,13 @@ export async function sendTechInviteEmail(
       `
     );
     const text = `${inviterName} has invited you to join ${companyName} on MyHomeBase™. Accept your invitation: ${inviteUrl}`;
-    await sendEmail({ to: toEmail, subject, text, html });
+    await sendEmail({
+      to: toEmail,
+      subject,
+      text,
+      html,
+      deduplication: { key: `team-invite:${toEmail.toLowerCase()}:${companyName}` },
+    });
   } catch (error) {
     console.error('[EMAIL] Error sending tech invite email:', error);
   }
@@ -1808,6 +1890,7 @@ export async function sendCheckoutFailureEmail(
     subject: 'Complete your HomeBase contractor setup',
     text,
     html,
+    deduplication: { key: `checkout-recovery:${userId}:${plan}` },
   });
 }
 
@@ -1844,6 +1927,10 @@ export async function sendAgentPayoutPaidEmail(
     subject: `Your $${amount} HomeBase referral payout was deposited`,
     text,
     html,
+    deduplication: {
+      key: `agent-payout:${agentId}:${amount}:${referredUserName}`,
+      windowMs: 24 * 60 * 60 * 1000,
+    },
   });
 }
 
@@ -1927,5 +2014,9 @@ export async function sendAffiliatePayoutProcessedEmail(
     subject: `Your ${amount} referral payout was processed`,
     text,
     html,
+    deduplication: {
+      key: `affiliate-payout:${data.transferId}`,
+      windowMs: 24 * 60 * 60 * 1000,
+    },
   });
 }
