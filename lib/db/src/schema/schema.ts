@@ -733,7 +733,11 @@ export const notifications = pgTable("notifications", {
   priority: text("priority").default("medium").notNull(), // "high", "medium", "low"
   actionUrl: text("action_url"), // nullable, URL to take action on notification
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  uniqueIndex("UX_notifications_unread_maintenance_task")
+    .on(table.homeownerId, table.maintenanceTaskId)
+    .where(sql`${table.isRead} = false AND ${table.maintenanceTaskId} IS NOT NULL`),
+]);
 
 // User activity fact table for analytics (tracks user engagement events)
 export const userActivity = pgTable("user_activity", {

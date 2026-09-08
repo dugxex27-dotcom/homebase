@@ -12435,7 +12435,7 @@ class DbStorage implements IStorage {
           message = `${task.title} is overdue! Only ${daysUntilEndOfMonth} days left this month. Estimated time: ${task.estimatedTime}.`;
         }
 
-        await this.createNotification({
+        await db.insert(notifications).values({
           homeownerId,
           appointmentId: null,
           maintenanceTaskId: task.id,
@@ -12448,7 +12448,7 @@ class DbStorage implements IStorage {
           sentAt: null,
           priority,
           actionUrl: "/maintenance",
-        });
+        }).onConflictDoNothing();
       }
     }
   }
