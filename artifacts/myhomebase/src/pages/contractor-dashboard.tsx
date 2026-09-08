@@ -85,9 +85,11 @@ interface TeamMember {
   inviteExpiresAt: string | null;
   createdAt: string | null;
   invoiceCount: number;
+  mostRecentJobDate: string | null;
   divisionId?: string | null;
 }
 
+type TeamSort = 'name' | 'invoices' | 'recent-job';
 interface Division {
   id: string;
   name: string;
@@ -586,6 +588,7 @@ export default function ContractorDashboard() {
   }, [search]);
 
   const [teamSearch, setTeamSearch] = useState('');
+  const [teamSort, setTeamSort] = useState<TeamSort>('name');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [invoiceTechFilter, setInvoiceTechFilter] = useState('');
@@ -1411,12 +1414,27 @@ export default function ContractorDashboard() {
             })()}
           </div>
 
-          <input
-            placeholder="Search by name or email…"
-            value={teamSearch}
-            onChange={e => setTeamSearch(e.target.value)}
-            style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', marginBottom: 10, boxSizing: 'border-box' }}
-          />
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+            <input
+              placeholder="Search by name or email…"
+              value={teamSearch}
+              onChange={e => setTeamSearch(e.target.value)}
+              style={{ flex: '1 1 220px', minWidth: 0, padding: '8px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#475569' }}>
+              Sort by
+              <select
+                aria-label="Sort team members"
+                value={teamSort}
+                onChange={e => setTeamSort(e.target.value as TeamSort)}
+                style={{ padding: '8px 28px 8px 10px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 12, color: '#334155', background: '#fff', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="name">Name A–Z</option>
+                <option value="invoices">Most Invoices</option>
+                <option value="recent-job">Most Recent Job</option>
+              </select>
+            </label>
+          </div>
 
           {isLoadingTeam ? (
             <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>Loading team…</div>
@@ -1432,8 +1450,9 @@ export default function ContractorDashboard() {
                 const q = teamSearch.toLowerCase();
                 return !q || m.email?.toLowerCase().includes(q) || m.firstName?.toLowerCase().includes(q) || m.lastName?.toLowerCase().includes(q);
               })
+              .sort((a, b) => compareTeamMembers(a, b, teamSort))
               .map(member => {
-                const fullName = [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unknown';
+                const fullName = getTeamMemberName(member);
                 const isSuspended = member.status === 'suspended';
                 const isPending = member.status === 'pending_invite';
                 const isAdmin = member.companyRole === 'admin';
@@ -2866,4 +2885,24 @@ export default function ContractorDashboard() {
       </Dialog>
     </div>
   );
+}
+
+function getTeamMemberName(member: TeamMember) {
+  return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email || 'Unknown';
+}
+
+function compareTeamMembers(a: TeamMember, b: TeamMember, sort: TeamSort) {
+  const byName = getTeamMemberName(a).localeCompare(getTeamMemberName(b), undefined, { sensitivity: 'base' });
+
+  if (sort === 'invoices') {
+    return b.invoiceCount - a.invoiceCount || byName;
+  }
+
+  if (sort === 'recent-job') {
+    const aTime = a.mostRecentJobDate ? new Date(a.mostRecentJobDate).getTime() : 0;
+    const bTime = b.mostRecentJobDate ? new Date(b.mostRecentJobDate).getTime() : 0;
+    return bTime - aTime || byName;
+  }
+
+  return byName;
 }

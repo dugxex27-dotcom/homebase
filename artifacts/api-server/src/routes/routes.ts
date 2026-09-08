@@ -23779,6 +23779,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         inviteExpiresAt: users.inviteExpiresAt,
         createdAt: users.createdAt,
         invoiceCount: drizzleSql<number>`cast(count(${contractorInvoiceUploads.id}) as int)`,
+        mostRecentJobDate: drizzleSql<string | null>`coalesce(max(${contractorInvoiceUploads.invoiceDate}), max(${contractorInvoiceUploads.createdAt})::text)`,
       } as any).from(users)
         .leftJoin(contractorInvoiceUploads, eq(contractorInvoiceUploads.uploadedByUserId, users.id))
         .where(teamWhereClause)
