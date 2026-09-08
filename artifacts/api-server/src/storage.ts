@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, referralCredits } from "@workspace/db";
+import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmInvoiceEvent, type InsertCrmInvoiceEvent, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, crmInvoiceEvents, referralCredits } from "@workspace/db";
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs, invoiceAnalyses } from "@workspace/db";
 import { contracts, type Contract, type InsertContract } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
@@ -8,10 +8,6 @@ import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count } from "drizzle-orm";
 import { logger } from "./lib/logger";
 
-// DEMO DATA PROTECTION SYSTEM
-// Helper functions to identify demo accounts and prevent overwrites of real user data
-
-// List of known demo account ID prefixes - these are the ONLY IDs that should be used for demo data
 const DEMO_ID_PREFIXES = [
   'demo-',
   'bellevue-roofer-',
@@ -69,21 +65,30 @@ export type StripeEventClaimResult = 'claimed' | 'committed' | 'pending' | 'stal
 export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+
   getUserByReferralCode(referralCode: string): Promise<User | undefined>;
+
   getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined>;
+
   upsertUser(user: UpsertUser): Promise<User>;
+
   updateUserSubscriptionStatus(userId: string, status: string, eventAt?: Date): Promise<User | undefined>;
+
   updateUserStripeSubscription(userId: string, subscriptionId: string, priceId: string, eventAt?: Date): Promise<User | undefined>;
+
   applyUserStripeSubscriptionState(
     userId: string,
     subscriptionId: string,
     priceId: string,
     status: string,
     eventAt?: Date,
+
   ): Promise<User | undefined>;
+
   updateUserMaxHousesAllowed(userId: string, maxHousesAllowed: number | null): Promise<User | undefined>;
   
   // Contractor methods
+
   getContractors(filters?: {
     services?: string[];
     location?: string;
@@ -91,162 +96,268 @@ export interface IStorage {
     hasEmergencyServices?: boolean;
     maxDistance?: number;
     serviceRadius?: number;
+
   }): Promise<Contractor[]>;
+
   getContractor(id: string): Promise<Contractor | undefined>;
+
   getContractorByUserId(userId: string): Promise<Contractor | undefined>;
+
   createContractor(contractor: InsertContractor): Promise<Contractor>;
   
   // Contractor license methods
+
   getContractorLicenses(contractorId: string): Promise<ContractorLicense[]>;
+
   getContractorLicense(id: string): Promise<ContractorLicense | undefined>;
+
   createContractorLicense(license: InsertContractorLicense): Promise<ContractorLicense>;
+
   updateContractorLicense(id: string, contractorId: string, license: Partial<InsertContractorLicense>): Promise<ContractorLicense | undefined>;
+
   deleteContractorLicense(id: string, contractorId: string): Promise<boolean>;
   
   // Company methods
+
   getCompany(id: string): Promise<Company | undefined>;
+
   createCompany(company: InsertCompany): Promise<Company>;
+
   updateCompany(id: string, company: Partial<InsertCompany>): Promise<Company | undefined>;
+
   getCompanyEmployees(companyId: string): Promise<User[]>;
+
   getCompanyByReferralCode(code: string): Promise<Company | undefined>;
   
   // Company invite code methods
+
   createCompanyInviteCode(inviteCode: InsertCompanyInviteCode): Promise<CompanyInviteCode>;
+
   getCompanyInviteCode(id: string): Promise<CompanyInviteCode | undefined>;
+
   getCompanyInviteCodeByCode(code: string): Promise<CompanyInviteCode | undefined>;
+
   getCompanyInviteCodes(companyId: string): Promise<CompanyInviteCode[]>;
+
   updateCompanyInviteCode(id: string, inviteCode: Partial<InsertCompanyInviteCode>): Promise<CompanyInviteCode | undefined>;
   
   // Product methods
+
   getProducts(filters?: {
     category?: string;
     featured?: boolean;
     search?: string;
+
   }): Promise<Product[]>;
+
   getProduct(id: string): Promise<Product | undefined>;
+
   createProduct(product: InsertProduct): Promise<Product>;
   
   // Appliance methods
+
   getHomeAppliances(homeownerId?: string, houseId?: string): Promise<HomeAppliance[]>;
+
   getHomeAppliance(id: string): Promise<HomeAppliance | undefined>;
+
   createHomeAppliance(appliance: InsertHomeAppliance): Promise<HomeAppliance>;
+
   updateHomeAppliance(id: string, appliance: Partial<InsertHomeAppliance>): Promise<HomeAppliance | undefined>;
+
   deleteHomeAppliance(id: string): Promise<boolean>;
   
   // Appliance manual methods
+
   getHomeApplianceManuals(applianceId: string): Promise<HomeApplianceManual[]>;
+
   getHomeApplianceManual(id: string): Promise<HomeApplianceManual | undefined>;
+
   createHomeApplianceManual(manual: InsertHomeApplianceManual): Promise<HomeApplianceManual>;
+
   updateHomeApplianceManual(id: string, manual: Partial<InsertHomeApplianceManual>): Promise<HomeApplianceManual | undefined>;
+
   deleteHomeApplianceManual(id: string): Promise<boolean>;
   
   // Maintenance log methods
+
   getMaintenanceLogs(homeownerId?: string, houseId?: string): Promise<MaintenanceLog[]>;
+
   getMaintenanceLog(id: string): Promise<MaintenanceLog | undefined>;
+
   createMaintenanceLog(log: InsertMaintenanceLog): Promise<MaintenanceLog>;
+
   updateMaintenanceLog(id: string, log: Partial<InsertMaintenanceLog>): Promise<MaintenanceLog | undefined>;
+
   deleteMaintenanceLog(id: string): Promise<boolean>;
   
   // Custom maintenance task methods
+
   getCustomMaintenanceTasks(homeownerId?: string, houseId?: string): Promise<CustomMaintenanceTask[]>;
+
   getCustomMaintenanceTask(id: string): Promise<CustomMaintenanceTask | undefined>;
+
   createCustomMaintenanceTask(task: InsertCustomMaintenanceTask): Promise<CustomMaintenanceTask>;
+
   updateCustomMaintenanceTask(id: string, task: Partial<InsertCustomMaintenanceTask>): Promise<CustomMaintenanceTask | undefined>;
+
   deleteCustomMaintenanceTask(id: string): Promise<boolean>;
   
   // House methods
+
   getHouses(homeownerId?: string): Promise<House[]>;
+
   getHouse(id: string): Promise<House | undefined>;
+
   createHouse(house: InsertHouse): Promise<House>;
+
   updateHouse(id: string, house: Partial<InsertHouse>): Promise<House | undefined>;
+
   cacheHouseCoordinatesIfAddressMatches(
     id: string,
     address: string,
     latitude: string,
     longitude: string,
     coordinatesCachedAt: Date,
+
   ): Promise<House | undefined>;
+
   deleteHouse(id: string): Promise<boolean>;
+
   getDefaultHouse(homeownerId: string): Promise<House | undefined>;
 
   // Contractor appointment methods
+
   getContractorAppointments(homeownerId?: string, houseId?: string): Promise<ContractorAppointment[]>;
+
   getContractorAppointment(id: string): Promise<ContractorAppointment | undefined>;
+
   createContractorAppointment(appointment: InsertContractorAppointment): Promise<ContractorAppointment>;
+
   updateContractorAppointment(id: string, appointment: Partial<InsertContractorAppointment>): Promise<ContractorAppointment | undefined>;
+
   deleteContractorAppointment(id: string): Promise<boolean>;
   
   // Notification methods
+
   getNotifications(homeownerId?: string): Promise<Notification[]>;
+
   getNotification(id: string): Promise<Notification | undefined>;
+
   createNotification(notification: InsertNotification): Promise<Notification>;
+
   updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined>;
+
   deleteNotification(id: string): Promise<boolean>;
+
   getUnreadNotifications(homeownerId: string): Promise<Notification[]>;
+
   getContractorNotifications(contractorId: string): Promise<Notification[]>;
+
   getUnreadContractorNotifications(contractorId: string): Promise<Notification[]>;
+
   markNotificationAsRead(id: string): Promise<boolean>;
+
   createMaintenanceNotifications(homeownerId: string, tasks: any[]): Promise<void>;
   // Marks prior-month unread "maintenance" category notifications as read so recurring
   // monthly reminders (which mint a fresh maintenanceTaskId/id each month) don't pile up
   // forever for homeowners who never open the notification bell. Returns count archived.
+
   archiveStaleMaintenanceNotifications(homeownerId: string): Promise<number>;
   
   // Search methods
+
   searchContractors(query: string, location?: string, services?: string[], maxDistance?: number): Promise<Contractor[]>;
+
   searchProducts(query: string): Promise<Product[]>;
   
   // Contractor profile operations
+
   getContractorProfile(contractorId: string): Promise<Contractor | undefined>;
+
   getContractorProfileForUser(userId: string): Promise<Contractor | undefined>;
+
   updateContractorProfile(contractorId: string, profileData: Partial<InsertContractor>): Promise<Contractor>;
 
   // Service record operations
+
   getServiceRecords(contractorId?: string, homeownerId?: string): Promise<ServiceRecord[]>;
+
   getServiceRecord(id: string): Promise<ServiceRecord | undefined>;
+
   createServiceRecord(record: InsertServiceRecord): Promise<ServiceRecord>;
+
   updateServiceRecord(id: string, record: Partial<InsertServiceRecord>): Promise<ServiceRecord | undefined>;
+
   deleteServiceRecord(id: string): Promise<boolean>;
+
   getHomeownerServiceRecords(homeownerId: string): Promise<ServiceRecord[]>;
+
   getServiceRecordsByHomeowner(homeownerId: string, houseId?: string): Promise<ServiceRecord[]>;
   
   // Customer service record operations  
+
   getCustomerServiceRecords(customerId?: string, customerEmail?: string, customerAddress?: string): Promise<ServiceRecord[]>;
 
   // Permanent connection code operations (attached to user)
+
   getOrCreatePermanentConnectionCode(userId: string): Promise<string>;
+
   validatePermanentConnectionCode(code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null; houses: Array<{id: string; name: string; address: string}> } | null>;
+
   regeneratePermanentConnectionCode(userId: string): Promise<string>;
 
   // Messaging operations
+
   getConversations(userId: string, userType: 'homeowner' | 'contractor'): Promise<(Conversation & { otherPartyName: string; unreadCount: number })[]>;
+
   getConversation(id: string): Promise<Conversation | undefined>;
+
   createConversation(conversation: InsertConversation): Promise<Conversation>;
+
   getMessages(conversationId: string): Promise<Message[]>;
+
   createMessage(message: InsertMessage): Promise<Message>;
+
   markMessagesAsRead(conversationId: string, userId: string): Promise<void>;
+
   getUnreadMessageCount(userId: string): Promise<number>;
+
   getContactedHomeowners(contractorId: string): Promise<(User & { lastContactedAt: Date })[]>;
 
   // Review operations
+
   getContractorReviews(contractorId: string): Promise<ContractorReview[]>;
+
   getReviewsByHomeowner(homeownerId: string): Promise<ContractorReview[]>;
+
   getReview(id: string): Promise<ContractorReview | undefined>;
+
   createContractorReview(review: InsertContractorReview): Promise<ContractorReview>;
+
   updateContractorReview(id: string, review: Partial<InsertContractorReview>): Promise<ContractorReview | undefined>;
   
   // Review flag operations
+
   createReviewFlag(flag: InsertReviewFlag): Promise<ReviewFlag>;
+
   getReviewFlags(status?: string): Promise<ReviewFlag[]>;
+
   getReviewFlag(id: string): Promise<ReviewFlag | undefined>;
+
   updateReviewFlag(id: string, flag: Partial<InsertReviewFlag>): Promise<ReviewFlag | undefined>;
+
   deleteContractorReview(id: string): Promise<boolean>;
+
   getContractorAverageRating(contractorId: string): Promise<{ averageRating: number; totalReviews: number }>;
 
   // Proposal operations
+
   getProposals(contractorId?: string, homeownerId?: string): Promise<Proposal[]>;
+
   getProposal(id: string): Promise<Proposal | undefined>;
+
   createProposal(proposal: InsertProposal): Promise<Proposal>;
+
   updateProposal(id: string, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
   // Atomic conditional update: only applies `proposal` if the row's current
   // status still equals `expectedStatus` (checked and written in one step).
@@ -254,58 +365,94 @@ export interface IStorage {
   // status and would otherwise both apply a status transition and both fire
   // a duplicate transition notification. Returns undefined (no write applied)
   // if the status no longer matches.
+
   updateProposalIfStatusMatches(id: string, expectedStatus: string, proposal: Partial<InsertProposal>): Promise<Proposal | undefined>;
+
   getContractByProposalId(proposalId: string): Promise<Contract | undefined>;
+
   acceptProposalAndCreateContractIfSent(
     proposalId: string,
     acceptedAt: Date,
     customerSignature: string,
     customerSignerName: string,
     signatureIpAddress: string,
+
   ): Promise<{ proposal: Proposal; contract: Contract } | undefined>;
+
   deleteProposal(id: string): Promise<boolean>;
 
   // Home system operations
+
   getHomeSystems(homeownerId?: string, houseId?: string): Promise<HomeSystem[]>;
+
   getHomeSystem(id: string): Promise<HomeSystem | undefined>;
+
   createHomeSystem(system: InsertHomeSystem): Promise<HomeSystem>;
+
   updateHomeSystem(id: string, system: Partial<InsertHomeSystem>): Promise<HomeSystem | undefined>;
+
   deleteHomeSystem(id: string): Promise<boolean>;
 
   // Push subscription operations
+
   getPushSubscriptions(userId?: string): Promise<PushSubscription[]>;
+
   getPushSubscription(id: string): Promise<PushSubscription | undefined>;
+
   createPushSubscription(subscription: InsertPushSubscription): Promise<PushSubscription>;
+
   updatePushSubscription(id: string, subscription: Partial<InsertPushSubscription>): Promise<PushSubscription | undefined>;
+
   deletePushSubscription(id: string): Promise<boolean>;
+
   deletePushSubscriptionByEndpoint(endpoint: string): Promise<boolean>;
+
   deleteUserPushSubscriptions(userId: string): Promise<number>;
 
   // Mobile push token operations (Firebase)
+
   getPushTokensForUser(userId: string): Promise<PushToken[]>;
+
   createPushToken(token: InsertPushToken): Promise<PushToken>;
+
   updatePushToken(id: string, token: Partial<InsertPushToken>): Promise<PushToken | undefined>;
+
   deactivatePushToken(id: string): Promise<boolean>;
+
   deletePushToken(id: string): Promise<boolean>;
 
   // AI Maintenance helper methods
+
   getHousesByHomeowner(homeownerId: string): Promise<House[]>;
 
   // Contractor boost operations
+
   getActiveBoosts(serviceCategory?: string, latitude?: number, longitude?: number): Promise<ContractorBoost[]>;
+
   getContractorBoosts(contractorId: string): Promise<ContractorBoost[]>;
+
   createContractorBoost(boost: InsertContractorBoost): Promise<ContractorBoost>;
+
   updateContractorBoost(id: string, boost: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined>;
+
   deleteContractorBoost(id: string): Promise<boolean>;
+
   checkBoostConflict(serviceCategory: string, latitude: number, longitude: number, radius: number): Promise<ContractorBoost | null>;
+
   expireStaleBoosts(): Promise<{ expired: number; deleted: number }>;
 
   // House transfer operations
+
   createHouseTransfer(transfer: InsertHouseTransfer): Promise<HouseTransfer>;
+
   getHouseTransfer(id: string): Promise<HouseTransfer | undefined>;
+
   getHouseTransferByToken(token: string): Promise<HouseTransfer | undefined>;
+
   getHouseTransfersForUser(homeownerId: string): Promise<HouseTransfer[]>;
+
   updateHouseTransfer(id: string, transfer: Partial<HouseTransfer>): Promise<HouseTransfer | undefined>;
+
   transferHouseOwnership(houseId: string, fromHomeownerId: string, toHomeownerId: string): Promise<{
     maintenanceLogsTransferred: number;
     appliancesTransferred: number;
@@ -317,18 +464,29 @@ export interface IStorage {
     taskOverridesTransferred: number;
     crmInvoicesTransferred: number;
     invoiceAnalysesTransferred: number;
+
   }>;
+  
+  // Error Tracking operations
+
   getHousesCount(homeownerId: string): Promise<number>;
 
   // Subscription plan operations
+
   getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+
   getSubscriptionPlansByType(planType: string): Promise<SubscriptionPlan[]>;
+
   getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+
   getSubscriptionPlanByTier(tierName: string): Promise<SubscriptionPlan | undefined>;
 
   // Contractor analytics operations
+
   trackContractorClick(analyticsData: InsertContractorAnalytics): Promise<ContractorAnalytics>;
+
   getContractorAnalytics(contractorId: string, startDate?: Date, endDate?: Date): Promise<ContractorAnalytics[]>;
+
   getContractorMonthlyStats(contractorId: string, year: number, month: number): Promise<{
     totalViews: number;
     uniqueVisitors: number;
@@ -338,79 +496,124 @@ export interface IStorage {
     emailClicks: number;
     topReferrers: { referrer: string; count: number }[];
     dailyBreakdown: { day: number; views: number; uniqueVisitors: number }[];
-  }>;
 
-  // Task override operations for customizing default regional tasks
   getTaskOverrides(homeownerId: string, houseId: string): Promise<TaskOverride[]>;
+
   getTaskOverride(homeownerId: string, houseId: string, taskId: string): Promise<TaskOverride | undefined>;
+
   upsertTaskOverride(override: InsertTaskOverride): Promise<TaskOverride>;
+
   deleteTaskOverride(homeownerId: string, houseId: string, taskId: string): Promise<boolean>;
 
   // Regional data operations for international expansion
+
   getCountries(): Promise<Country[]>;
+
   getCountry(id: string): Promise<Country | undefined>;
+
   getCountryByCode(code: string): Promise<Country | undefined>;
+
   createCountry(country: InsertCountry): Promise<Country>;
+
   updateCountry(id: string, country: Partial<InsertCountry>): Promise<Country | undefined>;
 
   getRegionsByCountry(countryId: string): Promise<Region[]>;
+
   getRegion(id: string): Promise<Region | undefined>;
+
   createRegion(region: InsertRegion): Promise<Region>;
+
   updateRegion(id: string, region: Partial<InsertRegion>): Promise<Region | undefined>;
 
   getClimateZonesByCountry(countryId: string): Promise<ClimateZone[]>;
+
   getClimateZone(id: string): Promise<ClimateZone | undefined>;
+
   createClimateZone(climateZone: InsertClimateZone): Promise<ClimateZone>;
+
   updateClimateZone(id: string, climateZone: Partial<InsertClimateZone>): Promise<ClimateZone | undefined>;
 
   getRegulatoryBodiesByRegion(regionId: string): Promise<RegulatoryBody[]>;
+
   getRegulatoryBodiesByCountry(countryId: string): Promise<RegulatoryBody[]>;
+
   getRegulatoryBody(id: string): Promise<RegulatoryBody | undefined>;
+
   createRegulatoryBody(regulatoryBody: InsertRegulatoryBody): Promise<RegulatoryBody>;
+
   updateRegulatoryBody(id: string, regulatoryBody: Partial<InsertRegulatoryBody>): Promise<RegulatoryBody | undefined>;
 
   getRegionalMaintenanceTasks(countryId: string, climateZoneId?: string, month?: number): Promise<RegionalMaintenanceTask[]>;
+
   getRegionalMaintenanceTask(id: string): Promise<RegionalMaintenanceTask | undefined>;
+
   createRegionalMaintenanceTask(task: InsertRegionalMaintenanceTask): Promise<RegionalMaintenanceTask>;
+
   updateRegionalMaintenanceTask(id: string, task: Partial<InsertRegionalMaintenanceTask>): Promise<RegionalMaintenanceTask | undefined>;
 
   // Task completion operations for achievements and streaks
+
   getTaskCompletions(homeownerId: string, houseId?: string): Promise<TaskCompletion[]>;
+
   getTaskCompletion(id: string): Promise<TaskCompletion | undefined>;
+
   createTaskCompletion(completion: InsertTaskCompletion): Promise<TaskCompletion>;
+
   getTaskCompletionsByMonth(homeownerId: string, year: number, month: number): Promise<TaskCompletion[]>;
+
   getMonthlyStreak(homeownerId: string): Promise<{ currentStreak: number; longestStreak: number }>;
+
   getHouseDIYSavings(houseId: string): Promise<{ totalSavings: number; taskCount: number }>;
 
   // Achievement operations for milestone tracking
+
   getAchievements(homeownerId: string): Promise<Achievement[]>;
+
   getAchievement(id: string): Promise<Achievement | undefined>;
+
   createAchievement(achievement: InsertAchievement): Promise<Achievement>;
+
   hasAchievement(homeownerId: string, achievementType: string): Promise<boolean>;
+
   getContractorHireCount(homeownerId: string): Promise<number>;
   
   // New achievement system operations
+
   getAllAchievementDefinitions(): Promise<AchievementDefinition[]>;
+
   getAchievementDefinitionsByCategory(category: string): Promise<AchievementDefinition[]>;
+
   getUserAchievements(homeownerId: string): Promise<UserAchievement[]>;
+
   getUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined>;
+
   createUserAchievement(userAchievement: InsertUserAchievement): Promise<UserAchievement>;
   // Atomic guard against the achievement duplicate-award race: creates the
   // row only if one doesn't already exist for this (homeownerId,
   // achievementKey) pair (backed by the DB's unique index). Returns
   // undefined if a concurrent request already created it — callers must
   // treat that as "not newly awarded by me", not retry or overwrite.
+
   createUserAchievementIfAbsent(userAchievement: InsertUserAchievement): Promise<UserAchievement | undefined>;
+
   updateUserAchievementProgress(homeownerId: string, achievementKey: string, progress: number, metadata?: string): Promise<UserAchievement | undefined>;
+
   unlockUserAchievement(homeownerId: string, achievementKey: string): Promise<UserAchievement | undefined>;
+
   checkAndAwardAchievements(homeownerId: string): Promise<UserAchievement[]>;
+
   checkAndUnlockContractorHiringAchievements(homeownerId: string): Promise<UserAchievement[]>;
+
   calculateAchievementsProgress(homeownerId: string, houseId?: string): Promise<Array<{ achievementKey: string; progress: number; isUnlocked: boolean; unlockedAt?: Date; metadata?: string }>>;
+
   getAchievementProgress(homeownerId: string, achievementKey: string): Promise<{ progress: number; isUnlocked: boolean; criteria: any }>;
 
   // Authentication methods
+
   getUserByEmail(email: string): Promise<User | undefined>;
+
   getUserByAppleOriginalTransactionId(originalTransactionId: string): Promise<User | undefined>;
+
   createUserWithPassword(data: { 
     email: string; 
     passwordHash: string; 
@@ -421,20 +624,29 @@ export interface IStorage {
     trialEndsAt?: Date;
     maxHousesAllowed?: number;
     subscriptionStatus?: string;
+
   }): Promise<User>;
+
   cancelUserAccount(userId: string, role: string): Promise<{ success: boolean; message: string }>;
 
   // Invite code methods
+
   validateAndUseInviteCode(code: string): Promise<boolean>;
+
   getInviteCodes(): Promise<InviteCode[]>;
+
   createInviteCode(data: InsertInviteCode): Promise<InviteCode>;
+
   deactivateInviteCode(code: string): Promise<boolean>;
 
   // Search analytics methods
+
   trackSearch(data: InsertSearchAnalytics): Promise<SearchAnalytics>;
+
   getSearchAnalytics(filters?: { zipCode?: string, limit?: number }): Promise<SearchAnalytics[]>;
 
   // Admin analytics methods
+
   getAdminStats(): Promise<{
     totalUsers: number;
     homeownerCount: number;
@@ -442,74 +654,94 @@ export interface IStorage {
     agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
-  }>;
 
-  // Advanced admin analytics methods
   getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>>;
+
   getReferralGrowthSeries(days: number): Promise<Array<{ date: string; count: number }>>;
+
   getContractorSignupsSeries(days: number): Promise<Array<{ date: string; count: number }>>;
+
   getRevenueMetrics(days: number): Promise<{
     mrr: number;
     totalRevenue: number;
     revenueByPlan: Array<{ plan: string; revenue: number }>;
     revenueSeries: Array<{ date: string; amount: number }>;
-  }>;
+
   getChurnMetrics(days: number): Promise<{
     churnRate: number;
     churnedUsers: number;
     totalActiveUsers: number;
     churnSeries: Array<{ date: string; rate: number }>;
-  }>;
+
   getFeatureUsageStats(): Promise<Array<{ feature: string; count: number }>>;
 
   // Agent profile operations
+
   getAgentProfile(agentId: string): Promise<AgentProfile | undefined>;
+
   createAgentProfile(profile: InsertAgentProfile): Promise<AgentProfile>;
+
   updateAgentProfile(agentId: string, profile: Partial<InsertAgentProfile>): Promise<AgentProfile | undefined>;
   
   // Affiliate referral operations
+
   getAffiliateReferrals(agentId: string): Promise<AffiliateReferral[]>;
+
   getAffiliateReferral(id: string): Promise<AffiliateReferral | undefined>;
+
   getAffiliateReferralByUserId(userId: string): Promise<AffiliateReferral | undefined>;
+
   getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined>;
+
   createAffiliateReferral(referral: InsertAffiliateReferral): Promise<AffiliateReferral>;
+
   updateAffiliateReferral(id: string, referral: Partial<InsertAffiliateReferral>): Promise<AffiliateReferral | undefined>;
   // Atomically advances consecutiveMonthsPaid/status, but only if the row's
   // current status still matches expectedStatus. Two concurrent/duplicate
   // webhook deliveries reading the same stale status will race on this
   // conditional UPDATE — only one gets the updated row back.
+
   advanceAffiliateReferralPayment(
     id: string,
     expectedStatus: string,
     updates: { consecutiveMonthsPaid: number; status: string; lastPaymentDate: Date; firstPaymentDate: Date },
+
   ): Promise<AffiliateReferral | undefined>;
   
   // Subscription cycle event operations
+
   getSubscriptionCycleEvents(userId: string): Promise<SubscriptionCycleEvent[]>;
+
   createSubscriptionCycleEvent(event: InsertSubscriptionCycleEvent): Promise<SubscriptionCycleEvent>;
+
   getLastPaymentEvent(userId: string): Promise<SubscriptionCycleEvent | undefined>;
   
   // Affiliate payout operations
+
   getAffiliatePayouts(agentId: string): Promise<AffiliatePayout[]>;
+
   getAffiliatePayout(id: string): Promise<AffiliatePayout | undefined>;
+
   createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout>;
+
   updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined>;
   // Atomically claims a payout for transfer processing: only succeeds if the
   // row is not already 'paid' or 'processing', so a duplicate/replayed
   // webhook delivery can't launch a second Stripe transfer for it.
+
   claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined>;
+
   getPendingPayouts(): Promise<AffiliatePayout[]>;
   
   // Agent dashboard stats
+
   getAgentStats(agentId: string): Promise<{
     totalReferrals: number;
     activeReferrals: number;
     totalEarnings: number;
     pendingEarnings: number;
     nextPayoutDate: string | null;
-  }>;
-  
-  // Agent verification operations
+
   submitAgentVerification(agentId: string, data: {
     licenseNumber: string;
     licenseState: string;
@@ -519,7 +751,9 @@ export interface IStorage {
     stateIdMimeType: string;
     stateIdFileSize: number;
     stateIdChecksum: string;
+
   }): Promise<AgentProfile | undefined>;
+
   getAgentVerificationStatus(agentId: string): Promise<{
     verificationStatus: string;
     licenseNumber?: string | null;
@@ -527,81 +761,111 @@ export interface IStorage {
     licenseExpiration?: Date | null;
     verificationRequestedAt?: Date | null;
     reviewNotes?: string | null;
+
   } | undefined>;
-  
-  // Agent verification audit operations
+
+  // House disclosure operations
+
   createVerificationAudit(audit: InsertAgentVerificationAudit): Promise<AgentVerificationAudit>;
+
   getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]>;
   
   // Support ticket operations
+
   getSupportTickets(filters?: {
     userId?: string;
     status?: string;
     category?: string;
     priority?: string;
     assignedToAdminId?: string;
+
   }): Promise<SupportTicket[]>;
+
   getSupportTicket(id: string): Promise<SupportTicket | undefined>;
+
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+
   updateSupportTicket(id: string, ticket: Partial<InsertSupportTicket>): Promise<SupportTicket | undefined>;
   
   // Ticket reply operations
+
   getTicketReplies(ticketId: string): Promise<TicketReply[]>;
+
   createTicketReply(reply: InsertTicketReply): Promise<TicketReply>;
   
   // Support ticket with replies (for detailed view)
+
   getSupportTicketWithReplies(id: string): Promise<{
     ticket: SupportTicket;
     replies: TicketReply[];
     user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
-  } | undefined>;
 
-  // CRM Lead operations
   getCrmLeads(contractorUserId: string, filters?: {
     status?: string;
     priority?: string;
     source?: string;
     searchQuery?: string;
+
   }): Promise<CrmLead[]>;
+
   getCrmLead(id: string): Promise<CrmLead | undefined>;
+
   createCrmLead(lead: InsertCrmLead): Promise<CrmLead>;
+
   updateCrmLead(id: string, lead: Partial<InsertCrmLead>): Promise<CrmLead | undefined>;
+
   deleteCrmLead(id: string): Promise<boolean>;
   
   // CRM Note operations
+
   getCrmNotes(leadId: string): Promise<CrmNote[]>;
+
   createCrmNote(note: InsertCrmNote): Promise<CrmNote>;
+
   updateCrmNote(id: string, note: Partial<InsertCrmNote>): Promise<CrmNote | undefined>;
+
   deleteCrmNote(id: string): Promise<boolean>;
   
   // CRM Integration operations
+
   getCrmIntegrations(contractorUserId: string, companyId?: string | null): Promise<CrmIntegration[]>;
+
   getCrmIntegration(id: string): Promise<CrmIntegration | undefined>;
+
   createCrmIntegration(integration: InsertCrmIntegration): Promise<CrmIntegration>;
+
   updateCrmIntegration(id: string, integration: Partial<InsertCrmIntegration>): Promise<CrmIntegration | undefined>;
+
   deleteCrmIntegration(id: string): Promise<boolean>;
   
   // Webhook Log operations
+
   getWebhookLogs(integrationId: string, limit?: number): Promise<WebhookLog[]>;
+
   createWebhookLog(log: InsertWebhookLog): Promise<WebhookLog>;
   
   // CRM Lead with notes (for detailed view)
+
   getCrmLeadWithNotes(id: string): Promise<{
     lead: CrmLead;
     notes: CrmNote[];
-  } | undefined>;
-  
-  // CRM Client operations (Pro tier feature)
+
   getCrmClients(contractorUserId: string, filters?: {
     status?: string;
     searchQuery?: string;
+
   }): Promise<CrmClient[]>;
+
   getCrmClient(id: string): Promise<CrmClient | undefined>;
+
   createCrmClient(client: InsertCrmClient): Promise<CrmClient>;
+
   updateCrmClient(id: string, client: Partial<InsertCrmClient>): Promise<CrmClient | undefined>;
+
   deleteCrmClient(id: string): Promise<boolean>;
   
   // CRM Job operations (Pro tier feature)
+
   getCrmJobs(contractorUserId: string, filters?: {
     status?: string;
     clientId?: string;
@@ -609,57 +873,84 @@ export interface IStorage {
     searchQuery?: string;
     startDate?: Date;
     endDate?: Date;
+
   }): Promise<CrmJob[]>;
+
   getCrmJob(id: string): Promise<CrmJob | undefined>;
+
   createCrmJob(job: InsertCrmJob): Promise<CrmJob>;
+
   updateCrmJob(id: string, job: Partial<InsertCrmJob>): Promise<CrmJob | undefined>;
+
   deleteCrmJob(id: string): Promise<boolean>;
   
   // CRM Quote operations (Pro tier feature)
+
   getCrmQuotes(contractorUserId: string, filters?: {
     status?: string;
     clientId?: string;
     searchQuery?: string;
+
   }): Promise<CrmQuote[]>;
+
   getCrmQuote(id: string): Promise<CrmQuote | undefined>;
+
   createCrmQuote(quote: InsertCrmQuote): Promise<CrmQuote>;
+
   updateCrmQuote(id: string, quote: Partial<InsertCrmQuote>): Promise<CrmQuote | undefined>;
+
   deleteCrmQuote(id: string): Promise<boolean>;
   
   // CRM Invoice operations (Pro tier feature)
+
   getCrmInvoices(contractorUserId: string, filters?: {
     status?: string;
     clientId?: string;
     searchQuery?: string;
+
   }): Promise<CrmInvoice[]>;
+
   getCrmInvoice(id: string): Promise<CrmInvoice | undefined>;
+
   createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice>;
+
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
+
   markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
+
   deleteCrmInvoice(id: string): Promise<boolean>;
   // Atomic claim of the Stripe Checkout session slot for an invoice+amount —
   // see the schema comment on crmInvoices.stripeCheckoutSessionId. Prevents
   // concurrent payment-link / checkout requests (from either endpoint, and
   // across server instances) from creating more than one live Checkout
   // Session for the same invoice at a time.
+
   claimInvoiceCheckoutSession(invoiceId: string, amount: string, claimTtlMs: number): Promise<
     | { outcome: "claimed" }
     | { outcome: "existing"; sessionId: string }
     | { outcome: "pending" }
+
   >;
+
   finalizeInvoiceCheckoutSession(invoiceId: string, sessionId: string, amount: string, expiresAt: Date): Promise<void>;
   // Clears the claim/session slot only if it still holds `expectedSessionId`
   // — either the 'pending' sentinel this caller itself claimed (crash /
   // Stripe-call-failure recovery), or a specific stale session id this
   // caller just confirmed via Stripe is no longer open. Never clobbers a
   // different value another request may have since written.
+
   releaseInvoiceCheckoutClaim(invoiceId: string, expectedSessionId: string): Promise<void>;
+
   getLinkedInvoicesForHomeowner(homeownerId: string): Promise<CrmInvoice[]>;
+
   unlinkInvoiceFromHomeowner(invoiceId: string, homeownerId: string): Promise<boolean>;
+
   markInvoiceViewed(invoiceId: string, homeownerId: string): Promise<boolean>;
+
   markAllInvoicesViewed(homeownerId: string): Promise<void>;
   
   // CRM Dashboard Stats (Pro tier feature)
+
   getCrmDashboardStats(contractorUserId: string): Promise<{
     totalClients: number;
     activeJobs: number;
@@ -669,125 +960,200 @@ export interface IStorage {
     revenueThisMonth: string;
     jobsThisMonth: number;
     conversionRate: number;
-  }>;
-  
-  // Error Tracking operations
+
   getErrorLogs(filters?: {
     errorType?: string;
     severity?: string;
     resolved?: boolean;
     userId?: string;
     limit?: number;
+
   }): Promise<ErrorLog[]>;
+
   getErrorLog(id: string): Promise<ErrorLog | undefined>;
+
   createErrorLog(error: InsertErrorLog): Promise<ErrorLog>;
+
   updateErrorLog(id: string, error: Partial<InsertErrorLog>): Promise<ErrorLog | undefined>;
   
   // Error Breadcrumb operations
+
   getErrorBreadcrumbs(errorLogId: string): Promise<ErrorBreadcrumb[]>;
+
   createErrorBreadcrumb(breadcrumb: InsertErrorBreadcrumb): Promise<ErrorBreadcrumb>;
   
   // Error Log with breadcrumbs (for detailed view)
+
   getErrorLogWithBreadcrumbs(id: string): Promise<{
     error: ErrorLog;
     breadcrumbs: ErrorBreadcrumb[];
-  } | undefined>;
 
-  // House disclosure operations
   getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined>;
+
   upsertHouseDisclosure(data: InsertHouseDisclosure): Promise<HouseDisclosure>;
 
   // Insurance claim package operations
+
   saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage>;
+
   getInsuranceClaimPackages(houseId: string, homeownerId: string): Promise<InsuranceClaimPackage[]>;
+
   getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined>;
+
   deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean>;
 
   // Insurance email log operations
+
   createInsuranceEmailLog(data: InsertInsuranceEmailLog): Promise<InsuranceEmailLog>;
+
   getInsuranceEmailLogs(homeownerId: string): Promise<InsuranceEmailLog[]>;
 
   // Stripe webhook dedup operations
+
   claimStripeEvent(eventId: string, claimedAt?: Date): Promise<StripeEventClaimResult>;
+
   claimStaleStripeEvent(eventId: string, olderThanMinutes: number, claimedAt?: Date): Promise<boolean>;
+
   refreshStripeEventClaim(eventId: string, expectedProcessedAt: Date, refreshedAt: Date): Promise<boolean>;
+
   hasProcessedStripeEvent(eventId: string): Promise<boolean>;
+
   markStripeEventPending(eventId: string): Promise<void>;
+
   markStripeEventCommitted(eventId: string, expectedProcessedAt?: Date): Promise<boolean>;
+
   deleteStripeEventPending(eventId: string): Promise<void>;
+
   getIncompleteStripeProcessedEvents(olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>>;
+
   failStaleStripePendingEvents(): Promise<{ updated: number }>;
+
   pruneOldStripeProcessedEvents(ttlHours: number): Promise<{ deleted: number; remaining: number }>;
 
   // Pending seat-sync checkpoint operations
   // Inserted before calling the Stripe seat-update API; deleted on success.
   // Any row still present at startup signals a mid-flight crash that needs recovery.
+
   upsertPendingSeatSync(companyId: string): Promise<void>;
+
   deletePendingSeatSync(companyId: string): Promise<void>;
+
   getPendingSeatSyncs(): Promise<string[]>;
+
+  getCrmInvoiceEvents(invoiceId: string): Promise<CrmInvoiceEvent[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+
   private companies: Map<string, Company>;
+
   private companyInviteCodes: Map<string, CompanyInviteCode>;
+
   private contractors: Map<string, Contractor>;
+
   private contractorLicenses: Map<string, ContractorLicense>;
+
   private products: Map<string, Product>;
+
   private homeAppliances: Map<string, HomeAppliance>;
+
   private homeApplianceManuals: Map<string, HomeApplianceManual>;
+
   private maintenanceLogs: Map<string, MaintenanceLog>;
+
   private customMaintenanceTasks: Map<string, CustomMaintenanceTask>;
+
   private houses: Map<string, House>;
+
   private contractorAppointments: Map<string, ContractorAppointment>;
+
   private houseTransfers: Map<string, HouseTransfer>;
+
   private notifications: Map<string, Notification>;
+
   private serviceRecords: ServiceRecord[];
+
   private conversations: Map<string, Conversation>;
+
   private messages: Map<string, Message>;
+
   private contractorReviews: Map<string, ContractorReview>;
+
   private reviewFlags: Map<string, ReviewFlag>;
+
   private proposals: Map<string, Proposal>;
+
   private contracts: Map<string, Contract>;
+
   private homeSystems: Map<string, HomeSystem>;
+
   private pushSubscriptions: Map<string, PushSubscription>;
+
   private contractorBoosts: Map<string, ContractorBoost>;
+
   private contractorAnalytics: Map<string, ContractorAnalytics>;
+
   private taskOverrides: Map<string, TaskOverride>;
+
   // Regional data Maps for international expansion
   private countries: Map<string, Country>;
+
   private regions: Map<string, Region>;
+
   private climateZones: Map<string, ClimateZone>;
+
   private regulatoryBodies: Map<string, RegulatoryBody>;
+
   private regionalMaintenanceTasks: Map<string, RegionalMaintenanceTask>;
+
   // Auth and analytics Maps
   private inviteCodesMap: Map<string, InviteCode>;
+
   private searchAnalyticsMap: Map<string, SearchAnalytics>;
+
   // Support ticket Maps
   private supportTickets: Map<string, SupportTicket>;
+
   private ticketReplies: Map<string, TicketReply>;
+
   // CRM Maps
   private crmLeads: Map<string, CrmLead>;
+
   private crmNotes: Map<string, CrmNote>;
+
   private crmIntegrations: Map<string, CrmIntegration>;
+
   // Disclosure Maps
   private houseDisclosuresMap: Map<string, HouseDisclosure>;
+
   private insuranceClaimPackagesMap: Map<string, InsuranceClaimPackage>;
+
   private insuranceEmailLogsMap: Map<string, InsuranceEmailLog>;
+
   private webhookLogs: Map<string, WebhookLog>;
+
   // CRM Pro tier Maps
   private crmClientsMap: Map<string, CrmClient>;
+
   private crmJobsMap: Map<string, CrmJob>;
+
   private crmQuotesMap: Map<string, CrmQuote>;
+
   private crmInvoicesMap: Map<string, CrmInvoice>;
+
   // Achievement and task completion Maps
   // subscriptionPlansMap: seeded via _seedSubscriptionPlans() — parity-complete for dev
   private subscriptionPlansMap: Map<string, SubscriptionPlan>;
+
   // taskCompletionsMap: starts empty; demo completions go to DB seed but not here (see task #127)
   private taskCompletionsMap: Map<string, TaskCompletion>;
+
   private achievementsMap: Map<string, Achievement>;
+
   // achievementDefinitionsMap: starts empty in dev — definitions should be seeded (see task #128)
   private achievementDefinitionsMap: Map<string, AchievementDefinition>;
+
   // userAchievementsMap: starts empty; populated at runtime when achievements are awarded
   private userAchievementsMap: Map<string, UserAchievement>;
 
@@ -845,6 +1211,7 @@ export class MemStorage implements IStorage {
     this.crmJobsMap = new Map();
     this.crmQuotesMap = new Map();
     this.crmInvoicesMap = new Map();
+    this.crmInvoiceEventsMap = new Map();
     // Initialize achievement and task completion Maps
     this.subscriptionPlansMap = new Map();
     this.taskCompletionsMap = new Map();
@@ -1646,7 +2013,6 @@ export class MemStorage implements IStorage {
     this.products.set(id, newProduct);
     return newProduct;
   }
-
 
   async getHomeAppliances(homeownerId?: string, houseId?: string): Promise<HomeAppliance[]> {
     const appliances = Array.from(this.homeAppliances.values());
@@ -2595,7 +2961,6 @@ export class MemStorage implements IStorage {
       .filter(review => review.homeownerId === homeownerId)
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   }
-
 
   async getReview(id: string): Promise<ContractorReview | undefined> {
     return this.contractorReviews.get(id);
@@ -6920,6 +7285,14 @@ export class MemStorage implements IStorage {
       paidAt: invoice.status === 'paid' && !existing.paidAt ? new Date() : existing.paidAt,
     };
     this.crmInvoicesMap.set(id, updated);
+    const changes = invoiceAuditChanges(existing, updated).map((change) => ({
+      id: crypto.randomUUID(),
+      ...change,
+      createdAt: new Date(),
+    }));
+    if (changes.length) {
+      this.crmInvoiceEventsMap.set(id, [...(this.crmInvoiceEventsMap.get(id) || []), ...changes]);
+    }
     return updated;
   }
 
@@ -7133,20 +7506,38 @@ export class MemStorage implements IStorage {
 
   // Stripe webhook dedup — in-memory stubs (tests mock storage directly)
   async claimStripeEvent(_eventId: string, _claimedAt?: Date): Promise<StripeEventClaimResult> { return 'claimed'; }
+
   async claimStaleStripeEvent(_eventId: string, _olderThanMinutes: number, _claimedAt?: Date): Promise<boolean> { return false; }
+
   async refreshStripeEventClaim(_eventId: string, _expectedProcessedAt: Date, _refreshedAt: Date): Promise<boolean> { return false; }
+
   async hasProcessedStripeEvent(_eventId: string): Promise<boolean> { return false; }
+
   async markStripeEventPending(_eventId: string): Promise<void> {}
+
   async markStripeEventCommitted(_eventId: string, _expectedProcessedAt?: Date): Promise<boolean> { return true; }
+
   async deleteStripeEventPending(_eventId: string): Promise<void> {}
+
   async getIncompleteStripeProcessedEvents(_olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>> { return []; }
+
   async failStaleStripePendingEvents(): Promise<{ updated: number }> { return { updated: 0 }; }
+
   async pruneOldStripeProcessedEvents(_ttlHours: number): Promise<{ deleted: number; remaining: number }> { return { deleted: 0, remaining: 0 }; }
 
   // Pending seat-sync checkpoint — in-memory stubs (tests mock storage directly)
   async upsertPendingSeatSync(_companyId: string): Promise<void> {}
+
   async deletePendingSeatSync(_companyId: string): Promise<void> {}
+
   async getPendingSeatSyncs(): Promise<string[]> { return []; }
+
+  private crmInvoiceEventsMap: Map<string, CrmInvoiceEvent[]>;
+
+  async getCrmInvoiceEvents(invoiceId: string): Promise<CrmInvoiceEvent[]> {
+    return [...(this.crmInvoiceEventsMap.get(invoiceId) || [])]
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  }
 }
 
 // Database-backed storage for users (OAuth persistence)
@@ -10833,19 +11224,30 @@ class DbStorage implements IStorage {
   }
 
   async updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
-    const existing = await this.getCrmInvoice(id);
-    if (!existing) return undefined;
+    return db.transaction(async (tx) => {
+      const rows = await tx.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1);
+      const existing = rows[0];
+      if (!existing) return undefined;
 
-    const updates: Partial<CrmInvoice> = {
-      ...invoice,
-      updatedAt: new Date(),
-      sentAt: invoice.status === 'sent' && !existing.sentAt ? new Date() : existing.sentAt,
-      viewedAt: invoice.status === 'viewed' && !existing.viewedAt ? new Date() : existing.viewedAt,
-      paidAt: invoice.status === 'paid' && !existing.paidAt ? new Date() : existing.paidAt,
-    };
+      const updates: Partial<CrmInvoice> = {
+        ...invoice,
+        updatedAt: new Date(),
+        sentAt: invoice.status === 'sent' && !existing.sentAt ? new Date() : existing.sentAt,
+        viewedAt: invoice.status === 'viewed' && !existing.viewedAt ? new Date() : existing.viewedAt,
+        paidAt: invoice.status === 'paid' && !existing.paidAt ? new Date() : existing.paidAt,
+      };
+      const result = await tx.update(crmInvoices).set(updates).where(eq(crmInvoices.id, id)).returning();
+      const updated = result[0];
+      const changes = invoiceAuditChanges(existing, updated);
+      if (changes.length) await tx.insert(crmInvoiceEvents).values(changes);
+      return updated;
+    });
+  }
 
-    const result = await db.update(crmInvoices).set(updates).where(eq(crmInvoices.id, id)).returning();
-    return result[0];
+  async getCrmInvoiceEvents(invoiceId: string): Promise<CrmInvoiceEvent[]> {
+    return db.select().from(crmInvoiceEvents)
+      .where(eq(crmInvoiceEvents.invoiceId, invoiceId))
+      .orderBy(asc(crmInvoiceEvents.createdAt), asc(crmInvoiceEvents.id));
   }
 
   async markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
@@ -12021,3 +12423,18 @@ class DbStorage implements IStorage {
 }
 
 export const storage = new DbStorage();
+
+function invoiceAuditChanges(existing: CrmInvoice, updated: CrmInvoice): InsertCrmInvoiceEvent[] {
+  const money = (value: unknown) => `$${Number(value || 0).toFixed(2)}`;
+  const day = (value: unknown) => value ? new Date(value as Date).toISOString().slice(0, 10) : "None";
+  const candidates = [
+    { field: "Service", oldValue: existing.title, newValue: updated.title },
+    { field: "Amount", oldValue: money(existing.total), newValue: money(updated.total) },
+    { field: "Due date", oldValue: day(existing.dueDate), newValue: day(updated.dueDate) },
+    { field: "Status", oldValue: existing.status, newValue: updated.status },
+    { field: "Payment recorded", oldValue: money(existing.amountPaid), newValue: money(updated.amountPaid) },
+  ];
+  return candidates
+    .filter(({ oldValue, newValue }) => oldValue !== newValue)
+    .map((change) => ({ invoiceId: existing.id, ...change }));
+}

@@ -2281,7 +2281,16 @@ export const insertCrmInvoiceSchema = createInsertSchema(crmInvoices).omit({ id:
 export type InsertCrmInvoice = z.infer<typeof insertCrmInvoiceSchema>;
 export type CrmInvoice = typeof crmInvoices.$inferSelect;
 
-// Contractor Job Records — contractor pushes a completed job record to a homeowner's home history
+export const crmInvoiceEvents = pgTable("crm_invoice_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  invoiceId: varchar("invoice_id").notNull().references(() => crmInvoices.id, { onDelete: "cascade" }),
+  field: text("field").notNull(),
+  oldValue: text("old_value").notNull(),
+  newValue: text("new_value").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("IDX_crm_invoice_events_invoice_created").on(table.invoiceId, table.createdAt),
+]);
 export const contractorJobRecords = pgTable("contractor_job_records", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   contractorUserId: varchar("contractor_user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -2909,3 +2918,9 @@ export const fraudReviewQueue = pgTable("fraud_review_queue", {
 export const insertFraudReviewQueueSchema = createInsertSchema(fraudReviewQueue).omit({ id: true, createdAt: true });
 export type InsertFraudReviewQueueEntry = z.infer<typeof insertFraudReviewQueueSchema>;
 export type FraudReviewQueueEntry = typeof fraudReviewQueue.$inferSelect;
+
+export type CrmInvoiceEvent = typeof crmInvoiceEvents.$inferSelect;
+
+export const insertCrmInvoiceEventSchema = createInsertSchema(crmInvoiceEvents).omit({ id: true, createdAt: true });
+
+export type InsertCrmInvoiceEvent = z.infer<typeof insertCrmInvoiceEventSchema>;

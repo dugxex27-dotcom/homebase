@@ -3897,6 +3897,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const client = await storage.getCrmClient(invoice.clientId);
       const contractor = await storage.getUser(invoice.contractorUserId);
       const company = invoice.companyId ? await storage.getCompany(invoice.companyId) : null;
+      const history = await storage.getCrmInvoiceEvents(invoice.id);
 
       const canSaveToHistory = isHomeowner;
 
@@ -3917,6 +3918,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyLogo: company?.businessLogo,
         canSaveToHistory,
         houseId: canSaveToHistory ? (invoice.houseId || null) : null,
+        history,
       });
     } catch (error: any) {
       console.error('[PAYMENT] Error fetching invoice:', error);

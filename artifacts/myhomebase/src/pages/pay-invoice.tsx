@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileText, BookmarkPlus } from "lucide-react";
+import { CreditCard, CheckCircle2, XCircle, Loader2, Building2, Calendar, FileText, BookmarkPlus, History } from "lucide-react";
 import { format } from "date-fns";
 import { Helmet } from "react-helmet";
 import type { House } from "@shared/schema";
@@ -26,6 +26,47 @@ interface InvoiceDetails {
   companyLogo: string | null;
   canSaveToHistory: boolean;
   houseId: string | null;
+  history: Array<{
+    id: string;
+    field: string;
+    oldValue: string;
+    newValue: string;
+    createdAt: string;
+  }>;
+}
+
+function InvoiceHistory({ entries }: { entries: InvoiceDetails["history"] }) {
+  if (!entries.length) return null;
+  return (
+    <Card data-testid="invoice-change-history">
+      <CardHeader>
+        <CardTitle className="text-lg flex items-center gap-2">
+          <History className="h-5 w-5" />
+          Invoice change history
+        </CardTitle>
+        <CardDescription>A chronological record of changes to this invoice.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ol className="space-y-4">
+          {entries.map((entry) => (
+            <li key={entry.id} className="border-l-2 pl-4" style={{ borderColor: "var(--purple-border)" }}>
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-medium text-sm">{entry.field}</p>
+                <time className="text-xs text-muted-foreground" dateTime={entry.createdAt}>
+                  {format(new Date(entry.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                </time>
+              </div>
+              <p className="text-sm mt-1">
+                <span className="text-muted-foreground line-through">{entry.oldValue}</span>
+                <span className="mx-2" aria-hidden="true">→</span>
+                <span className="font-medium">{entry.newValue}</span>
+              </p>
+            </li>
+          ))}
+        </ol>
+      </CardContent>
+    </Card>
+  );
 }
 
 function SaveToHistoryCard({ invoiceId, invoiceHouseId }: { invoiceId: string; invoiceHouseId: string | null }) {
@@ -189,6 +230,7 @@ export default function PayInvoicePage() {
           {invoice.canSaveToHistory && (
             <SaveToHistoryCard invoiceId={invoice.id} invoiceHouseId={invoice.houseId} />
           )}
+          <InvoiceHistory entries={invoice.history || []} />
         </div>
       </div>
     );
@@ -298,6 +340,7 @@ export default function PayInvoicePage() {
         {invoice.canSaveToHistory && (
           <SaveToHistoryCard invoiceId={invoice.id} invoiceHouseId={invoice.houseId} />
         )}
+        <InvoiceHistory entries={invoice.history || []} />
       </div>
     </div>
   );
