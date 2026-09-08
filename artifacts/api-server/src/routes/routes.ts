@@ -1205,9 +1205,10 @@ export function normalizeStripeSubscriptionStatus(status: string): string {
     case 'trialing':
     case 'past_due':
     case 'incomplete':
+      return status;
     case 'unpaid':
     case 'paused':
-      return status;
+      return 'past_due';
     case 'canceled':
     case 'incomplete_expired':
       return 'cancelled';

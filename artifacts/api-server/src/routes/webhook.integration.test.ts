@@ -1428,6 +1428,39 @@ describe("Stripe webhook — incomplete subscription 3DS lifecycle (upgrade and 
     );
   });
 
+  it.each(["paused", "unpaid"])(
+    "%s: customer.subscription.updated maps to 'past_due' and does NOT grant active entitlement",
+    async (stripeStatus) => {
+      const event = makeSubscriptionUpdatedEventWithStatus(
+        `evt_subscription_${stripeStatus}_001`,
+        stripeStatus,
+        "active",
+      );
+      mockConstructEvent.mockReset().mockReturnValue(event);
+
+      const res = await request(app)
+        .post("/api/webhooks/stripe")
+        .set("Content-Type", "application/octet-stream")
+        .set("stripe-signature", FAKE_SIG)
+        .send(makeWebhookBody(event));
+
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ received: true });
+      expect(mockGetUserByStripeCustomerId2).toHaveBeenCalledWith("cus_test_3ds_01");
+      expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+      expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+        FAKE_USER.id,
+        "past_due",
+        expect.any(Date),
+      );
+      expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalledWith(
+        FAKE_USER.id,
+        "active",
+        expect.any(Date),
+      );
+    },
+  );
+
   it("subscription deleted: customer.subscription.deleted sets status to 'cancelled', not 'active'", async () => {
     const EVENT_ID = "evt_3ds_rejected_sub_deleted_001";
     const event = makeSubscriptionDeletedEvent(EVENT_ID);
