@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,10 +81,10 @@ export default function HouseholdProfilePage() {
     document.title = "Household Profile | MyHomeBase™";
   }, []);
 
-  // Called by HouseholdProfileEditor on every form.watch() change (before save)
-  function handleFieldChange(values: Record<string, unknown>) {
+  // Keep checklist progress responsive while the editor auto-saves.
+  const handleFieldChange = useCallback((values: Record<string, unknown>) => {
     setDraftProgress((prev) => ({ ...prev, ...values }));
-  }
+  }, []);
 
   // Open the editor focused on a specific field
   function openEditorAt(field: ChecklistFieldDef) {

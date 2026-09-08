@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { updateHouseholdProfileSchema } from "@shared/schema";
 import { z } from "zod/v4";
 import { apiRequest } from "@/lib/queryClient";
@@ -29,10 +29,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Home, Wrench, Droplets, Flame } from "lucide-react";
+import { Home, Wrench, Droplets, CheckCircle2, Loader2 } from "lucide-react";
 
 type HouseholdProfileFormData = z.infer<typeof updateHouseholdProfileSchema>;
+type QueuedProfileSave = {
+  houseId: string;
+  values: HouseholdProfileFormData;
+};
+
+function normalizeProfileValues(
+  values: Partial<HouseholdProfileFormData>,
+): HouseholdProfileFormData {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => (
+      value !== null &&
+      value !== undefined &&
+      !(typeof value === "number" && Number.isNaN(value))
+    )),
+  ) as HouseholdProfileFormData;
+}
 
 interface HouseholdProfileEditorProps {
   open: boolean;
@@ -53,19 +68,109 @@ export function HouseholdProfileEditor({
 }: HouseholdProfileEditorProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const lastSavedValuesRef = useRef("");
+  const wasOpenRef = useRef(false);
+  const activeHouseIdRef = useRef(houseId);
+  const isSavingRef = useRef(false);
+  const queuedSavesRef = useRef<QueuedProfileSave[]>([]);
 
   const form = useForm<HouseholdProfileFormData>({
     resolver: zodResolver(updateHouseholdProfileSchema as any),
     defaultValues: currentProfile || {},
   });
 
-  // Notify parent of live value changes before save
   const watchedValues = useWatch({ control: form.control });
-  useEffect(() => {
-    if (onFieldChange && open) {
-      onFieldChange(watchedValues as Record<string, unknown>);
+
+  const persistProfile = useCallback(async (values: HouseholdProfileFormData) => {
+    const targetHouseId = activeHouseIdRef.current;
+    const existingSave = queuedSavesRef.current.find((save) => save.houseId === targetHouseId);
+    if (existingSave) {
+      existingSave.values = values;
+    } else {
+      queuedSavesRef.current.push({ houseId: targetHouseId, values });
     }
-  }, [watchedValues, onFieldChange, open]);
+    if (isSavingRef.current) return;
+
+    isSavingRef.current = true;
+    setSaveStatus("saving");
+
+    while (queuedSavesRef.current.length > 0) {
+      const save = queuedSavesRef.current.shift()!;
+
+      try {
+        const response = await apiRequest(
+          `/api/houses/${save.houseId}/profile`,
+          "PATCH",
+          save.values,
+        );
+        await response.json();
+        if (save.houseId === activeHouseIdRef.current) {
+          lastSavedValuesRef.current = JSON.stringify(save.values);
+        }
+      } catch (error) {
+        toast({
+          title: "Update Failed",
+          description: error instanceof Error ? error.message : "Failed to update household profile.",
+          variant: "destructive",
+        });
+        if (queuedSavesRef.current.length === 0) {
+          setSaveStatus("idle");
+        }
+      }
+    }
+
+    isSavingRef.current = false;
+    setSaveStatus(
+      JSON.stringify(form.getValues()) === lastSavedValuesRef.current ? "saved" : "idle",
+    );
+    void queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
+    void queryClient.invalidateQueries({ queryKey: ["/api/houses", activeHouseIdRef.current] });
+    void queryClient.invalidateQueries({ queryKey: ["/api/houses", activeHouseIdRef.current, "schedule"] });
+  }, [form, queryClient, toast]);
+
+  // Initialize each editor session from the latest persisted values.
+  useEffect(() => {
+    if (activeHouseIdRef.current !== houseId) {
+      activeHouseIdRef.current = houseId;
+      const initialValues = normalizeProfileValues(currentProfile || {});
+      form.reset(initialValues);
+      lastSavedValuesRef.current = JSON.stringify(initialValues);
+      setSaveStatus("idle");
+      wasOpenRef.current = open;
+      return;
+    }
+
+    if (open && !wasOpenRef.current && !lastSavedValuesRef.current) {
+      const initialValues = normalizeProfileValues(currentProfile || {});
+      form.reset(initialValues);
+      lastSavedValuesRef.current = JSON.stringify(initialValues);
+      setSaveStatus("idle");
+    }
+    wasOpenRef.current = open;
+  }, [open, currentProfile, form]);
+
+  // Keep the checklist live, then persist valid changes after a short pause.
+  useEffect(() => {
+    if (!open) return;
+
+    const values = normalizeProfileValues(watchedValues);
+    onFieldChange?.(values as Record<string, unknown>);
+
+    const serializedValues = JSON.stringify(values);
+    if (!lastSavedValuesRef.current || serializedValues === lastSavedValuesRef.current) {
+      return;
+    }
+
+    setSaveStatus("idle");
+    const timer = window.setTimeout(async () => {
+      const isValid = await form.trigger();
+      if (!isValid) return;
+      void persistProfile(normalizeProfileValues(form.getValues()));
+    }, 800);
+
+    return () => window.clearTimeout(timer);
+  }, [watchedValues, onFieldChange, open, form, persistProfile]);
 
   // Focus the specified field element when the dialog opens
   useEffect(() => {
@@ -77,36 +182,19 @@ export function HouseholdProfileEditor({
     return () => clearTimeout(timer);
   }, [open, focusField]);
 
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: HouseholdProfileFormData) => {
-      const response = await apiRequest(`/api/houses/${houseId}/profile`, "PATCH", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/houses", houseId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/houses", houseId, "schedule"] });
-      toast({
-        title: "Profile Updated",
-        description: "Household profile has been updated successfully.",
-      });
-      onOpenChange(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update household profile.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onSubmit = (data: HouseholdProfileFormData) => {
-    updateProfileMutation.mutate(data);
+  const handleOpenChange = async (nextOpen: boolean) => {
+    if (
+      !nextOpen &&
+      JSON.stringify(normalizeProfileValues(form.getValues())) !== lastSavedValuesRef.current &&
+      await form.trigger()
+    ) {
+      void persistProfile(normalizeProfileValues(form.getValues()));
+    }
+    onOpenChange(nextOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -119,7 +207,7 @@ export function HouseholdProfileEditor({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={(event) => event.preventDefault()} className="space-y-6">
             {/* Property Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -511,22 +599,23 @@ export function HouseholdProfileEditor({
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                data-testid="button-cancel"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={updateProfileMutation.isPending}
-                data-testid="button-save-profile"
-              >
-                {updateProfileMutation.isPending ? "Saving..." : "Save Profile"}
-              </Button>
+            <div
+              className="flex min-h-5 items-center justify-end gap-1.5 pt-2 text-xs text-muted-foreground"
+              aria-live="polite"
+              data-testid="profile-save-status"
+            >
+              {saveStatus === "saving" && (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Saving…
+                </>
+              )}
+              {saveStatus === "saved" && (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                  Saved
+                </>
+              )}
             </div>
           </form>
         </Form>

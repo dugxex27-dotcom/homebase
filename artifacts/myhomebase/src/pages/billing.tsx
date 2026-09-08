@@ -207,8 +207,6 @@ export default function Billing() {
         subtitle={isContractor ? 'Manage your contractor subscription' : 'Choose the plan that fits your needs'}
       />
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
-        <ActivatingPlanBanner />
-
         {/* Back button */}
         <Button
           variant="ghost"
