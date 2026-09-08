@@ -19,6 +19,8 @@ import userEvent from "@testing-library/user-event";
 const flags = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   invalidateQueriesSpy: vi.fn(),
+  setQueryDataSpy: vi.fn(),
+  invoiceAnalyses: [] as Array<Record<string, unknown>>,
 }));
 
 // ---------------------------------------------------------------------------
@@ -125,7 +127,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
         };
       }
       if (key0 === "/api/invoice-analyses") {
-        return { data: [], isLoading: false };
+        return { data: flags.invoiceAnalyses, isLoading: false, isError: false };
       }
       return { data: undefined, isLoading: false };
     }),
@@ -144,7 +146,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useQueryClient: vi.fn(() => ({
       invalidateQueries: flags.invalidateQueriesSpy,
       getQueryData: vi.fn(),
-      setQueryData: vi.fn(),
+      setQueryData: flags.setQueryDataSpy,
     })),
   };
 });
@@ -187,9 +189,56 @@ async function openAiDialog() {
 
 afterEach(() => {
   cleanup();
+  flags.invoiceAnalyses = [];
   flags.toastSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
+  flags.setQueryDataSpy.mockClear();
   vi.restoreAllMocks();
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — invoice scan history", () => {
+  it("shows every status and reopens a pending scan for review", async () => {
+    flags.invoiceAnalyses = [
+      {
+        id: "analysis-pending",
+        homeownerId: "user-001",
+        houseId: "house-1",
+        status: "pending",
+        completionMethod: "contractor",
+        invoiceUrls: ["/public/invoices/pending.jpg"],
+        receiptUrls: [],
+        serviceDescription: "Furnace inspection",
+        serviceDate: "2026-08-15",
+        totalAmount: "145.00",
+        contractorName: "Taylor",
+        contractorCompany: "Comfort Co",
+        homeArea: "hvac",
+        serviceType: "inspection",
+        aiConfidence: "high",
+        diyVerified: false,
+        createdAt: "2026-08-16T00:00:00.000Z",
+      },
+      { id: "analysis-confirmed", homeownerId: "user-001", houseId: "house-1", status: "confirmed", completionMethod: "contractor", invoiceUrls: [], receiptUrls: [], serviceDescription: "Roof repair", aiConfidence: "medium", diyVerified: false, createdAt: "2026-08-14T00:00:00.000Z" },
+      { id: "analysis-rejected", homeownerId: "user-001", houseId: "house-1", status: "rejected", completionMethod: "contractor", invoiceUrls: [], receiptUrls: [], serviceDescription: "Not an invoice", aiConfidence: "low", diyVerified: false, createdAt: "2026-08-13T00:00:00.000Z" },
+    ];
+
+    renderPage();
+    await userEvent.click(screen.getByTestId("button-toggle-invoice-history"));
+
+    expect(screen.getByTestId("status-invoice-analysis-analysis-pending").textContent).toBe("Pending");
+    expect(screen.getByTestId("status-invoice-analysis-analysis-confirmed").textContent).toBe("Confirmed");
+    expect(screen.getByTestId("status-invoice-analysis-analysis-rejected").textContent).toBe("Rejected");
+    expect(screen.getByTestId("img-invoice-thumbnail-analysis-pending").getAttribute("src")).toBe("/public/invoices/pending.jpg");
+    expect(screen.queryByTestId("button-rereview-invoice-analysis-confirmed")).toBeNull();
+    expect(screen.queryByTestId("button-rereview-invoice-analysis-rejected")).toBeNull();
+
+    await userEvent.click(screen.getByTestId("button-rereview-invoice-analysis-pending"));
+    expect(screen.getByText("Review Extracted Details")).toBeDefined();
+    expect((screen.getByDisplayValue("Furnace inspection") as HTMLInputElement).value).toBe("Furnace inspection");
+    expect((screen.getByDisplayValue("145") as HTMLInputElement).value).toBe("145");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -279,6 +328,15 @@ describe("Service Records — AI invoice upload: 200 success path", () => {
     // DIY mode with diyVerified:false routes to the "diy-verify" step.
     // Confirm that step-specific heading is visible.
     expect(screen.getByText("Verify DIY Work")).toBeDefined();
+    expect(flags.setQueryDataSpy).toHaveBeenCalledWith(
+      ["/api/invoice-analyses"],
+      expect.any(Function),
+    );
+    const updateHistory = flags.setQueryDataSpy.mock.calls[0][1] as (current: Array<{ id: string }>) => Array<{ id: string }>;
+    expect(updateHistory([{ id: "older-analysis" }]).map((analysis) => analysis.id)).toEqual([
+      "ana-001",
+      "older-analysis",
+    ]);
 
     // The duplicate state must NOT appear
     expect(

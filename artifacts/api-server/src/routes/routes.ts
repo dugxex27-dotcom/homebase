@@ -23549,20 +23549,26 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
-  // GET /api/invoice-analyses?houseId=...
+  // GET /api/invoice-analyses?houseId=...&offset=...
   app.get("/api/invoice-analyses", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const houseId = req.query.houseId as string | undefined;
       const homeownerId = req.session.user.id;
+      const parsedOffset = Number.parseInt(String(req.query.offset ?? "0"), 10);
+      const offset = Number.isFinite(parsedOffset) && parsedOffset > 0 ? parsedOffset : 0;
+      const pageSize = 50;
 
       const conditions = houseId
         ? and(eq(invoiceAnalyses.homeownerId, homeownerId), eq(invoiceAnalyses.houseId, houseId))
         : eq(invoiceAnalyses.homeownerId, homeownerId);
 
-      const results = await db.select().from(invoiceAnalyses)
+      const pageQuery = db.select().from(invoiceAnalyses)
         .where(conditions)
         .orderBy(desc(invoiceAnalyses.createdAt))
-        .limit(50);
+        .limit(pageSize);
+      const results = offset > 0
+        ? await pageQuery.offset(offset)
+        : await pageQuery;
 
       res.json(results);
     } catch (err: any) {

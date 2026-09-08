@@ -107,6 +107,7 @@ export default function HomeownerServiceRecords() {
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   const [serviceRecordsHouseFilter, setServiceRecordsHouseFilter] = useState<string>("all");
   const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
+  const [isInvoiceHistoryOpen, setIsInvoiceHistoryOpen] = useState(false);
 
   // File upload state
   const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
@@ -194,13 +195,21 @@ export default function HomeownerServiceRecords() {
     queryKey: ['/api/houses'],
   });
 
-  // Load confirmed invoice analyses for the highlight flow from the maintenance page.
-  const { data: confirmedAnalyses = [] } = useQuery<InvoiceAnalysis[]>({
+  // Load every invoice scan for both the history section and maintenance-record highlight flow.
+  const { data: invoiceAnalyses = [], isLoading: invoiceAnalysesLoading, isError: invoiceAnalysesError } = useQuery<InvoiceAnalysis[]>({
     queryKey: ['/api/invoice-analyses'],
     queryFn: async () => {
-      const res = await fetch('/api/invoice-analyses');
-      if (!res.ok) return [];
-      return res.json();
+      const pageSize = 50;
+      const allAnalyses: InvoiceAnalysis[] = [];
+      let offset = 0;
+      while (true) {
+        const res = await fetch(`/api/invoice-analyses?offset=${offset}`);
+        if (!res.ok) throw new Error('Failed to fetch invoice scan history');
+        const page: InvoiceAnalysis[] = await res.json();
+        allAnalyses.push(...page);
+        if (page.length < pageSize) return allAnalyses;
+        offset += pageSize;
+      }
     },
   });
   // Read highlightAnalysis query param set by the Maintenance page "View existing record" button.
@@ -210,11 +219,11 @@ export default function HomeownerServiceRecords() {
     const analysisId = params.get("highlightAnalysis");
     if (!analysisId) return;
     window.history.replaceState(null, "", window.location.pathname);
-    const match = confirmedAnalyses.find((a) => a.id === analysisId);
+    const match = invoiceAnalyses.find((a) => a.id === analysisId);
     if (match?.maintenanceLogId) {
       setHighlightedLogId(match.maintenanceLogId);
     }
-  }, [confirmedAnalyses]);
+  }, [invoiceAnalyses]);
 
   // Load maintenance logs (service records)
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
@@ -405,6 +414,23 @@ export default function HomeownerServiceRecords() {
     setAiInvoiceOpen(true);
   };
 
+  const reReviewInvoiceAnalysis = (analysis: InvoiceAnalysis) => {
+    setAiAnalysis(analysis);
+    setAiCompletionMethod(analysis.completionMethod === "diy" ? "diy" : "contractor");
+    setAiEditDescription(analysis.serviceDescription || "");
+    setAiEditDate(analysis.serviceDate || new Date().toISOString().split("T")[0]);
+    setAiEditAmount(analysis.totalAmount ? String(parseFloat(analysis.totalAmount)) : "");
+    setAiEditContractorName(analysis.contractorName || "");
+    setAiEditContractorCompany(analysis.contractorCompany || "");
+    setAiEditHomeArea(analysis.homeArea || "other");
+    setAiEditServiceType(analysis.serviceType || "maintenance");
+    setAiSelectedHouseId(analysis.houseId);
+    setAiDiyVerifyResult(null);
+    setAiDiyVerifyFiles({ before: [], after: [], receipt: [] });
+    setAiStep(analysis.completionMethod === "diy" && !analysis.diyVerified ? "diy-verify" : "review");
+    setAiInvoiceOpen(true);
+  };
+
   const runDiyVerify = async () => {
     if (!aiAnalysis) return;
     if (aiDiyVerifyFiles.before.length === 0 || aiDiyVerifyFiles.after.length === 0) {
@@ -484,6 +510,10 @@ export default function HomeownerServiceRecords() {
         return;
       }
       const analysis: InvoiceAnalysis = responseData;
+      queryClient.setQueryData<InvoiceAnalysis[]>(["/api/invoice-analyses"], (current = []) => [
+        analysis,
+        ...current.filter((existing) => existing.id !== analysis.id),
+      ]);
       setAiAnalysis(analysis);
       setAiEditDescription(analysis.serviceDescription || "");
       setAiEditDate(analysis.serviceDate || new Date().toISOString().split("T")[0]);
@@ -719,6 +749,109 @@ export default function HomeownerServiceRecords() {
       <div className="dash-body">
         <ActivatingPlanBanner />
         <HomeownerTrialBanner />
+
+        <Collapsible open={isInvoiceHistoryOpen} onOpenChange={setIsInvoiceHistoryOpen} className="mb-6">
+          <div className="dash-light-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <CollapsibleTrigger asChild>
+              <button
+                className="w-full flex items-center justify-between gap-3 text-left"
+                style={{ padding: '16px 18px' }}
+                data-testid="button-toggle-invoice-history"
+              >
+                <span className="flex items-center gap-3">
+                  <span style={{ background: '#EEEDFE', padding: 8, borderRadius: 10 }}>
+                    <Scan size={17} style={{ color: '#3C258E' }} />
+                  </span>
+                  <span>
+                    <span className="block font-bold" style={{ color: '#2C0F5B', fontSize: 14 }}>Invoice Scan History</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {invoiceAnalysesLoading ? 'Loading scans…' : `${invoiceAnalyses.length} AI-scanned invoice${invoiceAnalyses.length === 1 ? '' : 's'}`}
+                    </span>
+                  </span>
+                </span>
+                <ChevronDown size={17} className={`transition-transform ${isInvoiceHistoryOpen ? 'rotate-180' : ''}`} style={{ color: '#3C258E' }} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="border-t px-4 pb-4 pt-3 space-y-3" style={{ borderColor: '#EEEDFE' }} data-testid="section-invoice-history">
+                {invoiceAnalysesLoading ? (
+                  <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground" data-testid="status-invoice-history-loading">
+                    <Loader2 size={16} className="animate-spin" /> Loading invoice scans…
+                  </div>
+                ) : invoiceAnalysesError ? (
+                  <p className="py-5 text-center text-sm text-red-600" data-testid="status-invoice-history-error">
+                    Invoice scan history could not be loaded. Please try again later.
+                  </p>
+                ) : invoiceAnalyses.length === 0 ? (
+                  <p className="py-5 text-center text-sm text-muted-foreground" data-testid="status-invoice-history-empty">
+                    No invoices have been scanned yet.
+                  </p>
+                ) : invoiceAnalyses.map((analysis) => {
+                  const status = analysis.status === "confirmed" || analysis.status === "rejected" ? analysis.status : "pending";
+                  const statusStyle = status === "confirmed"
+                    ? { background: '#DCFCE7', color: '#166534', borderColor: '#BBF7D0' }
+                    : status === "rejected"
+                      ? { background: '#FEE2E2', color: '#991B1B', borderColor: '#FECACA' }
+                      : { background: '#FEF3C7', color: '#92400E', borderColor: '#FDE68A' };
+                  const thumbnailUrl = analysis.invoiceUrls?.[0] || analysis.receiptUrls?.[0];
+                  const isPdf = thumbnailUrl?.toLowerCase().split('?')[0].endsWith('.pdf');
+                  return (
+                    <div key={analysis.id} className="rounded-xl border p-3 flex gap-3" style={{ borderColor: '#E7E2FA' }} data-testid={`card-invoice-analysis-${analysis.id}`}>
+                      {thumbnailUrl ? (
+                        <a
+                          href={thumbnailUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border bg-gray-50 flex items-center justify-center"
+                          data-testid={`link-invoice-thumbnail-${analysis.id}`}
+                        >
+                          {isPdf ? <FileText size={28} className="text-red-500" /> : (
+                            <img src={thumbnailUrl} alt="Uploaded invoice" className="w-full h-full object-cover" data-testid={`img-invoice-thumbnail-${analysis.id}`} />
+                          )}
+                        </a>
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg flex-shrink-0 bg-gray-50 flex items-center justify-center">
+                          <FileText size={25} className="text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-semibold truncate" style={{ color: '#2C0F5B', fontSize: 13 }} data-testid={`text-invoice-description-${analysis.id}`}>
+                              {analysis.serviceDescription || 'Invoice scan'}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              {analysis.createdAt ? new Date(analysis.createdAt).toLocaleDateString() : 'Date unavailable'}
+                              {analysis.totalAmount ? ` · $${Number(analysis.totalAmount).toFixed(2)}` : ''}
+                            </div>
+                          </div>
+                          <Badge variant="outline" style={statusStyle} data-testid={`status-invoice-analysis-${analysis.id}`}>
+                            {status[0].toUpperCase() + status.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Confidence: <span className="font-medium capitalize">{analysis.aiConfidence || 'unknown'}</span>
+                          {analysis.contractorCompany ? ` · ${analysis.contractorCompany}` : ''}
+                        </div>
+                        {status === "pending" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 h-8"
+                            onClick={() => reReviewInvoiceAnalysis(analysis)}
+                            data-testid={`button-rereview-invoice-${analysis.id}`}
+                          >
+                            Re-review
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
 
         {/* Filters and Download Options */}
         <div className="mb-6 flex flex-col gap-3">
@@ -1335,7 +1468,7 @@ export default function HomeownerServiceRecords() {
                   {aiDuplicateAnalysisId && (
                     <Button
                       onClick={() => {
-                        const match = confirmedAnalyses.find((a) => a.id === aiDuplicateAnalysisId);
+                        const match = invoiceAnalyses.find((a) => a.id === aiDuplicateAnalysisId);
                         const logId = match?.maintenanceLogId ?? null;
                         setAiInvoiceOpen(false);
                         setAiDuplicateAnalysisId(null);
