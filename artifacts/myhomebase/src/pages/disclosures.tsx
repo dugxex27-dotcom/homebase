@@ -264,6 +264,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
   const [copied, setCopied] = useState(false);
   const [sectionCopied, setSectionCopied] = useState(false);
   const [aiSuggestedKeys, setAiSuggestedKeys] = useState<Set<string>>(new Set());
+  const [aiSuggestionReasoning, setAiSuggestionReasoning] = useState<Record<string, string>>({});
   const [refreshAllConfirmOpen, setRefreshAllConfirmOpen] = useState(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -369,6 +370,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
     }
     setSectionIdx(0);
     setAiSuggestedKeys(new Set());
+    setAiSuggestionReasoning({});
   }, [houseId]);
 
   const saveMutation = useMutation({
@@ -408,7 +410,10 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
         }))
       );
       const res = await apiRequest(`/api/houses/${requestedHouseId}/disclosure/ai-suggest`, "POST", { questions });
-      const body = await res.json() as { suggestions: Record<string, string | number> };
+      const body = await res.json() as {
+        suggestions: Record<string, string | number>;
+        reasoning?: Record<string, string>;
+      };
       return { ...body, requestedHouseId, overwriteExisting };
     },
     onSuccess: (data) => {
@@ -430,6 +435,15 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
       });
       // Union with existing AI-suggested keys so prior badges are preserved
       setAiSuggestedKeys(prev => new Set([...prev, ...newAiKeys]));
+      setAiSuggestionReasoning(prev => {
+        const updated = { ...prev };
+        for (const key of newAiKeys) {
+          const reason = data.reasoning?.[key]?.trim();
+          if (reason) updated[key] = reason;
+          else delete updated[key];
+        }
+        return updated;
+      });
       // Count actually-applied suggestions, not all returned ones
       const count = newAiKeys.size;
       toast({
@@ -817,6 +831,7 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
             {currentSection.questions.map(question => {
               const isPrefilled = prefillKeys.has(question.id);
               const isAiSuggested = aiSuggestedKeys.has(question.id);
+              const aiReasoning = isAiSuggested ? aiSuggestionReasoning[question.id] : undefined;
               const val = answers[question.id] ?? null;
               const detailVal = String(answers[`${question.id}_details`] ?? "");
               return (
@@ -847,6 +862,12 @@ export default function Disclosures({ embedded = false }: { embedded?: boolean }
                     onDetailChange={v => setDetail(question.id, v)}
                     prefilled={isPrefilled}
                   />
+                  {aiReasoning && (
+                    <p className="flex items-start gap-1.5 text-xs italic text-gray-500">
+                      <Info className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" aria-hidden="true" />
+                      <span>{aiReasoning}</span>
+                    </p>
+                  )}
                 </div>
               );
             })}

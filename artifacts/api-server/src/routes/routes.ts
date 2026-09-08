@@ -16426,7 +16426,7 @@ Return ONLY a JSON object with these fields (use null for any field you cannot c
 
   // AI Disclosure Suggestion: POST /api/houses/:houseId/disclosure/ai-suggest
   // Accepts the current form's question list, fetches house/systems/logs, calls GPT-4o-mini,
-  // and returns suggested answers keyed by question ID.
+  // and returns suggested answers plus evidence-based reasoning keyed by question ID.
   app.post("/api/houses/:houseId/disclosure/ai-suggest", isAuthenticated, requireNotSuspended(), requireHomeownerSubscription, async (req: any, res: any) => {
     try {
       const { houseId } = req.params;
@@ -16514,8 +16514,13 @@ Answer format rules:
 - number type: return a number (integer or decimal, no quotes)
 - text type: return a concise descriptive string
 
-Return ONLY a JSON object where keys are question IDs and values are the suggested answers.
+Return ONLY a JSON object with this shape:
+{
+  "suggestions": { "question-id": "suggested answer" },
+  "reasoning": { "question-id": "One short sentence naming the specific record or fact that supports this answer." }
+}
 Do NOT include questions you cannot confidently answer. Do NOT include null values.
+Only include a reasoning entry when a specific property record supports the suggestion. Do not add generic reasoning or restate the answer.
 
 Questions:
 ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...(q.options ? { options: q.options } : {}) })), null, 2)}`;
@@ -16533,15 +16538,26 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
       });
 
       let suggestions: Record<string, unknown> = {};
+      let reasoning: Record<string, unknown> = {};
       try {
-        suggestions = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+        const parsedResponse = JSON.parse(completion.choices[0]?.message?.content ?? "{}");
+        if (parsedResponse && typeof parsedResponse === "object" && !Array.isArray(parsedResponse)) {
+          if (parsedResponse.suggestions && typeof parsedResponse.suggestions === "object" && !Array.isArray(parsedResponse.suggestions)) {
+            suggestions = parsedResponse.suggestions;
+          }
+          if (parsedResponse.reasoning && typeof parsedResponse.reasoning === "object" && !Array.isArray(parsedResponse.reasoning)) {
+            reasoning = parsedResponse.reasoning;
+          }
+        }
       } catch {
         suggestions = {};
+        reasoning = {};
       }
 
       // Validate: enforce question ID membership and per-type value constraints
       const questionById = new Map(questions.map(q => [q.id, q]));
       const validated: Record<string, unknown> = {};
+      const validatedReasoning: Record<string, string> = {};
       for (const [key, val] of Object.entries(suggestions)) {
         const q = questionById.get(key);
         if (!q || val === null || val === undefined || val === "") continue;
@@ -16553,7 +16569,17 @@ ${JSON.stringify(questions.map(q => ({ id: q.id, text: q.text, type: q.type, ...
         validated[key] = val;
       }
 
-      res.json({ suggestions: validated });
+      for (const [key, value] of Object.entries(reasoning)) {
+        if (!(key in validated) || typeof value !== "string") continue;
+        const conciseReason = value.trim();
+        if (!conciseReason) continue;
+        validatedReasoning[key] = conciseReason.slice(0, 240);
+      }
+
+      res.json({
+        suggestions: validated,
+        ...(Object.keys(validatedReasoning).length > 0 ? { reasoning: validatedReasoning } : {}),
+      });
     } catch (error) {
       console.error("[AI DISCLOSURE SUGGEST] Error:", error);
       res.status(500).json({ message: "Failed to generate AI suggestions" });
