@@ -1845,7 +1845,7 @@ export async function sendDemoSeedingFailureAlert(
   const html = wrapEmailContent(
     getEmailHeader('⚠️ Demo Seeding Failure'),
     `
-    <p style="margin: 0 0 16px 0; color: #374151;">A contractor demo login attempt completed with seeding errors. A prospect may see an incomplete demo experience.</p>
+    <p style="margin: 0 0 16px 0; color: #374151;">A demo login attempt completed with seeding errors. A prospect may see an incomplete demo experience.</p>
     <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px;">
       <thead>
         <tr style="background: #fef2f2;">

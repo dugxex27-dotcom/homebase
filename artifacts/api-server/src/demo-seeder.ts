@@ -599,6 +599,10 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
   }
 
   if (failedSections.length > 0) {
+    emailService.sendDemoSeedingFailureAlert(user.id, failedSections, seedResults).catch((alertErr: unknown) => {
+      const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
+    });
     throw new Error(`Homeowner demo seeding failed: ${failedSections.join(", ")}`);
   }
 
@@ -1262,6 +1266,14 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     const msg = seedError instanceof Error ? seedError.message : String(seedError);
     log.warn({ section: "agent-referrals", error: msg }, "[DEMO] Error seeding agent referral data — referral data may be missing");
     seedResults["agent-referrals"] = { ok: false, error: msg };
+  }
+
+  const failedSections = Object.entries(seedResults).filter(([, result]) => !result.ok).map(([section]) => section);
+  if (failedSections.length > 0) {
+    emailService.sendDemoSeedingFailureAlert(user.id, failedSections, seedResults).catch((alertErr: unknown) => {
+      const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
+    });
   }
 
   return { user, seedResults };
