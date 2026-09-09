@@ -11,6 +11,10 @@ const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@gotohomebase.com';
 const fromName = 'HomeBase';
 const testEmailOverride = '';
 
+if (apiKey) {
+  sgMail.setApiKey(apiKey);
+}
+
 const defaultAlertEmail = 'gotohomebase2025@gmail.com';
 interface EmailData {
   to: string;

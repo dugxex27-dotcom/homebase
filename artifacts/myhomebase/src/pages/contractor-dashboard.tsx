@@ -65,6 +65,7 @@ import {
   hasScheduledAppointmentForProposal,
 } from "./contractor-dashboard-stats";
 import { downloadTeamAuditCsv } from "./team-audit-csv";
+import { buildAuditDateRangeParams, isAuditEntryInDateRange } from "./contractor-audit-date-range";
 import "./home.css";
 
 interface ContactedHomeowner {
@@ -223,25 +224,30 @@ interface AuditEntry {
 }
 
 type AuditFilter = 'all' | 'suspended' | 'reactivated' | 'removed';
-
 function MemberAuditHistory({ memberId }: { memberId: string }) {
   const [filter, setFilter] = React.useState<AuditFilter>('all');
+  const [fromDate, setFromDate] = React.useState('');
+  const [toDate, setToDate] = React.useState('');
 
   const { data: entries = [], isLoading } = useQuery<AuditEntry[]>({
-    queryKey: ['/api/contractor/team', memberId, 'audit-log'],
+    queryKey: ['/api/contractor/team', memberId, 'audit-log', fromDate, toDate],
     queryFn: async () => {
-      const res = await fetch(`/api/contractor/team/${memberId}/audit-log`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch audit log');
-      return res.json();
+      const pageSize = 200;
+      const allEntries: AuditEntry[] = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const dateRange = buildAuditDateRangeParams(fromDate, toDate, pageSize, offset);
+        const res = await fetch(`/api/contractor/team/${memberId}/audit-log${dateRange}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch audit log');
+        const page = await res.json() as AuditEntry[];
+        allEntries.push(...page);
+        if (page.length < pageSize) break;
+      }
+      return allEntries;
     },
   });
 
   if (isLoading) {
     return <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>Loading activity…</div>;
-  }
-
-  if (!entries.length) {
-    return <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>No activity recorded yet.</div>;
   }
 
   const actionLabel: Record<string, { label: string; color: string }> = {
@@ -250,22 +256,58 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
     removed: { label: 'Removed', color: '#7c3aed' },
   };
 
+  const dateFilteredEntries = entries.filter(entry => isAuditEntryInDateRange(entry.createdAt, fromDate, toDate));
   const counts: Record<string, number> = { suspended: 0, reactivated: 0, removed: 0 };
-  for (const e of entries) {
+  for (const e of dateFilteredEntries) {
     if (e.teamAction && e.teamAction in counts) counts[e.teamAction]++;
   }
 
   const filterPills: { key: AuditFilter; label: string; activeColor: string; count: number }[] = [
-    { key: 'all', label: 'All', activeColor: '#334155', count: entries.length },
+    { key: 'all', label: 'All', activeColor: '#334155', count: dateFilteredEntries.length },
     { key: 'suspended', label: 'Suspended', activeColor: '#dc2626', count: counts.suspended },
     { key: 'reactivated', label: 'Reactivated', activeColor: '#09694a', count: counts.reactivated },
     { key: 'removed', label: 'Removed', activeColor: '#7c3aed', count: counts.removed },
   ];
 
-  const visible = filter === 'all' ? entries : entries.filter(e => e.teamAction === filter);
+  const visible = filter === 'all' ? dateFilteredEntries : dateFilteredEntries.filter(e => e.teamAction === filter);
 
   return (
     <div style={{ marginTop: 10 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Date range:</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b' }}>
+          From
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={event => setFromDate(event.target.value)}
+            style={{ padding: '3px 6px', fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6, color: '#111827', background: '#fff' }}
+          />
+        </label>
+        {(fromDate || toDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              setFromDate('');
+              setToDate('');
+            }}
+            style={{ border: 0, background: 'transparent', color: '#1560A2', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '3px 2px' }}
+          >
+            Clear dates
+          </button>
+        )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b' }}>
+          To
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={event => setToDate(event.target.value)}
+            style={{ padding: '3px 6px', fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 6, color: '#111827', background: '#fff' }}
+          />
+        </label>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           Activity · {visible.length} event{visible.length !== 1 ? 's' : ''}{filter !== 'all' ? ` (filtered)` : ''}
@@ -299,7 +341,9 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
         </div>
       </div>
       {visible.length === 0 ? (
-        <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>No {filter} events recorded.</div>
+        <div style={{ padding: '6px 0 2px', color: '#94a3b8', fontSize: 11 }}>
+          {fromDate || toDate ? 'No events fall within this date range.' : `No ${filter === 'all' ? '' : `${filter} `}events recorded yet.`}
+        </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {visible.map(entry => {
@@ -344,7 +388,21 @@ interface CompanyAuditEntry {
   createdAt: string;
 }
 
-function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; isLoading: boolean }) {
+function TeamAuditLog({
+  entries,
+  isLoading,
+  fromDate,
+  toDate,
+  onFromDateChange,
+  onToDateChange,
+}: {
+  entries: CompanyAuditEntry[];
+  isLoading: boolean;
+  fromDate: string;
+  toDate: string;
+  onFromDateChange: (value: string) => void;
+  onToDateChange: (value: string) => void;
+}) {
   const [nameSearch, setNameSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
@@ -375,19 +433,12 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
       (entry.actorName ?? '').toLowerCase().includes(nameSearch.trim().toLowerCase());
     const matchesAction = !actionFilter || entry.teamAction === actionFilter;
     const matchesRole = !roleFilter || (entry.actorRole ?? '').toLowerCase() === roleFilter.toLowerCase();
-    return matchesName && matchesAction && matchesRole;
+    const matchesDate = isAuditEntryInDateRange(entry.createdAt, fromDate, toDate);
+    return matchesName && matchesAction && matchesRole && matchesDate;
   });
 
   if (isLoading) {
     return <div style={{ padding: '12px 0', color: '#94a3b8', fontSize: 12 }}>Loading audit log…</div>;
-  }
-
-  if (!entries.length) {
-    return (
-      <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
-        No team actions recorded yet. Suspend, reactivate, or remove a member to see events here.
-      </div>
-    );
   }
 
   return (
@@ -407,6 +458,41 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
           <Download size={13} />
           Export CSV
         </Button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Date range:</span>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b' }}>
+          From
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate || undefined}
+            onChange={event => onFromDateChange(event.target.value)}
+            style={{ padding: '5px 8px', fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 7, color: '#111827', background: '#fff' }}
+          />
+        </label>
+        {(fromDate || toDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              onFromDateChange('');
+              onToDateChange('');
+            }}
+            style={{ border: 0, background: 'transparent', color: '#1560A2', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: '5px 2px' }}
+          >
+            Clear dates
+          </button>
+        )}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: '#64748b' }}>
+          To
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate || undefined}
+            onChange={event => onToDateChange(event.target.value)}
+            style={{ padding: '5px 8px', fontSize: 11, border: '1px solid #e2e8f0', borderRadius: 7, color: '#111827', background: '#fff' }}
+          />
+        </label>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 140 }}>
@@ -523,7 +609,11 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
 
       {filtered.length === 0 ? (
         <div style={{ padding: '14px 0', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
-          No events match your search.
+          {fromDate || toDate
+            ? 'No events fall within this date range.'
+            : entries.length === 0
+              ? 'No team actions recorded yet. Suspend, reactivate, or remove a member to see events here.'
+              : 'No events match your search.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -637,6 +727,8 @@ export default function ContractorDashboard() {
   const [copiedResentInviteUrl, setCopiedResentInviteUrl] = useState(false);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [auditLogOpen, setAuditLogOpen] = useState(false);
+  const [companyAuditFromDate, setCompanyAuditFromDate] = useState('');
+  const [companyAuditToDate, setCompanyAuditToDate] = useState('');
   const [renewalBoostId, setRenewalBoostId] = useState<string | null>(null);
   const [editFirstName, setEditFirstName] = useState('');
   const [editLastName, setEditLastName] = useState('');
@@ -661,16 +753,34 @@ export default function ContractorDashboard() {
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
   const isOwner = (typedUser as any)?.companyRole === 'owner';
 
-  const { data: companyAuditEntries = [], isLoading: isLoadingCompanyAudit } = useQuery<CompanyAuditEntry[]>({
-    queryKey: ['/api/contractor/team/audit-log'],
+  const { data: recentCompanyAuditEntries = [] } = useQuery<CompanyAuditEntry[]>({
+    queryKey: ['/api/contractor/team/audit-log', 'recent-summary'],
     queryFn: async () => {
-      const res = await fetch('/api/contractor/team/audit-log', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch audit log');
+      const res = await fetch('/api/contractor/team/audit-log?limit=50&offset=0', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch recent audit activity');
       return res.json();
     },
     enabled: isOwner && !!typedUser,
   });
-  const recentAuditEventCount = companyAuditEntries.reduce((count, entry) => {
+
+  const { data: companyAuditEntries = [], isLoading: isLoadingCompanyAudit } = useQuery<CompanyAuditEntry[]>({
+    queryKey: ['/api/contractor/team/audit-log', companyAuditFromDate, companyAuditToDate, auditLogOpen],
+    queryFn: async () => {
+      const pageSize = auditLogOpen ? 200 : 50;
+      const allEntries: CompanyAuditEntry[] = [];
+      for (let offset = 0; ; offset += pageSize) {
+        const dateRange = buildAuditDateRangeParams(companyAuditFromDate, companyAuditToDate, pageSize, offset);
+        const res = await fetch(`/api/contractor/team/audit-log${dateRange}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to fetch audit log');
+        const page = await res.json() as CompanyAuditEntry[];
+        allEntries.push(...page);
+        if (!auditLogOpen || page.length < pageSize) break;
+      }
+      return allEntries;
+    },
+    enabled: isOwner && !!typedUser && auditLogOpen,
+  });
+  const recentAuditEventCount = recentCompanyAuditEntries.reduce((count, entry) => {
     const eventTime = new Date(entry.createdAt).getTime();
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     return Number.isFinite(eventTime) && eventTime >= sevenDaysAgo ? count + 1 : count;
@@ -1975,7 +2085,14 @@ export default function ContractorDashboard() {
               </button>
               {auditLogOpen && (
                 <div style={{ marginTop: 10 }}>
-                  <TeamAuditLog entries={companyAuditEntries} isLoading={isLoadingCompanyAudit} />
+                  <TeamAuditLog
+                    entries={companyAuditEntries}
+                    isLoading={isLoadingCompanyAudit}
+                    fromDate={companyAuditFromDate}
+                    toDate={companyAuditToDate}
+                    onFromDateChange={setCompanyAuditFromDate}
+                    onToDateChange={setCompanyAuditToDate}
+                  />
                 </div>
               )}
             </div>

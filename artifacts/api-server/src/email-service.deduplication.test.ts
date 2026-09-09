@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { sendMock } = vi.hoisted(() => {
+const { sendMock, setApiKeyMock } = vi.hoisted(() => {
   process.env.SENDGRID_API_KEY = 'test-key';
-  return { sendMock: vi.fn() };
+  return { sendMock: vi.fn(), setApiKeyMock: vi.fn() };
 });
 
 vi.mock('@sendgrid/mail', () => ({
   default: {
-    setApiKey: vi.fn(),
+    setApiKey: setApiKeyMock,
     send: sendMock,
   },
 }));
@@ -33,6 +33,10 @@ describe('transactional email deduplication', () => {
     clearEmailDeduplicationForTests();
     sendMock.mockReset();
     sendMock.mockResolvedValue(undefined);
+  });
+
+  it('initializes the SendGrid client when an API key is configured', () => {
+    expect(setApiKeyMock).toHaveBeenCalledWith('test-key');
   });
 
   it('sends only once when concurrent retries use the same event key', async () => {

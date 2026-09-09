@@ -60,6 +60,7 @@ import {
 } from "../maintenance-evidence-review";
 import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
 import { handleCreateReviewFlag } from "./review-flag-handler";
+import { parseTeamAuditDateRange } from "./team-audit-date-range";
 import { sendForecastReminder } from "../weather-forecast-reminder-scheduler";
 import {
   findRelevantOverdueTasks,
@@ -25069,6 +25070,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.get('/api/contractor/team/audit-log', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
     try {
       const sessionUser = req.session.user;
+      const dateRange = parseTeamAuditDateRange(req.query, 50);
+      if (!dateRange) {
+        return res.status(400).json({ message: 'Invalid audit date range' });
+      }
+      const dateConditions = [
+        dateRange.fromDate ? gte(securityAuditLogs.createdAt, dateRange.fromDate) : undefined,
+        dateRange.toDate ? lte(securityAuditLogs.createdAt, dateRange.toDate) : undefined,
+      ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
 
       // Fresh DB actor-status check — prevents stale-session bypass
       const [actorStatusAudit] = await db.select({ status: users.status }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
@@ -25089,11 +25098,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .where(
           and(
             eq(securityAuditLogs.targetResourceType, 'team_member'),
-            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`
+            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`,
+            ...dateConditions,
           )
         )
         .orderBy(desc(securityAuditLogs.createdAt))
-        .limit(50);
+        .limit(dateRange.limit)
+        .offset(dateRange.offset);
 
       res.json(logs.map(l => serializeTeamAuditLogEntry(l, true)));
     } catch (error) {
@@ -25107,6 +25118,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const sessionUser = req.session.user;
+      const dateRange = parseTeamAuditDateRange(req.query, 20);
+      if (!dateRange) {
+        return res.status(400).json({ message: 'Invalid audit date range' });
+      }
+      const dateConditions = [
+        dateRange.fromDate ? gte(securityAuditLogs.createdAt, dateRange.fromDate) : undefined,
+        dateRange.toDate ? lte(securityAuditLogs.createdAt, dateRange.toDate) : undefined,
+      ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
 
       // Fresh DB actor-status check — prevents stale-session bypass
       const [actorStatusMemberAudit] = await db.select({ status: users.status }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
@@ -25128,11 +25147,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           and(
             eq(securityAuditLogs.targetUserId, userId),
             eq(securityAuditLogs.targetResourceType, 'team_member'),
-            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`
+            drizzleSql`(${securityAuditLogs.actionDetails}->>'companyId') = ${sessionUser.companyId}`,
+            ...dateConditions,
           )
         )
         .orderBy(desc(securityAuditLogs.createdAt))
-        .limit(20);
+        .limit(dateRange.limit)
+        .offset(dateRange.offset);
 
       res.json(logs.map(l => serializeTeamAuditLogEntry(l, false)));
     } catch (error) {
