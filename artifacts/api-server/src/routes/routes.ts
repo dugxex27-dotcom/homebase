@@ -403,6 +403,27 @@ export function normalizeInvoiceServiceType(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+export function serializeTeamAuditLogEntry(
+  log: {
+    id: string;
+    reason: string | null;
+    actionDetails: unknown;
+    createdAt: Date;
+  },
+  includeTarget: boolean,
+) {
+  const details = log.actionDetails as Record<string, unknown> | null;
+  return {
+    id: log.id,
+    ...(includeTarget ? { targetName: details?.targetName ?? null } : {}),
+    teamAction: details?.teamAction ?? null,
+    actorName: details?.actorName ?? null,
+    actorRole: details?.actorRole ?? null,
+    reason: log.reason,
+    createdAt: log.createdAt,
+  };
+}
+
 function resolveInvoiceScoringDate(
   stored: unknown,
   requested: unknown,
@@ -24554,6 +24575,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const reasonResult = z.object({
+        reason: z.string().trim().max(500).optional(),
+      }).safeParse(req.body ?? {});
+      if (!reasonResult.success) {
+        return res.status(400).json({ message: reasonResult.error.issues[0]?.message ?? "Invalid reason" });
+      }
+      const reason = reasonResult.data.reason || undefined;
 
       // Fresh DB actor-status check — prevents stale-session bypass
       const [actorStatusSuspend] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
@@ -24594,6 +24622,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
         action: 'Team member suspended',
+        reason,
         userId: adminUser.id,
         userEmail: adminUser.email,
         userRole: adminUser.companyRole,
@@ -24856,6 +24885,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     try {
       const { userId } = req.params;
       const adminUser = req.session.user;
+      const reasonResult = z.object({
+        reason: z.string().trim().max(500).optional(),
+      }).safeParse(req.body ?? {});
+      if (!reasonResult.success) {
+        return res.status(400).json({ message: reasonResult.error.issues[0]?.message ?? "Invalid reason" });
+      }
+      const reason = reasonResult.data.reason || undefined;
 
       // Combined actor check: status + companyRole + companyId in a single query
       // (prevents stale-session bypass AND privilege escalation after demotion)
@@ -24904,6 +24940,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
         action: 'Team member removed',
+        reason,
         userId: adminUser.id,
         userEmail: adminUser.email,
         userRole: adminUser.companyRole,
@@ -24938,6 +24975,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .select({
           id: securityAuditLogs.id,
           action: securityAuditLogs.action,
+          reason: securityAuditLogs.reason,
           actionDetails: securityAuditLogs.actionDetails,
           createdAt: securityAuditLogs.createdAt,
         })
@@ -24951,14 +24989,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .orderBy(desc(securityAuditLogs.createdAt))
         .limit(50);
 
-      res.json(logs.map(l => ({
-        id: l.id,
-        targetName: (l.actionDetails as any)?.targetName ?? null,
-        teamAction: (l.actionDetails as any)?.teamAction ?? null,
-        actorName: (l.actionDetails as any)?.actorName ?? null,
-        actorRole: (l.actionDetails as any)?.actorRole ?? null,
-        createdAt: l.createdAt,
-      })));
+      res.json(logs.map(l => serializeTeamAuditLogEntry(l, true)));
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching company-wide team audit log');
       res.status(500).json({ message: "Failed to fetch audit log" });
@@ -24982,6 +25013,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .select({
           id: securityAuditLogs.id,
           action: securityAuditLogs.action,
+          reason: securityAuditLogs.reason,
           actionDetails: securityAuditLogs.actionDetails,
           createdAt: securityAuditLogs.createdAt,
         })
@@ -24996,13 +25028,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .orderBy(desc(securityAuditLogs.createdAt))
         .limit(20);
 
-      res.json(logs.map(l => ({
-        id: l.id,
-        teamAction: (l.actionDetails as any)?.teamAction ?? null,
-        actorName: (l.actionDetails as any)?.actorName ?? null,
-        actorRole: (l.actionDetails as any)?.actorRole ?? null,
-        createdAt: l.createdAt,
-      })));
+      res.json(logs.map(l => serializeTeamAuditLogEntry(l, false)));
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching team audit log');
       res.status(500).json({ message: "Failed to fetch audit log" });

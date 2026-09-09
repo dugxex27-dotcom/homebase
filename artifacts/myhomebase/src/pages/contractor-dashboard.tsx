@@ -218,6 +218,7 @@ interface AuditEntry {
   id: string;
   teamAction: 'suspended' | 'reactivated' | 'removed' | null;
   actorName: string | null;
+  reason: string | null;
   createdAt: string;
 }
 
@@ -313,9 +314,16 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
               }}>
                 <Clock size={12} style={{ color: '#94a3b8', flexShrink: 0 }} />
                 <div style={{ flex: 1, fontSize: 12, color: '#374151' }}>
-                  <span style={{ fontWeight: 600, color: meta.color }}>{meta.label}</span>
-                  {byLine}
-                  <span style={{ color: '#94a3b8', marginLeft: 4 }}>· {dateStr}</span>
+                  <div>
+                    <span style={{ fontWeight: 600, color: meta.color }}>{meta.label}</span>
+                    {byLine}
+                    <span style={{ color: '#94a3b8', marginLeft: 4 }}>· {dateStr}</span>
+                  </div>
+                  {entry.reason && (
+                    <div style={{ marginTop: 2, color: '#64748b', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                      Reason: {entry.reason}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -332,6 +340,7 @@ interface CompanyAuditEntry {
   teamAction: 'suspended' | 'reactivated' | 'removed' | null;
   actorName: string | null;
   actorRole: string | null;
+  reason: string | null;
   createdAt: string;
 }
 
@@ -616,6 +625,7 @@ export default function ContractorDashboard() {
   const [isExportingInvoices, setIsExportingInvoices] = useState(false);
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
+  const [teamActionReason, setTeamActionReason] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [pendingCancelInviteMember, setPendingCancelInviteMember] = useState<TeamMember | null>(null);
   const [pendingCancelBoost, setPendingCancelBoost] = useState<ContractorBoostItem | null>(null);
@@ -935,16 +945,25 @@ export default function ContractorDashboard() {
   };
 
   const teamActionMutation = useMutation({
-    mutationFn: async ({ userId, action }: { userId: string; action: 'suspend' | 'reactivate' | 'remove' }) => {
+    mutationFn: async ({ userId, action, reason }: { userId: string; action: 'suspend' | 'reactivate' | 'remove'; reason?: string }) => {
       const method = action === 'remove' ? 'DELETE' : 'PATCH';
       const url = action === 'remove' ? `/api/contractor/team/${userId}` : `/api/contractor/team/${userId}/${action}`;
-      const res = await fetch(url, { method, credentials: 'include' });
+      const res = await fetch(url, {
+        method,
+        headers: reason !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+        credentials: 'include',
+        body: reason !== undefined ? JSON.stringify({ reason: reason.trim() || undefined }) : undefined,
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Action failed');
       return data;
     },
     onSuccess: (_, { action }) => {
       refetchTeam();
+      queryClientInstance.invalidateQueries({ queryKey: ['/api/contractor/team/audit-log'] });
+      setPendingSuspendMember(null);
+      setPendingRemoveMember(null);
+      setTeamActionReason('');
       toast({ title: "Done", description: action === 'suspend' ? "Member suspended" : action === 'reactivate' ? "Member reactivated" : "Member removed" });
     },
     onError: (err: Error) => {
@@ -2182,14 +2201,27 @@ export default function ContractorDashboard() {
           {/* Suspend team member confirm dialog */}
           <ConfirmDialog
             open={!!pendingSuspendMember}
-            onOpenChange={(o) => { if (!o) setPendingSuspendMember(null); }}
+            onOpenChange={(o) => { if (!o) { setPendingSuspendMember(null); setTeamActionReason(''); } }}
             title="Suspend Team Member?"
             description={`${pendingSuspendMember?.firstName || pendingSuspendMember?.email} will no longer be able to access the company dashboard until reactivated.`}
             confirmText="Suspend"
             cancelText="Cancel"
             variant="destructive"
-            onConfirm={() => { if (pendingSuspendMember) teamActionMutation.mutate({ userId: pendingSuspendMember.id, action: 'suspend' }); }}
+            onConfirm={() => { if (pendingSuspendMember) teamActionMutation.mutate({ userId: pendingSuspendMember.id, action: 'suspend', reason: teamActionReason }); }}
           >
+            <div>
+              <label htmlFor="suspend-reason" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+                Reason <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <Textarea
+                id="suspend-reason"
+                value={teamActionReason}
+                onChange={(event) => setTeamActionReason(event.target.value)}
+                maxLength={500}
+                placeholder="Add context for the audit trail"
+                rows={3}
+              />
+            </div>
             {pendingSuspendMember?.companyRole === 'admin' && (() => {
               const lastLogin = pendingSuspendMember.lastLoginAt ? new Date(pendingSuspendMember.lastLoginAt) : null;
               const minutesAgo = lastLogin ? (Date.now() - lastLogin.getTime()) / 60000 : null;
@@ -2222,14 +2254,28 @@ export default function ContractorDashboard() {
           {/* Remove team member confirm dialog */}
           <ConfirmDialog
             open={!!pendingRemoveMember}
-            onOpenChange={(o) => { if (!o) setPendingRemoveMember(null); }}
+            onOpenChange={(o) => { if (!o) { setPendingRemoveMember(null); setTeamActionReason(''); } }}
             title="Remove from Team?"
             description={`${[pendingRemoveMember?.firstName, pendingRemoveMember?.lastName].filter(Boolean).join(' ') || pendingRemoveMember?.email} will be unlinked from your company. Their invoice history will be preserved.`}
             confirmText="Remove"
             cancelText="Cancel"
             variant="destructive"
-            onConfirm={() => { if (pendingRemoveMember) teamActionMutation.mutate({ userId: pendingRemoveMember.id, action: 'remove' }); }}
-          />
+            onConfirm={() => { if (pendingRemoveMember) teamActionMutation.mutate({ userId: pendingRemoveMember.id, action: 'remove', reason: teamActionReason }); }}
+          >
+            <div>
+              <label htmlFor="remove-reason" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+                Reason <span style={{ color: '#94a3b8', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <Textarea
+                id="remove-reason"
+                value={teamActionReason}
+                onChange={(event) => setTeamActionReason(event.target.value)}
+                maxLength={500}
+                placeholder="Add context for the audit trail"
+                rows={3}
+              />
+            </div>
+          </ConfirmDialog>
 
           {/* Cancel invite confirm dialog */}
           <ConfirmDialog

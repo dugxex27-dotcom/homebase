@@ -2462,6 +2462,7 @@ export const securityAuditLogs = pgTable("security_audit_logs", {
   targetResourceType: text("target_resource_type"), // 'user', 'house', 'proposal', 'subscription', etc.
   targetResourceId: varchar("target_resource_id"), // ID of affected resource
   action: text("action").notNull(), // Human-readable action description
+  reason: text("reason"), // Optional human-entered reason for administrative actions
   actionDetails: jsonb("action_details"), // Additional structured data about the action
   ipAddress: varchar("ip_address"), // Client IP address
   userAgent: text("user_agent"), // Browser/client user agent

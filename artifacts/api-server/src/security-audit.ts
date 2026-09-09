@@ -149,6 +149,7 @@ export class SecurityAuditLogger {
   async log(params: {
     eventType: string;
     action: string;
+    reason?: string;
     userId?: string;
     userEmail?: string;
     userRole?: string;
@@ -180,6 +181,7 @@ export class SecurityAuditLogger {
         targetResourceType: params.targetResourceType || null,
         targetResourceId: params.targetResourceId || null,
         action: params.action,
+        reason: params.reason || null,
         actionDetails: params.actionDetails || null,
         ipAddress: params.req ? getClientIP(params.req) : null,
         userAgent: params.req?.headers?.['user-agent'] || null,

@@ -330,8 +330,9 @@ vi.mock("../db", () => ({
 
 import express from "express";
 import request from "supertest";
-import { registerRoutes } from "./routes";
+import { registerRoutes, serializeTeamAuditLogEntry } from "./routes";
 import { storage } from "../storage";
+import { auditLogger } from "../security-audit";
 
 // ---------------------------------------------------------------------------
 // DB mock helpers — drizzle-style chained query builders
@@ -464,6 +465,7 @@ describe("PATCH /api/contractor/team/:userId/suspend — route-level wiring", ()
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_suspend_placeholder";
 
     app = express();
+    app.use(express.json());
     await registerRoutes(app);
   });
 
@@ -481,6 +483,32 @@ describe("PATCH /api/contractor/team/:userId/suspend — route-level wiring", ()
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/suspended/i);
+    expect(auditLogger.log).toHaveBeenCalledWith(expect.objectContaining({ reason: undefined }));
+  });
+
+  it("stores a trimmed optional suspension reason in the audit entry", async () => {
+    configureDbForSuspend();
+
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin")
+      .send({ reason: "  Repeated policy violation  " });
+
+    expect(res.status).toBe(200);
+    expect(auditLogger.log).toHaveBeenCalledWith(expect.objectContaining({
+      reason: "Repeated policy violation",
+    }));
+  });
+
+  it("rejects a suspension reason longer than 500 characters", async () => {
+    const res = await request(app)
+      .patch(`/api/contractor/team/${TARGET_USER_ID}/suspend`)
+      .set("x-test-user", "admin")
+      .send({ reason: "x".repeat(501) });
+
+    expect(res.status).toBe(400);
+    expect(mockDbSelect).not.toHaveBeenCalled();
+    expect(auditLogger.log).not.toHaveBeenCalled();
   });
 
   it("adds the target user to suspendedUserIds after a successful suspend", async () => {
@@ -623,6 +651,7 @@ describe("DELETE /api/contractor/team/:userId — route-level wiring", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_remove_placeholder";
 
     app = express();
+    app.use(express.json());
     await registerRoutes(app);
   });
 
@@ -640,6 +669,32 @@ describe("DELETE /api/contractor/team/:userId — route-level wiring", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/removed/i);
+    expect(auditLogger.log).toHaveBeenCalledWith(expect.objectContaining({ reason: undefined }));
+  });
+
+  it("stores a trimmed optional removal reason in the audit entry", async () => {
+    configureDbForRemove();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin")
+      .send({ reason: "  Access no longer needed  " });
+
+    expect(res.status).toBe(200);
+    expect(auditLogger.log).toHaveBeenCalledWith(expect.objectContaining({
+      reason: "Access no longer needed",
+    }));
+  });
+
+  it("rejects a removal reason longer than 500 characters", async () => {
+    const res = await request(app)
+      .delete(`/api/contractor/team/${TARGET_USER_ID}`)
+      .set("x-test-user", "admin")
+      .send({ reason: "x".repeat(501) });
+
+    expect(res.status).toBe(400);
+    expect(mockDbSelect).not.toHaveBeenCalled();
+    expect(auditLogger.log).not.toHaveBeenCalled();
   });
 
   it("adds the removed user to suspendedUserIds after a successful remove", async () => {
@@ -693,6 +748,33 @@ describe("DELETE /api/contractor/team/:userId — route-level wiring", () => {
       .set("x-test-user", "target");
     expect(lockedOutRes.status).toBe(401);
     expect(lockedOutRes.body.message).toMatch(/suspended/i);
+  });
+});
+
+describe("serializeTeamAuditLogEntry", () => {
+  const log = {
+    id: "audit-1",
+    reason: "Repeated policy violation",
+    actionDetails: {
+      targetName: "Tech User",
+      teamAction: "suspended",
+      actorName: "Admin Owner",
+      actorRole: "owner",
+    },
+    createdAt: new Date("2026-09-09T00:00:00.000Z"),
+  };
+
+  it("returns the stored reason for the company-wide audit response", () => {
+    expect(serializeTeamAuditLogEntry(log, true)).toEqual(expect.objectContaining({
+      targetName: "Tech User",
+      reason: "Repeated policy violation",
+    }));
+  });
+
+  it("returns the stored reason for the member audit response", () => {
+    const result = serializeTeamAuditLogEntry(log, false);
+    expect(result).toEqual(expect.objectContaining({ reason: "Repeated policy violation" }));
+    expect(result).not.toHaveProperty("targetName");
   });
 });
 
