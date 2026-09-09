@@ -24658,6 +24658,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
       const updates: Record<string, any> = { updatedAt: new Date() };
+      let inviteResentTo: string | null = null;
+      let inviteTokenForResend: string | null = null;
+      let inviteExpiresAtForResend: Date | null = null;
       if (parsed.data.firstName !== undefined) updates.firstName = parsed.data.firstName;
       if (parsed.data.lastName !== undefined) updates.lastName = parsed.data.lastName;
       if (parsed.data.companyRole !== undefined) updates.companyRole = parsed.data.companyRole;
@@ -24671,10 +24674,53 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           const [conflict] = await db.select({ id: users.id }).from(users).where(eq(users.email, normalizedEmail)).limit(1);
           if (conflict) return res.status(409).json({ message: "An account with that email already exists" });
         }
-        updates.email = parsed.data.email.toLowerCase().trim();
+        // Always rotate when an email is submitted for a pending invite. Besides
+        // invalidating the link sent to the typo address, this lets an admin retry
+        // the same PATCH after a temporary email-provider failure.
+        const cryptoMod = await import('crypto');
+        inviteResentTo = normalizedEmail;
+        inviteTokenForResend = cryptoMod.randomBytes(32).toString('hex');
+        inviteExpiresAtForResend = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        updates.inviteToken = inviteTokenForResend;
+        updates.inviteExpiresAt = inviteExpiresAtForResend;
+        updates.lastInviteSentAt = new Date();
+        updates.email = normalizedEmail;
       }
 
-      await db.update(users).set(updates).where(eq(users.id, userId));
+      const updateWhere = parsed.data.email !== undefined
+        ? and(
+            eq(users.id, userId),
+            eq(users.companyId, adminUser.companyId),
+            roleCondition,
+            eq(users.status as any, 'pending_invite'),
+          )
+        : and(
+            eq(users.id, userId),
+            eq(users.companyId, adminUser.companyId),
+            roleCondition,
+            or(ne(users.status as any, 'removed'), isNull(users.status as any)),
+          );
+      const [updatedMember] = await db.update(users)
+        .set(updates)
+        .where(updateWhere)
+        .returning({ id: users.id });
+      if (!updatedMember) {
+        return res.status(409).json({
+          message: "This invitation is no longer pending. Refresh the team list and try again.",
+        });
+      }
+
+      if (inviteResentTo && inviteTokenForResend && inviteExpiresAtForResend) {
+        const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
+        const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteTokenForResend}`;
+        await emailService.sendTechInviteEmail(
+          inviteResentTo,
+          companyRow?.name || 'Your Company',
+          adminUser.firstName || 'Your manager',
+          inviteUrl,
+        );
+      }
 
       const accountChanges: TeamMemberAccountChange[] = [];
       const oldName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || 'Not set';
@@ -24704,7 +24750,11 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         );
       }
 
-      res.json({ message: "Team member updated" });
+      res.json({
+        message: "Team member updated",
+        inviteResentTo,
+        inviteExpiresAt: inviteExpiresAtForResend?.toISOString() ?? undefined,
+      });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error updating team member');
       res.status(500).json({ message: "Failed to update team member" });

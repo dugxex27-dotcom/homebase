@@ -930,10 +930,15 @@ export default function ContractorDashboard() {
       if (!res.ok) throw new Error(data.message || 'Update failed');
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: { inviteResentTo?: string | null }) => {
       refetchTeam();
       setEditingMemberId(null);
-      toast({ title: "Saved", description: "Team member updated" });
+      toast({
+        title: "Saved",
+        description: data.inviteResentTo
+          ? `Invite re-sent to ${data.inviteResentTo}`
+          : "Team member updated",
+      });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
