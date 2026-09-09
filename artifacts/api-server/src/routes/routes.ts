@@ -69,6 +69,7 @@ import {
   WEATHER_TRIGGERS,
   type ForecastTriggerResult,
 } from "../weather-forecast-service";
+import { logger } from "../lib/logger";
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -587,7 +588,7 @@ const requireHomeownerSubscription = async (req: any, res: any, next: any) => {
       detail: 'Your free trial has ended. Please subscribe to access this feature.'
     });
   } catch (error) {
-    console.error('[SUBSCRIPTION CHECK] Error:', error);
+    logger.error({ err: error }, '[SUBSCRIPTION CHECK] Error');
     return res.status(500).json({ message: 'Failed to verify subscription' });
   }
 };
@@ -659,7 +660,7 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
       detail: 'Your free trial has ended. Contractors must subscribe to access HomeBase features.'
     });
   } catch (error) {
-    console.error('[CONTRACTOR SUBSCRIPTION CHECK] Error:', error);
+    logger.error({ err: error }, '[CONTRACTOR SUBSCRIPTION CHECK] Error');
     return res.status(500).json({ message: 'Failed to verify subscription' });
   }
 };
@@ -1947,9 +1948,7 @@ export async function executeTransferOwnership(
 // ----------------------------------------------------------------------------
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  console.error('----------------------------------------');
-  console.error('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
-  console.error('----------------------------------------');
+  logger.info('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
 
   // Per-user rate limit for the AI-powered diy-verify endpoint.
   // Configurable via DIY_VERIFY_RATE_LIMIT_PER_MINUTE (default: 5).
@@ -2279,7 +2278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: `Plans synced: ${created} created, ${updated} updated` });
     } catch (error) {
-      console.error('Error seeding plans:', error);
+      logger.error({ err: error }, 'Error seeding plans');
       res.status(500).json({ message: 'Failed to seed plans' });
     }
   });
@@ -2324,7 +2323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isActive: (plan as any).isActive !== false,
             sortOrder: plan.sortOrder,
           });
-          console.log(`[PLANS] Seeded subscription plan: ${plan.tierName}`);
+          logger.info({ tierName: plan.tierName }, '[PLANS] Seeded subscription plan');
         }
       }
 
@@ -2339,7 +2338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .where(eq(subscriptionPlans.tierName, 'contractor_enterprise'));
       }
     } catch (error) {
-      console.error('[PLANS] Error auto-seeding plans:', error);
+      logger.error({ err: error }, '[PLANS] Error auto-seeding plans');
     }
   })();
 
@@ -2351,29 +2350,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupGoogleAuth(app);
 
   // Secure logo upload endpoint with authentication (MUST be after setupAuth for session access)
-  console.error('[STARTUP] Registering /api/upload-logo-raw endpoint');
+  logger.info('[STARTUP] Registering /api/upload-logo-raw endpoint');
   app.post('/api/upload-logo-raw', isAuthenticated, requireNotSuspended(), uploadLimiter, async (req: any, res: any) => {
-    console.error('[LOGO-DEBUG] Session check:', {
+    logger.info({
       hasSession: !!req.session,
       isAuthenticated: req.session?.isAuthenticated,
       hasUser: !!req.session?.user,
       userRole: req.session?.user?.role,
       userId: req.session?.user?.id
-    });
+    }, '[LOGO-DEBUG] Session check');
     
     // Check session-based authentication
     if (!req.session?.isAuthenticated || !req.session?.user) {
-      console.error('[LOGO-DEBUG] Auth failed - no session');
+      logger.warn('[LOGO-DEBUG] Auth failed - no session');
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     if (req.session.user.role !== 'contractor') {
-      console.error('[LOGO-DEBUG] Auth failed - not contractor, role:', req.session.user.role);
+      logger.warn(
+        { role: req.session.user.role },
+        '[LOGO-DEBUG] Auth failed - not contractor',
+      );
       return res.status(403).json({ message: "Forbidden - contractors only" });
     }
     
     try {
-      console.error('[SECURE-UPLOAD] Request received from authenticated user:', req.session?.user?.id);
+      logger.info(
+        { userId: req.session?.user?.id },
+        '[SECURE-UPLOAD] Request received from authenticated user',
+      );
       const { imageData } = req.body;
       
       if (!imageData) {
@@ -2416,10 +2421,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update company using storage layer
       await storage.updateCompany(user.companyId, { businessLogo: url });
       
-      console.error('[SECURE-UPLOAD] Logo uploaded successfully for company:', user.companyId);
+      logger.info(
+        { companyId: user.companyId },
+        '[SECURE-UPLOAD] Logo uploaded successfully for company',
+      );
       res.json({ success: true, url, companyId: user.companyId });
     } catch (error: any) {
-      console.error('[SECURE-UPLOAD ERROR]', error);
+      logger.error({ err: error }, '[SECURE-UPLOAD ERROR]');
       res.status(500).json({ error: 'Failed to upload logo' });
     }
   });
