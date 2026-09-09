@@ -64,6 +64,7 @@ import {
   getAppointmentsInNextSevenDays,
   hasScheduledAppointmentForProposal,
 } from "./contractor-dashboard-stats";
+import { downloadTeamAuditCsv } from "./team-audit-csv";
 import "./home.css";
 
 interface ContactedHomeowner {
@@ -377,6 +378,22 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: '#374151' }}>
+          Audit trail · {filtered.length} event{filtered.length !== 1 ? 's' : ''}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => downloadTeamAuditCsv(filtered)}
+          disabled={filtered.length === 0}
+          style={{ height: 30, fontSize: 11, gap: 5 }}
+        >
+          <Download size={13} />
+          Export CSV
+        </Button>
+      </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 140 }}>
           <svg
