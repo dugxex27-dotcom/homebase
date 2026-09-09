@@ -114,6 +114,7 @@ interface ContractorBoostItem {
 
 const BOOST_RENEWAL_WINDOW_DAYS = 7;
 
+const SEAT_WARN_THRESHOLD = 0.8;
 interface ContractorLeadSummary {
   status: string;
   createdAt: string | Date | null;
@@ -661,6 +662,10 @@ export default function ContractorDashboard() {
     ? Math.max(0, teamData.teamSeatLimit - teamData.reservedTeamCount)
     : null;
   const isTeamAtCapacity = availableTeamCapacity === 0;
+  const isTeamNearlyFull = teamData
+    ? teamData.teamSeatLimit > 0
+      && teamData.reservedTeamCount / teamData.teamSeatLimit >= SEAT_WARN_THRESHOLD
+    : false;
 
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
     queryKey: ['/api/contractor/invoices', invoiceTechFilter, invoiceStartDate, invoiceEndDate, invoiceHomeownerName],
@@ -1413,7 +1418,7 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
-          {isTeamAtCapacity && !teamCapacityBannerDismissed && (
+          {isTeamNearlyFull && !teamCapacityBannerDismissed && (
             <div
               role="alert"
               data-testid="banner-team-capacity"
@@ -1431,16 +1436,26 @@ export default function ContractorDashboard() {
             >
               <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700 }}>All team seats are in use</div>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>
+                  {isTeamAtCapacity ? 'All team seats are in use' : 'Your team is nearly at capacity'}
+                </div>
                 <div style={{ fontSize: 12, lineHeight: 1.45, marginTop: 2 }}>
-                  Upgrade your plan for more capacity, or remove a member or pending invitation before adding someone new.{' '}
-                  <Link
-                    href="/contractor-pricing"
-                    data-testid="link-upgrade-team-capacity"
-                    style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}
-                  >
-                    Upgrade plan
-                  </Link>
+                  {isTeamAtCapacity ? (
+                    <>
+                      Upgrade your plan for more capacity, or remove a member or pending invitation before adding someone new.{' '}
+                      <Link
+                        href="/contractor-pricing"
+                        data-testid="link-upgrade-team-capacity"
+                        style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}
+                      >
+                        Upgrade plan
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      {reservedTeamCount} of {teamData?.teamSeatLimit ?? 0} team seats are reserved. Pending invitations also count toward capacity.
+                    </>
+                  )}
                 </div>
               </div>
               <button
