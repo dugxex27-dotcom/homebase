@@ -1654,24 +1654,6 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
-          {removeMemberError && (
-            <div
-              role="alert"
-              data-testid="remove-member-error"
-              style={{
-                border: '1px solid #fecaca',
-                borderRadius: 8,
-                background: '#fef2f2',
-                color: '#991b1b',
-                padding: '10px 12px',
-                marginBottom: 12,
-                fontSize: 13,
-                lineHeight: 1.45,
-              }}
-            >
-              {removeMemberError}
-            </div>
-          )}
           {isTeamNearlyFull && !teamCapacityBannerDismissed && (
             <div
               role="alert"
@@ -2454,7 +2436,7 @@ export default function ContractorDashboard() {
           {/* Remove team member confirm dialog */}
           <ConfirmDialog
             open={!!pendingRemoveMember}
-            onOpenChange={(o) => { if (!o) { setPendingRemoveMember(null); setTeamActionReason(''); } }}
+            onOpenChange={(o) => { if (!o) { setPendingRemoveMember(null); setRemoveMemberError(null); setTeamActionReason(''); } }}
             title="Remove from Team?"
             description={`${[pendingRemoveMember?.firstName, pendingRemoveMember?.lastName].filter(Boolean).join(' ') || pendingRemoveMember?.email} will be unlinked from your company. Their invoice history will be preserved.`}
             confirmText="Remove"
@@ -2475,6 +2457,23 @@ export default function ContractorDashboard() {
                 rows={3}
               />
             </div>
+            {removeMemberError && (
+              <div
+                role="alert"
+                data-testid="remove-member-error"
+                style={{
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  background: '#fef2f2',
+                  color: '#991b1b',
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                {removeMemberError}
+              </div>
+            )}
           </ConfirmDialog>
 
           {/* Cancel invite confirm dialog */}
