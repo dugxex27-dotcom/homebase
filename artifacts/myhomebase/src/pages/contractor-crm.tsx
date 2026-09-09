@@ -166,6 +166,14 @@ interface CrmInvoice {
   createdAt: string;
 }
 
+async function fetchCrmInvoices(status?: string): Promise<CrmInvoice[]> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  const query = params.toString();
+  const response = await apiRequest(`/api/crm/invoices${query ? `?${query}` : ''}`);
+  return response.json();
+}
+
 interface SentJobRecord {
   id: string;
   serviceType: string;
@@ -509,8 +517,22 @@ export default function ContractorCRMPage() {
   // Fetch invoices (Pro tier)
   const { data: invoices, isLoading: isLoadingInvoices } = useQuery<CrmInvoice[]>({
     queryKey: ['/api/crm/invoices', { status: invoiceStatusFilter !== 'all' ? invoiceStatusFilter : undefined }],
+    queryFn: () => fetchCrmInvoices(invoiceStatusFilter !== 'all' ? invoiceStatusFilter : undefined),
     enabled: hasProAccess,
   });
+
+  // Keep the overdue summary independent from the list filter so it stays
+  // visible until every overdue invoice has actually been resolved.
+  const { data: overdueInvoices } = useQuery<CrmInvoice[]>({
+    queryKey: ['/api/crm/invoices', { status: 'overdue' }],
+    queryFn: () => fetchCrmInvoices('overdue'),
+    enabled: hasProAccess,
+  });
+  const overdueInvoiceCount = overdueInvoices?.length ?? 0;
+  const overdueAmountDue = overdueInvoices?.reduce((sum, invoice) => {
+    const amountDue = Number.parseFloat(invoice.amountDue);
+    return sum + (Number.isFinite(amountDue) ? amountDue : 0);
+  }, 0) ?? 0;
 
   // Fetch sent job records (contractor feedback loop)
   const { data: sentJobRecords, isLoading: isLoadingSentRecords } = useQuery<SentJobRecord[]>({
@@ -2507,6 +2529,29 @@ export default function ContractorCRMPage() {
         {/* Invoices Tab (Pro) */}
         <TabsContent value="invoices">
           <ProFeatureGate featureName="Invoice Management" featureIcon={Receipt} needsUpgrade={needsUpgrade}>
+            {overdueInvoiceCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setInvoiceStatusFilter('overdue')}
+                className="mb-6 flex w-full items-center justify-between gap-4 rounded-lg border border-red-300 bg-red-50 p-4 text-left text-red-950 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+                data-testid="button-filter-overdue-invoices"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="rounded-full bg-red-100 p-2" aria-hidden="true">
+                    <AlertTriangle className="h-5 w-5 text-red-700" />
+                  </span>
+                  <span>
+                    <span className="block font-semibold">
+                      {overdueInvoiceCount} {overdueInvoiceCount === 1 ? 'invoice' : 'invoices'} overdue
+                    </span>
+                    <span className="block text-sm text-red-800">Click to show overdue invoices only</span>
+                  </span>
+                </span>
+                <span className="shrink-0 font-semibold" data-testid="overdue-invoice-total">
+                  ${overdueAmountDue.toFixed(2)} total due
+                </span>
+              </button>
+            )}
             <div className="flex justify-between items-center mb-6">
               <div>
                 <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
