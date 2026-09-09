@@ -1764,6 +1764,34 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
     expect(del).not.toHaveBeenCalled();
   });
 
+  it("defers seat sync when a past_due subscription is brought current", async () => {
+    const { stripeClient, update, create, del } = makeStripeClientMock();
+    const subscription = makeSubscription("active");
+    const dbMock = makeDbMock(5);
+    const recoveryEvent = {
+      type: "customer.subscription.updated",
+      data: {
+        object: subscription,
+        previous_attributes: { status: "past_due" },
+      },
+    };
+
+    const result = await syncSeatQuantityForSubscription(
+      subscription as any,
+      "company-past-due-recovery",
+      stripeClient,
+      dbMock as any,
+      isSubscriptionReactivation(recoveryEvent as any, subscription as any),
+      "evt_past_due_recovery",
+    );
+
+    expect(result).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+  });
+
   it("resumes seat billing exactly once at the first renewal after reactivation", async () => {
     const { stripeClient, update, create, del } = makeStripeClientMock();
     const subscription = makeSubscription("active");

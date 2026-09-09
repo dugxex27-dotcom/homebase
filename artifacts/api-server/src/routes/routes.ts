@@ -1730,7 +1730,9 @@ export function isSubscriptionReactivation(
 ): boolean {
   return (
     event.type === 'customer.subscription.updated'
-    && (event.data as any).previous_attributes?.status === 'canceled'
+    && ['canceled', 'past_due'].includes(
+      (event.data as any).previous_attributes?.status,
+    )
     && (subscription.status === 'active' || subscription.status === 'trialing')
   );
 }

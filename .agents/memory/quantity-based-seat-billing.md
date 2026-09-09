@@ -17,6 +17,9 @@ count neither. All non-removed people share one 50-person company ceiling.
   quantity ≥ 1. When billed seats drop to 0 (cancellation, past_due, or team shrinks to the
   included-seat count), the code deletes the seat subscription item instead of trying to set its
   quantity to 0.
+- **Recovery transitions defer seat changes**: when a subscription moves from `canceled` or
+  `past_due` back to `active`/`trialing`, do not update the seat item mid-cycle. Let the next normal
+  renewal update it so recovering payment does not create a partial-period seat charge.
 - **Seat item lookup key**: the existing item is found by matching `item.price.id` against the
   resolved seat Price ID — not by `usage_type === 'metered'` (that matched the old metered-item
   shape and no longer applies).
