@@ -5391,7 +5391,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple homeowner demo login with realistic profile
   app.post('/api/auth/homeowner-demo-login', logDemoLoginAttempt('homeowner'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
-      const { user, seedResults } = await seedHomeownerDemo(req.log);
+      const { user, seedResults } = await db.transaction(async (tx) => {
+        return seedHomeownerDemo(req.log, tx);
+      });
       
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
@@ -5418,7 +5420,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     } catch (error) {
-      console.error("Error creating homeowner demo user:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      req.log.error({ error: msg }, "[DEMO] Error creating homeowner demo user");
       res.status(500).json({ message: "Failed to create homeowner account" });
     }
   });
@@ -5467,7 +5470,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple contractor demo login with realistic company profile
   app.post('/api/auth/contractor-demo-login', logDemoLoginAttempt('contractor'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
-      const { user, seedResults } = await seedContractorDemo(req.log);
+      const { user, seedResults } = await db.transaction(async (tx) => {
+        return seedContractorDemo(req.log, tx);
+      });
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
@@ -5493,7 +5498,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     } catch (error) {
-      console.error("Error creating contractor demo user:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      req.log.error({ error: msg }, "[DEMO] Error creating contractor demo user");
       res.status(500).json({ message: "Failed to create contractor account" });
     }
   });

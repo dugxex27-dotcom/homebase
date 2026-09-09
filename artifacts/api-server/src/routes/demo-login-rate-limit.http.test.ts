@@ -30,6 +30,7 @@ const {
   mockSeedContractor,
   mockSeedAgent,
   mockTopUp,
+  mockTransactionClient,
   ratelimitPool,
 } = vi.hoisted(() => {
   // A minimal in-memory stand-in for the real Postgres-backed rate-limit
@@ -65,6 +66,7 @@ const {
     mockSeedContractor: vi.fn(),
     mockSeedAgent: vi.fn(),
     mockTopUp: vi.fn().mockResolvedValue(undefined),
+    mockTransactionClient: { transactionScoped: true },
     ratelimitPool: createRateLimitPoolMock(),
   };
 });
@@ -248,7 +250,7 @@ vi.mock("../db", () => ({
     }),
     execute: vi.fn().mockResolvedValue({ rows: [] }),
     delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
-    transaction: vi.fn(),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(mockTransactionClient)),
   },
 }));
 
@@ -279,6 +281,10 @@ async function buildApp() {
 
 function demoLoginPost(app: any, ip: string) {
   return request(app).post("/api/auth/homeowner-demo-login").set("X-Forwarded-For", ip);
+}
+
+function contractorDemoLoginPost(app: any, ip: string) {
+  return request(app).post("/api/auth/contractor-demo-login").set("X-Forwarded-For", ip);
 }
 
 // ---------------------------------------------------------------------------
@@ -316,6 +322,32 @@ describe("Demo-login rate limiting", () => {
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
     }
+  });
+
+  it("runs homeowner and contractor setup with the transaction-scoped client", async () => {
+    const app = await buildApp();
+
+    const homeownerResponse = await demoLoginPost(app, "203.0.113.11");
+    const contractorResponse = await contractorDemoLoginPost(app, "203.0.113.12");
+
+    expect(homeownerResponse.status).toBe(200);
+    expect(contractorResponse.status).toBe(200);
+    expect(mockSeedHomeowner).toHaveBeenCalledWith(expect.anything(), mockTransactionClient);
+    expect(mockSeedContractor).toHaveBeenCalledWith(expect.anything(), mockTransactionClient);
+  });
+
+  it("aborts login when transactional setup fails", async () => {
+    mockSeedHomeowner.mockRejectedValueOnce(new Error("mid-seed failure"));
+    mockSeedContractor.mockRejectedValueOnce(new Error("mid-seed failure"));
+    const app = await buildApp();
+
+    const homeownerResponse = await demoLoginPost(app, "203.0.113.13");
+    const contractorResponse = await contractorDemoLoginPost(app, "203.0.113.14");
+
+    expect(homeownerResponse.status).toBe(500);
+    expect(contractorResponse.status).toBe(500);
+    expect(homeownerResponse.body.message).toBe("Failed to create homeowner account");
+    expect(contractorResponse.body.message).toBe("Failed to create contractor account");
   });
 
   it("throttles sustained rapid demo-login calls from the same IP once the limit is exceeded", async () => {

@@ -26,6 +26,14 @@ import {
   affiliateReferrals,
   subscriptionCycleEvents,
   users,
+  houses,
+  companies,
+  crmLeads,
+  crmClients,
+  crmJobs,
+  crmQuotes,
+  crmInvoices,
+  proposals,
   type House,
 } from "@workspace/db";
 import { emailService } from "./email-service";
@@ -56,6 +64,35 @@ interface DemoLog {
   error(obj: object, msg: string): void;
 }
 
+type DemoDb = any;
+
+function transactionStorage(client: DemoDb) {
+  const first = async (query: Promise<any[]>) => (await query)[0];
+  return {
+    getUser: async (id: string) => first(client.select().from(users).where(eq(users.id, id)).limit(1)),
+    getUserByEmail: async (email: string) => first(client.select().from(users).where(eq(users.email, email)).limit(1)),
+    upsertUser: async (value: any) => first(client.insert(users).values(value).onConflictDoUpdate({ target: users.id, set: value }).returning()),
+    getHouses: (homeownerId: string) => client.select().from(houses).where(eq(houses.homeownerId, homeownerId)),
+    createHouse: async (value: any) => first(client.insert(houses).values(value).returning()),
+    deleteHouse: (id: string) => client.delete(houses).where(eq(houses.id, id)),
+    createMaintenanceLog: async (value: any) => first(client.insert(maintenanceLogs).values(value).returning()),
+    getCompany: async (id: string) => first(client.select().from(companies).where(eq(companies.id, id)).limit(1)),
+    createCompany: async (value: any) => first(client.insert(companies).values(value).returning()),
+    getCrmLead: async (id: string) => first(client.select().from(crmLeads).where(eq(crmLeads.id, id)).limit(1)),
+    createCrmLead: async (value: any) => first(client.insert(crmLeads).values(value).returning()),
+    getCrmClient: async (id: string) => first(client.select().from(crmClients).where(eq(crmClients.id, id)).limit(1)),
+    createCrmClient: async (value: any) => first(client.insert(crmClients).values(value).returning()),
+    getCrmJob: async (id: string) => first(client.select().from(crmJobs).where(eq(crmJobs.id, id)).limit(1)),
+    createCrmJob: async (value: any) => first(client.insert(crmJobs).values(value).returning()),
+    getCrmQuote: async (id: string) => first(client.select().from(crmQuotes).where(eq(crmQuotes.id, id)).limit(1)),
+    createCrmQuote: async (value: any) => first(client.insert(crmQuotes).values(value).returning()),
+    getCrmInvoice: async (id: string) => first(client.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1)),
+    createCrmInvoice: async (value: any) => first(client.insert(crmInvoices).values(value).returning()),
+    getProposal: async (id: string) => first(client.select().from(proposals).where(eq(proposals.id, id)).limit(1)),
+    createProposal: async (value: any) => first(client.insert(proposals).values(value).returning()),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -70,10 +107,11 @@ interface DemoLog {
  * migration.
  */
 export async function ensureDemoAccountFlag<T extends { id: string; isDemoAccount?: boolean | null }>(
-  user: T
+  user: T,
+  client: DemoDb = db,
 ): Promise<T> {
   if (user && user.isDemoAccount !== true) {
-    await db.update(users).set({ isDemoAccount: true }).where(eq(users.id, user.id));
+    await client.update(users).set({ isDemoAccount: true }).where(eq(users.id, user.id));
     return { ...user, isDemoAccount: true };
   }
   return user;
@@ -98,14 +136,15 @@ async function generateUniqueReferralCode(): Promise<string> {
 // Homeowner seeder
 // ---------------------------------------------------------------------------
 
-export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
+export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Promise<SeedOutcome> {
+  const demoStorage = transactionStorage(client);
   const demoEmail = "sarah.anderson@homebase.com";
   const demoId = "demo-homeowner-permanent-id";
 
-  let user = await storage.getUserByEmail(demoEmail);
+  let user = await demoStorage.getUserByEmail(demoEmail);
   if (!user) {
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    user = await storage.upsertUser({
+    user = await demoStorage.upsertUser({
       id: demoId,
       email: demoEmail,
       firstName: "Sarah",
@@ -120,14 +159,14 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       isDemoAccount: true,
     });
   } else {
-    user = await ensureDemoAccountFlag(user);
+    user = await ensureDemoAccountFlag(user, client);
   }
 
   const mainHouseId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
   const lakeHouseId = "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b";
   const canonicalHouseIds = new Set([mainHouseId]);
 
-  const existingHouses = await storage.getHouses(demoId);
+  const existingHouses = await demoStorage.getHouses(demoId);
 
   const rogueHouses = existingHouses.filter(
     (h: House) => !canonicalHouseIds.has(h.id)
@@ -138,16 +177,16 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       `[DEMO] Removing ${rogueHouses.length} rogue house(s) from demo account`
     );
     for (const rogue of rogueHouses) {
-      await db.delete(maintenanceLogs).where(eq(maintenanceLogs.houseId, rogue.id));
-      await db.delete(taskOverrides).where(eq(taskOverrides.houseId, rogue.id));
-      await db.delete(taskCompletions).where(eq(taskCompletions.houseId, rogue.id));
-      await db.delete(homeSystems).where(eq(homeSystems.houseId, rogue.id));
-      await db.delete(homeAppliances).where(eq(homeAppliances.houseId, rogue.id));
-      await storage.deleteHouse(rogue.id);
+      await client.delete(maintenanceLogs).where(eq(maintenanceLogs.houseId, rogue.id));
+      await client.delete(taskOverrides).where(eq(taskOverrides.houseId, rogue.id));
+      await client.delete(taskCompletions).where(eq(taskCompletions.houseId, rogue.id));
+      await client.delete(homeSystems).where(eq(homeSystems.houseId, rogue.id));
+      await client.delete(homeAppliances).where(eq(homeAppliances.houseId, rogue.id));
+      await demoStorage.deleteHouse(rogue.id);
     }
   }
 
-  const cleanedHouses = await storage.getHouses(demoId);
+  const cleanedHouses = await demoStorage.getHouses(demoId);
   const cleanedHouseIds = new Set(cleanedHouses.map((h: House) => h.id));
 
   const mainHouseMissing = !cleanedHouseIds.has(mainHouseId);
@@ -157,7 +196,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
 
   if (mainHouseMissing) {
     try {
-      const house1 = await storage.createHouse({
+      const house1 = await demoStorage.createHouse({
         homeownerId: demoId,
         name: "Main Residence",
         address: "2847 Maple Drive, Seattle, WA 98101",
@@ -312,7 +351,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
 
       for (const rec of serviceRecordsData) {
-        await storage.createMaintenanceLog({ ...logBase, ...rec });
+        await demoStorage.createMaintenanceLog({ ...logBase, ...rec });
       }
 
       const currentYear = new Date().getFullYear();
@@ -337,7 +376,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       await Promise.all(
         taskCompletionsData.map(async (task) => {
           const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
-          await db.insert(taskCompletions).values({
+          await client.insert(taskCompletions).values({
             id: randomUUID(),
             homeownerId: demoId,
             houseId: house1.id,
@@ -401,7 +440,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
       .where(eq(taskCompletions.homeownerId, demoId));
 
     if (existingCount < DEMO_TASK_TARGET) {
-      const houses = await storage.getHouses(demoId);
+      const houses = await demoStorage.getHouses(demoId);
       const mainHouse = houses.find((h: any) => h.name === "Main Residence") || houses[0];
 
       if (mainHouse) {
@@ -506,7 +545,7 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
         await Promise.all(
           tasksToInsert.map(async (task) => {
             const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
-            await db.insert(taskCompletions).values({
+            await client.insert(taskCompletions).values({
               id: randomUUID(),
               homeownerId: demoId,
               houseId: mainHouse.id,
@@ -557,6 +596,10 @@ export async function seedHomeownerDemo(log: DemoLog): Promise<SeedOutcome> {
     log.warn({ seedResults, failedSections, countMismatches }, "[DEMO] Homeowner demo seeding completed with issues");
   } else {
     log.info({ seedResults }, "[DEMO] Homeowner demo seeding completed successfully");
+  }
+
+  if (failedSections.length > 0) {
+    throw new Error(`Homeowner demo seeding failed: ${failedSections.join(", ")}`);
   }
 
   return { user, seedResults };
@@ -713,15 +756,16 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
 // Contractor seeder
 // ---------------------------------------------------------------------------
 
-export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
+export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Promise<SeedOutcome> {
+  const demoStorage = transactionStorage(client);
   const demoEmail = "david.martinez@precisionhvac.com";
   const demoId = "demo-contractor-permanent-id";
   const companyId = "demo-company-permanent-id";
 
-  let user = await storage.getUserByEmail(demoEmail);
+  let user = await demoStorage.getUserByEmail(demoEmail);
   if (!user) {
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
-    user = await storage.upsertUser({
+    user = await demoStorage.upsertUser({
       id: demoId,
       email: demoEmail,
       firstName: "David",
@@ -740,18 +784,18 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       isDemoAccount: true,
     });
   } else {
-    user = await ensureDemoAccountFlag(user);
+    user = await ensureDemoAccountFlag(user, client);
   }
 
   const seedResults: SeedResults = {};
 
   try {
-    let company = await storage.getCompany(companyId);
+    let company = await demoStorage.getCompany(companyId);
     if (!company) {
       const threeYearsAgo = new Date();
       threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
 
-      company = await storage.createCompany({
+      company = await demoStorage.createCompany({
         name: "Precision HVAC & Plumbing",
         ownerId: user.id,
         location: "Seattle, WA",
@@ -793,7 +837,7 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       seedResults.company = { ok: true, inserted: 1, expected: 1 };
     } else {
       try {
-        const [{ count: teamCount }] = await db
+        const [{ count: teamCount }] = await client
           .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
           .from(users)
           .where(eq(users.companyId, companyId));
@@ -809,7 +853,7 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
     }
 
     if (!user.companyId) {
-      user = await storage.upsertUser({
+      user = await demoStorage.upsertUser({
         ...user,
         companyId,
         companyRole: "owner",
@@ -828,8 +872,8 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let leadInserted = 0;
       for (const lead of leadSeed) {
-        const existing = await storage.getCrmLead(lead.id);
-        if (!existing) await storage.createCrmLead(lead as any);
+        const existing = await demoStorage.getCrmLead(lead.id);
+        if (!existing) await demoStorage.createCrmLead(lead as any);
         leadInserted++;
       }
       seedResults.leads = { ok: true, inserted: leadInserted, expected: leadSeed.length };
@@ -842,10 +886,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
     // ── Sample homeowners & conversations ────────────────────────────────────
     try {
       const sampleHomeownerIds = ["sample-homeowner-1", "sample-homeowner-2", "sample-homeowner-3"];
-      const existingChecks = await Promise.all(sampleHomeownerIds.map((id) => storage.getUser(id)));
+      const existingChecks = await Promise.all(sampleHomeownerIds.map((id) => demoStorage.getUser(id)));
       if (!existingChecks.every((u) => u != null)) {
         for (let i = 0; i < sampleHomeownerIds.length; i++) {
-          await storage.upsertUser({
+          await demoStorage.upsertUser({
             id: sampleHomeownerIds[i],
             email: `homeowner${i + 1}@example.com`,
             firstName: ["Emma", "James", "Sophia"][i],
@@ -857,7 +901,7 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
         }
       }
 
-      const existingDemoConvs = await db
+      const existingDemoConvs = await client
         .select({ id: conversations.id })
         .from(conversations)
         .where(eq(conversations.contractorId, demoId))
@@ -867,16 +911,16 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
         seedResults.conversations = { ok: true, inserted: 0, expected: 2, skipped: true };
       } else {
         const conv1Id = "demo-conversation-1";
-        await db.insert(conversations).values({ id: conv1Id, homeownerId: sampleHomeownerIds[0], contractorId: demoId, subject: "HVAC furnace inspection inquiry" }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-1-1", conversationId: conv1Id, senderId: sampleHomeownerIds[0], senderType: "homeowner", message: "Hi David! My furnace is making a strange rattling noise when it starts up. It's about 8 years old. Could you take a look at it? I'm located in Fremont.", createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-1-2", conversationId: conv1Id, senderId: demoId, senderType: "contractor", message: "Hello Emma! I'd be happy to help. A rattling noise often indicates a loose component or debris in the blower. I can come by this Thursday or Friday afternoon. Would either of those work for you?", createdAt: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-1-3", conversationId: conv1Id, senderId: sampleHomeownerIds[0], senderType: "homeowner", message: "Friday at 2pm would be perfect! What's your service call fee?", createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-1-4", conversationId: conv1Id, senderId: demoId, senderType: "contractor", message: "Great! Friday at 2pm is booked. Our diagnostic service call is $125, which includes the first hour of labor. If repairs are needed, I'll provide an estimate before starting any work. See you Friday!", createdAt: new Date(Date.now() - 1.8 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(conversations).values({ id: conv1Id, homeownerId: sampleHomeownerIds[0], contractorId: demoId, subject: "HVAC furnace inspection inquiry" }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-1-1", conversationId: conv1Id, senderId: sampleHomeownerIds[0], senderType: "homeowner", message: "Hi David! My furnace is making a strange rattling noise when it starts up. It's about 8 years old. Could you take a look at it? I'm located in Fremont.", createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-1-2", conversationId: conv1Id, senderId: demoId, senderType: "contractor", message: "Hello Emma! I'd be happy to help. A rattling noise often indicates a loose component or debris in the blower. I can come by this Thursday or Friday afternoon. Would either of those work for you?", createdAt: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-1-3", conversationId: conv1Id, senderId: sampleHomeownerIds[0], senderType: "homeowner", message: "Friday at 2pm would be perfect! What's your service call fee?", createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-1-4", conversationId: conv1Id, senderId: demoId, senderType: "contractor", message: "Great! Friday at 2pm is booked. Our diagnostic service call is $125, which includes the first hour of labor. If repairs are needed, I'll provide an estimate before starting any work. See you Friday!", createdAt: new Date(Date.now() - 1.8 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
 
         const conv2Id = "demo-conversation-2";
-        await db.insert(conversations).values({ id: conv2Id, homeownerId: sampleHomeownerIds[1], contractorId: demoId, subject: "Water heater installation follow-up" }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-2-1", conversationId: conv2Id, senderId: demoId, senderType: "contractor", message: "Hi James! Just following up on the water heater installation we completed last month. Is everything working well? Remember that your 1-year labor warranty covers any installation issues.", createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
-        await db.insert(messages).values({ id: "demo-msg-2-2", conversationId: conv2Id, senderId: sampleHomeownerIds[1], senderType: "homeowner", message: "Everything is great! The tankless system is working perfectly. We love the endless hot water. Thanks for the quality work - I've already recommended you to two neighbors!", createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(conversations).values({ id: conv2Id, homeownerId: sampleHomeownerIds[1], contractorId: demoId, subject: "Water heater installation follow-up" }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-2-1", conversationId: conv2Id, senderId: demoId, senderType: "contractor", message: "Hi James! Just following up on the water heater installation we completed last month. Is everything working well? Remember that your 1-year labor warranty covers any installation issues.", createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
+        await client.insert(messages).values({ id: "demo-msg-2-2", conversationId: conv2Id, senderId: sampleHomeownerIds[1], senderType: "homeowner", message: "Everything is great! The tankless system is working perfectly. We love the endless hot water. Thanks for the quality work - I've already recommended you to two neighbors!", createdAt: new Date(Date.now() - 4.5 * 24 * 60 * 60 * 1000) }).onConflictDoNothing();
 
         seedResults.conversations = { ok: true, inserted: 2, expected: 2 };
       }
@@ -895,7 +939,7 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let teamInserted = 0;
       for (const tm of teamSeed) {
-        await storage.upsertUser({ id: tm.id, email: tm.email, firstName: tm.firstName, lastName: tm.lastName, role: "contractor", companyId, companyRole: tm.companyRole as any, subscriptionStatus: "grandfathered", zipCode: "98103", canRespondToProposals: false });
+        await demoStorage.upsertUser({ id: tm.id, email: tm.email, firstName: tm.firstName, lastName: tm.lastName, role: "contractor", companyId, companyRole: tm.companyRole as any, subscriptionStatus: "grandfathered", zipCode: "98103", canRespondToProposals: false });
         teamInserted++;
       }
       seedResults.team = { ok: true, inserted: teamInserted, expected: 3 };
@@ -917,10 +961,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let clientInserted = 0;
       for (const c of clientSeed) {
-        const existing = await storage.getCrmClient(c.id);
+        const existing = await demoStorage.getCrmClient(c.id);
         if (!existing) {
           const { id: clientId, ...clientData } = c;
-          await storage.createCrmClient({ id: clientId, ...clientData } as any);
+          await demoStorage.createCrmClient({ id: clientId, ...clientData } as any);
         }
         clientInserted++;
       }
@@ -946,10 +990,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let jobInserted = 0;
       for (const j of jobSeed) {
-        const existing = await storage.getCrmJob(j.id);
+        const existing = await demoStorage.getCrmJob(j.id);
         if (!existing) {
           const { id: jobId, ...jobData } = j;
-          await storage.createCrmJob({ id: jobId, ...jobData } as any);
+          await demoStorage.createCrmJob({ id: jobId, ...jobData } as any);
         }
         jobInserted++;
       }
@@ -972,10 +1016,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let quoteInserted = 0;
       for (const q of quoteSeed) {
-        const existing = await storage.getCrmQuote(q.id);
+        const existing = await demoStorage.getCrmQuote(q.id);
         if (!existing) {
           const { id: quoteId, ...quoteData } = q;
-          await storage.createCrmQuote({ id: quoteId, ...quoteData } as any);
+          await demoStorage.createCrmQuote({ id: quoteId, ...quoteData } as any);
         }
         quoteInserted++;
       }
@@ -998,10 +1042,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let invoiceInserted = 0;
       for (const inv of invoiceSeed) {
-        const existing = await storage.getCrmInvoice(inv.id);
+        const existing = await demoStorage.getCrmInvoice(inv.id);
         if (!existing) {
           const { id: invoiceId, ...invoiceData } = inv;
-          await storage.createCrmInvoice({ id: invoiceId, ...invoiceData } as any);
+          await demoStorage.createCrmInvoice({ id: invoiceId, ...invoiceData } as any);
         }
         invoiceInserted++;
       }
@@ -1023,10 +1067,10 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
       ];
       let proposalInserted = 0;
       for (const p of proposalSeed) {
-        const existing = await storage.getProposal(p.id);
+        const existing = await demoStorage.getProposal(p.id);
         if (!existing) {
           const { id: proposalId, ...proposalData } = p;
-          await storage.createProposal({ id: proposalId, ...proposalData } as any);
+          await demoStorage.createProposal({ id: proposalId, ...proposalData } as any);
         }
         proposalInserted++;
       }
@@ -1053,10 +1097,12 @@ export async function seedContractorDemo(log: DemoLog): Promise<SeedOutcome> {
         const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
         log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
       });
+      throw new Error(`Contractor demo seeding failed: ${failedSections.join(", ")}`);
     }
   } catch (companyError) {
     const msg = companyError instanceof Error ? companyError.message : String(companyError);
     log.error({ error: msg }, "[DEMO] Error creating demo company or linking user");
+    throw companyError;
   }
 
   return { user, seedResults };
