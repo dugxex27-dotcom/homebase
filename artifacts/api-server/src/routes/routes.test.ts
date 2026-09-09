@@ -4,7 +4,9 @@ import express from "express";
 import {
   calcBilledSeats,
   countActiveCompanySeats,
+  buildTeamSeatSummary,
   isBillableCompanyMemberStatus,
+  isRemovableCompanyMemberStatus,
   isReservedCompanyMemberStatus,
   TEAM_MEMBER_ROLES,
   ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES,
@@ -368,9 +370,9 @@ describe("validateContractorCheckoutPlan", () => {
 });
 
 describe("unified team-seat membership rules", () => {
-  it("bills active and suspended accepted members but not pending invitations or removed members", () => {
+  it("bills active members but not suspended, pending, or removed members", () => {
     expect(isBillableCompanyMemberStatus("active")).toBe(true);
-    expect(isBillableCompanyMemberStatus("suspended")).toBe(true);
+    expect(isBillableCompanyMemberStatus("suspended")).toBe(false);
     expect(isBillableCompanyMemberStatus("pending_invite")).toBe(false);
     expect(isBillableCompanyMemberStatus("removed")).toBe(false);
   });
@@ -380,6 +382,23 @@ describe("unified team-seat membership rules", () => {
     expect(isReservedCompanyMemberStatus("suspended")).toBe(true);
     expect(isReservedCompanyMemberStatus("pending_invite")).toBe(true);
     expect(isReservedCompanyMemberStatus("removed")).toBe(false);
+  });
+
+  it("keeps suspended members removable even though they are no longer billable", () => {
+    expect(isRemovableCompanyMemberStatus("active")).toBe(true);
+    expect(isRemovableCompanyMemberStatus("suspended")).toBe(true);
+    expect(isRemovableCompanyMemberStatus("pending_invite")).toBe(false);
+    expect(isRemovableCompanyMemberStatus("removed")).toBe(false);
+  });
+
+  it("keeps suspended members accepted without misreporting them as pending or billable", () => {
+    // owner + 3 active members + 1 suspended member + 1 pending invite
+    expect(buildTeamSeatSummary(5, 4, 6, 1)).toEqual({
+      acceptedTeamCount: 5,
+      reservedTeamCount: 6,
+      pendingInviteCount: 1,
+      billedTeamSeatCount: 1,
+    });
   });
 
   it("applies the same billing math to mixed team roles", () => {
@@ -559,7 +578,7 @@ function makeDbMock(count: number) {
   return { select, from, where };
 }
 
-describe("countActiveCompanySeats — removed members excluded from billing", () => {
+describe("countActiveCompanySeats — unavailable members excluded from billing", () => {
   it("returns the count the DB reports when all members are active", async () => {
     const db = makeDbMock(3);
     const seats = await countActiveCompanySeats("company-abc", db as any);
@@ -586,6 +605,15 @@ describe("countActiveCompanySeats — removed members excluded from billing", ()
     expect(billedAfter).toBe(billedBefore - 1);
   });
 
+  it("drops billed seat count by 1 when a member is suspended mid-cycle", async () => {
+    const companyId = "company-abc";
+    const seatsBefore = await countActiveCompanySeats(companyId, makeDbMock(4) as any);
+    const seatsAfter = await countActiveCompanySeats(companyId, makeDbMock(3) as any);
+
+    expect(calcBilledSeats(seatsBefore)).toBe(1);
+    expect(calcBilledSeats(seatsAfter)).toBe(0);
+  });
+
   it("invokes the DB query with select/from/where chain", async () => {
     const db = makeDbMock(4);
     await countActiveCompanySeats("company-xyz", db as any);
@@ -608,7 +636,7 @@ describe("countActiveCompanySeats — removed members excluded from billing", ()
 });
 
 // ---------------------------------------------------------------------------
-// refreshSeatsForCompany — seat count updates immediately on member removal
+// refreshSeatsForCompany — seat count updates immediately when access is revoked
 // ---------------------------------------------------------------------------
 
 /**
@@ -652,7 +680,7 @@ function makeStripeMock(subStatus = "active", existingSeatItemId: string | null 
   };
 }
 
-describe("refreshSeatsForCompany — seat count corrects on member removal without a webhook", () => {
+describe("refreshSeatsForCompany — seat count corrects when access is revoked without a webhook", () => {
   const COMPANY_ID = "company-abc";
   const SUB_ID = "sub_test_001";
 
@@ -714,6 +742,31 @@ describe("refreshSeatsForCompany — seat count corrects on member removal witho
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
     expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith("si_seat_001", { quantity: 1 });
+  });
+
+  it("deletes the paid seat immediately when suspension drops active headcount to the included threshold", async () => {
+    const db = makeOwnerDbMock(SUB_ID);
+    const stripeMock = makeStripeMock();
+    const getActiveUserCount = vi.fn().mockResolvedValue(3);
+
+    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
+
+    expect(getActiveUserCount).toHaveBeenCalledWith(COMPANY_ID);
+    expect(stripeMock.subscriptionItems.del).toHaveBeenCalledWith("si_seat_001");
+  });
+
+  it("restores a paid seat immediately when reactivation raises active headcount above the included threshold", async () => {
+    const db = makeOwnerDbMock(SUB_ID);
+    const stripeMock = makeStripeMock("active", null);
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
+
+    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
+
+    expect(getActiveUserCount).toHaveBeenCalledWith(COMPANY_ID);
+    expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
+      { subscription: SUB_ID, price: TEST_SEAT_PRICE_ID, quantity: 1 },
+      undefined,
+    );
   });
 
   it("retrieves the subscription using the owner's stripeSubscriptionId", async () => {

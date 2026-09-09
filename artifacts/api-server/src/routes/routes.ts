@@ -1132,7 +1132,9 @@ export async function recoverIncompleteStripeEvents(olderThanMinutes: number): P
 
 export const INCLUDED_TEAM_SEATS = 3;
 export const MAX_RESERVED_COMPANY_SEATS = 50;
-export const BILLABLE_COMPANY_MEMBER_STATUSES = ['active', 'suspended'] as const;
+export const BILLABLE_COMPANY_MEMBER_STATUSES = ['active'] as const;
+export const ACCEPTED_COMPANY_MEMBER_STATUSES = ['active', 'suspended'] as const;
+export const REMOVABLE_COMPANY_MEMBER_STATUSES = ['active', 'suspended'] as const;
 export const TEAM_MEMBER_ROLES = ['tech', 'admin', 'manager', 'dispatcher'] as const;
 export const ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES = ['tech', 'manager', 'dispatcher'] as const;
 
@@ -1140,8 +1142,26 @@ export function isBillableCompanyMemberStatus(status: string | null | undefined)
   return BILLABLE_COMPANY_MEMBER_STATUSES.includes(status as typeof BILLABLE_COMPANY_MEMBER_STATUSES[number]);
 }
 
+export function isRemovableCompanyMemberStatus(status: string | null | undefined): boolean {
+  return REMOVABLE_COMPANY_MEMBER_STATUSES.includes(status as typeof REMOVABLE_COMPANY_MEMBER_STATUSES[number]);
+}
+
 export function isReservedCompanyMemberStatus(status: string | null | undefined): boolean {
   return status !== 'removed';
+}
+
+export function buildTeamSeatSummary(
+  acceptedTeamCount: number,
+  billableTeamCount: number,
+  reservedTeamCount: number,
+  pendingInviteCount: number,
+) {
+  return {
+    acceptedTeamCount,
+    reservedTeamCount,
+    pendingInviteCount,
+    billedTeamSeatCount: calcBilledSeats(billableTeamCount),
+  };
 }
 
 export function calcBilledSeats(totalSeats: number): number {
@@ -1160,6 +1180,34 @@ export async function countActiveCompanySeats(
       inArray(users.status as any, [...BILLABLE_COMPANY_MEMBER_STATUSES]),
     ));
   return rows[0]?.count ?? 1;
+}
+
+export async function countAcceptedCompanyMembers(
+  companyId: string,
+  dbInstance: any,
+): Promise<number> {
+  const rows = await dbInstance
+    .select({ count: drizzleSql<number>`count(*)::int` })
+    .from(users)
+    .where(and(
+      eq(users.companyId, companyId),
+      inArray(users.status as any, [...ACCEPTED_COMPANY_MEMBER_STATUSES]),
+    ));
+  return rows[0]?.count ?? 1;
+}
+
+export async function countPendingCompanyInvites(
+  companyId: string,
+  dbInstance: any,
+): Promise<number> {
+  const rows = await dbInstance
+    .select({ count: drizzleSql<number>`count(*)::int` })
+    .from(users)
+    .where(and(
+      eq(users.companyId, companyId),
+      eq(users.status as any, 'pending_invite'),
+    ));
+  return rows[0]?.count ?? 0;
 }
 
 export async function countReservedCompanySeats(
@@ -18264,12 +18312,15 @@ Respond as JSON with exactly this shape:
         }
       }
 
-      // Unified team-seat summary. Accepted active/suspended people are
-      // billable; pending invitations reserve capacity but are not billed.
+      // Unified team-seat summary. Active and suspended people are accepted
+      // members, but only active people are billable. Pending invitations
+      // reserve capacity without being accepted or billed.
       let acceptedTeamCount = 0;
+      let billableTeamCount = 0;
       let reservedTeamCount = 0;
       if (user.companyId) {
-        [acceptedTeamCount, reservedTeamCount] = await Promise.all([
+        [acceptedTeamCount, billableTeamCount, reservedTeamCount] = await Promise.all([
+          countAcceptedCompanyMembers(user.companyId, db),
           countActiveCompanySeats(user.companyId, db),
           countReservedCompanySeats(user.companyId, db),
         ]);
@@ -18306,7 +18357,7 @@ Respond as JSON with exactly this shape:
           additionalTeamSeatPrice,
           acceptedTeamCount,
           reservedTeamCount,
-          billedTeamSeatCount: calcBilledSeats(acceptedTeamCount),
+          billedTeamSeatCount: calcBilledSeats(billableTeamCount),
           teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
         },
         divisionCount,
@@ -24850,22 +24901,27 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .limit(limit).offset(offset);
 
       const total = countRow?.total ?? 0;
-      const [acceptedTeamCount, reservedTeamCount] = await Promise.all([
+      const [acceptedTeamCount, billableTeamCount, reservedTeamCount, pendingInviteCount] = await Promise.all([
+        countAcceptedCompanyMembers(adminUser.companyId, db),
         countActiveCompanySeats(adminUser.companyId, db),
         countReservedCompanySeats(adminUser.companyId, db),
+        countPendingCompanyInvites(adminUser.companyId, db),
       ]);
       const [companySettings] = await db.select({
         seatUsageAlertThreshold: companies.seatUsageAlertThreshold,
       }).from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+      const seatSummary = buildTeamSeatSummary(
+        acceptedTeamCount,
+        billableTeamCount,
+        reservedTeamCount,
+        pendingInviteCount,
+      );
       res.json({
         teamMembers,
         total,
         limit,
         offset,
-        acceptedTeamCount,
-        reservedTeamCount,
-        pendingInviteCount: Math.max(0, reservedTeamCount - acceptedTeamCount),
-        billedTeamSeatCount: calcBilledSeats(acceptedTeamCount),
+        ...seatSummary,
         includedTeamSeats: INCLUDED_TEAM_SEATS,
         teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
         seatUsageAlertThreshold: companySettings?.seatUsageAlertThreshold ?? 80,
@@ -24922,6 +24978,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
 
+      // A suspended member remains attached to the company and reserves team
+      // capacity, but is no longer a paid seat. Sync immediately after the
+      // status mutation rather than waiting for a later webhook.
+      try {
+        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member suspension; queued for retry via pending_seat_syncs');
+      }
+
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
@@ -24974,6 +25039,16 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const occurredAt = new Date();
       await db.update(users).set({ status: 'active', updatedAt: occurredAt } as any).where(eq(users.id, userId));
       suspendedUserIds.delete(userId);
+
+      // Reactivation makes the member billable again. Restore the Stripe seat
+      // quantity immediately, while retaining the durable retry checkpoint if
+      // Stripe is temporarily unavailable.
+      try {
+        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member reactivation; queued for retry via pending_seat_syncs');
+      }
+
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
@@ -25213,7 +25288,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         eq(users.companyId, adminUser.companyId),
         roleCondition,
         or(
-          inArray(users.status as any, [...BILLABLE_COMPANY_MEMBER_STATUSES]),
+          inArray(users.status as any, [...REMOVABLE_COMPANY_MEMBER_STATUSES]),
           isNull(users.status as any),
         )
       )).limit(1);

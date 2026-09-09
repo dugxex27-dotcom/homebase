@@ -49,3 +49,4 @@
 - [user-event paste signature](user-event-paste-signature.md) — this workspace’s user-event paste targets the active element; do not pass the input as its first argument
 - [Handoff property transfer authorization](handoff-transfer-authorization.md) — agent attribution is not owner consent; existing-house handoffs require a live owner-created transfer grant
 - [Large storage patch rebases](storage-patch-rebases.md) — storage.ts repeats many method shapes; compile after rebases because low-context patches can land in the wrong class
+- [Team-seat lifecycle status rules](team-seat-lifecycle-status.md) — billing, capacity, and removal eligibility differ; sync seats on both suspension and reactivation
