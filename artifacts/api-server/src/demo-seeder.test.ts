@@ -158,7 +158,7 @@ describe("contractor demo seeder", () => {
     expect(res.body.success).toBe(true);
 
     const { seedResults } = res.body._seedStatus as {
-      seedResults: Record<string, { ok: boolean; healthCheck?: { teamMembers: number }; error?: string }>;
+      seedResults: Record<string, { ok: boolean; healthCheck?: { teamMembers: number }; error?: string; skipped?: boolean }>;
       failedSections: string[];
     };
 
@@ -180,6 +180,13 @@ describe("contractor demo seeder", () => {
       expect(
         result.ok,
         `Section "${section}" failed with: ${result.error ?? "unknown error"}`
+      ).toBe(true);
+    }
+
+    for (const section of ["leads", "conversations", "team", "clients", "jobs", "quotes", "invoices", "proposals"]) {
+      expect(
+        seedResults[section]?.skipped,
+        `Section "${section}" should skip writes on repeat login`,
       ).toBe(true);
     }
   }, 60_000);

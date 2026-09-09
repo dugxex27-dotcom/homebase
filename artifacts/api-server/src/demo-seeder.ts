@@ -844,6 +844,7 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
       company ??= await demoStorage.getCompany(companyId);
       seedResults.company = { ok: true, inserted: 1, expected: 1 };
     } else {
+      log.info({ section: "company", sentinelId: companyId }, "[DEMO] Company already exists — skipping");
       try {
         const [{ count: teamCount }] = await client
           .select({ count: drizzleSql<number>`cast(count(*) as integer)` })
@@ -851,6 +852,7 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
           .where(eq(users.companyId, companyId));
         seedResults.company = {
           ok: true,
+          skipped: true,
           ...({ healthCheck: { teamMembers: teamCount } } as any),
         };
       } catch (hcErr) {
@@ -878,13 +880,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-lead-4", contractorUserId: demoId, companyId, firstName: "Susan", lastName: "Williams", email: "swilliams@email.com", phone: "(206) 555-3456", projectType: "AC Installation", address: "7821 Greenwood Ave N, Seattle, WA 98103", status: "lost", priority: "low", estimatedValue: "4500.00", source: "advertisement", notes: "Got 3 quotes. Went with another company that was $500 cheaper. Price-focused customer.", followUpDate: null },
         { id: "demo-lead-5", contractorUserId: demoId, companyId, firstName: "David", lastName: "Park", email: "dpark@email.com", phone: "(206) 555-7890", projectType: "Plumbing Repair", address: "2156 Queen Anne Ave N, Seattle, WA 98109", status: "won", priority: "high", estimatedValue: "625.00", source: "other", notes: "Emergency leak repair. Job completed successfully last week. Customer very happy.", followUpDate: null },
       ];
-      let leadInserted = 0;
-      for (const lead of leadSeed) {
-        await client.insert(crmLeads).values(lead as any)
-          .onConflictDoNothing({ target: crmLeads.id });
-        leadInserted++;
+      const existingLead = await demoStorage.getCrmLead(leadSeed[0].id);
+      if (existingLead) {
+        log.info({ section: "leads", sentinelId: leadSeed[0].id }, "[DEMO] CRM leads already exist — skipping");
+        seedResults.leads = { ok: true, inserted: 0, expected: leadSeed.length, skipped: true };
+      } else {
+        for (const lead of leadSeed) {
+          await client.insert(crmLeads).values(lead as any)
+            .onConflictDoNothing({ target: crmLeads.id });
+        }
+        seedResults.leads = { ok: true, inserted: leadSeed.length, expected: leadSeed.length };
       }
-      seedResults.leads = { ok: true, inserted: leadInserted, expected: leadSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "leads", error: msg }, "[DEMO] Error seeding CRM leads");
@@ -907,6 +913,8 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
             subscriptionStatus: "active",
           });
         }
+      } else {
+        log.info({ section: "homeowners", sentinelId: sampleHomeownerIds[0] }, "[DEMO] Sample homeowners already exist — skipping");
       }
 
       const existingDemoConvs = await client
@@ -916,6 +924,7 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         .limit(1);
 
       if (existingDemoConvs.length > 0) {
+        log.info({ section: "conversations", sentinelId: existingDemoConvs[0].id }, "[DEMO] Conversations already exist — skipping");
         seedResults.conversations = { ok: true, inserted: 0, expected: 2, skipped: true };
       } else {
         const conv1Id = "demo-conversation-1";
@@ -945,12 +954,16 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-tech-1", email: "jake.reed@precisionhvac.com", firstName: "Jake", lastName: "Reed", companyRole: "tech" },
         { id: "demo-tech-2", email: "priya.nair@precisionhvac.com", firstName: "Priya", lastName: "Nair", companyRole: "dispatcher" },
       ];
-      let teamInserted = 0;
-      for (const tm of teamSeed) {
-        await demoStorage.upsertUser({ id: tm.id, email: tm.email, firstName: tm.firstName, lastName: tm.lastName, role: "contractor", companyId, companyRole: tm.companyRole as any, subscriptionStatus: "grandfathered", zipCode: "98103", canRespondToProposals: false });
-        teamInserted++;
+      const existingTeamMember = await demoStorage.getUser(teamSeed[0].id);
+      if (existingTeamMember) {
+        log.info({ section: "team", sentinelId: teamSeed[0].id }, "[DEMO] Team members already exist — skipping");
+        seedResults.team = { ok: true, inserted: 0, expected: teamSeed.length, skipped: true };
+      } else {
+        for (const tm of teamSeed) {
+          await demoStorage.upsertUser({ id: tm.id, email: tm.email, firstName: tm.firstName, lastName: tm.lastName, role: "contractor", companyId, companyRole: tm.companyRole as any, subscriptionStatus: "grandfathered", zipCode: "98103", canRespondToProposals: false });
+        }
+        seedResults.team = { ok: true, inserted: teamSeed.length, expected: teamSeed.length };
       }
-      seedResults.team = { ok: true, inserted: teamInserted, expected: 3 };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "team", error: msg }, "[DEMO] Error seeding team members");
@@ -967,13 +980,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-client-5", contractorUserId: demoId, companyId, firstName: "Sarah", lastName: "Johansson", email: "sjohansson@email.com", phone: "(206) 555-6655", address: "3301 Eastlake Ave E", city: "Seattle", state: "WA", postalCode: "98102", tags: ["HVAC"], preferredContactMethod: "email", totalJobsCompleted: 1, totalRevenue: "325.00", notes: "First-time customer. Furnace tune-up. Was happy with service — asked about our annual plans.", lastServiceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
         { id: "demo-client-6", contractorUserId: demoId, companyId, firstName: "Tony", lastName: "Vasquez", email: "tvasquez@email.com", phone: "(206) 555-7766", address: "912 E Union St", city: "Seattle", state: "WA", postalCode: "98122", tags: ["Plumbing", "HVAC"], preferredContactMethod: "phone", totalJobsCompleted: 4, totalRevenue: "2900.00", notes: "Rental property owner. 3-unit building. Good steady customer.", lastServiceDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000) },
       ];
-      let clientInserted = 0;
-      for (const c of clientSeed) {
-        await client.insert(crmClients).values(c as any)
-          .onConflictDoNothing({ target: crmClients.id });
-        clientInserted++;
+      const existingClient = await demoStorage.getCrmClient(clientSeed[0].id);
+      if (existingClient) {
+        log.info({ section: "clients", sentinelId: clientSeed[0].id }, "[DEMO] CRM clients already exist — skipping");
+        seedResults.clients = { ok: true, inserted: 0, expected: clientSeed.length, skipped: true };
+      } else {
+        for (const c of clientSeed) {
+          await client.insert(crmClients).values(c as any)
+            .onConflictDoNothing({ target: crmClients.id });
+        }
+        seedResults.clients = { ok: true, inserted: clientSeed.length, expected: clientSeed.length };
       }
-      seedResults.clients = { ok: true, inserted: clientInserted, expected: 6 };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "clients", error: msg }, "[DEMO] Error seeding CRM clients");
@@ -999,13 +1016,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-job-11", contractorUserId: demoId, companyId, clientId: "demo-client-6", title: "Three-Unit Boiler Preventive Service — Tony Vasquez", description: "Annual boiler cleaning, combustion analysis, and zone-valve service for rental property.", serviceType: "HVAC Maintenance", status: "completed", priority: "normal", scheduledDate: new Date(nowMs - 71 * day), scheduledEndDate: new Date(nowMs - 71 * day + 6 * hr), actualStartTime: new Date(nowMs - 71 * day), actualEndTime: new Date(nowMs - 71 * day + 5.5 * hr), actualDuration: 330, estimatedDuration: 360, address: "912 E Union St", city: "Seattle", state: "WA", postalCode: "98122", laborCost: "1720.00", materialsCost: "1200.00", totalCost: "2920.00", completionNotes: "All three zones serviced. Replaced two worn actuators and documented combustion readings." },
         { id: "demo-job-12", contractorUserId: demoId, companyId, clientId: "demo-client-5", title: "Ductless Heat Pump Installation — Sarah Johansson", description: "Install a single-zone cold-climate ductless heat pump for the home office.", serviceType: "HVAC Installation", status: "completed", priority: "normal", scheduledDate: new Date(nowMs - 84 * day), scheduledEndDate: new Date(nowMs - 84 * day + 7 * hr), actualStartTime: new Date(nowMs - 84 * day), actualEndTime: new Date(nowMs - 84 * day + 6.5 * hr), actualDuration: 390, estimatedDuration: 420, address: "3301 Eastlake Ave E", city: "Seattle", state: "WA", postalCode: "98102", laborCost: "1166.45", materialsCost: "1800.00", totalCost: "2966.45", completionNotes: "System pressure-tested, commissioned, and connected to the customer's mobile app." },
       ];
-      let jobInserted = 0;
-      for (const j of jobSeed) {
-        await client.insert(crmJobs).values(j as any)
-          .onConflictDoNothing({ target: crmJobs.id });
-        jobInserted++;
+      const existingJob = await demoStorage.getCrmJob(jobSeed[0].id);
+      if (existingJob) {
+        log.info({ section: "jobs", sentinelId: jobSeed[0].id }, "[DEMO] CRM jobs already exist — skipping");
+        seedResults.jobs = { ok: true, inserted: 0, expected: jobSeed.length, skipped: true };
+      } else {
+        for (const j of jobSeed) {
+          await client.insert(crmJobs).values(j as any)
+            .onConflictDoNothing({ target: crmJobs.id });
+        }
+        seedResults.jobs = { ok: true, inserted: jobSeed.length, expected: jobSeed.length };
       }
-      seedResults.jobs = { ok: true, inserted: jobInserted, expected: 12 };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "jobs", error: msg }, "[DEMO] Error seeding CRM jobs");
@@ -1022,13 +1043,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-quote-3", contractorUserId: demoId, companyId, clientId: "demo-client-2", quoteNumber: "Q-DEMO-0003", title: "Annual Plumbing Inspection & Water Softener — Brian Okafor", description: "Annual whole-home plumbing inspection plus supply and install Pentair water softener.", serviceType: "Plumbing", status: "draft", lineItems: [{ description: "Annual plumbing inspection (14-point)", quantity: 1, unitPrice: "195.00", total: "195.00" }, { description: "Pentair Fleck 5600SXT 48,000 grain water softener", quantity: 1, unitPrice: "780.00", total: "780.00" }, { description: "Labor — softener installation & bypass valve", quantity: 1, unitPrice: "320.00", total: "320.00" }], subtotal: "1295.00", taxRate: "10.10", taxAmount: "130.80", discount: "0.00", total: "1425.80", validUntil: new Date(nowMs + 30 * day), notes: "Draft — pending customer confirmation on softener model preference." },
         { id: "demo-quote-4", contractorUserId: demoId, companyId, clientId: "demo-client-1", quoteNumber: "Q-DEMO-0004", title: "Carrier System Tune-Up & Coil Cleaning — Patricia Nguyen", description: "Extended annual maintenance visit including evaporator and condenser coil cleaning.", serviceType: "HVAC Maintenance", status: "declined", lineItems: [{ description: "Annual HVAC tune-up (standard)", quantity: 1, unitPrice: "145.00", total: "145.00" }, { description: "Evaporator coil cleaning", quantity: 1, unitPrice: "220.00", total: "220.00" }, { description: "Condenser coil cleaning", quantity: 1, unitPrice: "180.00", total: "180.00" }], subtotal: "545.00", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "545.00", validUntil: new Date(nowMs - 5 * day), sentAt: new Date(nowMs - 20 * day), declinedAt: new Date(nowMs - 12 * day), notes: "Customer opted for standard tune-up only this season. Follow up next spring for coil cleaning." },
       ];
-      let quoteInserted = 0;
-      for (const q of quoteSeed) {
-        await client.insert(crmQuotes).values(q as any)
-          .onConflictDoNothing({ target: crmQuotes.id });
-        quoteInserted++;
+      const existingQuote = await demoStorage.getCrmQuote(quoteSeed[0].id);
+      if (existingQuote) {
+        log.info({ section: "quotes", sentinelId: quoteSeed[0].id }, "[DEMO] CRM quotes already exist — skipping");
+        seedResults.quotes = { ok: true, inserted: 0, expected: quoteSeed.length, skipped: true };
+      } else {
+        for (const q of quoteSeed) {
+          await client.insert(crmQuotes).values(q as any)
+            .onConflictDoNothing({ target: crmQuotes.id });
+        }
+        seedResults.quotes = { ok: true, inserted: quoteSeed.length, expected: quoteSeed.length };
       }
-      seedResults.quotes = { ok: true, inserted: quoteInserted, expected: quoteSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "quotes", error: msg }, "[DEMO] Error seeding CRM quotes");
@@ -1051,13 +1076,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-invoice-9", contractorUserId: demoId, companyId, clientId: "demo-client-6", jobId: "demo-job-11", invoiceNumber: "INV-DEMO-0009", title: "Three-Unit Boiler Preventive Service", status: "paid", lineItems: [{ description: "Boiler service and zone repairs", quantity: 1, unitPrice: "2920.00", total: "2920.00" }], subtotal: "2920.00", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "2920.00", amountPaid: "2920.00", amountDue: "0.00", dueDate: new Date(nowMs - 64 * day), sentAt: new Date(nowMs - 70 * day), viewedAt: new Date(nowMs - 69 * day), paidAt: new Date(nowMs - 66 * day), paymentMethod: "check" },
         { id: "demo-invoice-10", contractorUserId: demoId, companyId, clientId: "demo-client-5", jobId: "demo-job-12", invoiceNumber: "INV-DEMO-0010", title: "Ductless Heat Pump Installation", status: "paid", lineItems: [{ description: "Ductless heat pump and installation", quantity: 1, unitPrice: "2966.45", total: "2966.45" }], subtotal: "2966.45", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "2966.45", amountPaid: "2966.45", amountDue: "0.00", dueDate: new Date(nowMs - 77 * day), sentAt: new Date(nowMs - 83 * day), viewedAt: new Date(nowMs - 82 * day), paidAt: new Date(nowMs - 79 * day), paymentMethod: "credit_card" },
       ];
-      let invoiceInserted = 0;
-      for (const inv of invoiceSeed) {
-        await client.insert(crmInvoices).values(inv as any)
-          .onConflictDoNothing({ target: crmInvoices.id });
-        invoiceInserted++;
+      const existingInvoice = await demoStorage.getCrmInvoice(invoiceSeed[0].id);
+      if (existingInvoice) {
+        log.info({ section: "invoices", sentinelId: invoiceSeed[0].id }, "[DEMO] CRM invoices already exist — skipping");
+        seedResults.invoices = { ok: true, inserted: 0, expected: invoiceSeed.length, skipped: true };
+      } else {
+        for (const inv of invoiceSeed) {
+          await client.insert(crmInvoices).values(inv as any)
+            .onConflictDoNothing({ target: crmInvoices.id });
+        }
+        seedResults.invoices = { ok: true, inserted: invoiceSeed.length, expected: invoiceSeed.length };
       }
-      seedResults.invoices = { ok: true, inserted: invoiceInserted, expected: invoiceSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "invoices", error: msg }, "[DEMO] Error seeding CRM invoices");
@@ -1073,13 +1102,17 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-proposal-1", contractorId: demoId, companyId, homeownerId: demoHomeownerId, title: "Furnace Diagnostic & Repair Proposal", description: "Full diagnostic of furnace rattling noise, cleaning, and repair of loose blower components.", serviceType: "HVAC Repair", estimatedCost: "325.00", estimatedDuration: "2-4 hours", scope: "Inspect and diagnose rattling noise, tighten or replace loose blower wheel, clean heat exchanger, verify combustion and airflow, test all safety switches.", materials: ["Blower wheel fasteners", "Furnace filter (1\")", "Electrical contact cleaner"], warrantyPeriod: "1 year on labor", validUntil: new Date(nowMs + 30 * day).toISOString().split("T")[0], status: "sent", customerNotes: "Price includes all labor and standard repair parts. Any major component replacements will be quoted separately before proceeding." },
         { id: "demo-proposal-2", contractorId: demoId, companyId, homeownerId: demoHomeownerId, title: "Smart Thermostat Installation", description: "Supply and install Ecobee SmartThermostat Premium with room sensors.", serviceType: "HVAC Maintenance", estimatedCost: "285.00", estimatedDuration: "1-2 hours", scope: "Remove old thermostat, install Ecobee SmartThermostat Premium, configure Wi-Fi and app integration, install 2 room sensors, test with existing HVAC system.", materials: ["Ecobee SmartThermostat Premium", "Ecobee room sensors (2-pack)", "Mounting screws & wire labels"], warrantyPeriod: "1 year on labor", validUntil: new Date(nowMs + 21 * day).toISOString().split("T")[0], status: "accepted", customerNotes: "Ecobee is compatible with your existing Carrier system. Includes 3-year device warranty from Ecobee." },
       ];
-      let proposalInserted = 0;
-      for (const p of proposalSeed) {
-        await client.insert(proposals).values(p as any)
-          .onConflictDoNothing({ target: proposals.id });
-        proposalInserted++;
+      const existingProposal = await demoStorage.getProposal(proposalSeed[0].id);
+      if (existingProposal) {
+        log.info({ section: "proposals", sentinelId: proposalSeed[0].id }, "[DEMO] Proposals already exist — skipping");
+        seedResults.proposals = { ok: true, inserted: 0, expected: proposalSeed.length, skipped: true };
+      } else {
+        for (const p of proposalSeed) {
+          await client.insert(proposals).values(p as any)
+            .onConflictDoNothing({ target: proposals.id });
+        }
+        seedResults.proposals = { ok: true, inserted: proposalSeed.length, expected: proposalSeed.length };
       }
-      seedResults.proposals = { ok: true, inserted: proposalInserted, expected: proposalSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "proposals", error: msg }, "[DEMO] Error seeding proposals");
@@ -1089,7 +1122,7 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
     // ── Seed summary ──────────────────────────────────────────────────────────
     const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
     const countMismatches = Object.entries(seedResults)
-      .filter(([, v]) => v.ok && v.inserted !== undefined && v.inserted !== v.expected)
+      .filter(([, v]) => v.ok && !v.skipped && v.inserted !== undefined && v.inserted !== v.expected)
       .map(([k, v]) => ({ section: k, inserted: v.inserted, expected: v.expected }));
     if (failedSections.length > 0 || countMismatches.length > 0) {
       log.warn({ seedResults, failedSections, countMismatches }, "[DEMO] Contractor demo seeding completed with issues");
