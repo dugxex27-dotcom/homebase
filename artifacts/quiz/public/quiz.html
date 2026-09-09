@@ -785,6 +785,17 @@
       });
     });
 
+    var quizToken = null;
+
+    window.addEventListener('message', function(event) {
+      if (event.source !== window.parent) return;
+      if (event.origin !== window.location.origin) return;
+      if (event.data && event.data.type === 'mhb_quiz_token') {
+        quizToken = event.data.token;
+      }
+    });
+    window.parent.postMessage({ type: 'mhb_quiz_ready' }, window.location.origin);
+
     function startQuiz() {
       currentIndex = 0;
       totalScore   = 0;
@@ -856,10 +867,11 @@
 
       window.parent.postMessage({
         type: 'mhb_quiz_result',
+        quizToken: quizToken,
         score: pct,
         tier: getTier(pct),
         completedAt: new Date().toISOString()
-      }, '*');
+      }, window.location.origin);
     }
 
     function retakeQuiz() {

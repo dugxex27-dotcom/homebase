@@ -663,13 +663,18 @@ describe("homeowner score and history after fresh login", () => {
 
 describe("quiz demo seeder", () => {
   it("POST /api/quiz-result inserts an anonymous record without errors", async () => {
+    const quizAgent = supertest.agent(app);
+    const tokenRes = await quizAgent.get("/api/quiz-token");
+    expect(tokenRes.status).toBe(200);
+
     const payload = {
+      quizToken: tokenRes.body.token,
       score: 72,
       tier: "Solid Foundation",
       completedAt: new Date().toISOString(),
     };
 
-    const res = await request
+    const res = await quizAgent
       .post("/api/quiz-result")
       .set("Content-Type", "application/json")
       .send(payload)
@@ -689,7 +694,22 @@ describe("quiz demo seeder", () => {
     // userId is nullable for anonymous completions
     expect(Object.prototype.hasOwnProperty.call(record, "userId")).toBe(true);
     expect(Object.prototype.hasOwnProperty.call(record, "createdAt")).toBe(true);
+
+    const replayRes = await quizAgent
+      .post("/api/quiz-result")
+      .set("Content-Type", "application/json")
+      .send(payload);
+    expect(replayRes.status).toBe(403);
   }, 60_000);
+
+  it("POST /api/quiz-result rejects submissions without a browser token", async () => {
+    const res = await request.post("/api/quiz-result").send({
+      score: 72,
+      tier: "Solid Foundation",
+      completedAt: new Date().toISOString(),
+    });
+    expect(res.status).toBe(400);
+  });
 
   it("POST /api/demo-lead accepts a valid lead without errors", async () => {
     const payload = {

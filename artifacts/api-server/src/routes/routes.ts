@@ -10,7 +10,7 @@ import { contractorTeamInvoiceJoinCondition } from "./team-invoice-aggregation";
 import { blockQaOperationalMutations, getQaErrorLogWithBreadcrumbs, getQaErrorLogs, getQaSearchAnalytics, requireQaAdminReadOnly } from "../qa-access";
 import { setupGoogleAuth } from "../googleAuth";
 import { z } from "zod";
-import { randomUUID, randomBytes, createHash, timingSafeEqual } from "crypto";
+import { randomUUID, randomBytes, createHash, createHmac, timingSafeEqual } from "crypto";
 import rateLimit from "express-rate-limit";
 import { PgRateLimitStore } from "../lib/pg-rate-limit-store";
 import { eq, and, ne, inArray, sql as drizzleSql, isNotNull, isNull, desc, or, gt, gte, lte, ilike } from "drizzle-orm";
@@ -254,6 +254,7 @@ declare module 'express-session' {
     user?: any;
     isAuthenticated?: boolean;
     oauthIntent?: string;
+    quizTokenNonce?: string;
   }
 }
 
@@ -325,6 +326,50 @@ const quizLimiter = rateLimit({
   legacyHeaders: false,
   store: new PgRateLimitStore('quiz'),
 });
+
+const QUIZ_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+function signQuizToken(payload: string): string {
+  return createHmac("sha256", process.env.SESSION_SECRET ?? "")
+    .update(payload)
+    .digest("base64url");
+}
+
+function issueQuizToken(session: any): string {
+  const nonce = randomBytes(32).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({
+    nonce,
+    expiresAt: Date.now() + QUIZ_TOKEN_TTL_MS,
+  })).toString("base64url");
+  session.quizTokenNonce = nonce;
+  return `${payload}.${signQuizToken(payload)}`;
+}
+
+function validateQuizToken(token: string, session: any): boolean {
+  const separator = token.lastIndexOf(".");
+  if (separator <= 0) return false;
+
+  const payload = token.slice(0, separator);
+  const signature = token.slice(separator + 1);
+  const expectedSignature = signQuizToken(payload);
+  try {
+    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) return false;
+  } catch {
+    return false;
+  }
+
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return (
+      typeof decoded?.nonce === "string"
+      && decoded.nonce === session?.quizTokenNonce
+      && typeof decoded?.expiresAt === "number"
+      && decoded.expiresAt > Date.now()
+    );
+  } catch {
+    return false;
+  }
+}
 
 // Grandfathered emails that get free unlimited access forever
 const GRANDFATHERED_EMAILS = (process.env.GRANDFATHERED_EMAILS || 'lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,freshandcleangutters@gmail.com').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
@@ -25805,9 +25850,26 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     }
   });
 
+  app.get("/api/quiz-token", (req: any, res: any) => {
+    if (!process.env.SESSION_SECRET) {
+      req.log.error("[QUIZ TOKEN] SESSION_SECRET is not configured");
+      return res.status(503).json({ message: "Quiz submission is temporarily unavailable" });
+    }
+
+    const token = issueQuizToken(req.session);
+    req.session.save((error: unknown) => {
+      if (error) {
+        req.log.error(error, "[QUIZ TOKEN] session save error");
+        return res.status(500).json({ message: "Failed to start quiz session" });
+      }
+      return res.json({ token, expiresInSeconds: QUIZ_TOKEN_TTL_MS / 1000 });
+    });
+  });
+
   app.post("/api/quiz-result", quizLimiter, async (req: any, res: any) => {
     try {
       const bodySchema = z.object({
+        quizToken: z.string().min(1),
         score: z.number().int().min(0).max(100),
         tier: z.enum(["Home Pro", "Solid Foundation", "Needs Attention", "High Risk"]),
         completedAt: z.string().datetime(),
@@ -25819,6 +25881,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "Invalid quiz result data", errors: parsed.error.flatten() });
       }
 
+      if (!validateQuizToken(parsed.data.quizToken, req.session)) {
+        return res.status(403).json({ message: "Invalid or expired quiz token" });
+      }
+
       // Timing check: reject submissions that completed in under 5 seconds (bot-speed)
       if (parsed.data.startedAt) {
         const elapsed = new Date(parsed.data.completedAt).getTime() - new Date(parsed.data.startedAt).getTime();
@@ -25826,6 +25892,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           return res.status(400).json({ message: "Quiz completed too quickly" });
         }
       }
+
+      // Consume and persist the nonce before inserting so the same token cannot
+      // be replayed, including while the database write is still in flight.
+      delete req.session.quizTokenNonce;
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((error: unknown) => error ? reject(error) : resolve());
+      });
 
       const userId: string | null = req.session?.isAuthenticated && req.session?.user?.id
         ? req.session.user.id

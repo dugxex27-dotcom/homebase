@@ -1,8 +1,35 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 export default function Quiz() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const quizTokenRef = useRef<string | null>(null);
+
   useEffect(() => {
+    async function refreshQuizToken() {
+      const response = await fetch('/api/quiz-token', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to start quiz session');
+      const data = await response.json();
+      quizTokenRef.current = data.token;
+      iframeRef.current?.contentWindow?.postMessage({
+        type: 'mhb_quiz_token',
+        token: data.token,
+      }, window.location.origin);
+    }
+
+    refreshQuizToken().catch(() => {});
+
     function handleMessage(event: MessageEvent) {
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'mhb_quiz_ready') {
+        if (quizTokenRef.current) {
+          iframeRef.current?.contentWindow?.postMessage({
+            type: 'mhb_quiz_token',
+            token: quizTokenRef.current,
+          }, window.location.origin);
+        }
+        return;
+      }
       if (!event.data || event.data.type !== 'mhb_quiz_result') return;
       const result = {
         score: event.data.score,
@@ -14,7 +41,9 @@ export default function Quiz() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(result),
+        body: JSON.stringify({ ...result, quizToken: event.data.quizToken }),
+      }).then((response) => {
+        if (response.ok) refreshQuizToken().catch(() => {});
       }).catch(() => {});
     }
     window.addEventListener('message', handleMessage);
@@ -23,6 +52,7 @@ export default function Quiz() {
 
   return (
     <iframe
+      ref={iframeRef}
       src={`${import.meta.env.BASE_URL}quiz.html`}
       style={{
         width: "100%",
