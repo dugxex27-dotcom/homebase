@@ -727,6 +727,9 @@ export default function ContractorDashboard() {
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
   const [pendingCancelInviteMember, setPendingCancelInviteMember] = useState<TeamMember | null>(null);
   const [pendingCancelBoost, setPendingCancelBoost] = useState<ContractorBoostItem | null>(null);
+  const [transferOwnershipModalOpen, setTransferOwnershipModalOpen] = useState(false);
+  const [transferOwnershipNewOwnerId, setTransferOwnershipNewOwnerId] = useState('');
+  const [transferOwnershipError, setTransferOwnershipError] = useState<string | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
@@ -811,6 +814,33 @@ export default function ContractorDashboard() {
       return res.json();
     },
     enabled: isAdminRole && !!typedUser,
+  });
+
+  const transferOwnershipMutation = useMutation({
+    mutationFn: async (newOwnerId: string) => {
+      const res = await fetch('/api/contractor/transfer-ownership', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newOwnerId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to transfer ownership');
+      return data;
+    },
+    onSuccess: () => {
+      setTransferOwnershipModalOpen(false);
+      setTransferOwnershipNewOwnerId('');
+      setTransferOwnershipError(null);
+      toast({
+        title: 'Ownership transferred',
+        description: 'You are now an admin. The new owner has full control.',
+      });
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      setTransferOwnershipError(error.message);
+    },
   });
 
   const acceptedTeamCount = teamData?.acceptedTeamCount ?? null;
@@ -1712,6 +1742,18 @@ export default function ContractorDashboard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: '#0C3460' }}>Team Seats</span>
               <div style={{ display: 'flex', gap: 6 }}>
+                {isOwner && (
+                  <button
+                    onClick={() => {
+                      setTransferOwnershipNewOwnerId('');
+                      setTransferOwnershipError(null);
+                      setTransferOwnershipModalOpen(true);
+                    }}
+                    style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #93c5fd', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Transfer ownership
+                  </button>
+                )}
                 {hasBulkImport && (
                   <button
                     onClick={() => { setBulkImportStep('upload'); setBulkImportFile(null); setBulkImportResult(null); setBulkErrorsOpen(false); setBulkImportModalOpen(true); }}
@@ -2443,6 +2485,87 @@ export default function ContractorDashboard() {
             variant="destructive"
             onConfirm={() => { if (pendingCancelInviteMember) cancelInviteMutation.mutate(pendingCancelInviteMember.id); }}
           />
+
+          {/* Transfer Ownership modal (owner only) */}
+          {transferOwnershipModalOpen && (() => {
+            const teamMembers = teamData?.teamMembers ?? [];
+            const eligibleMembers = teamMembers.filter(
+              member => member.status === 'active' && member.id !== (typedUser as any)?.id
+            );
+            const pendingInviteCount = teamMembers.filter(
+              member => member.status === 'pending_invite'
+            ).length;
+            const selectedMember = eligibleMembers.find(
+              member => member.id === transferOwnershipNewOwnerId
+            );
+
+            return (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+                <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>
+                    Transfer Ownership
+                  </div>
+                  <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16, lineHeight: 1.5 }}>
+                    Choose an active team member to become the new company owner. You will become an admin.
+                  </p>
+                  {eligibleMembers.length === 0 ? (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 14px', fontSize: 13, color: '#92400e', marginBottom: 16 }}>
+                      {pendingInviteCount > 0
+                        ? `You have ${pendingInviteCount} pending invite${pendingInviteCount === 1 ? '' : 's'}. Once a member accepts their invite, you can transfer ownership to them.`
+                        : 'There are no other active members to transfer ownership to. Invite and activate a team member first.'}
+                    </div>
+                  ) : (
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                        New owner <span style={{ color: '#dc2626' }}>*</span>
+                      </label>
+                      <select
+                        value={transferOwnershipNewOwnerId}
+                        onChange={event => setTransferOwnershipNewOwnerId(event.target.value)}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 13, background: '#fff', outline: 'none', boxSizing: 'border-box' }}
+                      >
+                        <option value="">— Select a member —</option>
+                        {eligibleMembers.map(member => (
+                          <option key={member.id} value={member.id}>
+                            {[member.firstName, member.lastName].filter(Boolean).join(' ') || member.email}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {selectedMember && (
+                    <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 12px', fontSize: 13, color: '#1e40af', marginBottom: 14, lineHeight: 1.4 }}>
+                      <strong>{[selectedMember.firstName, selectedMember.lastName].filter(Boolean).join(' ') || selectedMember.email}</strong> will become the company owner.
+                    </div>
+                  )}
+                  {transferOwnershipError && (
+                    <div style={{ background: '#fff1f2', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 13, color: '#b91c1c' }}>
+                      {transferOwnershipError}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => {
+                        setTransferOwnershipModalOpen(false);
+                        setTransferOwnershipNewOwnerId('');
+                        setTransferOwnershipError(null);
+                      }}
+                      style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: 13 }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => transferOwnershipMutation.mutate(transferOwnershipNewOwnerId)}
+                      disabled={!transferOwnershipNewOwnerId || transferOwnershipMutation.isPending}
+                      style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: transferOwnershipNewOwnerId ? '#1d4ed8' : '#93c5fd', color: '#fff', fontSize: 13, fontWeight: 600, cursor: transferOwnershipNewOwnerId ? 'pointer' : 'not-allowed' }}
+                    >
+                      {transferOwnershipMutation.isPending ? 'Transferring…' : 'Transfer Ownership'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {resentInviteResult && (
             <div

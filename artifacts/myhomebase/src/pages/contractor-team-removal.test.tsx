@@ -27,6 +27,22 @@ const soleAdmin = {
   totalBilled: "0",
 };
 
+const pendingInvite = {
+  id: "pending-1",
+  email: "pending@example.com",
+  firstName: "Pat",
+  lastName: "Pending",
+  companyRole: "admin",
+  status: "pending_invite",
+  lastLoginAt: null,
+  inviteExpiresAt: null,
+  lastInviteSentAt: null,
+  createdAt: null,
+  invoiceCount: 0,
+  mostRecentJobDate: null,
+  totalBilled: "0",
+};
+
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({ user: owner }),
 }));
@@ -77,11 +93,11 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
       if (path === "/api/contractor/team") {
         return {
           data: {
-            teamMembers: [soleAdmin],
-            acceptedTeamCount: 2,
+            teamMembers: [soleAdmin, pendingInvite],
+            acceptedTeamCount: 1,
             reservedTeamCount: 2,
-            pendingInviteCount: 0,
-            billedTeamSeatCount: 2,
+            pendingInviteCount: 1,
+            billedTeamSeatCount: 1,
             includedTeamSeats: 3,
             teamSeatLimit: 10,
             seatUsageAlertThreshold: 80,
@@ -157,5 +173,16 @@ describe("contractor team member removal", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Promote another member to admin first, then try again.",
     );
+  });
+
+  it("explains that pending invites cannot receive ownership yet", () => {
+    render(<ContractorDashboard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Transfer ownership" }));
+
+    expect(screen.getByText(
+      "You have 1 pending invite. Once a member accepts their invite, you can transfer ownership to them.",
+    )).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Transfer Ownership" })).toBeDisabled();
   });
 });

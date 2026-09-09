@@ -25495,7 +25495,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
         action: 'Ownership transferred',
         userId: freshActor.id,
-        userEmail: freshActor.email,
+        userEmail: freshActor.email ?? undefined,
         userRole: 'owner',
         targetUserId: result.targetUser.id,
         targetResourceType: 'team_member',
