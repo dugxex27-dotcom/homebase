@@ -25436,7 +25436,28 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .where(eq(companies.id, companyId)).limit(1);
       const recipientName = [result.targetUser.firstName, result.targetUser.lastName].filter(Boolean).join(' ') || 'there';
       const previousOwnerName = [freshActor.firstName, freshActor.lastName].filter(Boolean).join(' ') || freshActor.email || 'the previous owner';
+      const newOwnerName = [result.targetUser.firstName, result.targetUser.lastName].filter(Boolean).join(' ') || result.targetUser.email || result.targetUser.id;
       const companyName = company?.name || 'your company';
+
+      await auditLogger.log({
+        eventType: AuditEventTypes.ADMIN_USER_MODIFY,
+        action: 'Ownership transferred',
+        userId: freshActor.id,
+        userEmail: freshActor.email,
+        userRole: 'owner',
+        targetUserId: result.targetUser.id,
+        targetResourceType: 'team_member',
+        targetResourceId: result.targetUser.id,
+        actionDetails: {
+          teamAction: 'ownership_transferred',
+          companyId,
+          actorName: previousOwnerName,
+          actorRole: 'owner',
+          targetName: newOwnerName,
+        },
+        req,
+        severity: 'warning' as any,
+      });
 
       if (result.targetUser.email) {
         try {

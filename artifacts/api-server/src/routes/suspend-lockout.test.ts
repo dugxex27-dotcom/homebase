@@ -812,6 +812,27 @@ describe("serializeTeamAuditLogEntry", () => {
     expect(result).toEqual(expect.objectContaining({ reason: "Repeated policy violation" }));
     expect(result).not.toHaveProperty("targetName");
   });
+
+  it("preserves ownership transfer details for the company-wide audit response", () => {
+    const transferLog = {
+      ...log,
+      id: "audit-transfer",
+      reason: null,
+      actionDetails: {
+        targetName: "New Owner",
+        teamAction: "ownership_transferred",
+        actorName: "Previous Owner",
+        actorRole: "owner",
+      },
+    };
+
+    expect(serializeTeamAuditLogEntry(transferLog, true)).toEqual(expect.objectContaining({
+      targetName: "New Owner",
+      teamAction: "ownership_transferred",
+      actorName: "Previous Owner",
+      actorRole: "owner",
+    }));
+  });
 });
 
 // ---------------------------------------------------------------------------

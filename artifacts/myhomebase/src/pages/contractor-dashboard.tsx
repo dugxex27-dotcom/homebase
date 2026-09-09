@@ -381,7 +381,7 @@ function MemberAuditHistory({ memberId }: { memberId: string }) {
 interface CompanyAuditEntry {
   id: string;
   targetName: string | null;
-  teamAction: 'suspended' | 'reactivated' | 'removed' | null;
+  teamAction: 'suspended' | 'reactivated' | 'removed' | 'ownership_transferred' | null;
   actorName: string | null;
   actorRole: string | null;
   reason: string | null;
@@ -407,17 +407,19 @@ function TeamAuditLog({
   const [actionFilter, setActionFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
 
-  const actionMeta: Record<string, { label: string; color: string; bg: string }> = {
-    suspended:   { label: 'Suspended',   color: '#dc2626', bg: '#fee2e2' },
-    reactivated: { label: 'Reactivated', color: '#09694a', bg: '#f0faf4' },
-    removed:     { label: 'Removed',     color: '#7c3aed', bg: '#ede9fe' },
+  const actionMeta: Record<string, { label: string; color: string; bg: string; icon?: React.ComponentType<{ size?: number }> }> = {
+    suspended:            { label: 'Suspended',             color: '#dc2626', bg: '#fee2e2' },
+    reactivated:          { label: 'Reactivated',           color: '#09694a', bg: '#f0faf4' },
+    removed:              { label: 'Removed',               color: '#7c3aed', bg: '#ede9fe' },
+    ownership_transferred: { label: 'Ownership transferred', color: '#b45309', bg: '#fef3c7', icon: UserCog },
   };
 
-  const actionTypes = ['suspended', 'reactivated', 'removed'] as const;
+  const actionTypes = ['suspended', 'reactivated', 'removed', 'ownership_transferred'] as const;
   const actionCounts = {
     suspended: entries.filter(entry => entry.teamAction === 'suspended').length,
     reactivated: entries.filter(entry => entry.teamAction === 'reactivated').length,
     removed: entries.filter(entry => entry.teamAction === 'removed').length,
+    ownership_transferred: entries.filter(entry => entry.teamAction === 'ownership_transferred').length,
   };
 
   const roleMeta: Record<string, { label: string; color: string; bg: string; borderColor: string }> = {
@@ -612,13 +614,14 @@ function TeamAuditLog({
           {fromDate || toDate
             ? 'No events fall within this date range.'
             : entries.length === 0
-              ? 'No team actions recorded yet. Suspend, reactivate, or remove a member to see events here.'
+              ? 'No team actions recorded yet. Suspend, reactivate, remove, or transfer ownership to see events here.'
               : 'No events match your search.'}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {filtered.map(entry => {
             const meta = actionMeta[entry.teamAction ?? ''] ?? { label: entry.teamAction ?? 'Action', color: '#64748b', bg: '#f1f5f9' };
+            const ActionIcon = meta.icon;
             const dateStr = format(new Date(entry.createdAt), 'MMM d, yyyy');
             return (
               <div key={entry.id} style={{
@@ -638,7 +641,11 @@ function TeamAuditLog({
                   fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
                   borderRadius: 5, padding: '2px 8px',
                   background: meta.bg, color: meta.color, whiteSpace: 'nowrap',
-                }}>{meta.label}</span>
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}>
+                  {ActionIcon && <ActionIcon size={11} />}
+                  {meta.label}
+                </span>
                 <div style={{ fontSize: 11, color: '#64748b', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>
                   by {entry.actorName ?? '—'}
                   {entry.actorRole && (
