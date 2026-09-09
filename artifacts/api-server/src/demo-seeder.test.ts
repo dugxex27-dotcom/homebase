@@ -13,6 +13,10 @@
 
 import { vi, describe, it, expect, beforeAll, afterAll } from "vitest";
 
+const { sendDemoSeedingFailureAlertMock } = vi.hoisted(() => ({
+  sendDemoSeedingFailureAlertMock: vi.fn().mockResolvedValue(undefined),
+}));
+
 // --- mock replitAuth before any app import ----------------------------------
 // setupAuth normally does OIDC discovery (network call) + pg session store.
 // We replace it with a lightweight memory-session equivalent so the test
@@ -60,8 +64,13 @@ vi.mock("./replitAuth", async () => {
 vi.mock("./email-service", () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
   emailService: new Proxy(
-    {},
-    { get: () => vi.fn().mockResolvedValue(undefined) }
+    { sendDemoSeedingFailureAlert: sendDemoSeedingFailureAlertMock },
+    {
+      get: (target, property) =>
+        property in target
+          ? target[property as keyof typeof target]
+          : vi.fn().mockResolvedValue(undefined),
+    }
   ),
 }));
 
@@ -462,7 +471,7 @@ describe("agent demo seeder", () => {
     }
   }, 60_000);
 
-  it("is idempotent: running the seeder twice leaves no duplicate rows", async () => {
+  it("repeated login runs health-checks and leaves no duplicate rows", async () => {
     const DEMO_AGENT_ID = "demo-agent-permanent-id";
 
     // Expected stable counts based on referralData in the seeder
@@ -471,18 +480,56 @@ describe("agent demo seeder", () => {
     const EXPECTED_REFERRALS = 8;
     const EXPECTED_CYCLE_EVENTS = 22;
 
-    // Run the seeder a second time (first run already done in the test above)
-    const res = await request
+    const firstRes = await request
       .post("/api/auth/agent-demo-login")
       .set("Content-Type", "application/json")
       .timeout(30_000);
 
-    expect(res.status).toBe(200);
-    expect(res.body._seedStatus.seedResults).toEqual({
-      "agent-referral-users": { ok: true, skipped: true },
-      "agent-referral-records": { ok: true, skipped: true },
-      "agent-cycle-events": { ok: true, skipped: true },
+    expect(firstRes.status).toBe(200);
+
+    const secondRes = await request
+      .post("/api/auth/agent-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(secondRes.status).toBe(200);
+    expect(secondRes.body.success).toBe(true);
+
+    const { seedResults } = secondRes.body._seedStatus as {
+      seedResults: Record<string, {
+        ok: boolean;
+        skipped?: boolean;
+        healthCheck?: Record<string, unknown>;
+        error?: string;
+      }>;
+    };
+
+    expect(seedResults["agent-referral-users"]).toMatchObject({
+      ok: true,
+      skipped: true,
+      healthCheck: { referralUsers: EXPECTED_REFERRALS },
     });
+    expect(seedResults["agent-referral-records"]).toMatchObject({
+      ok: true,
+      skipped: true,
+      healthCheck: { referralRecords: EXPECTED_REFERRALS },
+    });
+    expect(seedResults["agent-cycle-events"]).toMatchObject({
+      ok: true,
+      skipped: true,
+      healthCheck: { cycleEvents: EXPECTED_CYCLE_EVENTS },
+    });
+
+    for (const [section, result] of Object.entries(seedResults)) {
+      expect(
+        result.ok,
+        `Section "${section}" failed with: ${result.error ?? "unknown error"}`,
+      ).toBe(true);
+      expect(
+        result.healthCheck,
+        `Section "${section}" should include a repeat-login healthCheck`,
+      ).toBeDefined();
+    }
 
     // Count affiliate_referrals rows owned by the demo agent
     const [{ referralCount }] = await db
@@ -500,6 +547,49 @@ describe("agent demo seeder", () => {
       .where(like(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_%"));
 
     expect(Number(cycleCount)).toBe(EXPECTED_CYCLE_EVENTS);
+  }, 60_000);
+
+  it("alerts when repeat-login health-checks find missing data", async () => {
+    const DEMO_AGENT_ID = "demo-agent-permanent-id";
+    const missingInvoiceId = "demo_inv_agent-referral-1_1";
+
+    await db
+      .delete(subscriptionCycleEvents)
+      .where(eq(subscriptionCycleEvents.stripeInvoiceId, missingInvoiceId));
+    sendDemoSeedingFailureAlertMock.mockClear();
+
+    try {
+      const res = await request
+        .post("/api/auth/agent-demo-login")
+        .set("Content-Type", "application/json")
+        .timeout(30_000);
+
+      expect(res.status).toBe(200);
+      expect(res.body._seedStatus.failedSections).toContain("agent-cycle-events");
+      expect(
+        res.body._seedStatus.seedResults["agent-cycle-events"],
+      ).toMatchObject({
+        ok: false,
+        expected: 22,
+        healthCheck: { cycleEvents: 21 },
+      });
+      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalledWith(
+        DEMO_AGENT_ID,
+        ["agent-cycle-events"],
+        expect.objectContaining({
+          "agent-cycle-events": expect.objectContaining({ ok: false }),
+        }),
+      );
+    } finally {
+      await db
+        .delete(affiliateReferrals)
+        .where(eq(affiliateReferrals.agentId, DEMO_AGENT_ID));
+      const restoreRes = await request
+        .post("/api/auth/agent-demo-login")
+        .set("Content-Type", "application/json")
+        .timeout(30_000);
+      expect(restoreRes.status).toBe(200);
+    }
   }, 60_000);
 });
 

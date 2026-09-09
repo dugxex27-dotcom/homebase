@@ -1180,14 +1180,74 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     .limit(1);
 
   if (existingReferral.length > 0) {
-    return {
-      user,
-      seedResults: {
-        "agent-referral-users": { ok: true, skipped: true },
-        "agent-referral-records": { ok: true, skipped: true },
-        "agent-cycle-events": { ok: true, skipped: true },
+    const referralUserIds = Array.from(
+      { length: 8 },
+      (_, index) => `agent-referral-${index + 1}`,
+    );
+    const expectedReferralUsers = referralUserIds.length;
+    const expectedReferralRecords = referralUserIds.length;
+    const expectedCycleEvents = 22;
+    const [
+      [{ count: referralUsers }],
+      [{ count: referralRecords }],
+      [{ count: cycleEvents }],
+    ] = await Promise.all([
+      db
+        .select({ count: drizzleSql<number>`count(*)` })
+        .from(users)
+        .where(inArray(users.id, referralUserIds)),
+      db
+        .select({ count: drizzleSql<number>`count(*)` })
+        .from(affiliateReferrals)
+        .where(eq(affiliateReferrals.agentId, demoId)),
+      db
+        .select({ count: drizzleSql<number>`count(*)` })
+        .from(subscriptionCycleEvents)
+        .where(inArray(subscriptionCycleEvents.userId, referralUserIds)),
+    ]);
+
+    const referralUserCount = Number(referralUsers);
+    const referralRecordCount = Number(referralRecords);
+    const cycleEventCount = Number(cycleEvents);
+
+    const seedResults: SeedResults = {
+      "agent-referral-users": {
+        ok: referralUserCount === expectedReferralUsers,
+        skipped: true,
+        expected: expectedReferralUsers,
+        healthCheck: { referralUsers: referralUserCount },
+      },
+      "agent-referral-records": {
+        ok: referralRecordCount === expectedReferralRecords,
+        skipped: true,
+        expected: expectedReferralRecords,
+        healthCheck: { referralRecords: referralRecordCount },
+      },
+      "agent-cycle-events": {
+        ok: cycleEventCount === expectedCycleEvents,
+        skipped: true,
+        expected: expectedCycleEvents,
+        healthCheck: { cycleEvents: cycleEventCount },
       },
     };
+
+    const failedSections = Object.entries(seedResults)
+      .filter(([, result]) => !result.ok)
+      .map(([section]) => section);
+    if (failedSections.length > 0) {
+      log.warn(
+        { seedResults, failedSections },
+        "[DEMO] Agent demo repeat-login health-check failed",
+      );
+      emailService
+        .sendDemoSeedingFailureAlert(user.id, failedSections, seedResults)
+        .catch((alertErr: unknown) => {
+          const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+          log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
+        });
+    }
+
+    return { user, seedResults };
   }
 
   const agentUser = await storage.getUser(demoId);
