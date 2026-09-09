@@ -25,6 +25,7 @@ import { vi, describe, it, expect, afterEach, beforeAll, afterAll } from "vitest
 
 const {
   mockGetUserByEmail,
+  mockGetUser,
   mockUpsertUser,
   mockSeedHomeowner,
   mockSeedContractor,
@@ -61,6 +62,7 @@ const {
 
   return {
     mockGetUserByEmail: vi.fn(),
+    mockGetUser: vi.fn(),
     mockUpsertUser: vi.fn(),
     mockSeedHomeowner: vi.fn(),
     mockSeedContractor: vi.fn(),
@@ -235,6 +237,7 @@ vi.mock("../storage", async () => {
   return {
     storage: createStorageMock({
       getUserByEmail: mockGetUserByEmail,
+      getUser: mockGetUser,
       upsertUser: mockUpsertUser,
     }),
   };
@@ -307,6 +310,7 @@ describe("Demo-login rate limiting", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue(HOMEOWNER_USER);
     mockSeedHomeowner.mockResolvedValue({ user: HOMEOWNER_USER, seedResults: {} });
     mockSeedContractor.mockResolvedValue({ user: CONTRACTOR_USER, seedResults: {} });
     mockSeedAgent.mockResolvedValue({ user: AGENT_USER, seedResults: {} });
@@ -348,6 +352,38 @@ describe("Demo-login rate limiting", () => {
     expect(contractorResponse.status).toBe(500);
     expect(homeownerResponse.body.message).toBe("Failed to create homeowner account");
     expect(contractorResponse.body.message).toBe("Failed to create contractor account");
+  });
+
+  it("keeps the homeowner logged in and reports a failed seeding section", async () => {
+    process.env.NODE_ENV = "test";
+    mockGetUser.mockResolvedValue(HOMEOWNER_USER);
+    mockSeedHomeowner.mockResolvedValueOnce({
+      user: HOMEOWNER_USER,
+      seedResults: {
+        mainHouse: { ok: true },
+        lakeHouse: { ok: true },
+        taskCompletions: { ok: false, error: "simulated storage failure" },
+      },
+    });
+    const app = await buildApp();
+    const agent = request.agent(app);
+
+    try {
+      const loginResponse = await agent
+        .post("/api/auth/homeowner-demo-login")
+        .set("X-Forwarded-For", "203.0.113.15");
+
+      expect(loginResponse.status).toBe(200);
+      expect(loginResponse.body.success).toBe(true);
+      expect(loginResponse.body._seedStatus.failedSections).toEqual(["taskCompletions"]);
+      expect(loginResponse.headers["set-cookie"]).toBeDefined();
+
+      const sessionResponse = await agent.get("/api/user");
+      expect(sessionResponse.status).toBe(200);
+      expect(sessionResponse.body.id).toBe(HOMEOWNER_USER.id);
+    } finally {
+      process.env.NODE_ENV = "production";
+    }
   });
 
   it("throttles sustained rapid demo-login calls from the same IP once the limit is exceeded", async () => {

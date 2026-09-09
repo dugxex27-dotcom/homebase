@@ -603,7 +603,6 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
       const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
       log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
     });
-    throw new Error(`Homeowner demo seeding failed: ${failedSections.join(", ")}`);
   }
 
   return { user, seedResults };
