@@ -101,6 +101,8 @@ import {
   proposals,
   conversations,
   messages,
+  houses,
+  maintenanceLogs,
 } from "@workspace/db";
 import { eq, like, count, inArray } from "drizzle-orm";
 
@@ -344,6 +346,39 @@ describe("homeowner demo seeder", () => {
         `Section "${section}" failed with: ${result.error ?? "unknown error"}`
       ).toBe(true);
     }
+  }, 60_000);
+
+  it("is idempotent: running the seeder twice leaves canonical row counts", async () => {
+    const DEMO_HOMEOWNER_ID = "demo-homeowner-permanent-id";
+    const MAIN_HOUSE_ID = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
+
+    const countFor = async (table: any, condition: any) => {
+      const [result] = await db.select({ value: count() }).from(table).where(condition);
+      return Number(result.value);
+    };
+
+    const before = {
+      houses: await countFor(houses, eq(houses.homeownerId, DEMO_HOMEOWNER_ID)),
+      maintenanceLogs: await countFor(maintenanceLogs, eq(maintenanceLogs.houseId, MAIN_HOUSE_ID)),
+      taskCompletions: await countFor(taskCompletions, eq(taskCompletions.homeownerId, DEMO_HOMEOWNER_ID)),
+    };
+
+    const res = await request
+      .post("/api/auth/homeowner-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+
+    const after = {
+      houses: await countFor(houses, eq(houses.homeownerId, DEMO_HOMEOWNER_ID)),
+      maintenanceLogs: await countFor(maintenanceLogs, eq(maintenanceLogs.houseId, MAIN_HOUSE_ID)),
+      taskCompletions: await countFor(taskCompletions, eq(taskCompletions.homeownerId, DEMO_HOMEOWNER_ID)),
+    };
+
+    expect(after).toEqual(before);
+    expect(after.houses).toBe(1);
   }, 60_000);
 });
 

@@ -11,7 +11,6 @@
  *  - returns { user, seedResults } — session handling stays in the route handler
  */
 
-import { randomUUID } from "crypto";
 import { eq, sql as drizzleSql, inArray } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
@@ -73,9 +72,9 @@ function transactionStorage(client: DemoDb) {
     getUserByEmail: async (email: string) => first(client.select().from(users).where(eq(users.email, email)).limit(1)),
     upsertUser: async (value: any) => first(client.insert(users).values(value).onConflictDoUpdate({ target: users.id, set: value }).returning()),
     getHouses: (homeownerId: string) => client.select().from(houses).where(eq(houses.homeownerId, homeownerId)),
-    createHouse: async (value: any) => first(client.insert(houses).values(value).returning()),
+    createHouse: async (value: any) => first(client.insert(houses).values(value).onConflictDoUpdate({ target: houses.id, set: value }).returning()),
     deleteHouse: (id: string) => client.delete(houses).where(eq(houses.id, id)),
-    createMaintenanceLog: async (value: any) => first(client.insert(maintenanceLogs).values(value).returning()),
+    createMaintenanceLog: async (value: any) => first(client.insert(maintenanceLogs).values(value).onConflictDoNothing({ target: maintenanceLogs.id }).returning()),
     getCompany: async (id: string) => first(client.select().from(companies).where(eq(companies.id, id)).limit(1)),
     createCompany: async (value: any) => first(client.insert(companies).values(value).returning()),
     getCrmLead: async (id: string) => first(client.select().from(crmLeads).where(eq(crmLeads.id, id)).limit(1)),
@@ -197,6 +196,7 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
   if (mainHouseMissing) {
     try {
       const house1 = await demoStorage.createHouse({
+        id: mainHouseId,
         homeownerId: demoId,
         name: "Main Residence",
         address: "2847 Maple Drive, Seattle, WA 98101",
@@ -350,8 +350,12 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
         },
       ];
 
-      for (const rec of serviceRecordsData) {
-        await demoStorage.createMaintenanceLog({ ...logBase, ...rec });
+      for (const [index, rec] of serviceRecordsData.entries()) {
+        await demoStorage.createMaintenanceLog({
+          id: `demo-homeowner-maintenance-${index + 1}`,
+          ...logBase,
+          ...rec,
+        });
       }
 
       const currentYear = new Date().getFullYear();
@@ -374,10 +378,10 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
       ];
 
       await Promise.all(
-        taskCompletionsData.map(async (task) => {
+        taskCompletionsData.map(async (task, index) => {
           const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
           await client.insert(taskCompletions).values({
-            id: randomUUID(),
+            id: `demo-homeowner-baseline-completion-${index + 1}`,
             homeownerId: demoId,
             houseId: house1.id,
             taskId: null,
@@ -392,7 +396,7 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
             actualCost: task.completionMethod === "professional" ? "150.00" : "0.00",
             costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
             notes: task.completionMethod === "diy" ? "Completed as DIY project" : null,
-          });
+          }).onConflictDoNothing({ target: taskCompletions.id });
         })
       );
 
@@ -543,10 +547,10 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
         const tasksToInsert = allDemoTasks.slice(0, needed);
 
         await Promise.all(
-          tasksToInsert.map(async (task) => {
+          tasksToInsert.map(async (task, index) => {
             const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
             await client.insert(taskCompletions).values({
-              id: randomUUID(),
+              id: `demo-homeowner-history-completion-${existingCount + index + 1}`,
               homeownerId: demoId,
               houseId: mainHouse.id,
               taskId: null,
@@ -561,7 +565,7 @@ export async function seedHomeownerDemo(log: DemoLog, client: DemoDb = db): Prom
               actualCost: task.completionMethod === "professional" ? "150.00" : "0.00",
               costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
               notes: task.completionMethod === "diy" ? "Completed as DIY project" : null,
-            });
+            }).onConflictDoNothing({ target: taskCompletions.id });
           })
         );
 
@@ -729,13 +733,13 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
     (_, index) => allDemoTasks[index % allDemoTasks.length],
   );
   await Promise.all(
-    toInsert.map(async (task) => {
+    toInsert.map(async (task, index) => {
       const completedDate = new Date(Date.now() - task.daysAgo * 24 * 60 * 60 * 1000);
       // Place each task in the 12-month scoring window:
       // months >= currentMonth land in last year; earlier months land in current year.
       const taskYear = task.month >= currentMonth ? currentYear - 1 : currentYear;
       await db.insert(taskCompletions).values({
-        id: randomUUID(),
+        id: `demo-homeowner-score-completion-${cnt + index + 1}`,
         homeownerId: demoId,
         houseId: mainHouse.id,
         taskId: null,
@@ -750,7 +754,7 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
         actualCost: task.completionMethod === "professional" ? "150.00" : "0.00",
         costSavings: task.costSavings > 0 ? task.costSavings.toString() : null,
         notes: task.completionMethod === "diy" ? "Completed as DIY project" : null,
-      });
+      }).onConflictDoNothing({ target: taskCompletions.id });
     })
   );
 }
