@@ -327,6 +327,11 @@ describe("agent demo seeder", () => {
       .timeout(30_000);
 
     expect(res.status).toBe(200);
+    expect(res.body._seedStatus.seedResults).toEqual({
+      "agent-referral-users": { ok: true, skipped: true },
+      "agent-referral-records": { ok: true, skipped: true },
+      "agent-cycle-events": { ok: true, skipped: true },
+    });
 
     // Count affiliate_referrals rows owned by the demo agent
     const [{ referralCount }] = await db

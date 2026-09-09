@@ -1089,6 +1089,23 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     user = await ensureDemoAccountFlag(user);
   }
 
+  const existingReferral = await db
+    .select({ referredUserId: affiliateReferrals.referredUserId })
+    .from(affiliateReferrals)
+    .where(eq(affiliateReferrals.agentId, demoId))
+    .limit(1);
+
+  if (existingReferral.length > 0) {
+    return {
+      user,
+      seedResults: {
+        "agent-referral-users": { ok: true, skipped: true },
+        "agent-referral-records": { ok: true, skipped: true },
+        "agent-cycle-events": { ok: true, skipped: true },
+      },
+    };
+  }
+
   const agentUser = await storage.getUser(demoId);
   let agentReferralCode = agentUser?.referralCode || "";
   if (!agentUser?.referralCode) {
