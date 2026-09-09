@@ -26,6 +26,7 @@ const {
   COMPANY_ID,
   mockDbSelect,
   mockDbUpdate,
+  mockDbExecute,
   mockStripeConstructEvent,
   oauthSuspendedUserIds,
 } = vi.hoisted(() => {
@@ -47,6 +48,7 @@ const {
     COMPANY_ID,
     mockDbSelect,
     mockDbUpdate,
+    mockDbExecute: vi.fn().mockResolvedValue({ rows: [] }),
     mockStripeConstructEvent,
     oauthSuspendedUserIds,
   };
@@ -320,6 +322,12 @@ vi.mock("../db", () => ({
     }),
     select: mockDbSelect,
     update: mockDbUpdate,
+    execute: mockDbExecute,
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback({
+      select: mockDbSelect,
+      update: mockDbUpdate,
+      execute: mockDbExecute,
+    })),
     delete: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
   },
 }));
@@ -414,6 +422,21 @@ function configureDbForRemove(targetUser = DEFAULT_TARGET_USER) {
       companyId: COMPANY_ID,
     }]))
     .mockReturnValueOnce(makeSelectChain([targetUser])); // 2: target user
+  mockDbUpdate.mockReturnValue(makeUpdateChain());
+}
+
+function configureDbForSoleOwnerRemoval() {
+  mockDbSelect
+    .mockReturnValueOnce(makeSelectChain([{
+      status: "active",
+      companyRole: "owner",
+      companyId: COMPANY_ID,
+    }]))
+    .mockReturnValueOnce(makeSelectChain([{
+      ...ADMIN_SESSION.user,
+      companyRole: "owner",
+    }]))
+    .mockReturnValueOnce(makeSelectChain([{ cnt: 1 }]));
   mockDbUpdate.mockReturnValue(makeUpdateChain());
 }
 
@@ -670,6 +693,19 @@ describe("DELETE /api/contractor/team/:userId — route-level wiring", () => {
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/removed/i);
     expect(auditLogger.log).toHaveBeenCalledWith(expect.objectContaining({ reason: undefined }));
+  });
+
+  it("blocks removal of the sole owner with actionable guidance and preserves the account", async () => {
+    configureDbForSoleOwnerRemoval();
+
+    const res = await request(app)
+      .delete(`/api/contractor/team/${ADMIN_USER_ID}`)
+      .set("x-test-user", "admin");
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain("Promote another member to admin first");
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+    expect(auditLogger.log).not.toHaveBeenCalled();
   });
 
   it("stores a trimmed optional removal reason in the audit entry", async () => {

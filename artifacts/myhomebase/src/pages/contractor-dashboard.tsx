@@ -714,6 +714,7 @@ export default function ContractorDashboard() {
   const [invoiceHomeownerName, setInvoiceHomeownerName] = useState('');
   const [isExportingInvoices, setIsExportingInvoices] = useState(false);
   const [pendingRemoveMember, setPendingRemoveMember] = useState<TeamMember | null>(null);
+  const [removeMemberError, setRemoveMemberError] = useState<string | null>(null);
   const [pendingSuspendMember, setPendingSuspendMember] = useState<TeamMember | null>(null);
   const [teamActionReason, setTeamActionReason] = useState('');
   const [expandedMemberId, setExpandedMemberId] = useState<string | null>(null);
@@ -1073,10 +1074,19 @@ export default function ContractorDashboard() {
       queryClientInstance.invalidateQueries({ queryKey: ['/api/contractor/team/audit-log'] });
       setPendingSuspendMember(null);
       setPendingRemoveMember(null);
+      setRemoveMemberError(null);
       setTeamActionReason('');
       toast({ title: "Done", description: action === 'suspend' ? "Member suspended" : action === 'reactivate' ? "Member reactivated" : "Member removed" });
     },
-    onError: (err: Error) => {
+    onError: (err: Error, { action }) => {
+      if (action === 'remove') {
+        const isSoleAdminBlock = /only admin|only owner|last admin|last owner/i.test(err.message);
+        setRemoveMemberError(
+          isSoleAdminBlock
+            ? 'This member is the only admin or owner. Promote another member to admin first, then try again.'
+            : err.message,
+        );
+      }
       toast({ title: "Error", description: err.message, variant: "destructive" });
     },
   });
@@ -1607,6 +1617,24 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
+          {removeMemberError && (
+            <div
+              role="alert"
+              data-testid="remove-member-error"
+              style={{
+                border: '1px solid #fecaca',
+                borderRadius: 8,
+                background: '#fef2f2',
+                color: '#991b1b',
+                padding: '10px 12px',
+                marginBottom: 12,
+                fontSize: 13,
+                lineHeight: 1.45,
+              }}
+            >
+              {removeMemberError}
+            </div>
+          )}
           {isTeamNearlyFull && !teamCapacityBannerDismissed && (
             <div
               role="alert"
@@ -1957,7 +1985,10 @@ export default function ContractorDashboard() {
                             </>
                           ) : (
                             <button
-                              onClick={() => setPendingRemoveMember(member)}
+                              onClick={() => {
+                                setRemoveMemberError(null);
+                                setPendingRemoveMember(member);
+                              }}
                               disabled={teamActionMutation.isPending}
                               style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626', cursor: 'pointer' }}
                             >Remove</button>

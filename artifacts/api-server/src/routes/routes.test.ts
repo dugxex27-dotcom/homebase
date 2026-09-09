@@ -2062,11 +2062,11 @@ describe("checkRemoveTeamMemberGuard", () => {
     expect(result!.message).toMatch(/cannot remove yourself/i);
   });
 
-  it("self-removal fires before the last-admin check (even if they are the only admin)", () => {
+  it("gives sole admins actionable promotion guidance when they try to remove themselves", () => {
     const result = checkRemoveTeamMemberGuard(ADMIN_ID, ADMIN_ID, "admin", 1);
     expect(result).not.toBeNull();
     expect(result!.status).toBe(400);
-    expect(result!.message).toMatch(/cannot remove yourself/i);
+    expect(result!.message).toContain("Promote another member to admin first");
   });
 
   // (c) Removing the last admin/owner returns 400

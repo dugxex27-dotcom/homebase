@@ -1747,19 +1747,19 @@ export function checkRemoveTeamMemberGuard(
   targetRole: string | null | undefined,
   activeAdminOwnerCount: number,
 ): { status: number; message: string } | null {
-  if (requestorId === targetId) {
-    return {
-      status: 400,
-      message: 'You cannot remove yourself. Use the leave-company option instead.',
-    };
-  }
   if (
     (targetRole === 'admin' || targetRole === 'owner') &&
     activeAdminOwnerCount <= 1
   ) {
     return {
       status: 400,
-      message: 'Cannot remove the only admin or owner of the company.',
+      message: 'Cannot remove the only admin or owner of the company. Promote another member to admin first.',
+    };
+  }
+  if (requestorId === targetId) {
+    return {
+      status: 400,
+      message: 'You cannot remove yourself. Use the leave-company option instead.',
     };
   }
   return null;
@@ -1994,6 +1994,7 @@ export async function executeRemoveMember(
       companyId: null,
       companyRole: null,
       deletedAt: new Date(),
+      updatedAt: new Date(),
     })
     .where(eq(users.id as any, targetId));
 
@@ -25584,28 +25585,30 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const actorGuardErrRemove = checkActorActiveGuard(actorRowRemove?.status);
       if (actorGuardErrRemove) return res.status(actorGuardErrRemove.status).json({ message: actorGuardErrRemove.message });
       const requesterRole = (actorRowRemove as any)?.companyRole ?? adminUser.companyRole;
-      const roleCondition = requesterRole === 'owner'
-        ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
-        : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
-      const [targetUser] = await db.select().from(users).where(and(
-        eq(users.id, userId),
-        eq(users.companyId, adminUser.companyId),
-        roleCondition,
-        or(
-          inArray(users.status as any, [...REMOVABLE_COMPANY_MEMBER_STATUSES]),
-          isNull(users.status as any),
-        )
-      )).limit(1);
-      if (!targetUser) return res.status(404).json({ message: "Team member not found" });
+      const removeResult = await db.transaction(async (tx) => {
+        // Serialize removals for this company so two concurrent requests cannot
+        // both observe another admin and remove the final two administrators.
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
+        return executeRemoveMember(
+          adminUser.companyId,
+          adminUser.id,
+          requesterRole,
+          userId,
+          tx,
+        );
+      });
+      if (removeResult.outcome === 'unauthorized') {
+        return res.status(403).json({ message: "Only company owners and admins can remove team members" });
+      }
+      if (removeResult.outcome === 'not_found') {
+        return res.status(404).json({ message: "Team member not found" });
+      }
+      if (removeResult.outcome === 'guard_error') {
+        return res.status(removeResult.status).json({ message: removeResult.message });
+      }
+      const targetUser = removeResult.targetUser;
 
       const occurredAt = new Date();
-      await db.update(users).set({
-        status: 'removed',
-        deletedAt: occurredAt,
-        companyId: null,
-        companyRole: null,
-        updatedAt: occurredAt,
-      } as any).where(eq(users.id, userId));
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
