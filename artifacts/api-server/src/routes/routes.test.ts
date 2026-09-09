@@ -41,6 +41,7 @@ import {
   normalizeStripeSubscriptionStatus,
   getContractorSubscriptionAccess,
   hasContractorDivisionAccess,
+  hasContractorPaidFeatureBypass,
 } from "./routes";
 import {
   handleCreateReviewFlag,
@@ -220,6 +221,30 @@ describe("contractor subscription access policy", () => {
       hasActiveSubscription: true,
       needsSubscription: false,
     });
+  });
+});
+
+describe("contractor paid feature bypass policy", () => {
+  const configuredGrandfatheredEmails = ["grandfathered@example.com"];
+
+  it.each([
+    [{ role: "contractor", isDemoAccount: true }, "demo contractor"],
+    [{ role: "contractor", subscriptionStatus: "grandfathered" }, "grandfathered status"],
+    [{ role: "contractor", email: " Grandfathered@Example.com " }, "configured grandfathered email"],
+  ])("keeps the middleware and CRM bypass available for $label", (user, _label) => {
+    expect(
+      hasContractorPaidFeatureBypass(user, configuredGrandfatheredEmails),
+    ).toBe(true);
+  });
+
+  it.each([
+    [{ role: "contractor", subscriptionStatus: "inactive" }, "inactive contractor"],
+    [{ role: "homeowner", isDemoAccount: true }, "non-contractor demo account"],
+    [null, "missing user"],
+  ])("does not bypass paid gates for $label", (user, _label) => {
+    expect(
+      hasContractorPaidFeatureBypass(user, configuredGrandfatheredEmails),
+    ).toBe(false);
   });
 });
 

@@ -375,6 +375,25 @@ function validateQuizToken(token: string, session: any): boolean {
 // Grandfathered emails that get free unlimited access forever
 const GRANDFATHERED_EMAILS = (process.env.GRANDFATHERED_EMAILS || 'lihandyman2008@gmail.com,bryanmendezdesign@gmail.com,freshandcleangutters@gmail.com').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
+export function hasContractorPaidFeatureBypass(
+  user: {
+    role?: string | null;
+    email?: string | null;
+    subscriptionStatus?: string | null;
+    isDemoAccount?: boolean | null;
+  } | null | undefined,
+  grandfatheredEmails: readonly string[] = GRANDFATHERED_EMAILS,
+): boolean {
+  if (!user || user.role !== 'contractor') return false;
+  if (user.isDemoAccount || user.subscriptionStatus === 'grandfathered') return true;
+
+  const normalizedEmail = user.email?.trim().toLowerCase();
+  return Boolean(
+    normalizedEmail
+    && grandfatheredEmails.some((email) => email.trim().toLowerCase() === normalizedEmail),
+  );
+}
+
 const SERVER_OWNED_VERIFICATION_FIELDS = [
   "verificationTier",
   "deviceTimestamp",
@@ -605,13 +624,7 @@ const requireContractorSubscription = async (req: any, res: any, next: any) => {
     // historical reasons, but access no longer depends on that; this check
     // is evaluated first so a demo account never needs a real Stripe
     // subscription or the grandfathered-status coupling below.
-    if (user.isDemoAccount) {
-      return next();
-    }
-    
-    // Check if grandfathered - free unlimited access
-    const isGrandfathered = user.email && GRANDFATHERED_EMAILS.includes(user.email.toLowerCase());
-    if (isGrandfathered || user.subscriptionStatus === 'grandfathered') {
+    if (hasContractorPaidFeatureBypass(user)) {
       return next();
     }
     
@@ -8990,14 +9003,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function hasCrmProAccess(user: any): Promise<boolean> {
     if (!user || user.role !== 'contractor') return false;
 
-    // Demo contractor accounts always have full CRM access — matched only by
-    // the immutable isDemoAccount DB flag, never by user-supplied ID/email content
-    if (user.isDemoAccount) {
-      return true;
-    }
-
-    // Grandfathered users get full CRM access
-    if (user.subscriptionStatus === 'grandfathered') {
+    // Keep feature-level CRM access aligned with the subscription middleware:
+    // demo accounts and both forms of grandfathering bypass paid gates.
+    if (hasContractorPaidFeatureBypass(user)) {
       return true;
     }
     
