@@ -4201,6 +4201,7 @@ export class MemStorage implements IStorage {
       id,
       brand: systemData.brand ?? null,
       model: systemData.model ?? null,
+      serialNumber: systemData.serialNumber ?? null,
       notes: systemData.notes ?? null,
       installationYear: systemData.installationYear ?? null,
       lastServiceYear: systemData.lastServiceYear ?? null,
