@@ -169,6 +169,31 @@ describe("contractor demo seeder", () => {
       ).toBe(true);
     }
   }, 60_000);
+
+  it("shows realistic non-zero CRM dashboard stats immediately after login", async () => {
+    const agent = supertest.agent(app);
+    const loginRes = await agent
+      .post("/api/auth/contractor-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(loginRes.status).toBe(200);
+
+    const dashboardRes = await agent
+      .get("/api/crm/dashboard")
+      .timeout(30_000);
+
+    expect(
+      dashboardRes.status,
+      `GET /api/crm/dashboard failed with ${dashboardRes.status}: ${JSON.stringify(dashboardRes.body)}`
+    ).toBe(200);
+    expect(dashboardRes.body.jobs.total).toBeGreaterThanOrEqual(12);
+    expect(dashboardRes.body.jobs.completed).toBeGreaterThanOrEqual(8);
+    expect(
+      dashboardRes.body.jobs.scheduled + dashboardRes.body.jobs.inProgress
+    ).toBeGreaterThanOrEqual(3);
+    expect(parseFloat(dashboardRes.body.revenue.total)).toBeGreaterThanOrEqual(21_000);
+  }, 60_000);
 });
 
 describe("homeowner demo seeder", () => {
