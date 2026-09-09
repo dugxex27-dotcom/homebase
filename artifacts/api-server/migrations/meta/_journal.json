@@ -127,6 +127,13 @@
       "when": 1788940800002,
       "tag": "20260909-affiliate-payout-escalation-alert",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788940800003,
+      "tag": "20260909-company-active-admin-guard",
+      "breakpoints": true
     }
   ]
 }

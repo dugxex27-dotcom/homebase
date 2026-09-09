@@ -7,7 +7,7 @@ import {
 } from "./routes/routes";
 import { registerOnboardingRoutes } from "./routes/onboardingRoutes";
 import { logger } from "./lib/logger";
-import { runMigrations } from "./migrate";
+import { runMigrations, shouldRunStartupMigrations } from "./migrate";
 import { seedRegionalData } from "./seed-regional-data";
 import {
   DEVELOPMENT_CONTRACTOR_FIXTURE,
@@ -156,7 +156,12 @@ app.get("/info", proxyToSquarespace);
 app.get("/info/*path", proxyToSquarespace);
 
 (async () => {
-  await runMigrations();
+  // Development keeps the migration journal current for local work. Production
+  // schema changes are applied by Replit Publish and must never run as startup
+  // DDL, where a failed migration could prevent the API from opening its port.
+  if (shouldRunStartupMigrations()) {
+    await runMigrations();
+  }
   try {
     await seedRegionalData();
   } catch (err) {

@@ -5,6 +5,12 @@ import ws from 'ws';
 
 neonConfig.webSocketConstructor = ws;
 
+export function shouldRunStartupMigrations(
+  environment: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return environment.NODE_ENV !== "production" && environment.REPLIT_DEPLOYMENT !== "1";
+}
+
 export async function runMigrations() {
   if (!process.env.DATABASE_URL) {
     console.error('DATABASE_URL is not set');
