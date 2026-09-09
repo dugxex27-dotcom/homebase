@@ -591,6 +591,7 @@ export default function ContractorDashboard() {
 
   const [teamSearch, setTeamSearch] = useState('');
   const [teamSort, setTeamSort] = useState<TeamSort>('name');
+  const [teamCapacityBannerDismissed, setTeamCapacityBannerDismissed] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [invoiceTechFilter, setInvoiceTechFilter] = useState('');
@@ -1408,6 +1409,61 @@ export default function ContractorDashboard() {
       {/* ── Team tab ── */}
       {isAdminRole && activeTab === 'team' && (
         <div className="dash-body">
+          {isTeamAtCapacity && !teamCapacityBannerDismissed && (
+            <div
+              role="alert"
+              data-testid="banner-team-capacity"
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                marginBottom: 12,
+                padding: '12px 14px',
+                borderRadius: 10,
+                border: '1px solid #f59e0b',
+                background: '#fffbeb',
+                color: '#92400e',
+              }}
+            >
+              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 1 }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>All team seats are in use</div>
+                <div style={{ fontSize: 12, lineHeight: 1.45, marginTop: 2 }}>
+                  Upgrade your plan for more capacity, or remove a member or pending invitation before adding someone new.{' '}
+                  <Link
+                    href="/contractor-pricing"
+                    data-testid="link-upgrade-team-capacity"
+                    style={{ color: '#92400e', fontWeight: 700, textDecoration: 'underline' }}
+                  >
+                    Upgrade plan
+                  </Link>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTeamCapacityBannerDismissed(true)}
+                aria-label="Dismiss team capacity warning"
+                data-testid="button-dismiss-team-capacity"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  width: 28,
+                  height: 28,
+                  margin: -5,
+                  border: 'none',
+                  borderRadius: 6,
+                  background: 'transparent',
+                  color: '#92400e',
+                  cursor: 'pointer',
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           {/* Unified role-agnostic team-seat summary */}
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
