@@ -16,7 +16,7 @@ import {
   Plus, Phone, MessageCircle, Calendar, Search, Filter, Plug, Copy, Check, Trash2, 
   ExternalLink, Users, Briefcase, FileText, Receipt, LayoutDashboard, Crown, 
   Send, DollarSign, Clock, Edit, Eye, CheckCircle, XCircle, AlertTriangle, User, Home as HomeIcon,
-  RefreshCw, KeyRound
+  RefreshCw, KeyRound, Download
   , Upload
 } from "lucide-react";
 import { useForm } from "react-hook-form";
@@ -830,6 +830,27 @@ export default function ContractorCRMPage() {
       toast({ title: "Error", description: error.message || "Failed to send invoice", variant: "destructive" });
     },
   });
+
+  const downloadInvoicePdf = async (invoice: CrmInvoice) => {
+    try {
+      const response = await apiRequest(`/api/crm/invoices/${invoice.id}/pdf`);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `invoice-${invoice.invoiceNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error.message || "Failed to download invoice PDF",
+        variant: "destructive",
+      });
+    }
+  };
 
   const sendJobNotificationMutation = useMutation({
     mutationFn: async ({ jobId, method }: { jobId: string; method: string }) => {
@@ -2854,6 +2875,11 @@ export default function ContractorCRMPage() {
                             {invoice.dueDate && <span className="text-muted-foreground">Due: {format(new Date(invoice.dueDate), 'MMM d, yyyy')}</span>}
                           </div>
                           <div className="flex gap-2">
+                            {invoice.status !== 'draft' && (
+                              <Button variant="outline" size="sm" onClick={() => downloadInvoicePdf(invoice)} data-testid={`button-download-invoice-pdf-${invoice.id}`}>
+                                <Download className="h-4 w-4 mr-2" />Download PDF
+                              </Button>
+                            )}
                             {invoice.status === 'draft' && (
                               <Button variant="outline" size="sm" onClick={() => openSendDialog('invoice', invoice.id)} disabled={sendInvoiceMutation.isPending} data-testid={`button-send-invoice-${invoice.id}`}>
                                 <Send className="h-4 w-4 mr-2" />Send Invoice

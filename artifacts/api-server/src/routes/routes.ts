@@ -59,6 +59,7 @@ import {
   resubmitMaintenanceEvidence,
 } from "../maintenance-evidence-review";
 import { serializeContractorInvoicesCsv } from "../contractor-invoice-csv";
+import { generateInvoicePdf } from "../invoice-pdf";
 import { handleCreateReviewFlag } from "./review-flag-handler";
 import { parseTeamAuditDateRange } from "./team-audit-date-range";
 import { sendForecastReminder } from "../weather-forecast-reminder-scheduler";
@@ -9979,6 +9980,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating CRM invoice:", error);
       res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  // GET /api/crm/invoices/:id/pdf - Download a finalized invoice
+  app.get('/api/crm/invoices/:id/pdf', isAuthenticated, requireNotSuspended(), async (req: any, res: any) => {
+    try {
+      if (req.session.user.role !== 'contractor') {
+        return res.status(403).json({ message: "Only contractors can access CRM features" });
+      }
+
+      const hasAccess = await hasCrmProAccess(req.session.user);
+      if (!hasAccess) {
+        return res.status(403).json({
+          message: "CRM features require an active Contractor Basic subscription",
+          upgradeRequired: true,
+        });
+      }
+
+      const invoice = await storage.getCrmInvoice(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      if (!canAccessCrmResource(req.session.user, invoice)) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      if (invoice.status === 'draft') {
+        return res.status(409).json({ message: "Draft invoices cannot be downloaded as PDF" });
+      }
+
+      const [client, contractor, company] = await Promise.all([
+        storage.getCrmClient(invoice.clientId),
+        storage.getUser(invoice.contractorUserId),
+        invoice.companyId ? storage.getCompany(invoice.companyId) : Promise.resolve(undefined),
+      ]);
+      if (!client || !contractor) {
+        return res.status(404).json({ message: "Invoice contact information not found" });
+      }
+
+      let logo: Buffer | undefined;
+      if (company?.businessLogo?.startsWith('/public/')) {
+        try {
+          const objectStorage = new ObjectStorageService();
+          const logoPath = company.businessLogo.slice('/public/'.length);
+          const file = await objectStorage.searchPublicObject(logoPath)
+            || await objectStorage.searchPublicObject(`public/${logoPath}`);
+          if (file) {
+            const [contents] = await file.download();
+            logo = contents;
+          }
+        } catch (error) {
+          req.log?.warn({ error, companyId: company.id }, "Could not load company logo for invoice PDF");
+        }
+      }
+
+      const pdf = await generateInvoicePdf({ invoice, client, contractor, company, logo });
+      const safeInvoiceNumber = invoice.invoiceNumber.replace(/[^a-zA-Z0-9._-]/g, '-');
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Length': String(pdf.length),
+        'Content-Disposition': `attachment; filename="invoice-${safeInvoiceNumber}.pdf"`,
+        'Cache-Control': 'private, no-store',
+      });
+      res.send(pdf);
+    } catch (error) {
+      req.log?.error({ error, invoiceId: req.params.id }, "Failed to generate invoice PDF");
+      res.status(500).json({ message: "Failed to generate invoice PDF" });
     }
   });
 
