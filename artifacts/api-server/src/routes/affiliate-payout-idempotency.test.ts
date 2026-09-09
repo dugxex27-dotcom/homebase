@@ -43,6 +43,7 @@ const {
   USER_ID,
   REFERRAL_ID,
   resetAffiliateState,
+  seedPayoutState,
   getAffiliateState,
   mockGetAffiliateReferralByUserId,
   mockAdvanceAffiliateReferralPayment,
@@ -52,6 +53,8 @@ const {
   mockGetUser,
   mockCreateAffiliatePayout,
   mockClaimAffiliatePayoutForTransfer,
+  mockClaimAffiliatePayoutForRetry,
+  mockGetAffiliatePayout,
   mockUpdateAffiliatePayout,
   mockSendAgentPayoutPaidEmail,
 } = vi.hoisted(() => {
@@ -85,6 +88,21 @@ const {
 
   function getAffiliateState() {
     return { referralState, payoutState };
+  }
+
+  function seedPayoutState(overrides: Record<string, any> = {}) {
+    payoutState = {
+      id: "payout-retry-001",
+      affiliateReferralId: REFERRAL_ID,
+      agentId: AGENT_ID,
+      amount: "15.00",
+      status: "failed",
+      errorMessage: "Previous transfer failed",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...overrides,
+    };
+    return { ...payoutState };
   }
 
   const mockGetAffiliateReferralByUserId = vi.fn(async (userId: string) => {
@@ -131,6 +149,13 @@ const {
     return { ...payoutState };
   });
 
+  const mockClaimAffiliatePayoutForRetry = vi.fn(async (id: string) => {
+    if (!payoutState || payoutState.id !== id) return undefined;
+    if (payoutState.status !== "failed" && payoutState.status !== "pending") return undefined;
+    payoutState = { ...payoutState, status: "processing", errorMessage: null };
+    return { ...payoutState };
+  });
+
   const mockUpdateAffiliatePayout = vi.fn(async (id: string, updates: Record<string, any>) => {
     if (!payoutState || payoutState.id !== id) return undefined;
     payoutState = { ...payoutState, ...updates };
@@ -151,6 +176,7 @@ const {
     USER_ID,
     REFERRAL_ID,
     resetAffiliateState,
+    seedPayoutState,
     getAffiliateState,
     mockGetAffiliateReferralByUserId,
     mockAdvanceAffiliateReferralPayment,
@@ -160,6 +186,9 @@ const {
     mockGetUser: vi.fn(),
     mockCreateAffiliatePayout,
     mockClaimAffiliatePayoutForTransfer,
+    mockClaimAffiliatePayoutForRetry,
+    mockGetAffiliatePayout: vi.fn(async (id: string) =>
+      payoutState?.id === id ? { ...payoutState } : undefined),
     mockUpdateAffiliatePayout,
     mockSendAgentPayoutPaidEmail: vi.fn().mockResolvedValue(true),
   };
@@ -204,6 +233,8 @@ vi.mock("../storage", async () => {
       getUser: mockGetUser,
       createAffiliatePayout: mockCreateAffiliatePayout,
       claimAffiliatePayoutForTransfer: mockClaimAffiliatePayoutForTransfer,
+      claimAffiliatePayoutForRetry: mockClaimAffiliatePayoutForRetry,
+      getAffiliatePayout: mockGetAffiliatePayout,
       updateAffiliatePayout: mockUpdateAffiliatePayout,
       getAgentProfile: mockGetAgentProfile,
     }),
@@ -388,6 +419,7 @@ function makeWebhookBody(event: Stripe.Event): Buffer {
 }
 
 const FAKE_SIG = "t=1234567890,v1=fakesignature";
+let sessionRole = "agent";
 
 describe("Agent affiliate payout — duplicate webhook delivery cannot double-pay", () => {
   let app: express.Express;
@@ -400,6 +432,7 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     inFlightWebhookEventIds.clear();
 
     resetAffiliateState();
+    sessionRole = "agent";
 
     mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
     mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
@@ -421,12 +454,14 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
     mockGetUser.mockReset();
     mockCreateAffiliatePayout.mockClear();
     mockClaimAffiliatePayoutForTransfer.mockClear();
+    mockClaimAffiliatePayoutForRetry.mockClear();
+    mockGetAffiliatePayout.mockClear();
     mockUpdateAffiliatePayout.mockClear();
     mockSendAgentPayoutPaidEmail.mockClear();
 
     app = express();
     app.use((req: any, _res, next) => {
-      req.session = { user: { id: AGENT_ID, role: "agent" } };
+      req.session = { user: { id: AGENT_ID, role: sessionRole } };
       next();
     });
     await registerRoutes(app);
@@ -468,6 +503,46 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
       transferId: expect.stringMatching(/^tr_/),
     });
     expect(mockSendAgentPayoutPaidEmail).not.toHaveBeenCalled();
+  });
+
+  it("allows only one of two concurrent admin payout retries to call Stripe", async () => {
+    sessionRole = "admin";
+    const payout = seedPayoutState();
+    let releaseTransfer!: () => void;
+    const transferStarted = new Promise<void>((resolve) => {
+      mockTransfersCreate.mockImplementationOnce(async () => {
+        resolve();
+        await new Promise<void>((release) => {
+          releaseTransfer = release;
+        });
+        return { id: "tr_retry_once" };
+      });
+    });
+
+    const firstRetry = request(app)
+      .post(`/api/admin/affiliate-payouts/${payout.id}/retry`)
+      .then((response) => response);
+    await transferStarted;
+    const secondRetry = await request(app)
+      .post(`/api/admin/affiliate-payouts/${payout.id}/retry`);
+    releaseTransfer();
+    const firstResponse = await firstRetry;
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondRetry.status).toBe(409);
+    expect(mockClaimAffiliatePayoutForRetry).toHaveBeenCalledTimes(2);
+    expect(mockTransfersCreate).toHaveBeenCalledOnce();
+    expect(mockTransfersCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1500,
+        metadata: expect.objectContaining({ payoutId: payout.id }),
+      }),
+      { idempotencyKey: `affiliate-payout-${payout.id}` },
+    );
+    expect(getAffiliateState().payoutState).toMatchObject({
+      status: "paid",
+      stripeTransferId: "tr_retry_once",
+    });
   });
 
   it("exports only paid and pending payouts as a spreadsheet-safe CSV", async () => {

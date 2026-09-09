@@ -13562,6 +13562,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin: retry a failed or pending affiliate payout.
+  app.post("/api/admin/affiliate-payouts/:payoutId/retry", isAuthenticated, async (req: any, res: any) => {
+    const sessionUser = req.session?.user;
+    if (sessionUser?.role !== 'admin') {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    if (!stripe) {
+      return res.status(503).json({ message: "Stripe is not configured" });
+    }
+
+    const payout = await storage.getAffiliatePayout(req.params.payoutId);
+    if (!payout) {
+      return res.status(404).json({ message: "Affiliate payout not found" });
+    }
+
+    const agentProfile = await storage.getAgentProfile(payout.agentId);
+    if (!agentProfile?.stripeConnectAccountId || !agentProfile.stripeOnboardingComplete) {
+      return res.status(409).json({ message: "Agent has not completed Stripe Connect onboarding" });
+    }
+
+    // This conditional UPDATE is the concurrency boundary. Exactly one request
+    // can change a failed/pending row to processing; all concurrent retries get
+    // no row back and must not call Stripe.
+    const claimedPayout = await storage.claimAffiliatePayoutForRetry(payout.id);
+    if (!claimedPayout) {
+      return res.status(409).json({ message: "Payout is already paid or being processed" });
+    }
+
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(Number(claimedPayout.amount) * 100),
+        currency: 'usd',
+        destination: agentProfile.stripeConnectAccountId,
+        metadata: {
+          payoutId: claimedPayout.id,
+          affiliateReferralId: claimedPayout.affiliateReferralId,
+          agentId: claimedPayout.agentId,
+        },
+      }, {
+        idempotencyKey: `affiliate-payout-${claimedPayout.id}`,
+      });
+
+      const paidPayout = await storage.updateAffiliatePayout(claimedPayout.id, {
+        status: 'paid',
+        stripeTransferId: transfer.id,
+        paidAt: new Date(),
+        errorMessage: null,
+      });
+      return res.json(paidPayout);
+    } catch (error: any) {
+      await storage.updateAffiliatePayout(claimedPayout.id, {
+        status: 'failed',
+        errorMessage: error?.message || 'Stripe transfer failed',
+      });
+      req.log?.error(
+        { payoutId: claimedPayout.id },
+        "Affiliate payout retry failed",
+      );
+      return res.status(502).json({ message: "Affiliate payout retry failed" });
+    }
+  });
+
   // Agent verification routes
   app.post("/api/agent/upload-state-id", isAuthenticated, requireNotSuspended(), uploadLimiter, upload.single('stateId'), async (req: any, res: any) => {
     try {

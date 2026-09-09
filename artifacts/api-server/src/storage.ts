@@ -744,6 +744,9 @@ export interface IStorage {
   createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout>;
 
   updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined>;
+  // Atomically claims an admin retry. Only failed/pending payouts are eligible,
+  // so concurrent retry requests cannot both initiate a Stripe transfer.
+  claimAffiliatePayoutForRetry(id: string): Promise<AffiliatePayout | undefined>;
   // Atomically claims a payout for transfer processing: only succeeds if the
   // row is not already 'paid' or 'processing', so a duplicate/replayed
   // webhook delivery can't launch a second Stripe transfer for it.
@@ -6726,6 +6729,14 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async claimAffiliatePayoutForRetry(id: string): Promise<AffiliatePayout | undefined> {
+    const existing = this.affiliatePayoutsMap.get(id);
+    if (!existing || (existing.status !== 'failed' && existing.status !== 'pending')) return undefined;
+    const updated = { ...existing, status: 'processing', errorMessage: null, updatedAt: new Date() } as AffiliatePayout;
+    this.affiliatePayoutsMap.set(id, updated);
+    return updated;
+  }
+
   async claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined> {
     const existing = this.affiliatePayoutsMap.get(id);
     if (!existing || existing.status === 'paid' || existing.status === 'processing') return undefined;
@@ -12372,6 +12383,20 @@ export class DbStorage implements IStorage {
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
     const [updated] = await db.update(affiliatePayouts).set({ ...payout, updatedAt: new Date() }).where(eq(affiliatePayouts.id, id)).returning();
     return updated;
+  }
+
+  async claimAffiliatePayoutForRetry(id: string): Promise<AffiliatePayout | undefined> {
+    const [claimed] = await db.update(affiliatePayouts)
+      .set({ status: 'processing', errorMessage: null, updatedAt: new Date() })
+      .where(and(
+        eq(affiliatePayouts.id, id),
+        or(
+          eq(affiliatePayouts.status, 'failed'),
+          eq(affiliatePayouts.status, 'pending'),
+        ),
+      ))
+      .returning();
+    return claimed;
   }
 
   async claimAffiliatePayoutForTransfer(id: string): Promise<AffiliatePayout | undefined> {
