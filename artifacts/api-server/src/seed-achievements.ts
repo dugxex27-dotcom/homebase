@@ -1,7 +1,8 @@
 import { db } from "./db";
 import { achievementDefinitions } from "@workspace/db";
+import { fileURLToPath } from "url";
 
-interface AchievementDefinition {
+export interface SeedAchievementDefinition {
   achievementKey: string;
   category: string;
   name: string;
@@ -13,7 +14,7 @@ interface AchievementDefinition {
   sortOrder: number;
 }
 
-const achievements: AchievementDefinition[] = [
+export const achievements: SeedAchievementDefinition[] = [
   // SEASONAL MAINTENANCE ACHIEVEMENTS (20 total - expanded from 4)
   // Winter Season (3 tiers)
   {
@@ -856,13 +857,16 @@ async function seedAchievements() {
   }
 }
 
-// Run the seeding
-seedAchievements()
-  .then(() => {
-    console.log("\nSeeding complete!");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("Seeding failed:", error);
-    process.exit(1);
-  });
+// Run the database seeder only when this file is the entry point. MemStorage
+// imports the canonical definitions above to keep dev and database criteria in sync.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  seedAchievements()
+    .then(() => {
+      console.log("\nSeeding complete!");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("Seeding failed:", error);
+      process.exit(1);
+    });
+}

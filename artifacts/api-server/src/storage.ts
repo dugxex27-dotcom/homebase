@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count, ilike, type SQL } from "drizzle-orm";
 import { logger } from "./lib/logger";
+import { achievements as defaultAchievementDefinitions } from "./seed-achievements";
 
 const DEMO_ID_PREFIXES = [
   'demo-',
@@ -1172,7 +1173,7 @@ export class MemStorage implements IStorage {
 
   private achievementsMap: Map<string, Achievement>;
 
-  // achievementDefinitionsMap: starts empty in dev — definitions should be seeded (see task #128)
+  // achievementDefinitionsMap: seeded from the canonical database definitions for dev parity
   private achievementDefinitionsMap: Map<string, AchievementDefinition>;
 
   // userAchievementsMap: starts empty; populated at runtime when achievements are awarded
@@ -1241,6 +1242,7 @@ export class MemStorage implements IStorage {
     this.userAchievementsMap = new Map();
     // Seed dev subscription plans
     this._seedSubscriptionPlans();
+    this._seedAchievementDefinitions();
     
     // DEMO DATA PROTECTION: Only seed demo data if explicitly enabled
     if (isDemoDataEnabled()) {
@@ -1344,6 +1346,20 @@ export class MemStorage implements IStorage {
     ];
     for (const plan of plans) {
       this.subscriptionPlansMap.set(plan.id, plan);
+    }
+  }
+
+  private _seedAchievementDefinitions() {
+    const createdAt = new Date();
+
+    for (const definition of defaultAchievementDefinitions) {
+      const seededDefinition: AchievementDefinition = {
+        ...definition,
+        id: `achievement-definition-${definition.achievementKey}`,
+        isActive: true,
+        createdAt,
+      };
+      this.achievementDefinitionsMap.set(seededDefinition.id, seededDefinition);
     }
   }
 
