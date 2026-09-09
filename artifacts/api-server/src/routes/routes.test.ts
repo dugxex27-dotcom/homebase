@@ -2169,11 +2169,13 @@ describe("checkRemoveTeamMemberGuard", () => {
 });
 
 // ---------------------------------------------------------------------------
-// checkRoleChangeGuard — last-owner/admin demotion guard edge cases
+// checkRoleChangeGuard — role continuity policy edge cases
 //
 // These tests verify the pure guard function used by
-// PATCH /api/contractor/team/:userId.  The guard prevents demoting the last
-// remaining admin/owner to 'tech', which would leave the company ownerless.
+// PATCH /api/contractor/team/:userId. The company must retain an active
+// admin/owner, while manager and dispatcher are optional operational roles:
+// admins/owners retain access to manager workflows and dispatcher has no
+// exclusive workflow that would become unreachable when the role count is zero.
 // ---------------------------------------------------------------------------
 
 describe("checkRoleChangeGuard", () => {
@@ -2222,6 +2224,18 @@ describe("checkRoleChangeGuard", () => {
     const result = checkRoleChangeGuard("tech", "admin", 0);
     expect(result).toBeNull();
   });
+
+  it.each([
+    ["manager", "tech"],
+    ["manager", "dispatcher"],
+    ["dispatcher", "tech"],
+    ["dispatcher", "manager"],
+  ])(
+    "allows the only %s to be reassigned to %s because operational roles have no minimum count",
+    (currentRole, newRole) => {
+      expect(checkRoleChangeGuard(currentRole, newRole, 1)).toBeNull();
+    },
+  );
 
   // (e) Changing admin → admin (no-op role) never blocks
   it("returns null when the role does not change (admin stays admin)", () => {

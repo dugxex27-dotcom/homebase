@@ -1816,6 +1816,12 @@ export function checkRoleChangeGuard(
   targetId?: string,
   requestorId?: string,
 ): { status: number; message: string } | null {
+  // Managers and dispatchers are intentionally not minimum-presence roles.
+  // Managers are optional, division-scoped delegates and every manager workflow
+  // remains available to admins/owners; dispatchers currently have no exclusive
+  // company workflow. They may therefore be reassigned even when they are the
+  // last person with that role. Only administrative continuity is guarded here.
+
   // Guard 1: demoting the last admin/owner to any non-administrative role.
   if (
     newRole !== 'admin' &&

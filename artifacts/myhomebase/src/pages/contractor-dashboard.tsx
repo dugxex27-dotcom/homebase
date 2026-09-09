@@ -2104,6 +2104,9 @@ export default function ContractorDashboard() {
                         <div style={{ marginBottom: 10 }}>
                           <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#374151', marginBottom: 3 }}>Role</label>
                           <div style={{ display: 'flex', gap: 6 }}>
+                            {/* Manager and dispatcher are optional operational roles,
+                                so every role remains selectable; the server only blocks
+                                changes that would remove the final admin/owner. */}
                             {(['tech', 'admin', 'manager', 'dispatcher'] as const).map(role => (
                               <button
                                 key={role}
