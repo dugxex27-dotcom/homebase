@@ -1863,6 +1863,7 @@ export const affiliatePayouts = pgTable("affiliate_payouts", {
   stripeTransferId: varchar("stripe_transfer_id"),
   errorMessage: text("error_message"),
   paidAt: timestamp("paid_at"),
+  escalationAlertSentAt: timestamp("escalation_alert_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [

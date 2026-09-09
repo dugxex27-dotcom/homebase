@@ -172,6 +172,57 @@ export interface AffiliatePayoutProcessedEmailData {
   amount: string;
   transferId: string;
 }
+
+export interface AffiliatePayoutEscalationEmailData {
+  payoutId: string;
+  agentId: string;
+  amount: string;
+  failedAt: Date;
+  errorMessage?: string | null;
+}
+
+export async function sendAffiliatePayoutFailureAdminAlert(
+  data: AffiliatePayoutEscalationEmailData,
+): Promise<boolean> {
+  const ageHours = Math.max(48, Math.floor((Date.now() - data.failedAt.getTime()) / (60 * 60 * 1000)));
+  const amount = `$${Number(data.amount).toFixed(2)}`;
+  const failedAt = data.failedAt.toLocaleString('en-US', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }) + ' UTC';
+  const errorDetail = data.errorMessage
+    ? `<p style="margin: 0;"><strong>Last error:</strong> ${escapeHtml(data.errorMessage)}</p>`
+    : '';
+
+  const html = wrapEmailContent(
+    getEmailHeader('Affiliate payout still failed'),
+    `
+      <p>An affiliate payout has remained in failed status for more than 48 hours and needs admin attention.</p>
+      <div style="background: white; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p style="margin: 0 0 8px;"><strong>Payout ID:</strong> ${escapeHtml(data.payoutId)}</p>
+        <p style="margin: 0 0 8px;"><strong>Agent ID:</strong> ${escapeHtml(data.agentId)}</p>
+        <p style="margin: 0 0 8px;"><strong>Amount:</strong> ${escapeHtml(amount)}</p>
+        <p style="margin: 0 0 8px;"><strong>Failed since:</strong> ${escapeHtml(failedAt)} (${ageHours}+ hours)</p>
+        ${errorDetail}
+      </div>
+      <p>Please review and retry or resolve this payout in the admin dashboard.</p>
+    `,
+  );
+
+  const text = `Affiliate payout ${data.payoutId} for agent ${data.agentId} (${amount}) has remained failed for ${ageHours}+ hours since ${failedAt}. Last error: ${data.errorMessage || 'Not recorded'}. Please review it in the admin dashboard.`;
+
+  return sendEmail({
+    to: defaultAlertEmail,
+    subject: `Escalation: affiliate payout ${data.payoutId} has been failed for 48+ hours`,
+    text,
+    html,
+    deduplication: {
+      key: `affiliate-payout-failure-escalation:${data.payoutId}`,
+      windowMs: 7 * 24 * 60 * 60 * 1000,
+    },
+  });
+}
 export interface TeamMemberAccountChange {
   field: 'Name' | 'Role';
   oldValue: string;
@@ -2000,6 +2051,7 @@ export const emailService = {
   sendInvoiceUpdatedEmail,
   sendInvoicePaymentConfirmationEmail,
   sendAffiliatePayoutProcessedEmail,
+  sendAffiliatePayoutFailureAdminAlert,
   sendTechInviteEmail,
   sendDemoSeedingFailureAlert,
   sendAgentPayoutPaidEmail,
