@@ -641,18 +641,32 @@ describe("countActiveCompanySeats — unavailable members excluded from billing"
 // ---------------------------------------------------------------------------
 
 /**
- * Build a minimal db mock for the owner-lookup query inside
+ * Build a minimal db mock for the subscribed-company-member query inside
  * refreshSeatsForCompany.  The query is:
- *   select({ stripeSubscriptionId }).from(users).where(...).limit(1)
+ *   select({ stripeSubscriptionId, companyRole }).from(users).where(...)
  */
-function makeOwnerDbMock(stripeSubscriptionId: string | null) {
-  const limit = vi.fn().mockResolvedValue(
-    stripeSubscriptionId ? [{ stripeSubscriptionId }] : [],
-  );
-  const where = vi.fn().mockReturnValue({ limit });
+function makeOwnerDbMock(
+  stripeSubscriptionId: string | null,
+  companyRole = "owner",
+) {
+  const rows = stripeSubscriptionId
+    ? [{ stripeSubscriptionId, companyRole }]
+    : [];
+  const where = vi.fn().mockResolvedValue(rows);
   const from = vi.fn().mockReturnValue({ where });
   const select = vi.fn().mockReturnValue({ from });
-  return { select, from, where, limit };
+  return { select, from, where };
+}
+
+function makeSubscribedMembersDbMock(
+  rows: Array<{ stripeSubscriptionId: string; companyRole: string }>,
+) {
+  const where = vi.fn().mockResolvedValue(
+    rows,
+  );
+  const from = vi.fn().mockReturnValue({ where });
+  const select = vi.fn().mockReturnValue({ from });
+  return { select, from, where };
 }
 
 const TEST_SEAT_PRICE_ID = "price_seat_test_shared";
@@ -699,15 +713,28 @@ describe("refreshSeatsForCompany — seat count corrects when access is revoked 
     expect(getActiveUserCount).not.toHaveBeenCalled();
   });
 
-  it("is a no-op when the company owner has no stripeSubscriptionId", async () => {
+  it("warns when no company member has a stripeSubscriptionId", async () => {
     const db = makeOwnerDbMock(null);
     const stripeMock = makeStripeMock();
     const getActiveUserCount = vi.fn();
+    const log = { warn: vi.fn() };
 
-    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
+    await refreshSeatsForCompany(
+      COMPANY_ID,
+      stripeMock as any,
+      db as any,
+      getActiveUserCount,
+      undefined,
+      undefined,
+      log as any,
+    );
 
     expect(stripeMock.subscriptions.retrieve).not.toHaveBeenCalled();
     expect(getActiveUserCount).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalledWith(
+      { companyId: COMPANY_ID },
+      expect.stringContaining("no member with a Stripe subscription"),
+    );
   });
 
   it("is a no-op when the owner's subscription is canceled", async () => {
@@ -778,6 +805,22 @@ describe("refreshSeatsForCompany — seat count corrects when access is revoked 
     await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
 
     expect(stripeMock.subscriptions.retrieve).toHaveBeenCalledWith(SUB_ID);
+  });
+
+  it("keeps billing seats after ownership transfer when the former owner still holds the subscription", async () => {
+    const db = makeSubscribedMembersDbMock([
+      { stripeSubscriptionId: SUB_ID, companyRole: "admin" },
+    ]);
+    const stripeMock = makeStripeMock();
+    const getActiveUserCount = vi.fn().mockResolvedValue(4);
+
+    await refreshSeatsForCompany(COMPANY_ID, stripeMock as any, db as any, getActiveUserCount);
+
+    expect(stripeMock.subscriptions.retrieve).toHaveBeenCalledWith(SUB_ID);
+    expect(stripeMock.subscriptionItems.update).toHaveBeenCalledWith(
+      "si_seat_001",
+      { quantity: 1 },
+    );
   });
 
   it("creates the seat item when none exists yet and accepted headcount exceeds the included 3 people", async () => {
@@ -4046,9 +4089,9 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
           // Odd calls: owner lookup (has .limit())
           return {
             from: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
-              }),
+              where: vi.fn().mockResolvedValue([
+                { stripeSubscriptionId: subId, companyRole: "owner" },
+              ]),
             }),
           };
         }
@@ -4168,9 +4211,9 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
           const subId = selectCount === 1 ? SUB_ID_A : SUB_ID_B;
           return {
             from: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
-              }),
+              where: vi.fn().mockResolvedValue([
+                { stripeSubscriptionId: subId, companyRole: "owner" },
+              ]),
             }),
           };
         }
@@ -4195,20 +4238,19 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
     // COMPANY_B's row was cleared successfully.
     const storageStub = makeStorageStub([COMPANY_A, COMPANY_B], [COMPANY_A]);
 
-    // Build a DB mock whose .where() result is both a Promise (for the seat-count
-    // query that awaits it directly) AND has a .limit() method (for the owner query).
-    // This dual-purpose object satisfies both query shapes with one mock factory.
-    function makeDualWhereChain(subId: string, count = 4) {
-      const whereResult = {
-        limit: vi.fn().mockResolvedValue([{ stripeSubscriptionId: subId }]),
-        then: (res: any, rej: any) => Promise.resolve([{ count }]).then(res, rej),
-        catch: (fn: any) => Promise.resolve([{ count }]).catch(fn),
-      };
+    function makeAlternatingSubscriptionAndCountDb(subId: string, count = 4) {
+      let selectCount = 0;
       return {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue(whereResult),
-          }),
+        select: vi.fn().mockImplementation(() => {
+          selectCount++;
+          const rows = selectCount % 2 === 1
+            ? [{ stripeSubscriptionId: subId, companyRole: "owner" }]
+            : [{ count }];
+          return {
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockResolvedValue(rows),
+            }),
+          };
         }),
       };
     }
@@ -4234,8 +4276,7 @@ describe("recoverPendingSeatSyncs — startup recovery path", () => {
       products: { create: vi.fn() },
     };
 
-    // Use a single dual-where DB mock; both companies share the same sub structure
-    const dbMock = makeDualWhereChain(SUB_ID_B);
+    const dbMock = makeAlternatingSubscriptionAndCountDb(SUB_ID_B);
 
     const result = await recoverPendingSeatSyncs(storageStub, stripeClient, dbMock);
 

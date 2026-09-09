@@ -1532,19 +1532,31 @@ export async function refreshSeatsForCompany(
   getActiveUserCount: (companyId: string) => Promise<number>,
   storageInstance?: Pick<IStorage, "upsertPendingSeatSync" | "deletePendingSeatSync">,
   pgPool?: PgPoolLike,
+  log: Pick<typeof logger, "warn"> = logger,
 ): Promise<void> {
   if (!stripeClient) return;
 
   return withSeatUpdateLock(companyId, async () => {
-    const ownerRows = await dbInstance
-      .select({ stripeSubscriptionId: users.stripeSubscriptionId })
+    const subscribedMemberRows = await dbInstance
+      .select({
+        stripeSubscriptionId: users.stripeSubscriptionId,
+        companyRole: users.companyRole,
+      })
       .from(users)
-      .where(and(eq(users.companyId, companyId), eq(users.companyRole as any, 'owner')))
-      .limit(1);
+      .where(and(
+        eq(users.companyId, companyId),
+        isNotNull(users.stripeSubscriptionId),
+      ));
 
-    const stripeSubscriptionId = ownerRows[0]?.stripeSubscriptionId;
+    const subscribedMember = subscribedMemberRows.find(
+      (member: { companyRole?: string | null }) => member.companyRole === 'owner',
+    ) ?? subscribedMemberRows[0];
+    const stripeSubscriptionId = subscribedMember?.stripeSubscriptionId;
     if (!stripeSubscriptionId) {
-      // No active subscription — nothing to sync; clear any stale checkpoint.
+      log.warn(
+        { companyId },
+        '[SEAT BILLING] Company has no member with a Stripe subscription; seat quantity was not refreshed',
+      );
       await storageInstance?.deletePendingSeatSync(companyId);
       return;
     }
