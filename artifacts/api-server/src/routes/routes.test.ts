@@ -24,6 +24,7 @@ import {
   syncSeatQuantityForSubscription,
   checkRemoveTeamMemberGuard,
   checkRoleChangeGuard,
+  parseUpdateTeamMemberBody,
   executeLeaveCompany,
   checkActorActiveGuard,
   checkLeaveCompanyEligibility,
@@ -2227,6 +2228,11 @@ describe("checkRoleChangeGuard", () => {
     expect(result).toBeNull();
   });
 
+  it("returns null when the role does not change (owner stays owner)", () => {
+    const result = checkRoleChangeGuard("owner", "owner", 1, ADMIN_ID, ADMIN_ID);
+    expect(result).toBeNull();
+  });
+
   // (f) Edge case: count 0 still blocks (corrupted data)
   it("returns 400 when count is 0 (edge case: corrupted data)", () => {
     const result = checkRoleChangeGuard("admin", "tech", 0);
@@ -3193,6 +3199,14 @@ describe("PATCH /api/contractor/team/:userId — stale-session demotion guard (i
 
     return app;
   }
+
+  it("rejects owner through the production PATCH body parser until the schema is intentionally widened", () => {
+    const parsed = parseUpdateTeamMemberBody({ companyRole: "owner" });
+
+    expect(parsed.success).toBe(false);
+    if (parsed.success) throw new Error("Expected owner role validation to fail");
+    expect(parsed.error.issues[0]?.message).toMatch(/invalid (?:enum value|option)/i);
+  });
 
   it("returns 403 when session claims admin but DB shows the requestor is now tech", async () => {
     const app = buildApp("tech"); // DB reflects mid-session demotion

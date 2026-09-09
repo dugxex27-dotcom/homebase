@@ -1804,6 +1804,19 @@ export function checkRoleChangeGuard(
   return null;
 }
 
+const updateTeamMemberSchema = z.object({
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  companyRole: z.enum(['tech', 'admin', 'manager', 'dispatcher']).optional(),
+  email: z.string().email().max(254).optional(),
+}).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined || d.email !== undefined, {
+  message: "At least one field must be provided",
+});
+
+export function parseUpdateTeamMemberBody(body: unknown) {
+  return updateTeamMemberSchema.safeParse(body);
+}
+
 export async function verifyRequestorRoleFromDb(
   requestorId: string,
   companyId: string | null | undefined,
@@ -25435,16 +25448,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [actorRoleFreshRole] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
       const requesterRole = (actorRoleFreshRole as any)?.companyRole ?? adminUser.companyRole;
 
-      const schema = z.object({
-        firstName: z.string().min(1).max(100).optional(),
-        lastName: z.string().min(1).max(100).optional(),
-        companyRole: z.enum(['tech', 'admin', 'manager', 'dispatcher']).optional(),
-        email: z.string().email().max(254).optional(),
-      }).refine(d => d.firstName !== undefined || d.lastName !== undefined || d.companyRole !== undefined || d.email !== undefined, {
-        message: "At least one field must be provided",
-      });
-
-      const parsed = schema.safeParse(req.body);
+      const parsed = parseUpdateTeamMemberBody(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid input" });
       if (requesterRole !== 'owner' && parsed.data.companyRole === 'admin') {
         return res.status(403).json({ message: "Only the company owner can assign the admin role" });
