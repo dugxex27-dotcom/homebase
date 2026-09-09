@@ -92,6 +92,15 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     expect(statusById.get(committedId)).toBe("committed");
   });
 
+  it("counts every recorded Stripe event without modifying the table", async () => {
+    const countBefore = await storage.getStripeProcessedEventCount();
+    await insertEvent(eventId("count_pending"), "pending", new Date());
+    await insertEvent(eventId("count_committed"), "committed", new Date());
+
+    await expect(storage.getStripeProcessedEventCount()).resolves.toBe(countBefore + 2);
+    expect(await readFixtures(...fixtureEventIds)).toHaveLength(2);
+  });
+
   it("allows a replay after a recorded event ages beyond the TTL and is pruned", async () => {
     const id = eventId("pruned_replay");
     const claimedAt = new Date();

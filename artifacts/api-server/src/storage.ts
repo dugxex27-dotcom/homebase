@@ -1063,6 +1063,8 @@ export interface IStorage {
 
   failStaleStripePendingEvents(): Promise<{ updated: number }>;
 
+  getStripeProcessedEventCount(): Promise<number>;
+
   pruneOldStripeProcessedEvents(ttlHours: number): Promise<{ deleted: number; remaining: number }>;
 
   // Pending seat-sync checkpoint operations
@@ -7684,6 +7686,8 @@ export class MemStorage implements IStorage {
 
   async failStaleStripePendingEvents(): Promise<{ updated: number }> { return { updated: 0 }; }
 
+  async getStripeProcessedEventCount(): Promise<number> { return 0; }
+
   async pruneOldStripeProcessedEvents(_ttlHours: number): Promise<{ deleted: number; remaining: number }> { return { deleted: 0, remaining: 0 }; }
 
   // Pending seat-sync checkpoint — in-memory stubs (tests mock storage directly)
@@ -11225,13 +11229,18 @@ export class DbStorage implements IStorage {
     return { updated: updated.length };
   }
 
+  async getStripeProcessedEventCount(): Promise<number> {
+    const result = await db.select({ cnt: count() }).from(stripeProcessedEvents);
+    return Number(result[0]?.cnt ?? 0);
+  }
+
   async pruneOldStripeProcessedEvents(ttlHours: number): Promise<{ deleted: number; remaining: number }> {
     const cutoff = new Date(Date.now() - ttlHours * 60 * 60 * 1000);
     const deleted = await db.delete(stripeProcessedEvents)
       .where(lt(stripeProcessedEvents.processedAt, cutoff))
       .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
-    const remainingResult = await db.select({ cnt: count() }).from(stripeProcessedEvents);
-    return { deleted: deleted.length, remaining: Number(remainingResult[0]?.cnt ?? 0) };
+    const remaining = await this.getStripeProcessedEventCount();
+    return { deleted: deleted.length, remaining };
   }
 
   // ── Pending seat-sync checkpoint operations — DATABASE BACKED ─────────────

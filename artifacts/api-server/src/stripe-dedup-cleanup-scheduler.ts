@@ -6,14 +6,30 @@ import { storage } from "./storage";
 // processed a second time.  96 h gives a comfortable safety margin.
 const TTL_HOURS = 96;
 const INTERVAL_MS = 24 * 60 * 60 * 1000;
+export const STRIPE_DEDUP_HEALTH_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 let initialRunTimer: NodeJS.Timeout | null = null;
 let schedulerInterval: NodeJS.Timeout | null = null;
+let healthProbeInterval: NodeJS.Timeout | null = null;
 
 // Alert threshold: warn if more than this many rows remain after pruning.
 // With a 96-hour TTL, normal traffic produces at most a few hundred rows.
 // Exceeding 1 000 rows signals that pruning has been silently failing or
 // that webhook volume has spiked unexpectedly.
 export const STRIPE_DEDUP_ROW_WARN_THRESHOLD = 1_000;
+
+export async function checkStripeDedupTableSize(): Promise<void> {
+  try {
+    const rowCount = await storage.getStripeProcessedEventCount();
+    if (rowCount > STRIPE_DEDUP_ROW_WARN_THRESHOLD) {
+      logger.warn(
+        { rowCount, threshold: STRIPE_DEDUP_ROW_WARN_THRESHOLD },
+        "[STRIPE-DEDUP] stripe_processed_events row count exceeds warning threshold between cleanup runs — pruning may be failing or webhook volume has spiked unexpectedly"
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, "[STRIPE-DEDUP] Failed to check stripe_processed_events row count");
+  }
+}
 
 async function pruneStripeDedupTable(): Promise<void> {
   logger.info("[STRIPE-DEDUP] Running daily cleanup of stripe_processed_events...");
@@ -53,7 +69,7 @@ export const stripeDedupCleanupScheduler = {
       return;
     }
 
-    logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler started (24-hour interval)");
+    logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler started (24-hour cleanup, 6-hour health probe)");
 
     initialRunTimer = setTimeout(() => {
       pruneStripeDedupTable().catch((err) =>
@@ -66,8 +82,15 @@ export const stripeDedupCleanupScheduler = {
         logger.error({ err }, "[STRIPE-DEDUP] Scheduled prune failed")
       );
     }, INTERVAL_MS);
+
+    healthProbeInterval = setInterval(() => {
+      checkStripeDedupTableSize().catch((err) =>
+        logger.error({ err }, "[STRIPE-DEDUP] Scheduled health probe failed")
+      );
+    }, STRIPE_DEDUP_HEALTH_PROBE_INTERVAL_MS);
   },
   stop() {
+    const wasRunning = Boolean(initialRunTimer || schedulerInterval || healthProbeInterval);
     if (initialRunTimer) {
       clearTimeout(initialRunTimer);
       initialRunTimer = null;
@@ -75,6 +98,12 @@ export const stripeDedupCleanupScheduler = {
     if (schedulerInterval) {
       clearInterval(schedulerInterval);
       schedulerInterval = null;
+    }
+    if (healthProbeInterval) {
+      clearInterval(healthProbeInterval);
+      healthProbeInterval = null;
+    }
+    if (wasRunning) {
       logger.info("[STRIPE-DEDUP] Stripe dedup cleanup scheduler stopped");
     }
   },
