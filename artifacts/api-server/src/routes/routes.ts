@@ -24422,6 +24422,50 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.patch('/api/contractor/team/:userId/resend-invite', ...resendTeamInviteMiddleware, resendTeamInviteHandler);
   app.post('/api/contractor/team/:userId/resend-invite', ...resendTeamInviteMiddleware, resendTeamInviteHandler);
 
+  app.get('/api/contractor/company-settings', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
+    try {
+      const companyId = req.session.user.companyId;
+      if (!companyId) return res.status(403).json({ message: 'No company found' });
+
+      const [company] = await db.select({
+        seatUsageAlertThreshold: companies.seatUsageAlertThreshold,
+      }).from(companies).where(eq(companies.id, companyId)).limit(1);
+
+      if (!company) return res.status(404).json({ message: 'Company not found' });
+      res.json({ seatUsageAlertThreshold: company.seatUsageAlertThreshold });
+    } catch (error) {
+      req.log?.error({ error }, '[CONTRACTOR_COMPANY_SETTINGS] Error fetching settings');
+      res.status(500).json({ message: 'Failed to fetch company settings' });
+    }
+  });
+
+  app.patch('/api/contractor/company-settings', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
+    try {
+      const companyId = req.session.user.companyId;
+      if (!companyId) return res.status(403).json({ message: 'No company found' });
+
+      const parsed = z.object({
+        seatUsageAlertThreshold: z.union([z.literal(70), z.literal(80), z.literal(90)]),
+      }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: 'Seat usage alert threshold must be 70, 80, or 90' });
+      }
+
+      const [company] = await db.update(companies).set({
+        seatUsageAlertThreshold: parsed.data.seatUsageAlertThreshold,
+        updatedAt: new Date(),
+      }).where(eq(companies.id, companyId)).returning({
+        seatUsageAlertThreshold: companies.seatUsageAlertThreshold,
+      });
+
+      if (!company) return res.status(404).json({ message: 'Company not found' });
+      res.json(company);
+    } catch (error) {
+      req.log?.error({ error }, '[CONTRACTOR_COMPANY_SETTINGS] Error updating settings');
+      res.status(500).json({ message: 'Failed to update company settings' });
+    }
+  });
+
   // Get team members with seat usage (admin/owner only)
   app.get('/api/contractor/team', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin'), async (req: any, res: any) => {
     try {
@@ -24483,6 +24527,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         countActiveCompanySeats(adminUser.companyId, db),
         countReservedCompanySeats(adminUser.companyId, db),
       ]);
+      const [companySettings] = await db.select({
+        seatUsageAlertThreshold: companies.seatUsageAlertThreshold,
+      }).from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
       res.json({
         teamMembers,
         total,
@@ -24494,6 +24541,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         billedTeamSeatCount: calcBilledSeats(acceptedTeamCount),
         includedTeamSeats: INCLUDED_TEAM_SEATS,
         teamSeatLimit: MAX_RESERVED_COMPANY_SEATS,
+        seatUsageAlertThreshold: companySettings?.seatUsageAlertThreshold ?? 80,
       });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error fetching team');

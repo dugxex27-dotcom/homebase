@@ -177,6 +177,7 @@ export const companies = pgTable("companies", {
   accountManagerEmail: varchar("account_manager_email"), // Historical account-manager assignment
   apiAccessEnabled: boolean("api_access_enabled").default(false),
   bulkImportEnabled: boolean("bulk_import_enabled").default(false),
+  seatUsageAlertThreshold: integer("seat_usage_alert_threshold").notNull().default(80),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

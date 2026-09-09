@@ -115,6 +115,7 @@ export default function ContractorProfile() {
   const queryClient = useQueryClient();
   const { user, refetch: refetchUser } = useAuth();
   const typedUser = user as UserType | undefined;
+  const isOwner = typedUser?.companyRole === 'owner';
   const [hasAttemptedRefresh, setHasAttemptedRefresh] = useState(false);
   
   // Notification preferences state
@@ -252,6 +253,31 @@ export default function ContractorProfile() {
   const { data: companyData } = useQuery({
     queryKey: ['/api/companies', effectiveCompanyId],
     enabled: !!effectiveCompanyId,
+  });
+
+  const { data: companySettings } = useQuery<{ seatUsageAlertThreshold: 70 | 80 | 90 }>({
+    queryKey: ['/api/contractor/company-settings'],
+    enabled: isOwner,
+  });
+
+  const updateCompanySettingsMutation = useMutation({
+    mutationFn: async (seatUsageAlertThreshold: 70 | 80 | 90) =>
+      apiRequest('/api/contractor/company-settings', 'PATCH', { seatUsageAlertThreshold }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/company-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/contractor/team'] });
+      toast({
+        title: "Alert threshold updated",
+        description: "Your company's seat usage warning has been updated.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unable to update threshold",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   // Update form data when profile loads
@@ -2274,6 +2300,40 @@ export default function ContractorProfile() {
           </div>
         </CardContent>
       </Card>
+
+      {isOwner && (
+        <Card style={{ backgroundColor: 'var(--gray-100)' }} className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              Team seat usage alert
+            </CardTitle>
+            <CardDescription>
+              Choose when the dashboard warns that your company is nearing its team seat limit.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Label htmlFor="seat-usage-alert-threshold">Alert me at</Label>
+            <Select
+              value={String(companySettings?.seatUsageAlertThreshold ?? 80)}
+              onValueChange={(value) => updateCompanySettingsMutation.mutate(Number(value) as 70 | 80 | 90)}
+              disabled={!companySettings || updateCompanySettingsMutation.isPending}
+            >
+              <SelectTrigger id="seat-usage-alert-threshold" className="mt-2 max-w-xs bg-white" data-testid="select-seat-usage-alert-threshold">
+                <SelectValue placeholder="Choose a threshold" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="70">70% of seats used</SelectItem>
+                <SelectItem value="80">80% of seats used</SelectItem>
+                <SelectItem value="90">90% of seats used</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-600 mt-2">
+              This setting applies to every owner and admin viewing your company dashboard.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cancel Account */}
       <Card className="border-red-200 mt-8">

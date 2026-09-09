@@ -113,8 +113,6 @@ interface ContractorBoostItem {
 }
 
 const BOOST_RENEWAL_WINDOW_DAYS = 7;
-
-const SEAT_WARN_THRESHOLD = 0.8;
 interface ContractorLeadSummary {
   status: string;
   createdAt: string | Date | null;
@@ -645,6 +643,7 @@ export default function ContractorDashboard() {
     billedTeamSeatCount: number;
     includedTeamSeats: number;
     teamSeatLimit: number;
+    seatUsageAlertThreshold: number;
   }>({
     queryKey: ['/api/contractor/team'],
     queryFn: async () => {
@@ -662,9 +661,13 @@ export default function ContractorDashboard() {
     ? Math.max(0, teamData.teamSeatLimit - teamData.reservedTeamCount)
     : null;
   const isTeamAtCapacity = availableTeamCapacity === 0;
+  const seatUsagePercent = teamData && teamData.teamSeatLimit > 0
+    ? (teamData.reservedTeamCount / teamData.teamSeatLimit) * 100
+    : 0;
+  const seatUsageAlertThreshold = teamData?.seatUsageAlertThreshold ?? 80;
   const isTeamNearlyFull = teamData
     ? teamData.teamSeatLimit > 0
-      && teamData.reservedTeamCount / teamData.teamSeatLimit >= SEAT_WARN_THRESHOLD
+      && seatUsagePercent >= seatUsageAlertThreshold
     : false;
 
   const { data: adminInvoices = [], isLoading: isLoadingInvoices } = useQuery<AdminInvoice[]>({
@@ -1458,7 +1461,7 @@ export default function ContractorDashboard() {
                     </>
                   ) : (
                     <>
-                      {reservedTeamCount} of {teamData?.teamSeatLimit ?? 0} team seats are reserved. Pending invitations also count toward capacity.
+                      Team seat usage is at {Math.round(seatUsagePercent)}%, reaching your company&apos;s {seatUsageAlertThreshold}% alert threshold. Pending invitations also count toward capacity.
                     </>
                   )}
                 </div>
@@ -2498,6 +2501,30 @@ export default function ContractorDashboard() {
 
       {/* ── Overview tab (always rendered, hidden when another tab is active) ── */}
       <div className="dash-body" style={{ display: isAdminRole && activeTab !== 'overview' ? 'none' : undefined }}>
+
+        {isAdminRole && teamData && (
+          <>
+            <span className="dash-section-label">Team Capacity</span>
+            <div className="dash-light-card" data-testid="card-team-capacity" style={isTeamNearlyFull ? { border: '1px solid #f59e0b', background: '#fffbeb' } : undefined}>
+              <div className="dash-light-card-row">
+                <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Users size={18} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="dash-light-card-title">{reservedTeamCount} of {teamData.teamSeatLimit} seats used</div>
+                  <div className="dash-light-card-sub">
+                    {isTeamAtCapacity
+                      ? 'All team seats are in use'
+                      : isTeamNearlyFull
+                        ? `Usage has reached your ${seatUsageAlertThreshold}% alert threshold`
+                        : `${availableTeamCapacity} seats available`}
+                  </div>
+                </div>
+                <button type="button" className="dash-light-card-btn" onClick={() => setActiveTab('team')} style={{ background: '#EAF4FD', color: '#1560A2' }}>
+                  Manage →
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* AI Business Coach */}
         <Link href="/ai-contractor-help" className="ai-coach-card" data-tour-id="contractor-ai-coach" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>
