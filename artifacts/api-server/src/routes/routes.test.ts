@@ -2166,6 +2166,16 @@ describe("checkRoleChangeGuard", () => {
     expect(result!.message).toMatch(/last admin or owner/i);
   });
 
+  it.each(["manager", "dispatcher", "member"])(
+    "returns 400 when demoting the last admin to the non-administrative %s role",
+    (newRole) => {
+      const result = checkRoleChangeGuard("admin", newRole, 1);
+      expect(result).not.toBeNull();
+      expect(result!.status).toBe(400);
+      expect(result!.message).toMatch(/at least one active admin or owner/i);
+    },
+  );
+
   // (c) Demotion is allowed when another admin still exists after the change
   it("returns null when demoting an admin to tech and another admin still exists (count === 2)", () => {
     const result = checkRoleChangeGuard("admin", "tech", 2);

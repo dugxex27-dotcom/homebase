@@ -1770,15 +1770,16 @@ export function checkRoleChangeGuard(
   targetId?: string,
   requestorId?: string,
 ): { status: number; message: string } | null {
-  // Guard 1: demoting last admin/owner to tech
+  // Guard 1: demoting the last admin/owner to any non-administrative role.
   if (
-    newRole === 'tech' &&
+    newRole !== 'admin' &&
+    newRole !== 'owner' &&
     (currentRole === 'admin' || currentRole === 'owner') &&
     activeAdminOwnerCount <= 1
   ) {
     return {
       status: 400,
-      message: 'Cannot demote the last admin or owner to tech.',
+      message: 'Cannot demote the last admin or owner. The company must have at least one active admin or owner.',
     };
   }
 
@@ -13184,10 +13185,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Employee does not belong to this company" });
       }
 
+      const requestedCompanyRole = req.body.companyRole;
+      if (
+        requestedCompanyRole !== undefined &&
+        !['tech', 'admin', 'manager', 'dispatcher'].includes(requestedCompanyRole)
+      ) {
+        return res.status(400).json({ message: "Invalid company role" });
+      }
+
+      if (
+        requestedCompanyRole !== undefined &&
+        requestedCompanyRole !== employee.companyRole &&
+        (employee.companyRole === 'owner' || employee.companyRole === 'admin') &&
+        requestedCompanyRole !== 'owner' &&
+        requestedCompanyRole !== 'admin'
+      ) {
+        const activeAdminOwners = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(
+            eq(users.companyId, req.params.id),
+            ne(users.id as any, employee.id),
+            inArray(users.companyRole as any, ['admin', 'owner']),
+            eq(users.status as any, 'active'),
+          ))
+          .limit(1);
+
+        if (activeAdminOwners.length === 0) {
+          return res.status(400).json({
+            message: "Cannot demote the last admin or owner. The company must have at least one active admin or owner.",
+          });
+        }
+      }
+
       // Update employee permissions
       const updatedEmployee = await storage.upsertUser({
         ...employee,
-        canRespondToProposals: req.body.canRespondToProposals
+        canRespondToProposals: req.body.canRespondToProposals,
+        ...(requestedCompanyRole !== undefined ? { companyRole: requestedCompanyRole } : {}),
       });
 
       res.json(updatedEmployee);
