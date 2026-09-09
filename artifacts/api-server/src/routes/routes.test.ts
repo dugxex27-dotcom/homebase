@@ -45,6 +45,7 @@ import {
   hasContractorDivisionAccess,
   hasContractorPaidFeatureBypass,
   isSubscriptionReactivation,
+  isStripeSubscriptionStateAlreadyApplied,
 } from "./routes";
 import {
   handleCreateReviewFlag,
@@ -284,6 +285,68 @@ describe("Stripe subscription status normalization", () => {
     expect(normalizeStripeSubscriptionStatus("canceled")).toBe("cancelled");
     expect(normalizeStripeSubscriptionStatus("incomplete_expired")).toBe("cancelled");
     expect(normalizeStripeSubscriptionStatus("future_unknown_status")).toBe("inactive");
+  });
+});
+
+describe("Stripe subscription state replay detection", () => {
+  const eventAt = new Date("2026-09-09T12:00:00.000Z");
+  const persistedUser = {
+    stripeSubscriptionId: "sub_replay",
+    stripePriceId: "price_basic",
+    subscriptionStatus: "active",
+    stripeSubscriptionEventAt: eventAt,
+  };
+
+  it("skips a replayed checkout completion before activation metadata is written again", () => {
+    expect(isStripeSubscriptionStateAlreadyApplied(
+      persistedUser,
+      "sub_replay",
+      "price_basic",
+      "active",
+      eventAt,
+      false,
+    )).toBe(true);
+  });
+
+  it("skips a replayed subscription update so its seat sync is not fired again", () => {
+    expect(isStripeSubscriptionStateAlreadyApplied(
+      persistedUser,
+      "sub_replay",
+      "price_basic",
+      "active",
+      eventAt,
+      true,
+    )).toBe(true);
+  });
+
+  it("allows a newer subscription update even when the resulting status is unchanged", () => {
+    expect(isStripeSubscriptionStateAlreadyApplied(
+      persistedUser,
+      "sub_replay",
+      "price_basic",
+      "active",
+      new Date("2026-09-09T12:00:01.000Z"),
+      true,
+    )).toBe(false);
+  });
+
+  it("allows checkout or update processing when the persisted subscription snapshot differs", () => {
+    expect(isStripeSubscriptionStateAlreadyApplied(
+      persistedUser,
+      "sub_replay",
+      "price_basic",
+      "past_due",
+      eventAt,
+      false,
+    )).toBe(false);
+    expect(isStripeSubscriptionStateAlreadyApplied(
+      persistedUser,
+      "sub_replay",
+      "price_team",
+      "active",
+      eventAt,
+      true,
+    )).toBe(false);
   });
 });
 

@@ -396,6 +396,38 @@ export function hasContractorPaidFeatureBypass(
   );
 }
 
+export function isStripeSubscriptionStateAlreadyApplied(
+  user: {
+    stripeSubscriptionId?: string | null;
+    stripePriceId?: string | null;
+    subscriptionStatus?: string | null;
+    stripeSubscriptionEventAt?: Date | string | null;
+  },
+  subscriptionId: string,
+  priceId: string,
+  status: string,
+  eventAt: Date,
+  trackEventOrdering: boolean,
+): boolean {
+  if (
+    user.stripeSubscriptionId !== subscriptionId ||
+    (user.stripePriceId ?? '') !== priceId ||
+    user.subscriptionStatus !== status
+  ) {
+    return false;
+  }
+
+  // Checkout completion has no ordering watermark of its own. Once this exact
+  // subscription snapshot is persisted, replaying the checkout must not repeat
+  // activation metadata writes or the downstream seat sync.
+  if (!trackEventOrdering) return true;
+
+  const lastEventAt = user.stripeSubscriptionEventAt
+    ? new Date(user.stripeSubscriptionEventAt)
+    : null;
+  return !!lastEventAt && lastEventAt.getTime() === eventAt.getTime();
+}
+
 const SERVER_OWNED_VERIFICATION_FIELDS = [
   "verificationTier",
   "deviceTimestamp",
@@ -2852,6 +2884,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const priceId = effectiveSubscription.items.data[0]?.price.id;
         const status = normalizeStripeSubscriptionStatus(effectiveSubscription.status);
+        if (isStripeSubscriptionStateAlreadyApplied(
+          lockedUser,
+          effectiveSubscription.id,
+          priceId || '',
+          status,
+          eventAt,
+          trackEventOrdering,
+        )) {
+          console.log(
+            `[STRIPE WEBHOOK] Subscription state already applied for ${event.type} ` +
+            `(subscription=${effectiveSubscription.id}); skipping duplicate effects`
+          );
+          return { user: lockedUser, status, applied: false };
+        }
         await storage.applyUserStripeSubscriptionState(
           lockedUser.id,
           effectiveSubscription.id,
