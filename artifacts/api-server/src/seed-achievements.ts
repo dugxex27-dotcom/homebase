@@ -859,7 +859,13 @@ async function seedAchievements() {
 
 // Run the database seeder only when this file is the entry point. MemStorage
 // imports the canonical definitions above to keep dev and database criteria in sync.
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+const entryPoint = process.argv[1];
+const isStandaloneSeeder =
+  entryPoint !== undefined
+  && /(?:^|[/\\])seed-achievements\.(?:[cm]?[jt]s)$/.test(entryPoint)
+  && fileURLToPath(import.meta.url) === entryPoint;
+
+if (isStandaloneSeeder) {
   seedAchievements()
     .then(() => {
       console.log("\nSeeding complete!");
