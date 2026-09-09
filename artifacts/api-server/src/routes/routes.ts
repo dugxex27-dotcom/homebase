@@ -1367,6 +1367,13 @@ export async function syncSeatSubscriptionItem(
 // Webhook idempotency cache
 // ---------------------------------------------------------------------------
 
+// This process-local map is only a fast path. Entries may disappear at any
+// time (capacity eviction below or a process restart), so it must never be the
+// durable duplicate-payment guard. Every cache miss goes through the atomic
+// stripe_processed_events claim, whose rows are retained for 96 hours by the
+// cleanup scheduler (longer than Stripe's 72-hour retry window). If that DB
+// claim cannot be read or written, the handler returns 500 before side effects
+// and leaves the event uncached so Stripe retries it safely.
 export const MAX_WEBHOOK_DEDUP_CACHE_SIZE = 10_000;
 export const processedWebhookEventIds = new Map<string, number>();
 export const inFlightWebhookEventIds = new Set<string>();
@@ -2872,6 +2879,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       void recordStripeWebhookSuccess();
       res.json({ received: true });
     } catch (error: any) {
+      // This also covers claim/commit persistence failures. Never acknowledge
+      // or cache those failures: a 500 makes Stripe retry, while the claim
+      // preceding side effects prevents a failed dedup write from falling
+      // through into payment processing.
       void recordStripeWebhookFailure({
         eventId: event.id,
         eventType: event.type,

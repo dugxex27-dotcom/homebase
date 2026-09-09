@@ -1302,6 +1302,8 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
 
     // The handler's catch block returns 500 so Stripe will retry.
     expect(crashed.status).toBe(500);
+    expect(crashed.body).toMatchObject({ error: "simulated crash mid-write" });
+    expect(crashed.body).not.toHaveProperty("received");
 
     // Side effects must NOT have run — the crash happened before the switch.
     expect(mockGetUser).not.toHaveBeenCalled();
