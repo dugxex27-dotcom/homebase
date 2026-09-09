@@ -5488,21 +5488,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET version — browser navigation, sets session and redirects
   app.get('/api/auth/homeowner-demo-login', logDemoLoginAttempt('homeowner'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
-      const demoId = 'demo-homeowner-permanent-id';
-      const demoEmail = 'sarah.anderson@homebase.com';
-      let user = await storage.getUserByEmail(demoEmail);
-      if (!user) {
-        user = await storage.upsertUser({
-          id: demoId, email: demoEmail, firstName: 'Sarah', lastName: 'Anderson',
-          profileImageUrl: null, role: 'homeowner', zipCode: '98101',
-          subscriptionStatus: 'trialing',
-          trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-          maxHousesAllowed: 2, connectionCode: 'DEMO4567',
-          isDemoAccount: true,
-        });
-      } else {
-        user = await ensureDemoAccountFlag(user);
-      }
+      const { user, seedResults } = await db.transaction(async (tx) => {
+        return seedHomeownerDemo(req.log, tx);
+      });
 
       // Fire-and-forget task completion top-up
       topUpHomeownerTaskCompletions().catch((e: unknown) => {
@@ -5514,14 +5502,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (err) return res.redirect('/homeowner?demo_error=1');
         req.session.isAuthenticated = true;
         req.session.user = user;
-        req.session.save((saveErr: any) => {
+        req.session.save(async (saveErr: any) => {
           if (saveErr) return res.redirect('/homeowner?demo_error=1');
-          console.log('[DEMO LOGIN GET] Homeowner session saved, redirecting');
+
+          const failedSections = Object.entries(seedResults)
+            .filter(([, result]) => !result.ok)
+            .map(([section]) => section);
+          if (failedSections.length > 0) {
+            req.log.warn(
+              { userId: user.id, failedSections, seedResults },
+              '[DEMO LOGIN GET] Homeowner demo seeding completed with failures',
+            );
+          }
+
+          const canonicalHouseIds = [
+            '8d44c1d0-af55-4f1c-bada-b70e54c823bc',
+            'f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b',
+          ];
+          try {
+            const seededHouses = await storage.getHouses(user.id);
+            const seededHouseIds = new Set(seededHouses.map((house) => house.id));
+            const missingHouseIds = canonicalHouseIds.filter((houseId) => !seededHouseIds.has(houseId));
+            if (missingHouseIds.length > 0) {
+              req.log.warn(
+                { userId: user.id, missingHouseIds },
+                '[DEMO LOGIN GET] Homeowner demo is missing canonical houses after seeding',
+              );
+            }
+          } catch (error) {
+            const msg = error instanceof Error ? error.message : String(error);
+            req.log.warn(
+              { userId: user.id, error: msg, canonicalHouseIds },
+              '[DEMO LOGIN GET] Failed to verify canonical homeowner demo houses',
+            );
+          }
+
+          req.log.info(
+            { userId: user.id, failedSections },
+            '[DEMO LOGIN GET] Homeowner session saved, redirecting',
+          );
           res.redirect('/dashboard');
         });
       });
     } catch (error) {
-      console.error("Error in GET homeowner demo login:", error);
+      const msg = error instanceof Error ? error.message : String(error);
+      req.log.error({ error: msg }, '[DEMO LOGIN GET] Error creating homeowner demo session');
       res.redirect('/homeowner?demo_error=1');
     }
   });
