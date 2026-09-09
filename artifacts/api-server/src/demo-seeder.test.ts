@@ -89,8 +89,20 @@ import type { Server } from "http";
 import app from "./app";
 import { registerRoutes } from "./routes/routes";
 import { db } from "./db";
-import { affiliateReferrals, subscriptionCycleEvents, taskCompletions } from "@workspace/db";
-import { eq, like, count } from "drizzle-orm";
+import {
+  affiliateReferrals,
+  subscriptionCycleEvents,
+  taskCompletions,
+  crmLeads,
+  crmClients,
+  crmJobs,
+  crmQuotes,
+  crmInvoices,
+  proposals,
+  conversations,
+  messages,
+} from "@workspace/db";
+import { eq, like, count, inArray } from "drizzle-orm";
 
 let server: Server;
 let request: ReturnType<typeof supertest>;
@@ -168,6 +180,46 @@ describe("contractor demo seeder", () => {
         `Section "${section}" failed with: ${result.error ?? "unknown error"}`
       ).toBe(true);
     }
+  }, 60_000);
+
+  it("is idempotent: running the seeder twice leaves canonical row counts", async () => {
+    const DEMO_CONTRACTOR_ID = "demo-contractor-permanent-id";
+    const expectedCounts = {
+      leads: 5,
+      clients: 6,
+      jobs: 12,
+      quotes: 4,
+      invoices: 10,
+      proposals: 2,
+      conversations: 2,
+      messages: 6,
+    };
+
+    const res = await request
+      .post("/api/auth/contractor-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(res.status).toBe(200);
+
+    const countFor = async (table: any, condition: any) => {
+      const [result] = await db.select({ value: count() }).from(table).where(condition);
+      return Number(result.value);
+    };
+
+    expect(await countFor(crmLeads, eq(crmLeads.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.leads);
+    expect(await countFor(crmClients, eq(crmClients.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.clients);
+    expect(await countFor(crmJobs, eq(crmJobs.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.jobs);
+    expect(await countFor(crmQuotes, eq(crmQuotes.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.quotes);
+    expect(await countFor(crmInvoices, eq(crmInvoices.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.invoices);
+    expect(await countFor(proposals, eq(proposals.contractorId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.proposals);
+    expect(await countFor(conversations, eq(conversations.contractorId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.conversations);
+    expect(
+      await countFor(
+        messages,
+        inArray(messages.conversationId, ["demo-conversation-1", "demo-conversation-2"]),
+      ),
+    ).toBe(expectedCounts.messages);
   }, 60_000);
 
   it("shows realistic non-zero CRM dashboard stats immediately after login", async () => {
