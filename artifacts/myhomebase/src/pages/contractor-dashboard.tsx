@@ -347,6 +347,11 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
   };
 
   const actionTypes = ['suspended', 'reactivated', 'removed'] as const;
+  const actionCounts = {
+    suspended: entries.filter(entry => entry.teamAction === 'suspended').length,
+    reactivated: entries.filter(entry => entry.teamAction === 'reactivated').length,
+    removed: entries.filter(entry => entry.teamAction === 'removed').length,
+  };
 
   const roleMeta: Record<string, { label: string; color: string; bg: string; borderColor: string }> = {
     Owner: { label: 'Owner', color: '#b45309', bg: '#fffbeb', borderColor: '#d97706' },
@@ -440,11 +445,13 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
               whiteSpace: 'nowrap',
             }}
           >
-            All
+            All ({entries.length})
           </button>
           {actionTypes.map(type => {
             const m = actionMeta[type];
             const active = actionFilter === type;
+            const count = actionCounts[type];
+            const empty = count === 0;
             return (
               <button
                 key={type}
@@ -455,11 +462,12 @@ function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; is
                   borderColor: active ? m.color : '#e2e8f0',
                   background: active ? m.bg : '#fff',
                   color: active ? m.color : '#64748b',
-                  cursor: 'pointer',
+                   cursor: empty && !active ? 'default' : 'pointer',
+                   opacity: empty && !active ? 0.45 : 1,
                   whiteSpace: 'nowrap',
                 }}
               >
-                {m.label}
+                 {m.label} ({count})
               </button>
             );
           })}
