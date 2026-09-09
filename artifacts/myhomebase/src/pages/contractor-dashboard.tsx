@@ -1569,13 +1569,49 @@ export default function ContractorDashboard() {
               </button>
             </div>
           ) : (
-            teamData.teamMembers
-              .filter(m => {
-                const q = teamSearch.toLowerCase();
-                return !q || m.email?.toLowerCase().includes(q) || m.firstName?.toLowerCase().includes(q) || m.lastName?.toLowerCase().includes(q);
-              })
-              .sort((a, b) => compareTeamMembers(a, b, teamSort))
-              .map(member => {
+            (() => {
+              const q = teamSearch.trim().toLowerCase();
+              const visibleMembers = teamData.teamMembers
+                .filter(m => !q || m.email?.toLowerCase().includes(q) || m.firstName?.toLowerCase().includes(q) || m.lastName?.toLowerCase().includes(q))
+                .sort((a, b) => compareTeamMembers(a, b, teamSort));
+              const sections = [
+                {
+                  key: 'technicians',
+                  title: 'Technicians',
+                  emptyMessage: q ? 'No technicians match your search.' : 'No technicians yet.',
+                  members: visibleMembers.filter(member => member.companyRole !== 'admin'),
+                },
+                {
+                  key: 'admins',
+                  title: 'Admins',
+                  emptyMessage: q ? 'No admins match your search.' : 'No admins yet.',
+                  members: visibleMembers.filter(member => member.companyRole === 'admin'),
+                },
+              ];
+
+              return (
+                <div>
+                  {sections.map(section => (
+                    <section key={section.key} aria-labelledby={`team-section-${section.key}`} style={{ marginBottom: 18 }}>
+                      <div
+                        id={`team-section-${section.key}`}
+                        data-testid={`heading-team-${section.key}`}
+                        style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8, color: '#0C3460' }}
+                      >
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>{section.title}</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', background: '#e2e8f0', borderRadius: 999, padding: '1px 7px' }}>
+                          {section.members.length}
+                        </span>
+                      </div>
+                      {section.members.length === 0 ? (
+                        <div
+                          data-testid={`empty-team-${section.key}`}
+                          className="dash-light-card"
+                          style={{ padding: '14px', marginBottom: 10, color: '#94a3b8', fontSize: 12, textAlign: 'center' }}
+                        >
+                          {section.emptyMessage}
+                        </div>
+                      ) : section.members.map(member => {
                 const fullName = getTeamMemberName(member);
                 const isSuspended = member.status === 'suspended';
                 const isPending = member.status === 'pending_invite';
@@ -1828,7 +1864,12 @@ export default function ContractorDashboard() {
                     )}
                   </div>
                 );
-              })
+                      })}
+                    </section>
+                  ))}
+                </div>
+              );
+            })()
           )}
 
           {/* Team Audit Log — owner only */}
