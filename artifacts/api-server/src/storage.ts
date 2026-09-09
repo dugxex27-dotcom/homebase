@@ -839,6 +839,8 @@ export interface IStorage {
   
   // CRM Note operations
 
+  getCrmNote(id: string): Promise<CrmNote | undefined>;
+
   getCrmNotes(leadId: string): Promise<CrmNote[]>;
 
   createCrmNote(note: InsertCrmNote): Promise<CrmNote>;
@@ -6979,6 +6981,10 @@ export class MemStorage implements IStorage {
   }
 
   // CRM Note operations
+  async getCrmNote(id: string): Promise<CrmNote | undefined> {
+    return this.crmNotes.get(id);
+  }
+
   async getCrmNotes(leadId: string): Promise<CrmNote[]> {
     const notes = Array.from(this.crmNotes.values())
       .filter(n => n.leadId === leadId)
@@ -11346,6 +11352,13 @@ export class DbStorage implements IStorage {
   }
 
   // CRM Note methods — DATABASE BACKED for persistence
+  async getCrmNote(id: string): Promise<CrmNote | undefined> {
+    const result = await db.select().from(crmNotes)
+      .where(eq(crmNotes.id, id))
+      .limit(1);
+    return result[0];
+  }
+
   async getCrmNotes(leadId: string): Promise<CrmNote[]> {
     const notes = await db.select().from(crmNotes)
       .where(eq(crmNotes.leadId, leadId));

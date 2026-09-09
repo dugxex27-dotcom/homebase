@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { ArrowLeft, Phone, Mail, MapPin, Calendar, Plus, Pin } from "lucide-react";
+import { ArrowLeft, Phone, Mail, MapPin, Calendar, Plus, Pin, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 interface CrmLead {
@@ -78,6 +78,8 @@ export default function CrmLeadDetailPage() {
   const [selectedStatus, setSelectedStatus] = useState("");
   const [selectedPriority, setSelectedPriority] = useState("");
   const [followUpDate, setFollowUpDate] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState("");
 
   // Fetch lead with notes
   const { data, isLoading } = useQuery<{ lead: CrmLead; notes: CrmNote[] }>({
@@ -130,6 +132,52 @@ export default function CrmLeadDetailPage() {
     },
   });
 
+  const updateNoteMutation = useMutation({
+    mutationFn: async ({ noteId, content }: { noteId: string; content: string }) => {
+      return await apiRequest(`/api/crm/notes/${noteId}`, 'PATCH', { content });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/crm/leads/${id}`] });
+      setEditingNoteId(null);
+      setEditingNoteContent("");
+      toast({
+        title: "Note updated",
+        description: "The note has been saved.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: string) => {
+      return await apiRequest(`/api/crm/notes/${noteId}`, 'DELETE');
+    },
+    onSuccess: (_data, deletedNoteId) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/crm/leads/${id}`] });
+      if (editingNoteId === deletedNoteId) {
+        setEditingNoteId(null);
+        setEditingNoteContent("");
+      }
+      toast({
+        title: "Note deleted",
+        description: "The note has been removed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleUpdateStatus = () => {
     if (selectedStatus && selectedStatus !== data?.lead.status) {
       updateLeadMutation.mutate({ status: selectedStatus });
@@ -158,6 +206,37 @@ export default function CrmLeadDetailPage() {
       return;
     }
     addNoteMutation.mutate({ content: newNoteContent, noteType: newNoteType });
+  };
+
+  const handleEditNote = (note: CrmNote) => {
+    setEditingNoteId(note.id);
+    setEditingNoteContent(note.content);
+  };
+
+  const handleSaveNote = () => {
+    if (!editingNoteId || !editingNoteContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Note content cannot be empty",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateNoteMutation.mutate({
+      noteId: editingNoteId,
+      content: editingNoteContent.trim(),
+    });
+  };
+
+  const handleCancelEditNote = () => {
+    setEditingNoteId(null);
+    setEditingNoteContent("");
+  };
+
+  const handleDeleteNote = (noteId: string) => {
+    if (window.confirm("Delete this note? This action cannot be undone.")) {
+      deleteNoteMutation.mutate(noteId);
+    }
   };
 
   if (isLoading) {
@@ -314,20 +393,91 @@ export default function CrmLeadDetailPage() {
                 {notes.length === 0 ? (
                   <p className="text-center text-muted-foreground py-8">No notes yet</p>
                 ) : (
-                  notes.map((note) => (
-                    <div key={note.id} className="p-4 border rounded-lg" data-testid={`note-${note.id}`}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{noteTypeLabels[note.noteType]}</Badge>
-                          {note.isPinned && <Pin className="h-4 w-4 text-yellow-500" />}
+                  notes.map((note) => {
+                    const isSyntheticMetadataNote = note.id === `${lead.id}-metadata-note`;
+                    const isEditing = editingNoteId === note.id;
+                    const isDeleting = deleteNoteMutation.isPending && deleteNoteMutation.variables === note.id;
+
+                    return (
+                      <div key={note.id} className="p-4 border rounded-lg" data-testid={`note-${note.id}`}>
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{noteTypeLabels[note.noteType]}</Badge>
+                            {note.isPinned && <Pin className="h-4 w-4 text-yellow-500" />}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground mr-1">
+                              {format(new Date(note.createdAt), 'MMM d, yyyy h:mm a')}
+                            </span>
+                            {!isSyntheticMetadataNote && !isEditing && (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditNote(note)}
+                                  disabled={updateNoteMutation.isPending || isDeleting}
+                                  aria-label="Edit note"
+                                  title="Edit note"
+                                  data-testid={`button-edit-note-${note.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteNote(note.id)}
+                                  disabled={deleteNoteMutation.isPending || updateNoteMutation.isPending}
+                                  aria-label="Delete note"
+                                  title="Delete note"
+                                  data-testid={`button-delete-note-${note.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-xs text-muted-foreground">
-                          {format(new Date(note.createdAt), 'MMM d, yyyy h:mm a')}
-                        </span>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <Textarea
+                              value={editingNoteContent}
+                              onChange={(event) => setEditingNoteContent(event.target.value)}
+                              className="min-h-[100px]"
+                              disabled={updateNoteMutation.isPending}
+                              data-testid={`textarea-edit-note-${note.id}`}
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                size="sm"
+                                onClick={handleSaveNote}
+                                disabled={!editingNoteContent.trim() || updateNoteMutation.isPending}
+                                data-testid={`button-save-note-${note.id}`}
+                              >
+                                {updateNoteMutation.isPending ? "Saving..." : "Save"}
+                              </Button>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={handleCancelEditNote}
+                                disabled={updateNoteMutation.isPending}
+                                data-testid={`button-cancel-edit-note-${note.id}`}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm whitespace-pre-wrap" data-testid={`note-content-${note.id}`}>{note.content}</p>
+                        )}
                       </div>
-                      <p className="text-sm whitespace-pre-wrap" data-testid={`note-content-${note.id}`}>{note.content}</p>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </CardContent>

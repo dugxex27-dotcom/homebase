@@ -8528,16 +8528,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
       }
 
-      // Get note and verify it exists
-      const notes = Array.from((storage as any).memStorage?.crmNotes?.values() || []);
-      const note = notes.find((n: any) => n.id === req.params.id);
+      const parsed = z.object({
+        content: z.string().trim().min(1, "Note content cannot be empty"),
+      }).strict().safeParse(req.body);
+
+      if (!parsed.success) {
+        return res.status(422).json({ message: "Validation error", errors: parsed.error.issues });
+      }
+
+      // Get the database-backed note and verify it exists
+      const note = await storage.getCrmNote(req.params.id);
       
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
       }
 
       // Get lead to check access
-      const lead = await storage.getCrmLead((note as any).leadId);
+      const lead = await storage.getCrmLead(note.leadId);
       if (!lead) {
         return res.status(404).json({ message: "Associated lead not found" });
       }
@@ -8553,7 +8560,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied - insufficient permissions" });
       }
 
-      const updatedNote = await storage.updateCrmNote(req.params.id, req.body);
+      const updatedNote = await storage.updateCrmNote(req.params.id, {
+        content: parsed.data.content,
+      });
+      if (!updatedNote) {
+        return res.status(404).json({ message: "Note not found" });
+      }
       res.json(updatedNote);
     } catch (error) {
       console.error("Error updating CRM note:", error);
@@ -8568,16 +8580,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only contractors can access CRM features" });
       }
 
-      // Get note and verify it exists
-      const notes = Array.from((storage as any).memStorage?.crmNotes?.values() || []);
-      const note = notes.find((n: any) => n.id === req.params.id);
+      // Get the database-backed note and verify it exists
+      const note = await storage.getCrmNote(req.params.id);
       
       if (!note) {
         return res.status(404).json({ message: "Note not found" });
       }
 
       // Get lead to check access
-      const lead = await storage.getCrmLead((note as any).leadId);
+      const lead = await storage.getCrmLead(note.leadId);
       if (!lead) {
         return res.status(404).json({ message: "Associated lead not found" });
       }
@@ -8593,7 +8604,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied - insufficient permissions" });
       }
 
-      await storage.deleteCrmNote(req.params.id);
+      const deleted = await storage.deleteCrmNote(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Note not found" });
+      }
       res.json({ success: true, message: "Note deleted successfully" });
     } catch (error) {
       console.error("Error deleting CRM note:", error);
