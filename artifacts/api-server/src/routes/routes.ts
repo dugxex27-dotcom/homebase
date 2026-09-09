@@ -1877,6 +1877,48 @@ export async function verifyRequestorRoleFromDb(
   return null;
 }
 
+export type FreshTeamManagementActor = {
+  companyId: string;
+  companyRole: 'owner' | 'admin';
+  status: string | null;
+};
+
+export async function loadFreshTeamManagementActor(
+  requestorId: string,
+  getActorFromDb: (requestorId: string) => Promise<{
+    companyId: string | null;
+    companyRole: string | null;
+    status: string | null;
+  } | null>,
+): Promise<
+  | { actor: FreshTeamManagementActor; error: null }
+  | { actor: null; error: { status: number; message: string } }
+> {
+  const actor = await getActorFromDb(requestorId);
+  const activeError = checkActorActiveGuard(actor?.status);
+  if (activeError) return { actor: null, error: activeError };
+  if (
+    !actor?.companyId
+    || (actor.companyRole !== 'owner' && actor.companyRole !== 'admin')
+  ) {
+    return {
+      actor: null,
+      error: {
+        status: 403,
+        message: 'Your role or company has been updated since you logged in. Please refresh the page.',
+      },
+    };
+  }
+  return {
+    actor: {
+      companyId: actor.companyId,
+      companyRole: actor.companyRole,
+      status: actor.status,
+    },
+    error: null,
+  };
+}
+
 export function checkActorActiveGuard(
   status: string | null | undefined,
 ): { status: number; message: string } | null {
@@ -24873,9 +24915,21 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   const inviteTeamMemberHandler = async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
-      if (adminUser.role !== 'contractor' || !adminUser.companyId) {
+      if (adminUser.role !== 'contractor') {
         return res.status(400).json({ message: "You must be a contractor with a company to invite team members" });
       }
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
 
       const bodySchema = z.object({
         email: z.string().email("Valid email is required"),
@@ -24889,13 +24943,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
       }
       const { email, firstName, lastName, role: inviteRole, divisionId: inviteDivisionId } = parsed.data;
-      const [freshInviteActor] = await db
-        .select({ companyRole: users.companyRole })
-        .from(users)
-        .where(eq(users.id, adminUser.id))
-        .limit(1);
-      const freshInviteActorRole = (freshInviteActor as any)?.companyRole ?? adminUser.companyRole;
-      if (inviteRole === 'admin' && freshInviteActorRole !== 'owner') {
+      if (inviteRole === 'admin' && requesterRole !== 'owner') {
         return res.status(403).json({ message: "Only the company owner can invite an admin" });
       }
 
@@ -24912,12 +24960,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       } = { limitError: null, otherError: null, inviteToken: null, companyName: null };
 
       await db.transaction(async (tx) => {
-        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`);
 
-        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, companyId)).limit(1);
         outcome.companyName = companyRow?.name || null;
 
-        const currentReservedCount = await countReservedCompanySeats(adminUser.companyId, tx);
+        const currentReservedCount = await countReservedCompanySeats(companyId, tx);
         if (currentReservedCount >= MAX_RESERVED_COMPANY_SEATS) {
           outcome.limitError = {
             status: 400,
@@ -24943,12 +24991,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             outcome.otherError = { status: 400, body: { message: "An account with this email already exists and cannot be invited as a team member. Please use a different email address." } };
             return;
           }
-          if (existingUser.companyId && existingUser.companyId !== adminUser.companyId) {
+          if (existingUser.companyId && existingUser.companyId !== companyId) {
             outcome.otherError = { status: 400, body: { message: "This user already belongs to another company" } };
             return;
           }
           await tx.update(users).set({
-            companyId: adminUser.companyId,
+            companyId,
             companyRole: inviteRole,
             ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
             status: 'pending_invite',
@@ -24964,7 +25012,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             firstName: firstName || null,
             lastName: lastName || null,
             role: 'contractor',
-            companyId: adminUser.companyId,
+            companyId,
             companyRole: inviteRole,
             ...(inviteDivisionId ? { divisionId: inviteDivisionId } : {}),
             status: 'pending_invite',
@@ -25005,31 +25053,20 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   const resendTeamInviteHandler = async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
-
-      // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusResend] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrResend = checkActorActiveGuard(actorStatusResend?.status);
-      if (actorGuardErrResend) return res.status(actorGuardErrResend.status).json({ message: actorGuardErrResend.message });
-      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege escalation
-      let requesterRole: string | null = null;
-      const actorRoleError = await verifyRequestorRoleFromDb(
-        adminUser.id,
-        adminUser.companyId,
-        async (requestorId, companyId) => {
-          const [actor] = await db
-            .select({ companyRole: users.companyRole })
-            .from(users)
-            .where(and(eq(users.id, requestorId), eq(users.companyId, companyId)))
-            .limit(1);
-          requesterRole = actor?.companyRole ?? null;
-          return requesterRole;
-        },
-      );
-      if (actorRoleError) {
-        return res.status(actorRoleError.status).json({ message: actorRoleError.message });
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
       }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
 
-      if (adminUser.role !== 'contractor' || !adminUser.companyId) {
+      if (adminUser.role !== 'contractor') {
         return res.status(400).json({ message: "You must be a contractor with a company to resend invites" });
       }
 
@@ -25039,7 +25076,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (!techUser) {
         return res.status(404).json({ message: "Team member not found" });
       }
-      if (techUser.companyId !== adminUser.companyId) {
+      if (techUser.companyId !== companyId) {
         return res.status(403).json({ message: "This user does not belong to your company" });
       }
       if ((techUser as any).status !== 'pending_invite') {
@@ -25065,12 +25102,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const resendTargetWhere = requesterRole === 'owner'
         ? and(
             eq(users.id, userId),
-            eq(users.companyId, adminUser.companyId),
+            eq(users.companyId, companyId),
             eq(users.status, 'pending_invite'),
           )
         : and(
             eq(users.id, userId),
-            eq(users.companyId, adminUser.companyId),
+            eq(users.companyId, companyId),
             eq(users.status, 'pending_invite'),
             ne(users.companyRole, 'admin'),
             ne(users.companyRole, 'owner'),
@@ -25089,7 +25126,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         });
       }
 
-      const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+      const [companyRow] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
       const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
       const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteToken}`;
 
@@ -25263,19 +25300,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const reason = reasonResult.data.reason || undefined;
 
-      // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusSuspend] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrSuspend = checkActorActiveGuard(actorStatusSuspend?.status);
-      if (actorGuardErrSuspend) return res.status(actorGuardErrSuspend.status).json({ message: actorGuardErrSuspend.message });
-      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
-      const [actorRoleFreshSuspend] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const requesterRole = (actorRoleFreshSuspend as any)?.companyRole ?? adminUser.companyRole;
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
         : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
-        eq(users.companyId, adminUser.companyId),
+        eq(users.companyId, companyId),
         roleCondition,
         eq(users.status as any, 'active')
       )).limit(1);
@@ -25300,13 +25342,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // capacity, but is no longer a paid seat. Sync immediately after the
       // status mutation rather than waiting for a later webhook.
       try {
-        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+        await refreshSeatsForCompany(companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
       } catch (seatSyncErr: any) {
         req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member suspension; queued for retry via pending_seat_syncs');
       }
 
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
-      const actorRole = adminUser.companyRole ?? null;
+      const actorRole = requesterRole;
+      const freshAdminUser = { ...adminUser, companyId, companyRole: requesterRole };
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
@@ -25314,15 +25357,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         reason,
         userId: adminUser.id,
         userEmail: adminUser.email,
-        userRole: adminUser.companyRole,
+        userRole: requesterRole,
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'suspended', companyId: adminUser.companyId, actorName, actorRole, targetName },
+        actionDetails: { teamAction: 'suspended', companyId, actorName, actorRole, targetName },
         req,
         severity: 'warning' as any,
       });
-      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'suspended', occurredAt, req.log);
+      await notifyCompanyOwnerOfTeamAction(companyId, freshAdminUser, targetUser, 'suspended', occurredAt, req.log);
       res.json({ message: "Team member suspended" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error suspending team member');
@@ -25336,19 +25379,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const { userId } = req.params;
       const adminUser = req.session.user;
 
-      // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusReact] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrReact = checkActorActiveGuard(actorStatusReact?.status);
-      if (actorGuardErrReact) return res.status(actorGuardErrReact.status).json({ message: actorGuardErrReact.message });
-      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
-      const [actorRoleFreshReact] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const requesterRole = (actorRoleFreshReact as any)?.companyRole ?? adminUser.companyRole;
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
         : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
-        eq(users.companyId, adminUser.companyId),
+        eq(users.companyId, companyId),
         roleCondition,
         eq(users.status as any, 'suspended')
       )).limit(1);
@@ -25362,28 +25410,29 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // quantity immediately, while retaining the durable retry checkpoint if
       // Stripe is temporarily unavailable.
       try {
-        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+        await refreshSeatsForCompany(companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
       } catch (seatSyncErr: any) {
         req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member reactivation; queued for retry via pending_seat_syncs');
       }
 
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
-      const actorRole = adminUser.companyRole ?? null;
+      const actorRole = requesterRole;
+      const freshAdminUser = { ...adminUser, companyId, companyRole: requesterRole };
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
         action: 'Team member reactivated',
         userId: adminUser.id,
         userEmail: adminUser.email,
-        userRole: adminUser.companyRole,
+        userRole: requesterRole,
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'reactivated', companyId: adminUser.companyId, actorName, actorRole, targetName },
+        actionDetails: { teamAction: 'reactivated', companyId, actorName, actorRole, targetName },
         req,
         severity: 'info' as any,
       });
-      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'reactivated', occurredAt, req.log);
+      await notifyCompanyOwnerOfTeamAction(companyId, freshAdminUser, targetUser, 'reactivated', occurredAt, req.log);
       res.json({ message: "Team member reactivated" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error reactivating team member');
@@ -25397,19 +25446,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const { userId } = req.params;
       const adminUser = req.session.user;
 
-      // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusInv] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrInv = checkActorActiveGuard(actorStatusInv?.status);
-      if (actorGuardErrInv) return res.status(actorGuardErrInv.status).json({ message: actorGuardErrInv.message });
-      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
-      const [actorRoleFreshInv] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const requesterRole = (actorRoleFreshInv as any)?.companyRole ?? adminUser.companyRole;
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
       const roleCondition = requesterRole === 'owner'
         ? inArray(users.companyRole as any, [...TEAM_MEMBER_ROLES])
         : inArray(users.companyRole as any, [...ADMIN_MANAGEABLE_TEAM_MEMBER_ROLES]);
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
-        eq(users.companyId, adminUser.companyId),
+        eq(users.companyId, companyId),
         roleCondition,
         eq(users.status as any, 'pending_invite')
       )).limit(1);
@@ -25541,13 +25595,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const { userId } = req.params;
       const adminUser = req.session.user;
 
-      // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusRole] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrRole = checkActorActiveGuard(actorStatusRole?.status);
-      if (actorGuardErrRole) return res.status(actorGuardErrRole.status).json({ message: actorGuardErrRole.message });
-      // Demotion guard: re-verify actor's companyRole from DB to prevent stale privilege use
-      const [actorRoleFreshRole] = await db.select({ companyRole: users.companyRole }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const requesterRole = (actorRoleFreshRole as any)?.companyRole ?? adminUser.companyRole;
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
 
       const parsed = parseUpdateTeamMemberBody(req.body);
       if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0]?.message ?? "Invalid input" });
@@ -25561,7 +25620,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
       const [targetUser] = await db.select().from(users).where(and(
         eq(users.id, userId),
-        eq(users.companyId, adminUser.companyId),
+        eq(users.companyId, companyId),
         roleCondition,
         or(ne(users.status as any, 'removed'), isNull(users.status as any))
       )).limit(1);
@@ -25600,13 +25659,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const updateWhere = parsed.data.email !== undefined
         ? and(
             eq(users.id, userId),
-            eq(users.companyId, adminUser.companyId),
+            eq(users.companyId, companyId),
             roleCondition,
             eq(users.status as any, 'pending_invite'),
           )
         : and(
             eq(users.id, userId),
-            eq(users.companyId, adminUser.companyId),
+            eq(users.companyId, companyId),
             roleCondition,
             or(ne(users.status as any, 'removed'), isNull(users.status as any)),
           );
@@ -25621,7 +25680,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       if (inviteResentTo && inviteTokenForResend && inviteExpiresAtForResend) {
-        const [companyRow] = await db.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        const [companyRow] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
         const domain = process.env.REPLIT_DOMAINS?.split(',')[0]?.trim() || 'gotohomebase.com';
         const inviteUrl = `https://${domain}/contractor/accept-invite?token=${inviteTokenForResend}`;
         await emailService.sendTechInviteEmail(
@@ -25684,18 +25743,24 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
       const reason = reasonResult.data.reason || undefined;
 
-      // Combined actor check: status + companyRole + companyId in a single query
-      // (prevents stale-session bypass AND privilege escalation after demotion)
-      const [actorRowRemove] = await db.select({ status: users.status, companyRole: users.companyRole, companyId: users.companyId }).from(users).where(eq(users.id, adminUser.id)).limit(1);
-      const actorGuardErrRemove = checkActorActiveGuard(actorRowRemove?.status);
-      if (actorGuardErrRemove) return res.status(actorGuardErrRemove.status).json({ message: actorGuardErrRemove.message });
-      const requesterRole = (actorRowRemove as any)?.companyRole ?? adminUser.companyRole;
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId, companyRole: requesterRole } = freshActorResult.actor;
       const removeResult = await db.transaction(async (tx) => {
         // Serialize removals for this company so two concurrent requests cannot
         // both observe another admin and remove the final two administrators.
-        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`);
         return executeRemoveMember(
-          adminUser.companyId,
+          companyId,
           adminUser.id,
           requesterRole,
           userId,
@@ -25722,13 +25787,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // seat has been freed, rather than waiting for startup recovery. Must
       // not fail or roll back this request — see invite-tech route comment.
       try {
-        await refreshSeatsForCompany(adminUser.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+        await refreshSeatsForCompany(companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
       } catch (seatSyncErr: any) {
         req.log?.error({ err: seatSyncErr, companyId: adminUser.companyId }, '[SEAT_SYNC] Failed to sync Stripe seat quantity after team member removal; queued for retry via pending_seat_syncs');
       }
 
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
-      const actorRole = adminUser.companyRole ?? null;
+      const actorRole = requesterRole;
+      const freshAdminUser = { ...adminUser, companyId, companyRole: requesterRole };
       const targetName = [(targetUser as any).firstName, (targetUser as any).lastName].filter(Boolean).join(' ') || (targetUser as any).email || userId;
       await auditLogger.log({
         eventType: AuditEventTypes.ADMIN_USER_MODIFY,
@@ -25736,15 +25802,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         reason,
         userId: adminUser.id,
         userEmail: adminUser.email,
-        userRole: adminUser.companyRole,
+        userRole: requesterRole,
         targetUserId: userId,
         targetResourceType: 'team_member',
         targetResourceId: userId,
-        actionDetails: { teamAction: 'removed', companyId: adminUser.companyId, actorName, actorRole, targetName },
+        actionDetails: { teamAction: 'removed', companyId, actorName, actorRole, targetName },
         req,
         severity: 'warning' as any,
       });
-      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'removed', occurredAt, req.log);
+      await notifyCompanyOwnerOfTeamAction(companyId, freshAdminUser, targetUser, 'removed', occurredAt, req.log);
       res.json({ message: "Team member removed from company" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error removing team member');
@@ -26047,7 +26113,18 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
   app.post('/api/contractor/bulk-import', isAuthenticated, requireNotSuspended(), requireCompanyRoleAny('owner', 'admin'), requireBulkImport, upload.single('file'), async (req: any, res: any) => {
     try {
       const adminUser = req.session.user;
-      if (!adminUser.companyId) return res.status(400).json({ message: 'You must belong to a company' });
+      const freshActorResult = await loadFreshTeamManagementActor(adminUser.id, async (requestorId) => {
+        const [actor] = await db.select({
+          companyId: users.companyId,
+          companyRole: users.companyRole,
+          status: users.status,
+        }).from(users).where(eq(users.id, requestorId)).limit(1);
+        return actor ?? null;
+      });
+      if (freshActorResult.error) {
+        return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
+      }
+      const { companyId } = freshActorResult.actor;
       if (!req.file) return res.status(400).json({ message: 'CSV file is required' });
       if (!req.file.mimetype.includes('csv') && !req.file.originalname.endsWith('.csv')) {
         return res.status(400).json({ message: 'Only CSV files are accepted' });
@@ -26067,7 +26144,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // Create import record
       const [importRecord] = await db.insert(companyBulkImports).values({
         id: randomUUID(),
-        companyId: adminUser.companyId,
+        companyId,
         uploadedBy: adminUser.id,
         fileName: req.file.originalname,
         status: 'processing',
@@ -26094,9 +26171,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       // could each read a stale seat count and together exceed company capacity.
       // Same pattern as the house-count-vs-plan-limit race fix.
       await db.transaction(async (tx) => {
-        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${adminUser.companyId} FOR UPDATE`);
+        await tx.execute(drizzleSql`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`);
 
-        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, adminUser.companyId)).limit(1);
+        const [companyRow] = await tx.select().from(companies).where(eq(companies.id, companyId)).limit(1);
         companyNameForEmail = companyRow?.name || 'Your Company';
 
         for (let i = 0; i < rows.length; i++) {
@@ -26114,7 +26191,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           // Once the limit is hit, remaining rows are rejected individually
           // (partial import) rather than failing the whole import or silently
           // importing over the limit — each rejected row is reported by number.
-          const currentReservedCount = await countReservedCompanySeats(adminUser.companyId, tx);
+          const currentReservedCount = await countReservedCompanySeats(companyId, tx);
           if (currentReservedCount >= MAX_RESERVED_COMPANY_SEATS) {
             errors.push({ row: i + 2, error: `Row ${i + 2}: team capacity reached (${MAX_RESERVED_COMPANY_SEATS})` });
             continue;
@@ -26130,10 +26207,10 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
 
             if (existing) {
               if ((existing as any).role !== 'contractor') { errors.push({ row: i + 2, error: `${email}: non-contractor account` }); continue; }
-              if (existing.companyId && existing.companyId !== adminUser.companyId) { errors.push({ row: i + 2, error: `${email}: belongs to another company` }); continue; }
-              await tx.update(users).set({ companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, updatedAt: new Date() } as any).where(eq(users.id, existing.id));
+              if (existing.companyId && existing.companyId !== companyId) { errors.push({ row: i + 2, error: `${email}: belongs to another company` }); continue; }
+              await tx.update(users).set({ companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, updatedAt: new Date() } as any).where(eq(users.id, existing.id));
             } else {
-              await tx.insert(users).values({ id: randomUUID(), email, firstName, lastName, role: 'contractor', companyId: adminUser.companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, accountStatus: 'active', subscriptionStatus: 'active', emailVerified: false } as any);
+              await tx.insert(users).values({ id: randomUUID(), email, firstName, lastName, role: 'contractor', companyId, companyRole: 'tech', status: 'pending_invite', inviteToken, inviteExpiresAt, accountStatus: 'active', subscriptionStatus: 'active', emailVerified: false } as any);
             }
             reserved.push({ row: i + 2, email, inviteToken });
           } catch (rowErr) {

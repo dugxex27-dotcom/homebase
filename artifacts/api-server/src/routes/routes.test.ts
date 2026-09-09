@@ -31,6 +31,7 @@ import {
   executeRemoveMember,
   executeTransferOwnership,
   verifyRequestorRoleFromDb,
+  loadFreshTeamManagementActor,
   checkDiyVerifyGuard,
   checkPhotoCountGuard,
   MAX_PHOTOS_PER_ANALYSIS,
@@ -2331,6 +2332,58 @@ describe("verifyRequestorRoleFromDb", () => {
     );
     expect(captured).toHaveLength(1);
     expect(captured[0]).toEqual([REQUESTOR_ID, COMPANY_ID]);
+  });
+});
+
+describe("loadFreshTeamManagementActor", () => {
+  it.each([
+    "POST /api/contractor/invite-team-member",
+    "POST /api/contractor/invite-tech",
+    "POST /api/contractor/bulk-import",
+    "PATCH /api/contractor/team/:userId/resend-invite",
+    "PATCH /api/contractor/team/:userId/suspend",
+    "PATCH /api/contractor/team/:userId/reactivate",
+    "DELETE /api/contractor/team/:userId/invite",
+    "PATCH /api/contractor/team/:userId",
+    "DELETE /api/contractor/team/:userId",
+  ])("rejects a stale admin session before %s mutates team data", async () => {
+    const result = await loadFreshTeamManagementActor("actor-1", async () => ({
+      companyId: "company-1",
+      companyRole: "tech",
+      status: "active",
+    }));
+
+    expect(result.actor).toBeNull();
+    expect(result.error?.status).toBe(403);
+    expect(result.error?.message).toMatch(/role or company has been updated/i);
+  });
+
+  it("uses the current DB company rather than a stale session company", async () => {
+    const result = await loadFreshTeamManagementActor("actor-1", async () => ({
+      companyId: "company-current",
+      companyRole: "admin",
+      status: "active",
+    }));
+
+    expect(result).toEqual({
+      actor: {
+        companyId: "company-current",
+        companyRole: "admin",
+        status: "active",
+      },
+      error: null,
+    });
+  });
+
+  it("fails closed when the actor no longer belongs to a company", async () => {
+    const result = await loadFreshTeamManagementActor("actor-1", async () => ({
+      companyId: null,
+      companyRole: null,
+      status: "active",
+    }));
+
+    expect(result.actor).toBeNull();
+    expect(result.error?.status).toBe(403);
   });
 });
 
