@@ -1970,6 +1970,7 @@ export const crmLeads = pgTable("crm_leads", {
   lostAt: timestamp("lost_at"),
   lostReason: text("lost_reason"), // Reason for losing the lead
   tags: text("tags").array().default(sql`ARRAY[]::text[]`), // Custom tags for filtering
+  notes: text("notes"),
   metadata: jsonb("metadata"), // Store additional custom fields
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
