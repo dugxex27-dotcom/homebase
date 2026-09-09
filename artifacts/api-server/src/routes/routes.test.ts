@@ -2498,6 +2498,8 @@ describe("checkRoleChangeGuard — concurrent demotion race simulation", () => {
  *   update: update(users).set({...}).where(...)   → []
  */
 function makeLeaveCompanyDbMock(otherAdminCount: number) {
+  const execute = vi.fn().mockResolvedValue([]);
+
   // select chain
   const selectWhere = vi.fn().mockResolvedValue([{ cnt: otherAdminCount }]);
   const selectFrom  = vi.fn().mockReturnValue({ where: selectWhere });
@@ -2508,7 +2510,20 @@ function makeLeaveCompanyDbMock(otherAdminCount: number) {
   const updateSet   = vi.fn().mockReturnValue({ where: updateWhere });
   const update      = vi.fn().mockReturnValue({ set: updateSet });
 
-  return { select, selectFrom, selectWhere, update, updateSet, updateWhere };
+  const tx = { execute, select, update };
+  const transaction = vi.fn(async (callback: (transaction: typeof tx) => unknown) => callback(tx));
+
+  return {
+    transaction,
+    tx,
+    execute,
+    select,
+    selectFrom,
+    selectWhere,
+    update,
+    updateSet,
+    updateWhere,
+  };
 }
 
 describe("executeLeaveCompany — leave-company route guard and DB update", () => {
@@ -2595,6 +2610,25 @@ describe("executeLeaveCompany — leave-company route guard and DB update", () =
     expect(result.outcome).toBe("left");
     expect(db.select).not.toHaveBeenCalled(); // guard skipped for non-admin roles
     expect(db.update).toHaveBeenCalledOnce(); // DB was still cleared
+  });
+
+  it("serializes a leave with a simultaneous demotion and blocks the leave after the demotion commits", async () => {
+    // The demotion request holds the same company-row lock first. Once it
+    // commits, the leave transaction acquires the lock and its fresh count
+    // sees that no other active administrator remains.
+    const db = makeLeaveCompanyDbMock(0);
+
+    const result = await executeLeaveCompany("company-1", "admin-leaving", "admin", db as any);
+
+    expect(result).toEqual({ outcome: "sole_admin" });
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(db.execute).toHaveBeenCalledOnce();
+    expect(JSON.stringify(db.execute.mock.calls[0][0])).toContain("FOR UPDATE");
+    expect(db.select).toHaveBeenCalledOnce();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.execute.mock.invocationCallOrder[0]).toBeLessThan(
+      db.select.mock.invocationCallOrder[0],
+    );
   });
 
   it("clears DB fields for a non-admin member (case 3 — DB fields)", async () => {

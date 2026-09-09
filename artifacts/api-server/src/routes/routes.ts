@@ -1946,28 +1946,37 @@ export async function executeLeaveCompany(
 ): Promise<LeaveCompanyResult> {
   if (!companyId) return { outcome: 'not_associated' };
 
-  if (role === 'owner' || role === 'admin') {
-    const rows = await dbInstance
-      .select({ cnt: drizzleSql<number>`count(*)::int` })
-      .from(users)
-      .where(
-        and(
-          eq(users.companyId, companyId),
-          ne(users.id as any, userId),
-          inArray(users.companyRole as any, ['admin', 'owner']),
-          eq(users.status as any, 'active'),
-        ),
-      );
-    const otherAdminCount = rows[0]?.cnt ?? 0;
-    if (otherAdminCount === 0) return { outcome: 'sole_admin' };
-  }
+  return dbInstance.transaction(async (tx: any) => {
+    // Use the same company-row lock as role demotions/removals. This makes the
+    // admin count and the leave update one serialized operation, so a demotion
+    // cannot remove the other administrator between this check and the write.
+    await tx.execute(
+      drizzleSql`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`,
+    );
 
-  await dbInstance
-    .update(users)
-    .set({ companyId: null, companyRole: null })
-    .where(eq(users.id as any, userId));
+    if (role === 'owner' || role === 'admin') {
+      const rows = await tx
+        .select({ cnt: drizzleSql<number>`count(*)::int` })
+        .from(users)
+        .where(
+          and(
+            eq(users.companyId, companyId),
+            ne(users.id as any, userId),
+            inArray(users.companyRole as any, ['admin', 'owner']),
+            eq(users.status as any, 'active'),
+          ),
+        );
+      const otherAdminCount = rows[0]?.cnt ?? 0;
+      if (otherAdminCount === 0) return { outcome: 'sole_admin' };
+    }
 
-  return { outcome: 'left', companyId };
+    await tx
+      .update(users)
+      .set({ companyId: null, companyRole: null })
+      .where(eq(users.id as any, userId));
+
+    return { outcome: 'left', companyId };
+  });
 }
 
 // ---------------------------------------------------------------------------
