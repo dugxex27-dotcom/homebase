@@ -7,7 +7,7 @@
  */
 import { randomUUID } from "crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { stripeProcessedEvents } from "@workspace/db";
 import { db } from "./db";
 import { storage } from "./storage";
@@ -92,18 +92,35 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     expect(statusById.get(committedId)).toBe("committed");
   });
 
-  it("prunes rows beyond the TTL while preserving newer rows", async () => {
-    const expiredId = eventId("prune_expired");
-    const retainedId = eventId("prune_retained");
-    await insertEvent(expiredId, "committed", new Date(Date.now() - 25 * 60 * 60 * 1000));
-    await insertEvent(retainedId, "committed", new Date(Date.now() - 23 * 60 * 60 * 1000));
+  it("allows a replay after a recorded event ages beyond the TTL and is pruned", async () => {
+    const id = eventId("pruned_replay");
+    const claimedAt = new Date();
+    await expect(storage.claimStripeEvent(id, claimedAt)).resolves.toBe("claimed");
+    await expect(storage.markStripeEventCommitted(id, claimedAt)).resolves.toBe(true);
+    await expect(storage.hasProcessedStripeEvent(id)).resolves.toBe(true);
 
-    const result = await storage.pruneOldStripeProcessedEvents(24);
+    const expiredAt = new Date(Date.now() - 49 * 60 * 60 * 1000);
+    await db
+      .update(stripeProcessedEvents)
+      .set({ processedAt: expiredAt, updatedAt: expiredAt })
+      .where(eq(stripeProcessedEvents.stripeEventId, id));
+
+    const result = await storage.pruneOldStripeProcessedEvents(48);
 
     expect(result.deleted).toBeGreaterThanOrEqual(1);
+    await expect(storage.hasProcessedStripeEvent(id)).resolves.toBe(false);
+  });
+
+  it("continues blocking a recorded event within the TTL window", async () => {
+    const id = eventId("retained_replay");
+    const claimedAt = new Date(Date.now() - 47 * 60 * 60 * 1000);
+    await expect(storage.claimStripeEvent(id, claimedAt)).resolves.toBe("claimed");
+    await expect(storage.markStripeEventCommitted(id, claimedAt)).resolves.toBe(true);
+
+    const result = await storage.pruneOldStripeProcessedEvents(48);
+
     expect(result.remaining).toBeGreaterThanOrEqual(1);
-    const rows = await readFixtures(expiredId, retainedId);
-    expect(rows.map((row) => row.stripeEventId)).toEqual([retainedId]);
+    await expect(storage.hasProcessedStripeEvent(id)).resolves.toBe(true);
   });
   },
 );
