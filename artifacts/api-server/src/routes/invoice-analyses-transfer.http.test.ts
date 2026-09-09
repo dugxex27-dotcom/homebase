@@ -768,16 +768,16 @@ describe("POST /api/house-transfers/:id/confirm + GET /api/houses — ownership 
         );
         if (house) house.homeownerId = toHomeownerId;
         return {
-          maintenanceLogsTransferred: 0,
-          appliancesTransferred: 0,
-          appointmentsTransferred: 0,
-          customTasksTransferred: 0,
-          homeSystemsTransferred: 0,
-          serviceRecordsTransferred: 0,
-          taskCompletionsTransferred: 0,
-          taskOverridesTransferred: 0,
-          crmInvoicesTransferred: 0,
-          invoiceAnalysesTransferred: 0,
+          maintenanceLogsTransferred: 1,
+          appliancesTransferred: 2,
+          appointmentsTransferred: 3,
+          customTasksTransferred: 4,
+          homeSystemsTransferred: 5,
+          serviceRecordsTransferred: 6,
+          taskCompletionsTransferred: 7,
+          taskOverridesTransferred: 8,
+          crmInvoicesTransferred: 9,
+          invoiceAnalysesTransferred: 10,
         };
       },
     );
@@ -804,6 +804,24 @@ describe("POST /api/house-transfers/:id/confirm + GET /api/houses — ownership 
       OWNER_A_ID,
       OWNER_B_ID,
     );
+    expect(confirmRes.body).toMatchObject({
+      transfer: {
+        id: TRANSFER_ROW_ID,
+        status: "completed",
+      },
+      transferResults: {
+        maintenanceLogsTransferred: 1,
+        appliancesTransferred: 2,
+        appointmentsTransferred: 3,
+        customTasksTransferred: 4,
+        homeSystemsTransferred: 5,
+        serviceRecordsTransferred: 6,
+        taskCompletionsTransferred: 7,
+        taskOverridesTransferred: 8,
+        crmInvoicesTransferred: 9,
+        invoiceAnalysesTransferred: 10,
+      },
+    });
 
     const formerOwnerRes = await request(app)
       .get("/api/houses")
