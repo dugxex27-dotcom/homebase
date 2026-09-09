@@ -2534,6 +2534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/stripe/health', async (_req: any, res) => {
     try {
       if (!stripe) {
+        logger.warn(
+          {
+            component: 'stripe_health',
+            reason: 'stripe_not_configured',
+            stripeConfigured: false,
+          },
+          '[STRIPE HEALTH] Stripe is not configured',
+        );
         return res.status(500).json({ 
           status: 'error', 
           message: 'Stripe not configured - missing STRIPE_SECRET_KEY' 
@@ -2553,7 +2561,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
     } catch (error: any) {
-      console.error('[STRIPE HEALTH] Error:', error.message);
+      logger.error(
+        {
+          component: 'stripe_health',
+          reason: 'stripe_call_failed',
+          stripeConfigured: true,
+          error,
+        },
+        '[STRIPE HEALTH] Stripe API call failed',
+      );
       return res.status(500).json({
         status: 'error',
         message: error.message || 'Failed to connect to Stripe API',
