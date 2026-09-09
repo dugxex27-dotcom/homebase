@@ -334,16 +334,7 @@ interface CompanyAuditEntry {
   createdAt: string;
 }
 
-function TeamAuditLog() {
-  const { data: entries = [], isLoading } = useQuery<CompanyAuditEntry[]>({
-    queryKey: ['/api/contractor/team/audit-log'],
-    queryFn: async () => {
-      const res = await fetch('/api/contractor/team/audit-log', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch audit log');
-      return res.json();
-    },
-  });
-
+function TeamAuditLog({ entries, isLoading }: { entries: CompanyAuditEntry[]; isLoading: boolean }) {
   const [nameSearch, setNameSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<string>('');
   const [roleFilter, setRoleFilter] = useState<string>('');
@@ -634,6 +625,21 @@ export default function ContractorDashboard() {
 
   const isAdminRole = (typedUser as any)?.companyRole === 'owner' || (typedUser as any)?.companyRole === 'admin';
   const isOwner = (typedUser as any)?.companyRole === 'owner';
+
+  const { data: companyAuditEntries = [], isLoading: isLoadingCompanyAudit } = useQuery<CompanyAuditEntry[]>({
+    queryKey: ['/api/contractor/team/audit-log'],
+    queryFn: async () => {
+      const res = await fetch('/api/contractor/team/audit-log', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch audit log');
+      return res.json();
+    },
+    enabled: isOwner && !!typedUser,
+  });
+  const recentAuditEventCount = companyAuditEntries.reduce((count, entry) => {
+    const eventTime = new Date(entry.createdAt).getTime();
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return Number.isFinite(eventTime) && eventTime >= sevenDaysAgo ? count + 1 : count;
+  }, 0);
 
   const { data: teamData, isLoading: isLoadingTeam, refetch: refetchTeam } = useQuery<{
     teamMembers: TeamMember[];
@@ -1417,7 +1423,28 @@ export default function ContractorDashboard() {
                 textTransform: 'capitalize',
               }}
             >
-              {tab === 'team' ? `Team (${teamData?.reservedTeamCount ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {tab === 'team' ? `Team (${teamData?.reservedTeamCount ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
+                {tab === 'team' && recentAuditEventCount > 0 && (
+                  <span
+                    aria-label={`${recentAuditEventCount} team actions in the last 7 days`}
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      padding: '0 5px',
+                      borderRadius: 999,
+                      background: '#dc2626',
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      lineHeight: '18px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {recentAuditEventCount > 9 ? '9+' : recentAuditEventCount}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
@@ -1904,7 +1931,7 @@ export default function ContractorDashboard() {
               </button>
               {auditLogOpen && (
                 <div style={{ marginTop: 10 }}>
-                  <TeamAuditLog />
+                  <TeamAuditLog entries={companyAuditEntries} isLoading={isLoadingCompanyAudit} />
                 </div>
               )}
             </div>
