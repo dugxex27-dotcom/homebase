@@ -50,7 +50,7 @@ export default function AdminFlaggedReviews() {
   const [investigationNotes, setInvestigationNotes] = useState("");
 
   // Fetch flagged reviews
-  const { data: flags = [], isLoading } = useQuery<ReviewFlag[]>({
+  const { data: flags = [], isLoading, isError } = useQuery<ReviewFlag[]>({
     queryKey: ['/api/admin/review-flags', statusFilter],
     queryFn: async () => {
       const url = statusFilter === 'all' 
@@ -105,9 +105,9 @@ export default function AdminFlaggedReviews() {
       case 'investigating':
         return <Badge variant="default" className="flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Investigating</Badge>;
       case 'resolved_valid':
-        return <Badge className="bg-green-600 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Valid Review</Badge>;
+        return <Badge className="bg-green-600 flex items-center gap-1"><CheckCircle className="h-3 w-3" /> Flag Approved</Badge>;
       case 'resolved_invalid':
-        return <Badge className="bg-orange-600 flex items-center gap-1"><XCircle className="h-3 w-3" /> Invalid Review</Badge>;
+        return <Badge className="bg-slate-600 flex items-center gap-1"><XCircle className="h-3 w-3" /> Flag Dismissed</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
@@ -147,11 +147,11 @@ export default function AdminFlaggedReviews() {
           <CardContent>
             <Tabs value={statusFilter} onValueChange={setStatusFilter}>
               <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="pending" data-testid="button-filter-pending">Pending ({flags.filter(f => f.status === 'pending').length})</TabsTrigger>
+                <TabsTrigger value="pending" data-testid="button-filter-pending">Pending</TabsTrigger>
                 <TabsTrigger value="investigating" data-testid="button-filter-investigating">Investigating</TabsTrigger>
-                <TabsTrigger value="resolved_valid" data-testid="button-filter-resolved-valid">Valid</TabsTrigger>
-                <TabsTrigger value="resolved_invalid" data-testid="button-filter-resolved-invalid">Invalid</TabsTrigger>
-                <TabsTrigger value="all" data-testid="button-filter-all">All ({flags.length})</TabsTrigger>
+                <TabsTrigger value="resolved_valid" data-testid="button-filter-resolved-valid">Approved flags</TabsTrigger>
+                <TabsTrigger value="resolved_invalid" data-testid="button-filter-resolved-invalid">Dismissed flags</TabsTrigger>
+                <TabsTrigger value="all" data-testid="button-filter-all">All</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardContent>
@@ -172,6 +172,12 @@ export default function AdminFlaggedReviews() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
+            ) : isError ? (
+              <div className="text-center py-12" role="alert">
+                <AlertTriangle className="h-12 w-12 mx-auto text-red-500 mb-4" />
+                <p className="font-medium text-gray-900">Flagged reviews could not be loaded</p>
+                <p className="text-sm text-gray-500 mt-1">Please refresh the page and try again.</p>
+              </div>
             ) : flags.length === 0 ? (
               <div className="text-center py-12">
                 <Flag className="h-12 w-12 mx-auto text-gray-400 mb-4" />
@@ -182,7 +188,8 @@ export default function AdminFlaggedReviews() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Review Details</TableHead>
+                      <TableHead>Review</TableHead>
+                      <TableHead>Reviewer</TableHead>
                       <TableHead>Reason</TableHead>
                       <TableHead>Reporter</TableHead>
                       <TableHead>Status</TableHead>
@@ -207,6 +214,9 @@ export default function AdminFlaggedReviews() {
                               </div>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell data-testid={`text-reviewer-${index}`}>
+                          {flag.review?.reviewerName || 'Unknown Reviewer'}
                         </TableCell>
                         <TableCell data-testid={`text-reason-${index}`}>
                           <div>{getReasonLabel(flag.reason)}</div>
@@ -396,7 +406,7 @@ export default function AdminFlaggedReviews() {
                 className="bg-green-600 hover:bg-green-700"
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
-                Mark Valid
+                Approve Flag
               </Button>
               <Button
                 variant="destructive"
@@ -404,7 +414,7 @@ export default function AdminFlaggedReviews() {
                 disabled={updateFlagMutation.isPending}
               >
                 <XCircle className="h-4 w-4 mr-1" />
-                Mark Invalid
+                Dismiss Flag
               </Button>
             </DialogFooter>
           </DialogContent>
