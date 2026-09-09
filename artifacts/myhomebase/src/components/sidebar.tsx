@@ -32,6 +32,13 @@ export default function Sidebar() {
     refetchInterval: 30000,
   });
 
+  const { data: failedPayouts = [] } = useQuery<Array<{ id: string }>>({
+    queryKey: ['/api/admin/affiliate-payouts/failed'],
+    enabled: isAuthenticated && isAdmin,
+    staleTime: 0,
+    refetchInterval: 60000,
+  });
+
   const hasNotif = (tab: string) => {
     if (!unreadNotifications.length) return false;
     if (tab === 'messages') return unreadNotifications.some(n => n.type === 'message');
@@ -183,7 +190,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 p-[10px] space-y-0.5" style={{ padding: '12px 10px' }} aria-label="Main navigation">
         {isAdmin && (
-          <NavItem href="/admin" icon={Shield} label="Admin" testId="nav-admin" />
+          <NavItem href="/admin" icon={Shield} label="Admin" badge={failedPayouts.length > 0} testId="nav-admin" />
         )}
 
         {isHomeowner && (

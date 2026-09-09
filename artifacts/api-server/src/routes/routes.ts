@@ -21,7 +21,7 @@ import { createGuestContactTicket } from "../contact-ticket-writer";
 import { invoiceOrphanCleanupScheduler } from "../invoice-orphan-cleanup-scheduler";
 import { referralAccrualScheduler } from "../referral-accrual-scheduler";
 import { extractInvoiceData, verifyDIYPhotos, getMockInvoiceExtraction, getMockDIYVerification, type DIYVerification, type InvoiceExtraction } from "../invoice-analysis-service";
-import { invoiceAnalyses, maintenanceEvidenceReviews, contractorBoosts, affiliateReferrals, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
+import { invoiceAnalyses, maintenanceEvidenceReviews, contractorBoosts, affiliateReferrals, affiliatePayouts, subscriptionCycleEvents, contractorInvoiceUploads, companies, contractors, proposals, securityAuditLogs, companyDivisions, companyBulkImports, insertCompanyDivisionSchema, conversations, messages, contractorJobRecords } from "@workspace/db";
 import pushRoutes from "../push-routes";
 import { pushService } from "../push-service";
 import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
@@ -13207,6 +13207,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching invite code:", error);
       res.status(500).json({ message: "Failed to fetch invite code" });
+    }
+  });
+
+  // Admin affiliate payout operations
+  app.get("/api/admin/affiliate-payouts/failed", isAuthenticated, async (req: any, res: any) => {
+    if (req.session?.user?.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    try {
+      const failedPayouts = await db
+        .select({
+          id: affiliatePayouts.id,
+          agentId: affiliatePayouts.agentId,
+          amount: affiliatePayouts.amount,
+          errorMessage: affiliatePayouts.errorMessage,
+          createdAt: affiliatePayouts.createdAt,
+          updatedAt: affiliatePayouts.updatedAt,
+          agentFirstName: users.firstName,
+          agentLastName: users.lastName,
+          agentEmail: users.email,
+          stripeConnectAccountId: agentProfiles.stripeConnectAccountId,
+        })
+        .from(affiliatePayouts)
+        .leftJoin(users, eq(affiliatePayouts.agentId, users.id))
+        .leftJoin(agentProfiles, eq(affiliatePayouts.agentId, agentProfiles.agentId))
+        .where(eq(affiliatePayouts.status, "failed"))
+        .orderBy(desc(affiliatePayouts.updatedAt));
+
+      res.json(failedPayouts.map((payout) => ({
+        id: payout.id,
+        agentId: payout.agentId,
+        agentName: `${payout.agentFirstName ?? ""} ${payout.agentLastName ?? ""}`.trim() || "Unknown agent",
+        agentEmail: payout.agentEmail ?? "",
+        amount: payout.amount,
+        errorMessage: payout.errorMessage,
+        stripeConnectAccountId: payout.stripeConnectAccountId,
+        createdAt: payout.createdAt,
+        updatedAt: payout.updatedAt,
+      })));
+    } catch (error) {
+      req.log?.error({ error }, "Failed to fetch failed affiliate payouts");
+      res.status(500).json({ message: "Failed to fetch failed payouts" });
+    }
+  });
+
+  app.post("/api/admin/affiliate-payouts/:payoutId/retry", isAuthenticated, async (req: any, res: any) => {
+    if (req.session?.user?.role !== "admin") {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+
+    const payoutId = req.params.payoutId;
+    try {
+      if (!stripe) {
+        return res.status(503).json({ message: "Stripe is not configured" });
+      }
+
+      const payout = await storage.getAffiliatePayout(payoutId);
+      if (!payout) {
+        return res.status(404).json({ message: "Payout not found" });
+      }
+      if (payout.status !== "failed") {
+        return res.status(409).json({ message: "Only failed payouts can be retried" });
+      }
+
+      const agentProfile = await storage.getAgentProfile(payout.agentId);
+      if (!agentProfile?.stripeConnectAccountId || !agentProfile.stripeOnboardingComplete) {
+        return res.status(400).json({ message: "Agent has not completed Stripe Connect onboarding" });
+      }
+
+      const claimedPayout = await storage.claimAffiliatePayoutForTransfer(payoutId);
+      if (!claimedPayout) {
+        return res.status(409).json({ message: "Payout is already paid or being processed" });
+      }
+
+      try {
+        // This is a new operator-requested attempt, so it must not reuse the
+        // original webhook attempt's key. Stripe caches both successful and
+        // failed responses by idempotency key; reusing the old key would replay
+        // a resolved failure instead of making a new transfer. The atomic
+        // failed -> processing claim above ensures only one concurrent request
+        // can receive and use this attempt-scoped key.
+        const retryAttemptId = randomUUID();
+        const transfer = await stripe.transfers.create({
+          amount: Math.round(Number(claimedPayout.amount) * 100),
+          currency: "usd",
+          destination: agentProfile.stripeConnectAccountId,
+          metadata: {
+            payoutId: claimedPayout.id,
+            affiliateReferralId: claimedPayout.affiliateReferralId,
+            agentId: claimedPayout.agentId,
+          },
+        }, {
+          idempotencyKey: `affiliate-payout-${claimedPayout.id}-retry-${retryAttemptId}`,
+        });
+
+        await storage.updateAffiliatePayout(claimedPayout.id, {
+          status: "paid",
+          stripeTransferId: transfer.id,
+          errorMessage: null,
+          paidAt: new Date(),
+        });
+        await storage.updateAffiliateReferral(claimedPayout.affiliateReferralId, { status: "paid" });
+
+        res.json({
+          success: true,
+          message: "Transfer completed successfully",
+          payoutId: claimedPayout.id,
+          transferId: transfer.id,
+        });
+      } catch (transferError: any) {
+        await storage.updateAffiliatePayout(claimedPayout.id, {
+          status: "failed",
+          errorMessage: transferError?.message || "Stripe transfer failed",
+        });
+        req.log?.error({ error: transferError, payoutId }, "Affiliate payout retry failed");
+        res.status(502).json({ message: transferError?.message || "Stripe transfer failed" });
+      }
+    } catch (error) {
+      req.log?.error({ error, payoutId }, "Failed to retry affiliate payout");
+      res.status(500).json({ message: "Failed to retry payout" });
     }
   });
 

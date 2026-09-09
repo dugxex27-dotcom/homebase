@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2, Gift, ShieldAlert } from "lucide-react";
+import { Users, Home, Briefcase, Plus, Ban, TrendingUp, DollarSign, UserMinus, MessageSquare, ArrowRight, Flag, UserCheck, CheckCircle, XCircle, Clock, Eye, ChevronDown, ChevronUp, FileText, ExternalLink, Mail, Phone, ImagePlus, X, Loader2, Gift, ShieldAlert, RefreshCw } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { format } from "date-fns";
@@ -122,6 +122,18 @@ interface FraudQueueEntry {
   } | null;
 }
 
+interface FailedAffiliatePayout {
+  id: string;
+  agentId: string;
+  agentName: string;
+  agentEmail: string;
+  amount: string;
+  errorMessage: string | null;
+  stripeConnectAccountId: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
 const CHART_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function AdminDashboard() {
@@ -153,6 +165,7 @@ The MyHomeBase™ Team`);
   const [bulkSmsAudience, setBulkSmsAudience] = useState<"all" | "homeowners" | "contractors">("all");
   const [bulkSmsMessage, setBulkSmsMessage] = useState("MyHomeBase™: We hope you're enjoying the app! Reply with any questions or feedback. We'd love to hear from you!");
   const [boostDrilldownStatus, setBoostDrilldownStatus] = useState<'expired' | 'cancelled' | null>(null);
+  const [payoutRetryResults, setPayoutRetryResults] = useState<Record<string, { ok: boolean; message: string }>>({});
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({
@@ -200,6 +213,13 @@ The MyHomeBase™ Team`);
     queryKey: ["/api/admin/agents"],
   });
 
+  const { data: failedPayouts = [], isLoading: failedPayoutsLoading } = useQuery<FailedAffiliatePayout[]>({
+    queryKey: ["/api/admin/affiliate-payouts/failed"],
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchInterval: 60000,
+  });
+
   // Fetch referral free months data
   const { data: referralFreeMonthsData, isLoading: referralLoading } = useQuery<any[]>({
     queryKey: ["/api/admin/referral-free-months"],
@@ -235,6 +255,31 @@ The MyHomeBase™ Team`);
       toast({
         title: "Error",
         description: "Failed to dismiss the entry. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const retryPayoutMutation = useMutation({
+    mutationFn: async (payoutId: string) => {
+      const response = await apiRequest(`/api/admin/affiliate-payouts/${payoutId}/retry`, "POST", {});
+      return response.json();
+    },
+    onSuccess: (result: { message?: string }, payoutId) => {
+      const message = result.message || "The payout transfer completed successfully.";
+      setPayoutRetryResults((current) => ({ ...current, [payoutId]: { ok: true, message } }));
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/affiliate-payouts/failed"] });
+      toast({
+        title: "Transfer retried",
+        description: message,
+      });
+    },
+    onError: (error: Error, payoutId) => {
+      const message = error.message.replace(/^\d+:\s*/, "") || "The transfer could not be completed.";
+      setPayoutRetryResults((current) => ({ ...current, [payoutId]: { ok: false, message } }));
+      toast({
+        title: "Retry failed",
+        description: message,
         variant: "destructive",
       });
     },
@@ -882,6 +927,106 @@ The MyHomeBase™ Team`);
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Failed Agent Payouts */}
+        <Card className="mb-8 border-red-200" data-testid="card-failed-payouts">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-red-600" />
+              Failed Payouts
+              {!failedPayoutsLoading && failedPayouts.length > 0 && (
+                <Badge variant="destructive" data-testid="badge-failed-payout-count">
+                  {failedPayouts.length}
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Agent transfers that need attention. Retry after resolving the reported issue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {failedPayoutsLoading ? (
+              <div className="space-y-2">
+                {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
+              </div>
+            ) : failedPayouts.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                No failed payouts.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Error reason</TableHead>
+                      <TableHead>Stripe Connect account</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {failedPayouts.map((payout) => {
+                      const isRetrying = retryPayoutMutation.isPending && retryPayoutMutation.variables === payout.id;
+                      return (
+                        <TableRow key={payout.id} data-testid={`row-failed-payout-${payout.id}`}>
+                          <TableCell>
+                            <div className="font-medium">{payout.agentName}</div>
+                            <div className="text-sm text-muted-foreground">{payout.agentEmail || "No email"}</div>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            ${Number(payout.amount).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="max-w-xs whitespace-normal text-sm text-red-700">
+                            {payout.errorMessage || "No error reason recorded"}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {payout.stripeConnectAccountId || "Not connected"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-col items-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setPayoutRetryResults((current) => {
+                                    const next = { ...current };
+                                    delete next[payout.id];
+                                    return next;
+                                  });
+                                  retryPayoutMutation.mutate(payout.id);
+                                }}
+                                disabled={retryPayoutMutation.isPending}
+                                data-testid={`button-retry-payout-${payout.id}`}
+                              >
+                                {isRetrying ? (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                )}
+                                {isRetrying ? "Retrying..." : "Retry Transfer"}
+                              </Button>
+                              {payoutRetryResults[payout.id] && (
+                                <span
+                                  className={`max-w-52 text-xs ${payoutRetryResults[payout.id].ok ? "text-green-700" : "text-red-700"}`}
+                                  role="status"
+                                  data-testid={`status-retry-payout-${payout.id}`}
+                                >
+                                  {payoutRetryResults[payout.id].message}
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>
