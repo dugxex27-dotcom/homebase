@@ -2947,6 +2947,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reason: "event_processing_failed",
         error,
       });
+      try {
+        const alertDelivered = await sendEmail({
+          to: process.env.STRIPE_WEBHOOK_ALERT_EMAIL || 'gotohomebase2025@gmail.com',
+          subject: `[HomeBase] Stripe webhook failed — ${event.type}`,
+          text: [
+            'A Stripe webhook failed during processing and Stripe has been asked to retry it.',
+            '',
+            `Event ID: ${event.id}`,
+            `Event type: ${event.type}`,
+            '',
+            'If automatic retries do not succeed, replay this event from the Stripe dashboard.',
+          ].join('\n'),
+          html: [
+            '<p>A Stripe webhook failed during processing and Stripe has been asked to retry it.</p>',
+            '<div style="background: white; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">',
+            `<p style="margin: 0 0 8px;"><strong>Event ID:</strong> ${event.id}</p>`,
+            `<p style="margin: 0;"><strong>Event type:</strong> ${event.type}</p>`,
+            '</div>',
+            '<p>If automatic retries do not succeed, replay this event from the Stripe dashboard.</p>',
+          ].join(''),
+          deduplication: {
+            key: `stripe-webhook-processing-failure:${event.id}`,
+            windowMs: 24 * 60 * 60 * 1000,
+          },
+        });
+        if (!alertDelivered) {
+          logger.error(
+            {
+              component: 'stripe_webhook',
+              reason: 'failure_alert_not_delivered',
+              eventId: event.id,
+              eventType: event.type,
+            },
+            '[STRIPE WEBHOOK] Processing failure alert was not delivered',
+          );
+        }
+      } catch (alertError) {
+        logger.error(
+          {
+            component: 'stripe_webhook',
+            reason: 'failure_alert_delivery_failed',
+            eventId: event.id,
+            eventType: event.type,
+          },
+          '[STRIPE WEBHOOK] Failed to deliver processing failure alert',
+        );
+      }
       res.status(500).json({ error: error.message });
     } finally {
       inFlightWebhookEventIds.delete(eventId);

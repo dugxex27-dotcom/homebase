@@ -1452,6 +1452,15 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
     expect(mockUpdateUserSubscriptionStatus2).not.toHaveBeenCalled();
     expect(mockClaimStripeEvent).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).not.toHaveBeenCalled();
+    expect(mockSendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining(event.type),
+      text: expect.stringContaining(EVENT_ID),
+      html: expect.stringContaining(EVENT_ID),
+      deduplication: expect.objectContaining({
+        key: `stripe-webhook-processing-failure:${EVENT_ID}`,
+      }),
+    }));
+    expect(mockSendEmail.mock.calls[0]?.[0]?.text).toContain(event.type);
 
     // The in-flight slot must be released on error so the retry isn't
     // permanently blocked by the concurrency guard.
