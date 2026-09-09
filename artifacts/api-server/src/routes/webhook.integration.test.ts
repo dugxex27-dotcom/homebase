@@ -46,6 +46,7 @@ const {
   mockMarkCrmInvoicePaidIfUnpaid,
   mockCreateNotification,
   mockLoggerWarn,
+  mockCreateSubscriptionCycleEvent,
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockEventsRetrieve: vi.fn(),
@@ -82,6 +83,7 @@ const {
   mockMarkCrmInvoicePaidIfUnpaid: vi.fn().mockResolvedValue(undefined),
   mockCreateNotification: vi.fn().mockResolvedValue(undefined),
   mockLoggerWarn: vi.fn(),
+  mockCreateSubscriptionCycleEvent: vi.fn().mockResolvedValue(undefined),
 }));
 
 mockApplyUserStripeSubscriptionState.mockImplementation(
@@ -159,6 +161,7 @@ vi.mock("../storage", async () => {
       getCrmInvoice: mockGetCrmInvoice,
       markCrmInvoicePaidIfUnpaid: mockMarkCrmInvoicePaidIfUnpaid,
       createNotification: mockCreateNotification,
+      createSubscriptionCycleEvent: mockCreateSubscriptionCycleEvent,
     }),
   };
 });
@@ -401,6 +404,54 @@ function makeStripeEvent(eventId: string): Stripe.Event {
     object: "event",
     type: "test.unknown_event_type", // falls through to `default` case → no storage side-effects
     data: { object: {} },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeInvoicePaidEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "invoice.paid",
+    data: {
+      object: {
+        id: "in_retry_paid_01",
+        object: "invoice",
+        customer: "cus_retry_invoice_01",
+        subscription: "sub_test_checkout_01",
+        amount_paid: 2000,
+        period_start: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+        period_end: Math.floor(Date.now() / 1000),
+      },
+    },
+    livemode: false,
+    pending_webhooks: 0,
+    request: null,
+    created: Math.floor(Date.now() / 1000),
+    api_version: "2025-08-27.basil",
+  } as unknown as Stripe.Event;
+}
+
+function makeInvoiceFailedRetryEvent(eventId: string): Stripe.Event {
+  return {
+    id: eventId,
+    object: "event",
+    type: "invoice.payment_failed",
+    data: {
+      object: {
+        id: "in_retry_failed_01",
+        object: "invoice",
+        customer: "cus_retry_invoice_01",
+        subscription: "sub_test_checkout_01",
+        amount_due: 2000,
+        period_start: Math.floor(Date.now() / 1000) - 30 * 24 * 60 * 60,
+        period_end: Math.floor(Date.now() / 1000),
+      },
+    },
     livemode: false,
     pending_webhooks: 0,
     request: null,
@@ -688,6 +739,96 @@ describe("Stripe webhook idempotency — end-to-end route integration", () => {
     expect(mockClaimStripeEvent).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
     expect(mockMarkStripeEventCommitted).toHaveBeenCalledWith(EVENT_ID, expect.any(Date));
+  });
+});
+
+describe("Stripe invoice webhook retries — real side effects run once", () => {
+  const FAKE_USER = {
+    id: "user_retry_invoice_01",
+    role: "homeowner",
+    companyId: null,
+    email: null,
+    stripeCustomerId: "cus_retry_invoice_01",
+    stripeSubscriptionId: "sub_test_checkout_01",
+    stripePriceId: "price_old",
+    subscriptionStatus: "past_due",
+    stripeSubscriptionEventAt: null,
+  };
+  let app: express.Express;
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(FAKE_USER);
+    mockGetUser.mockReset().mockResolvedValue(FAKE_USER);
+    mockCreateSubscriptionCycleEvent.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserSubscriptionStatus2.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserStripeSubscription.mockReset().mockResolvedValue(undefined);
+    mockApplyUserStripeSubscriptionState.mockClear();
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  it.each([
+    {
+      type: "invoice.paid",
+      event: makeInvoicePaidEvent("evt_invoice_paid_retry_once"),
+      expectedStatus: "active",
+    },
+    {
+      type: "invoice.payment_failed",
+      event: makeInvoiceFailedRetryEvent("evt_invoice_failed_retry_once"),
+      expectedStatus: "past_due",
+    },
+  ])("$type processes billing writes once across an identical retry", async ({
+    event,
+    expectedStatus,
+  }) => {
+    mockConstructEvent.mockReset().mockReturnValue(event);
+    const body = makeWebhookBody(event);
+
+    const first = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(body);
+
+    expect(first.status).toBe(200);
+    expect(first.body).toMatchObject({ received: true });
+    expect(first.body.duplicate).toBeUndefined();
+    expect(mockCreateSubscriptionCycleEvent).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledWith(
+      FAKE_USER.id,
+      expectedStatus,
+      expect.any(Date),
+    );
+
+    const second = await request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(body);
+
+    expect(second.status).toBe(200);
+    expect(second.body).toEqual({ received: true, duplicate: true });
+    expect(mockCreateSubscriptionCycleEvent).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
   });
 });
 
