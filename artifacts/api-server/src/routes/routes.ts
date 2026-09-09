@@ -1941,6 +1941,7 @@ export function checkActorActiveGuard(
 
 type LeaveCompanyResult =
   | { outcome: 'not_associated' }
+  | { outcome: 'membership_changed' }
   | { outcome: 'sole_admin' }
   | { outcome: 'left'; companyId: string };
 
@@ -1960,7 +1961,13 @@ export async function executeLeaveCompany(
       drizzleSql`SELECT id FROM companies WHERE id = ${companyId} FOR UPDATE`,
     );
 
-    if (role === 'owner' || role === 'admin') {
+    // Ownership must be explicitly transferred so companies.ownerId and the
+    // successor's owner role change together through the transfer route.
+    if (role === 'owner') {
+      return { outcome: 'sole_admin' };
+    }
+
+    if (role === 'admin') {
       const rows = await tx
         .select({ cnt: drizzleSql<number>`count(*)::int` })
         .from(users)
@@ -1976,10 +1983,19 @@ export async function executeLeaveCompany(
       if (otherAdminCount === 0) return { outcome: 'sole_admin' };
     }
 
-    await tx
+    const clearedActors = await tx
       .update(users)
       .set({ companyId: null, companyRole: null })
-      .where(eq(users.id as any, userId));
+      .where(and(
+        eq(users.id as any, userId),
+        eq(users.companyId, companyId),
+        role == null
+          ? isNull(users.companyRole as any)
+          : eq(users.companyRole as any, role),
+        or(eq(users.status as any, 'active'), isNull(users.status as any)),
+      ))
+      .returning({ id: users.id });
+    if (!clearedActors[0]) return { outcome: 'membership_changed' };
 
     return { outcome: 'left', companyId };
   });
@@ -2002,7 +2018,11 @@ export async function checkLeaveCompanyEligibility(
 ): Promise<LeaveCompanyEligibility> {
   if (!companyId) return { outcome: 'not_associated' };
 
-  if (role === 'owner' || role === 'admin') {
+  if (role === 'owner') {
+    return { outcome: 'sole_admin' };
+  }
+
+  if (role === 'admin') {
     const rows = await dbInstance
       .select({ cnt: drizzleSql<number>`count(*)::int` })
       .from(users)
@@ -25547,6 +25567,110 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error cancelling invite');
       res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
+  app.get('/api/contractor/leave-company/eligibility', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'manager', 'dispatcher', 'tech'), async (req: any, res: any) => {
+    try {
+      const actor = req.session.user;
+      const result = await checkLeaveCompanyEligibility(
+        actor.companyId,
+        actor.id,
+        actor.companyRole,
+        db,
+      );
+      if (result.outcome === 'not_associated') {
+        return res.status(400).json({ eligible: false, message: 'You are not associated with a company' });
+      }
+      if (result.outcome === 'sole_admin') {
+        return res.json({
+          eligible: false,
+          message: actor.companyRole === 'owner'
+            ? 'Transfer ownership to another active member before leaving the company.'
+            : 'Promote another active member to admin before leaving the company.',
+        });
+      }
+      res.json({ eligible: true });
+    } catch (error) {
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error checking leave-company eligibility');
+      res.status(500).json({ message: 'Failed to check whether you can leave the company' });
+    }
+  });
+
+  app.post('/api/contractor/leave-company', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner', 'admin', 'manager', 'dispatcher', 'tech'), async (req: any, res: any) => {
+    try {
+      const actor = req.session.user;
+      if (!actor.companyId) {
+        return res.status(400).json({ message: 'You are not associated with a company' });
+      }
+
+      const [freshActor] = await db.select({
+        companyId: users.companyId,
+        companyRole: users.companyRole,
+        status: users.status,
+      }).from(users).where(eq(users.id, actor.id)).limit(1);
+      if (
+        !freshActor
+        || freshActor.companyId !== actor.companyId
+        || freshActor.companyRole !== actor.companyRole
+        || (freshActor.status !== null && freshActor.status !== 'active')
+      ) {
+        return res.status(403).json({ message: 'Your company membership changed. Refresh and try again.' });
+      }
+
+      const eligibility = await checkLeaveCompanyEligibility(
+        freshActor.companyId,
+        actor.id,
+        freshActor.companyRole,
+        db,
+      );
+      if (eligibility.outcome === 'sole_admin') {
+        return res.status(409).json({
+          message: freshActor.companyRole === 'owner'
+            ? 'Transfer ownership to another active member before leaving the company.'
+            : 'Promote another active member to admin before leaving the company.',
+        });
+      }
+
+      // Fail closed across the non-transactional session/DB boundary. If the
+      // DB mutation later fails, this session has already lost company access.
+      req.session.user = { ...actor, companyId: null, companyRole: null };
+      await new Promise<void>((resolve, reject) => {
+        req.session.save((error: unknown) => error ? reject(error) : resolve());
+      });
+
+      const result = await executeLeaveCompany(
+        freshActor.companyId,
+        actor.id,
+        freshActor.companyRole,
+        db,
+      );
+      if (result.outcome === 'not_associated') {
+        return res.status(400).json({ message: 'You are not associated with a company' });
+      }
+      if (result.outcome === 'membership_changed') {
+        return res.status(403).json({ message: 'Your company membership changed. Sign in again to continue.' });
+      }
+      if (result.outcome === 'sole_admin') {
+        return res.status(409).json({
+          message: freshActor.companyRole === 'owner'
+            ? 'Transfer ownership to another active member before leaving the company.'
+            : 'Promote another active member to admin before leaving the company.',
+        });
+      }
+
+      try {
+        await refreshSeatsForCompany(result.companyId, stripe, db, (cid) => countActiveCompanySeats(cid, db), storage, pool);
+      } catch (seatSyncErr: any) {
+        req.log?.error(
+          { err: seatSyncErr, companyId: result.companyId },
+          '[SEAT_SYNC] Failed to sync Stripe seat quantity after member left company; queued for retry via pending_seat_syncs',
+        );
+      }
+      res.json({ message: 'You have left the company.' });
+    } catch (error) {
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error leaving company');
+      res.status(500).json({ message: 'Failed to leave the company' });
     }
   });
 

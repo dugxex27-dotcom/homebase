@@ -2520,7 +2520,8 @@ function makeLeaveCompanyDbMock(otherAdminCount: number) {
   const select      = vi.fn().mockReturnValue({ from: selectFrom });
 
   // update chain
-  const updateWhere = vi.fn().mockResolvedValue([]);
+  const updateReturning = vi.fn().mockResolvedValue([{ id: "user-1" }]);
+  const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
   const updateSet   = vi.fn().mockReturnValue({ where: updateWhere });
   const update      = vi.fn().mockReturnValue({ set: updateSet });
 
@@ -2537,6 +2538,7 @@ function makeLeaveCompanyDbMock(otherAdminCount: number) {
     update,
     updateSet,
     updateWhere,
+    updateReturning,
   };
 }
 
@@ -2565,7 +2567,7 @@ describe("executeLeaveCompany — leave-company route guard and DB update", () =
     const db = makeLeaveCompanyDbMock(0); // 0 other active admins/owners
     const result = await executeLeaveCompany("company-1", "user-1", "owner", db as any);
     expect(result.outcome).toBe("sole_admin");
-    expect(db.select).toHaveBeenCalledOnce(); // guard ran the count query
+    expect(db.select).not.toHaveBeenCalled(); // owners must transfer unconditionally
     expect(db.update).not.toHaveBeenCalled(); // DB not modified — leave was blocked
   });
 
@@ -2586,25 +2588,23 @@ describe("executeLeaveCompany — leave-company route guard and DB update", () =
   });
 
   // ── Case 2: owner with at least one other admin ──────────────────────────
-  it("returns 'left' when owner leaves and another active admin remains (case 2)", async () => {
+  it("still requires an owner to transfer ownership when another active admin remains", async () => {
     const db = makeLeaveCompanyDbMock(1); // 1 other active admin
     const result = await executeLeaveCompany("company-1", "user-1", "owner", db as any);
-    expect(result.outcome).toBe("left");
-    expect(db.select).toHaveBeenCalledOnce(); // guard ran the count query
-    expect(db.update).toHaveBeenCalledOnce(); // DB cleared
+    expect(result.outcome).toBe("sole_admin");
+    expect(db.select).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
-  it("clears companyId and companyRole in the DB when owner successfully leaves (case 2 — DB fields)", async () => {
+  it("does not clear company membership before ownership is transferred", async () => {
     const db = makeLeaveCompanyDbMock(2); // 2 other admins present
     await executeLeaveCompany("company-abc", "user-1", "owner", db as any);
-    const setArg = db.updateSet.mock.calls[0][0];
-    expect(setArg.companyId).toBeNull();
-    expect(setArg.companyRole).toBeNull();
+    expect(db.update).not.toHaveBeenCalled();
   });
 
-  it("returns the companyId in the 'left' result so the caller can refresh seats (case 2)", async () => {
+  it("returns the companyId after an admin leaves so the caller can refresh seats", async () => {
     const db = makeLeaveCompanyDbMock(1);
-    const result = await executeLeaveCompany("company-xyz", "user-1", "owner", db as any);
+    const result = await executeLeaveCompany("company-xyz", "user-1", "admin", db as any);
     expect(result.outcome).toBe("left");
     if (result.outcome === "left") {
       expect(result.companyId).toBe("company-xyz");
@@ -2622,7 +2622,7 @@ describe("executeLeaveCompany — leave-company route guard and DB update", () =
     const db = makeLeaveCompanyDbMock(0); // would block if guard ran
     const result = await executeLeaveCompany("company-1", "user-1", "tech", db as any);
     expect(result.outcome).toBe("left");
-    expect(db.select).not.toHaveBeenCalled(); // guard skipped for non-admin roles
+    expect(db.select).not.toHaveBeenCalled(); // count guard skipped for non-admin roles
     expect(db.update).toHaveBeenCalledOnce(); // DB was still cleared
   });
 
@@ -2746,16 +2746,13 @@ describe("checkLeaveCompanyEligibility — pure eligibility check (no DB write)"
     const db = makeEligibilityDbMock(0); // no other active admins
     const result = await checkLeaveCompanyEligibility("company-1", "user-1", "owner", db as any);
     expect(result.outcome).toBe("sole_admin");
-    expect(db.select).toHaveBeenCalledOnce(); // guard query ran
+    expect(db.select).not.toHaveBeenCalled(); // owners must transfer unconditionally
   });
 
-  it("returns 'eligible' when another active admin remains — and does NOT perform a DB write", async () => {
+  it("requires ownership transfer even when another active admin remains", async () => {
     const db = makeEligibilityDbMock(1); // one other admin present
     const result = await checkLeaveCompanyEligibility("company-1", "user-1", "owner", db as any);
-    expect(result.outcome).toBe("eligible");
-    if (result.outcome === "eligible") {
-      expect(result.companyId).toBe("company-1");
-    }
+    expect(result.outcome).toBe("sole_admin");
     // The critical guarantee: eligibility check alone never mutates the DB.
     // The route handler relies on this to safely save the session BEFORE applying
     // the DB update — so a failed session save can never leave the DB cleared while

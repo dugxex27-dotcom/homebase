@@ -730,6 +730,8 @@ export default function ContractorDashboard() {
   const [transferOwnershipModalOpen, setTransferOwnershipModalOpen] = useState(false);
   const [transferOwnershipNewOwnerId, setTransferOwnershipNewOwnerId] = useState('');
   const [transferOwnershipError, setTransferOwnershipError] = useState<string | null>(null);
+  const [leaveCompanyDialogOpen, setLeaveCompanyDialogOpen] = useState(false);
+  const [leaveCompanyError, setLeaveCompanyError] = useState<string | null>(null);
   const [inviteFirstName, setInviteFirstName] = useState('');
   const [inviteLastName, setInviteLastName] = useState('');
   const [inviteResult, setInviteResult] = useState<{ inviteUrl: string } | null>(null);
@@ -840,6 +842,30 @@ export default function ContractorDashboard() {
     },
     onError: (error: Error) => {
       setTransferOwnershipError(error.message);
+    },
+  });
+
+  const leaveCompanyMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/contractor/leave-company', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to leave the company');
+      return data;
+    },
+    onSuccess: () => {
+      setLeaveCompanyDialogOpen(false);
+      setLeaveCompanyError(null);
+      toast({
+        title: 'Company left',
+        description: 'You are no longer associated with this company.',
+      });
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      setLeaveCompanyError(error.message);
     },
   });
 
@@ -1736,6 +1762,18 @@ export default function ContractorDashboard() {
                     Transfer ownership
                   </button>
                 )}
+                {isAdminRole && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLeaveCompanyError(null);
+                      setLeaveCompanyDialogOpen(true);
+                    }}
+                    style={{ background: '#fff', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Leave company
+                  </button>
+                )}
                 {hasBulkImport && (
                   <button
                     onClick={() => { setBulkImportStep('upload'); setBulkImportFile(null); setBulkImportResult(null); setBulkErrorsOpen(false); setBulkImportModalOpen(true); }}
@@ -2568,6 +2606,30 @@ export default function ContractorDashboard() {
               </div>
             );
           })()}
+
+          <ConfirmDialog
+            open={leaveCompanyDialogOpen}
+            onOpenChange={(open) => {
+              if (!open) {
+                setLeaveCompanyDialogOpen(false);
+                setLeaveCompanyError(null);
+              }
+            }}
+            title="Leave company?"
+            description={isOwner
+              ? 'As the company owner, you must transfer ownership to another active member before you can leave.'
+              : 'You will lose access to this company and its team data.'}
+            confirmText={leaveCompanyMutation.isPending ? 'Leaving…' : 'Leave company'}
+            cancelText="Cancel"
+            variant="destructive"
+            onConfirm={() => leaveCompanyMutation.mutate()}
+          >
+            {leaveCompanyError && (
+              <div role="alert" style={{ color: '#b91c1c', fontSize: 13 }}>
+                {leaveCompanyError}
+              </div>
+            )}
+          </ConfirmDialog>
 
           {resentInviteResult && (
             <div
