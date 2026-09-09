@@ -9,6 +9,8 @@ import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count
 import { logger } from "./lib/logger";
 import { achievements as defaultAchievementDefinitions } from "./seed-achievements";
 
+const STRIPE_WEBHOOK_WARM_CACHE_LIMIT = 10_000;
+
 const DEMO_ID_PREFIXES = [
   'demo-',
   'bellevue-roofer-',
@@ -1054,6 +1056,8 @@ export interface IStorage {
   markStripeEventCommitted(eventId: string, expectedProcessedAt?: Date): Promise<boolean>;
 
   deleteStripeEventPending(eventId: string): Promise<void>;
+
+  getRecentStripeProcessedEventIds(): Promise<Map<string, number>>;
 
   getIncompleteStripeProcessedEvents(olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>>;
 
@@ -7674,6 +7678,8 @@ export class MemStorage implements IStorage {
 
   async deleteStripeEventPending(_eventId: string): Promise<void> {}
 
+  async getRecentStripeProcessedEventIds(): Promise<Map<string, number>> { return new Map(); }
+
   async getIncompleteStripeProcessedEvents(_olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>> { return []; }
 
   async failStaleStripePendingEvents(): Promise<{ updated: number }> { return { updated: 0 }; }
@@ -11173,6 +11179,22 @@ export class DbStorage implements IStorage {
         eq(stripeProcessedEvents.stripeEventId, eventId),
         eq(stripeProcessedEvents.status, 'pending')
       ));
+  }
+
+  async getRecentStripeProcessedEventIds(): Promise<Map<string, number>> {
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+    const rows = await db.select({
+      stripeEventId: stripeProcessedEvents.stripeEventId,
+      processedAt: stripeProcessedEvents.processedAt,
+    })
+      .from(stripeProcessedEvents)
+      .where(and(
+        eq(stripeProcessedEvents.status, 'committed'),
+        gte(stripeProcessedEvents.processedAt, cutoff),
+      ))
+      .orderBy(desc(stripeProcessedEvents.processedAt))
+      .limit(STRIPE_WEBHOOK_WARM_CACHE_LIMIT);
+    return new Map(rows.map(row => [row.stripeEventId, row.processedAt.getTime()]));
   }
 
   async getIncompleteStripeProcessedEvents(olderThanMinutes: number): Promise<Array<{ eventId: string; processedAt: Date }>> {

@@ -1370,6 +1370,43 @@ export async function syncSeatSubscriptionItem(
 export const MAX_WEBHOOK_DEDUP_CACHE_SIZE = 10_000;
 export const processedWebhookEventIds = new Map<string, number>();
 export const inFlightWebhookEventIds = new Set<string>();
+export type WebhookDedupCacheWarmLoadState = {
+  status: 'pending' | 'ready' | 'degraded';
+  loadedEventCount: number;
+};
+export const webhookDedupCacheWarmLoadState: WebhookDedupCacheWarmLoadState = {
+  status: 'pending',
+  loadedEventCount: 0,
+};
+
+export async function warmLoadWebhookDedupCache(
+  eventStorage: Pick<IStorage, 'getRecentStripeProcessedEventIds'> = storage,
+): Promise<void> {
+  processedWebhookEventIds.clear();
+  webhookDedupCacheWarmLoadState.status = 'pending';
+  webhookDedupCacheWarmLoadState.loadedEventCount = 0;
+
+  try {
+    const recentEventIds = await eventStorage.getRecentStripeProcessedEventIds();
+    for (const [eventId, processedAt] of recentEventIds) {
+      enforceWebhookDedupCacheCap();
+      processedWebhookEventIds.set(eventId, processedAt);
+    }
+    webhookDedupCacheWarmLoadState.status = 'ready';
+    webhookDedupCacheWarmLoadState.loadedEventCount = processedWebhookEventIds.size;
+  } catch {
+    processedWebhookEventIds.clear();
+    webhookDedupCacheWarmLoadState.status = 'degraded';
+    logger.warn(
+      {
+        component: 'stripe_webhook_dedup_cache',
+        event: 'warm_load_failed',
+        loadedEventCount: 0,
+      },
+      '[STRIPE WEBHOOK] Dedup cache warm-load failed; continuing with an empty cache',
+    );
+  }
+}
 
 export function enforceWebhookDedupCacheCap(
   cache: Map<string, number> = processedWebhookEventIds,
@@ -2095,6 +2132,7 @@ class TransferOwnershipTargetNotFoundError extends Error {}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   logger.info('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
+  await warmLoadWebhookDedupCache();
 
   // Per-user rate limit for the AI-powered diy-verify endpoint.
   // Configurable via DIY_VERIFY_RATE_LIMIT_PER_MINUTE (default: 5).
@@ -2174,10 +2212,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Quick database connectivity check
       await pool.query('SELECT 1');
-      res.json({ 
-        status: 'healthy', 
+      const webhookDedupCache = webhookDedupCacheWarmLoadState.status;
+      const isDegraded = webhookDedupCache !== 'ready';
+      res.status(isDegraded ? 503 : 200).json({
+        status: isDegraded ? 'degraded' : 'healthy',
         timestamp: new Date().toISOString(),
-        database: 'connected'
+        database: 'connected',
+        webhookDedupCache,
       });
     } catch (error) {
       res.status(503).json({ 

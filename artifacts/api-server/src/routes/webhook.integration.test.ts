@@ -45,6 +45,7 @@ const {
   mockGetCrmInvoice,
   mockMarkCrmInvoicePaidIfUnpaid,
   mockCreateNotification,
+  mockLoggerWarn,
 } = vi.hoisted(() => ({
   mockConstructEvent: vi.fn(),
   mockEventsRetrieve: vi.fn(),
@@ -80,6 +81,7 @@ const {
   mockGetCrmInvoice: vi.fn().mockResolvedValue(undefined),
   mockMarkCrmInvoicePaidIfUnpaid: vi.fn().mockResolvedValue(undefined),
   mockCreateNotification: vi.fn().mockResolvedValue(undefined),
+  mockLoggerWarn: vi.fn(),
 }));
 
 mockApplyUserStripeSubscriptionState.mockImplementation(
@@ -275,6 +277,14 @@ vi.mock("../db", () => ({
   },
 }));
 
+vi.mock("../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: mockLoggerWarn,
+    error: vi.fn(),
+  },
+}));
+
 // Geocoding
 vi.mock("../geocoding-service", () => ({
   geocodeAddress: vi.fn().mockResolvedValue(null),
@@ -326,10 +336,60 @@ import {
   processedWebhookEventIds,
   inFlightWebhookEventIds,
   registerRoutes,
+  warmLoadWebhookDedupCache,
+  webhookDedupCacheWarmLoadState,
   recoverIncompleteStripeEvents,
   startStripeEventLease,
   resetSeatPriceCache,
 } from "./routes";
+
+describe("Stripe webhook dedup cache startup warm-load", () => {
+  beforeEach(() => {
+    processedWebhookEventIds.clear();
+    mockLoggerWarn.mockReset();
+    mockGetRecentStripeProcessedEventIds.mockReset();
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+  });
+
+  it("falls back to an empty degraded cache and emits a structured warning when warm-load fails", async () => {
+    processedWebhookEventIds.set("evt_stale_before_restart", Date.now());
+    mockGetRecentStripeProcessedEventIds.mockRejectedValueOnce(new Error("database unavailable"));
+
+    await warmLoadWebhookDedupCache();
+
+    expect(processedWebhookEventIds.size).toBe(0);
+    expect(webhookDedupCacheWarmLoadState).toEqual({
+      status: "degraded",
+      loadedEventCount: 0,
+    });
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      {
+        component: "stripe_webhook_dedup_cache",
+        event: "warm_load_failed",
+        loadedEventCount: 0,
+      },
+      "[STRIPE WEBHOOK] Dedup cache warm-load failed; continuing with an empty cache",
+    );
+  });
+
+  it("reports degraded health when startup warm-load was skipped by a database failure", async () => {
+    mockGetRecentStripeProcessedEventIds.mockRejectedValueOnce(new Error("database unavailable"));
+    const app = express();
+    await registerRoutes(app);
+
+    const response = await request(app).get("/api/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      status: "degraded",
+      database: "connected",
+      webhookDedupCache: "degraded",
+    });
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Shared test fixture builders
