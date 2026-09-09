@@ -1680,6 +1680,17 @@ export async function syncSeatQuantityForSubscription(
   }, pgPool);
 }
 
+export function isSubscriptionReactivation(
+  event: Pick<Stripe.Event, 'type' | 'data'>,
+  subscription: Pick<Stripe.Subscription, 'status'>,
+): boolean {
+  return (
+    event.type === 'customer.subscription.updated'
+    && (event.data as any).previous_attributes?.status === 'canceled'
+    && (subscription.status === 'active' || subscription.status === 'trialing')
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Team-management guard helpers
 // ---------------------------------------------------------------------------
@@ -2851,7 +2862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stateResult.user.companyId,
           stripe,
           db,
-          undefined,
+          isSubscriptionReactivation(event, effectiveSubscription),
           event.id,
           storage,
           pool,

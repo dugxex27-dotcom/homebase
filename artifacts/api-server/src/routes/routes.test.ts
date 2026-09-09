@@ -44,6 +44,7 @@ import {
   getContractorSubscriptionAccess,
   hasContractorDivisionAccess,
   hasContractorPaidFeatureBypass,
+  isSubscriptionReactivation,
 } from "./routes";
 import {
   handleCreateReviewFlag,
@@ -1653,6 +1654,53 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
     // No item changes mid-cycle — defer to next renewal
     expect(result).toBeNull();
     expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+  });
+
+  it("resumes seat billing exactly once at the first renewal after reactivation", async () => {
+    const { stripeClient, update, create, del } = makeStripeClientMock();
+    const subscription = makeSubscription("active");
+    const dbMock = makeDbMock(5); // 5 active people → 2 billed seats
+    const reactivationEvent = {
+      type: "customer.subscription.updated",
+      data: {
+        object: subscription,
+        previous_attributes: { status: "canceled" },
+      },
+    };
+    const renewalEvent = {
+      type: "customer.subscription.updated",
+      data: { object: subscription },
+    };
+
+    const reactivationResult = await syncSeatQuantityForSubscription(
+      subscription as any,
+      "company-reactivation-renewal",
+      stripeClient,
+      dbMock as any,
+      isSubscriptionReactivation(reactivationEvent as any, subscription as any),
+      "evt_reactivation",
+    );
+
+    expect(reactivationResult).toBeNull();
+    expect(dbMock.select).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+    expect(del).not.toHaveBeenCalled();
+
+    const renewalResult = await syncSeatQuantityForSubscription(
+      subscription as any,
+      "company-reactivation-renewal",
+      stripeClient,
+      dbMock as any,
+      isSubscriptionReactivation(renewalEvent as any, subscription as any),
+      "evt_first_renewal",
+    );
+
+    expect(renewalResult).toBe(2);
+    expect(update).toHaveBeenCalledOnce();
+    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 2 });
     expect(create).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
   });
