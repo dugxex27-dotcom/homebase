@@ -33,7 +33,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendCheckoutFailureEmail, sendTeamMemberAccountUpdatedEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
@@ -346,6 +346,44 @@ const SERVER_OWNED_VERIFICATION_FIELDS = [
   "beforePhotoHash",
   "afterPhotoHash",
 ] as const;
+
+async function notifyCompanyOwnerOfTeamAction(
+  companyId: string,
+  actor: any,
+  target: any,
+  action: TeamMemberSecurityAction,
+  occurredAt: Date,
+  log?: any,
+): Promise<void> {
+  if (actor.companyRole === 'owner') return;
+
+  try {
+    const [owner] = await db.select().from(users).where(and(
+      eq(users.companyId, companyId),
+      eq(users.companyRole as any, 'owner'),
+      or(eq(users.status as any, 'active'), isNull(users.status as any)),
+    )).limit(1);
+    if (!owner?.email || owner.id === actor.id) return;
+
+    const ownerName = [owner.firstName, owner.lastName].filter(Boolean).join(' ') || 'there';
+    const memberName = [target.firstName, target.lastName].filter(Boolean).join(' ') || target.email || target.id;
+    const actorName = [actor.firstName, actor.lastName].filter(Boolean).join(' ') || actor.email || actor.id;
+    await sendCompanyOwnerTeamActionEmail(
+      owner.email,
+      ownerName,
+      memberName,
+      action,
+      actorName,
+      occurredAt,
+      `${companyId}:${target.id}:${action}:${occurredAt.toISOString()}`,
+    );
+  } catch (error) {
+    log?.error(
+      { error, companyId, targetUserId: target.id, teamAction: action },
+      '[CONTRACTOR_TEAM] Failed to notify company owner of team action',
+    );
+  }
+}
 
 function findClientSuppliedVerificationFields(body: unknown): string[] {
   if (!body || typeof body !== "object" || Array.isArray(body)) return [];
@@ -24497,7 +24535,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           isActive: false,
         });
       }
-      await db.update(users).set({ status: 'suspended', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      const occurredAt = new Date();
+      await db.update(users).set({ status: 'suspended', updatedAt: occurredAt } as any).where(eq(users.id, userId));
       suspendedUserIds.add(userId);
       invalidateUserSessions(req.sessionStore, userId, req.log);
 
@@ -24517,6 +24556,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         req,
         severity: 'warning' as any,
       });
+      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'suspended', occurredAt, req.log);
       res.json({ message: "Team member suspended" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error suspending team member');
@@ -24548,7 +24588,8 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
-      await db.update(users).set({ status: 'active', updatedAt: new Date() } as any).where(eq(users.id, userId));
+      const occurredAt = new Date();
+      await db.update(users).set({ status: 'active', updatedAt: occurredAt } as any).where(eq(users.id, userId));
       suspendedUserIds.delete(userId);
       const actorName = [adminUser.firstName, adminUser.lastName].filter(Boolean).join(' ') || adminUser.email || adminUser.id;
       const actorRole = adminUser.companyRole ?? null;
@@ -24566,6 +24607,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         req,
         severity: 'info' as any,
       });
+      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'reactivated', occurredAt, req.log);
       res.json({ message: "Team member reactivated" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error reactivating team member');
@@ -24787,12 +24829,13 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       )).limit(1);
       if (!targetUser) return res.status(404).json({ message: "Team member not found" });
 
+      const occurredAt = new Date();
       await db.update(users).set({
         status: 'removed',
-        deletedAt: new Date(),
+        deletedAt: occurredAt,
         companyId: null,
         companyRole: null,
-        updatedAt: new Date(),
+        updatedAt: occurredAt,
       } as any).where(eq(users.id, userId));
       // Add to in-memory blocklist so any active session is immediately revoked
       suspendedUserIds.add(userId);
@@ -24823,6 +24866,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         req,
         severity: 'warning' as any,
       });
+      await notifyCompanyOwnerOfTeamAction(adminUser.companyId, adminUser, targetUser, 'removed', occurredAt, req.log);
       res.json({ message: "Team member removed from company" });
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error removing team member');

@@ -197,6 +197,8 @@ vi.mock("../notification-orchestrator", () => ({
 vi.mock("../email-service", () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
   emailService: { send: vi.fn().mockResolvedValue(undefined) },
+  sendCompanyOwnerTeamActionEmail: vi.fn().mockResolvedValue(true),
+  sendTeamMemberAccountUpdatedEmail: vi.fn().mockResolvedValue(true),
 }));
 vi.mock("../sms-service", () => ({
   smsService: { send: vi.fn().mockResolvedValue(undefined) },

@@ -180,6 +180,54 @@ export interface TeamMemberAccountChange {
   newValue: string;
 }
 
+export type TeamMemberSecurityAction = 'suspended' | 'reactivated' | 'removed';
+
+export async function sendCompanyOwnerTeamActionEmail(
+  email: string,
+  ownerName: string,
+  memberName: string,
+  action: TeamMemberSecurityAction,
+  actorName: string,
+  occurredAt: Date,
+  eventKey: string,
+): Promise<boolean> {
+  const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+  const formattedDate = occurredAt.toLocaleString('en-US', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'UTC',
+  }) + ' UTC';
+  const safeOwnerName = escapeHtml(ownerName || 'there');
+  const safeMemberName = escapeHtml(memberName);
+  const safeActorName = escapeHtml(actorName);
+
+  const html = wrapEmailContent(
+    getEmailHeader(`Team member ${action}`),
+    `
+      <p>Hi ${safeOwnerName},</p>
+      <p>A team member's account was <strong>${escapeHtml(action)}</strong> by a company administrator.</p>
+      <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <p><strong>Team member:</strong> ${safeMemberName}</p>
+        <p><strong>Action:</strong> ${escapeHtml(actionLabel)}</p>
+        <p><strong>Performed by:</strong> ${safeActorName}</p>
+        <p><strong>Date and time:</strong> ${escapeHtml(formattedDate)}</p>
+      </div>
+      <p>If you weren't expecting this change, please review your team access immediately.</p>
+      <p>- The HomeBase Team</p>
+    `,
+  );
+
+  const text = `Hi ${ownerName || 'there'}, ${memberName} was ${action} by ${actorName} on ${formattedDate}. If you weren't expecting this change, please review your team access immediately.`;
+
+  return sendEmail({
+    to: email,
+    subject: `HomeBase team member ${action}: ${memberName}`,
+    text,
+    html,
+    deduplication: { key: `company-owner-team-action:${eventKey}` },
+  });
+}
+
 export async function sendTeamMemberAccountUpdatedEmail(
   email: string,
   recipientName: string,

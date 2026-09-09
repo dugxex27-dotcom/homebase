@@ -16,7 +16,7 @@ vi.mock('./storage', () => ({ storage: {} }));
 vi.mock('./db', () => ({ db: {} }));
 vi.mock('./qa-access', () => ({ isSyntheticAccountUserId: vi.fn() }));
 
-import { sendTeamMemberAccountUpdatedEmail } from './email-service';
+import { sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail } from './email-service';
 
 describe('sendTeamMemberAccountUpdatedEmail', () => {
   beforeEach(() => {
@@ -65,5 +65,53 @@ describe('sendTeamMemberAccountUpdatedEmail', () => {
     expect(message.html).not.toContain('<script>');
     expect(message.html).not.toContain('<b>Taylor</b>');
     expect(message.html).toContain('&lt;b&gt;Taylor&lt;/b&gt;');
+  });
+});
+
+describe('sendCompanyOwnerTeamActionEmail', () => {
+  beforeEach(() => {
+    sendMock.mockClear();
+    sendMock.mockResolvedValue(undefined);
+  });
+
+  it('includes the member, action, actor, and UTC date/time', async () => {
+    const sent = await sendCompanyOwnerTeamActionEmail(
+      'owner@example.com',
+      'Olivia Owner',
+      'Taylor Tech',
+      'suspended',
+      'Alex Admin',
+      new Date('2026-09-09T14:30:00.000Z'),
+      'company-1:member-1:suspended:2026-09-09T14:30:00.000Z',
+    );
+
+    expect(sent).toBe(true);
+    expect(sendMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'owner@example.com',
+      subject: 'HomeBase team member suspended: Taylor Tech',
+      text: expect.stringMatching(/Taylor Tech was suspended by Alex Admin on .*UTC/),
+      html: expect.stringContaining('Olivia Owner'),
+    }));
+    const message = sendMock.mock.calls[0][0];
+    expect(message.html).toContain('Taylor Tech');
+    expect(message.html).toContain('Alex Admin');
+    expect(message.html).toContain('September 9, 2026');
+  });
+
+  it('escapes names in the HTML body', async () => {
+    await sendCompanyOwnerTeamActionEmail(
+      'owner@example.com',
+      '<b>Owner</b>',
+      '<script>member</script>',
+      'removed',
+      '<img src=x>',
+      new Date('2026-09-09T14:30:00.000Z'),
+      'event-2',
+    );
+
+    const message = sendMock.mock.calls[0][0];
+    expect(message.html).not.toContain('<script>');
+    expect(message.html).not.toContain('<img src=x>');
+    expect(message.html).toContain('&lt;b&gt;Owner&lt;/b&gt;');
   });
 });
