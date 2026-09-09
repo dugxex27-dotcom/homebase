@@ -1480,7 +1480,7 @@ export default function ContractorDashboard() {
                 <button
                   onClick={() => setInviteModalOpen(true)}
                   disabled={isTeamAtCapacity}
-                  title={isTeamAtCapacity ? 'Remove or cancel a team member before inviting someone new.' : undefined}
+                  title={isTeamAtCapacity ? 'Seat limit reached. Contact support to add more.' : undefined}
                   style={{ background: '#1560A2', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: isTeamAtCapacity ? 'not-allowed' : 'pointer', opacity: isTeamAtCapacity ? 0.55 : 1 }}
                 >
                   + Invite Member
@@ -1539,7 +1539,15 @@ export default function ContractorDashboard() {
             <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px' }}>
               <Users size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No additional team members yet</div>
-              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invite your first team member above</div>
+              <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Invite your first team member</div>
+              <button
+                onClick={() => setInviteModalOpen(true)}
+                disabled={isTeamAtCapacity}
+                title={isTeamAtCapacity ? 'Seat limit reached. Contact support to add more.' : undefined}
+                style={{ background: '#1560A2', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 14px', marginTop: 12, fontSize: 12, fontWeight: 600, cursor: isTeamAtCapacity ? 'not-allowed' : 'pointer', opacity: isTeamAtCapacity ? 0.55 : 1 }}
+              >
+                + Invite Member
+              </button>
             </div>
           ) : (
             teamData.teamMembers
