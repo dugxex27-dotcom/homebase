@@ -3578,27 +3578,28 @@ describe("executeRemoveMember — remove-member route guard and DB update", () =
 /**
  * Build a mock db for executeTransferOwnership.
  *
- * select chain:  select().from(users).where(...).limit(1)  → rows
- * update chain:  update(t).set({}).where(...)              → []
- * transaction:   transaction(fn) calls fn(tx) where tx has an update chain
+ * update chain:  update(t).set({}).where(...).returning() → actor/target rows
+ * transaction:   transaction(fn) returns the callback result
  */
-function makeTransferOwnershipDbMock(targetRows: object[] = [], transactionShouldFail = false) {
-  const selectLimit = vi.fn().mockResolvedValue(targetRows);
-  const selectWhere = vi.fn().mockReturnValue({ limit: selectLimit });
-  const selectFrom  = vi.fn().mockReturnValue({ where: selectWhere });
-  const select      = vi.fn().mockReturnValue({ from: selectFrom });
-
-  const txUpdateWhere = vi.fn().mockResolvedValue([]);
+function makeTransferOwnershipDbMock(
+  targetRows: object[] = [],
+  transactionShouldFail = false,
+  actorRows: object[] = [{ id: "user-owner" }],
+) {
+  const txReturning = vi.fn()
+    .mockResolvedValueOnce(actorRows)
+    .mockResolvedValueOnce(targetRows);
+  const txUpdateWhere = vi.fn().mockReturnValue({ returning: txReturning });
   const txUpdateSet   = vi.fn().mockReturnValue({ where: txUpdateWhere });
   const txUpdate      = vi.fn().mockReturnValue({ set: txUpdateSet });
 
   const transaction = transactionShouldFail
     ? vi.fn().mockRejectedValue(new Error("DB connection lost"))
     : vi.fn().mockImplementation(async (fn: (tx: { update: typeof txUpdate }) => Promise<void>) => {
-        await fn({ update: txUpdate });
+        return fn({ update: txUpdate });
       });
 
-  return { select, selectFrom, selectWhere, selectLimit, transaction, txUpdate, txUpdateSet, txUpdateWhere };
+  return { transaction, txUpdate, txUpdateSet, txUpdateWhere, txReturning };
 }
 
 describe("executeTransferOwnership — DB logic for transfer-ownership route", () => {
@@ -3607,7 +3608,6 @@ describe("executeTransferOwnership — DB logic for transfer-ownership route", (
     const db = makeTransferOwnershipDbMock();
     const result = await executeTransferOwnership("user-owner", "company-1", "user-owner", db as any);
     expect(result.outcome).toBe("self");
-    expect(db.select).not.toHaveBeenCalled();
     expect(db.transaction).not.toHaveBeenCalled();
   });
 
@@ -3615,8 +3615,16 @@ describe("executeTransferOwnership — DB logic for transfer-ownership route", (
     const db = makeTransferOwnershipDbMock([]);
     const result = await executeTransferOwnership("user-owner", "company-1", "user-tech", db as any);
     expect(result.outcome).toBe("target_not_found");
-    expect(db.select).toHaveBeenCalledOnce();
-    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.transaction).toHaveBeenCalledOnce();
+    expect(db.txUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns 'unauthorized' when the actor is no longer the active company owner", async () => {
+    const targetRow = { id: "user-tech", firstName: "Jane", lastName: "Doe", email: "jane@example.com" };
+    const db = makeTransferOwnershipDbMock([targetRow], false, []);
+    const result = await executeTransferOwnership("user-owner", "company-1", "user-tech", db as any);
+    expect(result.outcome).toBe("unauthorized");
+    expect(db.txUpdate).toHaveBeenCalledOnce();
   });
 
   it("returns 'transferred' and runs the DB transaction when target is valid", async () => {

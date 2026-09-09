@@ -2020,6 +2020,7 @@ export async function executeRemoveMember(
 
 type TransferOwnershipResult =
   | { outcome: 'self' }
+  | { outcome: 'unauthorized' }
   | { outcome: 'target_not_found' }
   | { outcome: 'transferred'; targetUser: { id: string; firstName: string | null; lastName: string | null; email: string } };
 
@@ -2031,38 +2032,62 @@ export async function executeTransferOwnership(
 ): Promise<TransferOwnershipResult> {
   if (actorId === newOwnerId) return { outcome: 'self' };
 
-  const targetRows = await dbInstance
-    .select()
-    .from(users)
-    .where(
-      and(
+  return dbInstance.transaction(async (tx: any): Promise<TransferOwnershipResult> => {
+    // The conditional demotion is the authoritative owner check. Concurrent
+    // transfers serialize on this row; after the first commits, the second
+    // update returns no row and cannot transfer ownership with a stale session.
+    const demotedActors = await tx
+      .update(users)
+      .set({ companyRole: 'admin', updatedAt: new Date() })
+      .where(and(
+        eq(users.id as any, actorId),
         eq(users.companyId, companyId),
+        eq(users.companyRole as any, 'owner'),
+        or(eq(users.status as any, 'active'), isNull(users.status as any)),
+      ))
+      .returning({ id: users.id });
+    if (!demotedActors[0]) return { outcome: 'unauthorized' };
+
+    const promotedTargets = await tx
+      .update(users)
+      .set({ companyRole: 'owner', updatedAt: new Date() })
+      .where(and(
         eq(users.id as any, newOwnerId),
+        eq(users.companyId, companyId),
         eq(users.status as any, 'active'),
-      ),
-    )
-    .limit(1);
+      ))
+      .returning({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      });
+    const target = promotedTargets[0];
+    if (!target) {
+      // Throwing ensures the actor demotion is rolled back with the transaction.
+      throw new TransferOwnershipTargetNotFoundError();
+    }
 
-  if (!targetRows[0]) return { outcome: 'target_not_found' };
-
-  const target = targetRows[0];
-
-  await dbInstance.transaction(async (tx: any) => {
-    await tx.update(users).set({ companyRole: 'owner' }).where(eq(users.id as any, newOwnerId));
-    await tx.update(users).set({ companyRole: 'admin' }).where(eq(users.id as any, actorId));
     await tx.update(companies).set({ ownerId: newOwnerId }).where(eq(companies.id as any, companyId));
-  });
 
-  return {
-    outcome: 'transferred',
-    targetUser: {
-      id: target.id,
-      firstName: target.firstName ?? null,
-      lastName: target.lastName ?? null,
-      email: target.email,
-    },
-  };
+    return {
+      outcome: 'transferred',
+      targetUser: {
+        id: target.id,
+        firstName: target.firstName ?? null,
+        lastName: target.lastName ?? null,
+        email: target.email,
+      },
+    };
+  }).catch((error: unknown) => {
+    if (error instanceof TransferOwnershipTargetNotFoundError) {
+      return { outcome: 'target_not_found' } as const;
+    }
+    throw error;
+  });
 }
+
+class TransferOwnershipTargetNotFoundError extends Error {}
 
 // ----------------------------------------------------------------------------
 // End of exported helpers
@@ -25396,6 +25421,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       );
       if (result.outcome === 'self') {
         return res.status(400).json({ message: 'You are already the company owner' });
+      }
+      if (result.outcome === 'unauthorized') {
+        return res.status(403).json({ message: 'Only the active company owner can transfer ownership' });
       }
       if (result.outcome === 'target_not_found') {
         return res.status(404).json({ message: 'Active team member not found' });
