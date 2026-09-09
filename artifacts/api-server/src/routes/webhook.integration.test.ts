@@ -1523,6 +1523,123 @@ describe("Stripe webhook idempotency — crash mid-write then restart (checkout.
   });
 });
 
+describe("Stripe webhook idempotency — crash mid-write then restart (subscription renewals)", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    process.env.STRIPE_SECRET_KEY = "sk_test_integration_placeholder";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_integration_placeholder";
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+
+    mockGetRecentStripeProcessedEventIds.mockReset().mockResolvedValue(new Map());
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+    mockMarkStripeEventCommitted.mockReset().mockResolvedValue(true);
+    mockDeleteStripeEventPending.mockReset().mockResolvedValue(undefined);
+    mockPruneOldStripeProcessedEvents.mockReset().mockResolvedValue(undefined);
+    mockGetUser.mockReset().mockResolvedValue(null);
+    mockGetUserByStripeCustomerId2.mockReset().mockResolvedValue(null);
+    mockUpdateUserStripeSubscription.mockReset().mockResolvedValue(undefined);
+    mockUpdateUserSubscriptionStatus2.mockReset().mockResolvedValue(undefined);
+    mockCreateSubscriptionCycleEvent.mockReset().mockResolvedValue(undefined);
+    mockSubscriptionsRetrieve.mockReset().mockResolvedValue({
+      id: "sub_test_checkout_01",
+      customer: "cus_retry_invoice_01",
+      status: "active",
+      items: { data: [{ price: { id: "price_test_monthly_01" } }] },
+    });
+
+    app = express();
+    await registerRoutes(app);
+  });
+
+  afterEach(() => {
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    vi.clearAllMocks();
+  });
+
+  async function deliver(event: Stripe.Event) {
+    return request(app)
+      .post("/api/webhooks/stripe")
+      .set("Content-Type", "application/octet-stream")
+      .set("stripe-signature", FAKE_SIG)
+      .send(makeWebhookBody(event));
+  }
+
+  async function crashThenRetryAcrossColdRestarts(event: Stripe.Event) {
+    mockConstructEvent.mockReset().mockReturnValue(event);
+    mockClaimStripeEvent.mockRejectedValueOnce(new Error("simulated crash mid-write"));
+
+    const crashed = await deliver(event);
+    expect(crashed.status).toBe(500);
+    expect(inFlightWebhookEventIds.has(event.id)).toBe(false);
+    expect(processedWebhookEventIds.has(event.id)).toBe(false);
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    mockClaimStripeEvent.mockReset().mockResolvedValue("claimed");
+
+    const retry = await deliver(event);
+    expect(retry.status).toBe(200);
+    expect(retry.body).toMatchObject({ received: true });
+    expect(retry.body.duplicate).toBeUndefined();
+
+    processedWebhookEventIds.clear();
+    inFlightWebhookEventIds.clear();
+    mockClaimStripeEvent.mockResolvedValueOnce("committed");
+
+    const committedRetry = await deliver(event);
+    expect(committedRetry.status).toBe(200);
+    expect(committedRetry.body).toMatchObject({ received: true, duplicate: true });
+  }
+
+  it("invoice.paid creates one renewal cycle and applies subscription state only once", async () => {
+    const event = makeInvoicePaidEvent("evt_invoice_paid_crash_restart_001");
+    const user = {
+      id: "user_retry_invoice_01",
+      role: "homeowner",
+      email: "renewal@example.test",
+      companyId: null,
+      stripeCustomerId: "cus_retry_invoice_01",
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+    };
+    mockGetUserByStripeCustomerId2.mockResolvedValue(user);
+    mockGetUser.mockResolvedValue(user);
+
+    await crashThenRetryAcrossColdRestarts(event);
+
+    expect(mockCreateSubscriptionCycleEvent).toHaveBeenCalledOnce();
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
+  });
+
+  it("customer.subscription.updated applies subscription state only once", async () => {
+    const event = makeSubscriptionUpdatedEvent("evt_subscription_updated_crash_restart_001");
+    const user = {
+      id: "user_test_sub_01",
+      role: "homeowner",
+      email: "subscriber@example.test",
+      companyId: null,
+      stripeCustomerId: "cus_test_subscription_01",
+      stripeSubscriptionId: null,
+      subscriptionStatus: null,
+    };
+    mockGetUserByStripeCustomerId2.mockResolvedValue(user);
+    mockGetUser.mockResolvedValue(user);
+
+    await crashThenRetryAcrossColdRestarts(event);
+
+    expect(mockCreateSubscriptionCycleEvent).not.toHaveBeenCalled();
+    expect(mockUpdateUserStripeSubscription).toHaveBeenCalledOnce();
+    expect(mockUpdateUserSubscriptionStatus2).toHaveBeenCalledOnce();
+    expect(mockMarkStripeEventCommitted).toHaveBeenCalledOnce();
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 3DS / incomplete subscription lifecycle tests
 //
