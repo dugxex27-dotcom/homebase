@@ -198,7 +198,10 @@ interface DashboardStats {
   overdueInvoices: number;
 }
 
-// Status labels and colors
+interface CurrentUser {
+  id: string;
+  isDemoAccount?: boolean | null;
+}
 const leadStatusLabels: Record<string, string> = {
   new: "New",
   contacted: "Contacted",
@@ -403,6 +406,11 @@ export default function ContractorCRMPage() {
   const [csvImportType, setCsvImportType] = useState<"leads" | "clients">("leads");
   const [csvImportResult, setCsvImportResult] = useState<CsvImportResult | null>(null);
   const [exportingType, setExportingType] = useState<"leads" | "clients" | "quotes" | "invoices" | null>(null);
+  const [resetDemoConfirmOpen, setResetDemoConfirmOpen] = useState(false);
+
+  const { data: currentUser } = useQuery<CurrentUser>({
+    queryKey: ['/api/user'],
+  });
 
   // Pro tier state
   const [isAddClientOpen, setIsAddClientOpen] = useState(false);
@@ -563,6 +571,31 @@ export default function ContractorCRMPage() {
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to create lead", variant: "destructive" });
+    },
+  });
+
+  const resetDemoMutation = useMutation({
+    mutationFn: async () => apiRequest('/api/demo/contractor/reset', 'POST'),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/jobs'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/quotes'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/invoices'] }),
+        queryClient.invalidateQueries({ queryKey: ['/api/crm/dashboard'] }),
+      ]);
+      toast({
+        title: "Demo data reset",
+        description: "Leads, clients, jobs, quotes, and invoices are back to their original demo state.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Reset failed",
+        description: error.message || "Failed to reset demo data. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1163,6 +1196,19 @@ export default function ContractorCRMPage() {
         <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>Contractor</span>
         <div className="dash-title">CRM &amp; Clients</div>
         <div className="dash-subtitle">Leads, jobs, quotes and invoices in one place</div>
+        {currentUser?.isDemoAccount === true && (
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-4 border-white/60 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            onClick={() => setResetDemoConfirmOpen(true)}
+            disabled={resetDemoMutation.isPending}
+            data-testid="button-reset-demo-data"
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
+            {resetDemoMutation.isPending ? "Resetting Demo…" : "Reset Demo Data"}
+          </Button>
+        )}
         <div className="dash-chips">
           <div className="dash-chip">
             <div className={`dash-chip-num${(leads?.length ?? 0) > 0 ? ' good' : ''}`}>{leads?.length ?? 0}</div>
@@ -3073,6 +3119,20 @@ export default function ContractorCRMPage() {
       </Tabs>
 
       {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        open={resetDemoConfirmOpen}
+        onOpenChange={setResetDemoConfirmOpen}
+        title="Reset all demo CRM data?"
+        description="This removes changes made during the demo and restores the original leads, clients, jobs, quotes, and invoices. You can safely reset again later."
+        confirmText="Reset Demo Data"
+        cancelText="Keep Changes"
+        onConfirm={() => {
+          setResetDemoConfirmOpen(false);
+          resetDemoMutation.mutate();
+        }}
+        variant="destructive"
+      />
+
       <ConfirmDialog
         open={deleteIntegrationConfirmOpen}
         onOpenChange={setDeleteIntegrationConfirmOpen}

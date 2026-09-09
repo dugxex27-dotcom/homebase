@@ -56,6 +56,9 @@ export interface SeedOutcome {
   seedResults: SeedResults;
 }
 
+export const DEMO_CONTRACTOR_ID = "demo-contractor-permanent-id";
+const CONTRACTOR_CRM_SECTIONS = ["leads", "clients", "jobs", "quotes", "invoices"] as const;
+
 /** Minimal subset of pino logger used inside the seeders. */
 interface DemoLog {
   info(obj: object, msg: string): void;
@@ -766,7 +769,7 @@ export async function topUpHomeownerTaskCompletions(): Promise<void> {
 export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Promise<SeedOutcome> {
   const demoStorage = transactionStorage(client);
   const demoEmail = "david.martinez@precisionhvac.com";
-  const demoId = "demo-contractor-permanent-id";
+  const demoId = DEMO_CONTRACTOR_ID;
   const companyId = "demo-company-permanent-id";
 
   let user = await demoStorage.getUserByEmail(demoEmail);
@@ -1144,6 +1147,45 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
   }
 
   return { user, seedResults };
+}
+
+/**
+ * Restore the canonical demo contractor's CRM to its seeded state.
+ *
+ * The advisory transaction lock serializes repeated/concurrent reset requests.
+ * Deleting by contractorUserId removes user-created demo rows as well as seeded
+ * rows, while the fixed account guard prevents any non-demo data from being
+ * touched. A failed CRM seed section aborts and rolls back the whole reset.
+ */
+export async function resetContractorDemoCrm(
+  log: DemoLog,
+  userId: string,
+): Promise<SeedOutcome> {
+  if (userId !== DEMO_CONTRACTOR_ID) {
+    throw new Error("DEMO_CONTRACTOR_RESET_FORBIDDEN");
+  }
+
+  return db.transaction(async (tx) => {
+    await tx.execute(drizzleSql`select pg_advisory_xact_lock(hashtext('contractor-demo-crm-reset'))`);
+
+    // Invoices must be removed before jobs/quotes because they reference both.
+    // Remaining dependent CRM records use cascading deletes or SET NULL.
+    await tx.delete(crmInvoices).where(eq(crmInvoices.contractorUserId, userId));
+    await tx.delete(crmJobs).where(eq(crmJobs.contractorUserId, userId));
+    await tx.delete(crmQuotes).where(eq(crmQuotes.contractorUserId, userId));
+    await tx.delete(crmClients).where(eq(crmClients.contractorUserId, userId));
+    await tx.delete(crmLeads).where(eq(crmLeads.contractorUserId, userId));
+
+    const outcome = await seedContractorDemo(log, tx);
+    const failedSections = CONTRACTOR_CRM_SECTIONS.filter(
+      (section) => !outcome.seedResults[section]?.ok,
+    );
+    if (failedSections.length > 0) {
+      throw new Error(`DEMO_CONTRACTOR_RESET_SEED_FAILED:${failedSections.join(",")}`);
+    }
+
+    return outcome;
+  });
 }
 
 // ---------------------------------------------------------------------------

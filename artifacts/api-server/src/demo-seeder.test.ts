@@ -200,6 +200,54 @@ describe("contractor demo seeder", () => {
     }
   }, 60_000);
 
+  it("resets only the logged-in demo contractor CRM and remains idempotent", async () => {
+    const agent = supertest.agent(app);
+    const login = await agent
+      .post("/api/auth/contractor-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+    expect(login.status).toBe(200);
+
+    await db.update(crmQuotes)
+      .set({ status: "declined" })
+      .where(eq(crmQuotes.id, "demo-quote-1"));
+    await db.insert(crmLeads).values({
+      id: "demo-reset-test-extra-lead",
+      contractorUserId: "demo-contractor-permanent-id",
+      companyId: "demo-company-permanent-id",
+      firstName: "Temporary",
+      lastName: "Lead",
+      source: "other",
+      status: "new",
+      priority: "medium",
+    } as any).onConflictDoNothing({ target: crmLeads.id });
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const reset = await agent
+        .post("/api/demo/contractor/reset")
+        .set("Content-Type", "application/json")
+        .timeout(30_000);
+      expect(reset.status).toBe(200);
+      expect(reset.body).toEqual({ success: true });
+    }
+
+    const [restoredQuote] = await db.select({ status: crmQuotes.status })
+      .from(crmQuotes)
+      .where(eq(crmQuotes.id, "demo-quote-1"))
+      .limit(1);
+    expect(restoredQuote?.status).toBe("sent");
+
+    const extraLead = await db.select({ id: crmLeads.id })
+      .from(crmLeads)
+      .where(eq(crmLeads.id, "demo-reset-test-extra-lead"));
+    expect(extraLead).toHaveLength(0);
+
+    const nonDemoResponse = await request
+      .post("/api/demo/contractor/reset")
+      .set("Content-Type", "application/json");
+    expect(nonDemoResponse.status).toBe(403);
+  }, 60_000);
+
   it("is idempotent: running the seeder twice leaves canonical row counts", async () => {
     const DEMO_CONTRACTOR_ID = "demo-contractor-permanent-id";
     const expectedCounts = {

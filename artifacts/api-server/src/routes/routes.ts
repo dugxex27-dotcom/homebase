@@ -36,7 +36,7 @@ import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
-import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag } from "../demo-seeder";
+import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
 import { decidePhotoEvidence, hasDuplicatePhotoHash } from "../photo-evidence-decision";
 import { calculateHwsScore } from "../hws-scoring";
@@ -5675,6 +5675,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in GET contractor demo login:", error);
       res.redirect('/contractor?demo_error=1');
+    }
+  });
+
+  // Restore the canonical demo contractor's CRM records to their original seed.
+  // The reset helper owns the transaction and serializes concurrent requests.
+  app.post('/api/demo/contractor/reset', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const userId = req.session?.user?.id;
+      if (userId !== DEMO_CONTRACTOR_ID) {
+        return res.status(403).json({ message: 'Only the demo contractor account can reset demo data.' });
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser || currentUser.role !== 'contractor' || currentUser.isDemoAccount !== true) {
+        return res.status(403).json({ message: 'Only the demo contractor account can reset demo data.' });
+      }
+
+      await resetContractorDemoCrm(req.log, userId);
+      req.log.info({ userId }, '[DEMO RESET] Contractor CRM restored to seeded state');
+      res.json({ success: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      req.log.error({ userId: req.session?.user?.id, error: message }, '[DEMO RESET] Failed to restore contractor CRM');
+      res.status(500).json({ message: 'Failed to reset demo data. Please try again.' });
     }
   });
 
