@@ -2726,6 +2726,7 @@ export const insuranceClaimPackages = pgTable("insurance_claim_packages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   houseId: varchar("house_id").notNull().references(() => houses.id, { onDelete: "cascade" }),
   homeownerId: varchar("homeowner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  label: text("label"),
   claimArea: text("claim_area").notNull(),
   incidentDescription: text("incident_description"),
   incidentDate: text("incident_date"),

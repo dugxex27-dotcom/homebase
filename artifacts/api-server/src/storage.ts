@@ -1026,6 +1026,8 @@ export interface IStorage {
 
   getInsuranceClaimPackage(id: string, homeownerId: string): Promise<InsuranceClaimPackage | undefined>;
 
+  updateInsuranceClaimPackageLabel(id: string, houseId: string, homeownerId: string, label: string | null): Promise<InsuranceClaimPackage | undefined>;
+
   deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean>;
 
   // Insurance email log operations
@@ -7619,6 +7621,14 @@ export class MemStorage implements IStorage {
     return pkg;
   }
 
+  async updateInsuranceClaimPackageLabel(id: string, houseId: string, homeownerId: string, label: string | null): Promise<InsuranceClaimPackage | undefined> {
+    const pkg = this.insuranceClaimPackagesMap.get(id);
+    if (!pkg || pkg.houseId !== houseId || pkg.homeownerId !== homeownerId) return undefined;
+    const updated = { ...pkg, label };
+    this.insuranceClaimPackagesMap.set(id, updated);
+    return updated;
+  }
+
   async deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean> {
     const pkg = this.insuranceClaimPackagesMap.get(id);
     if (!pkg || pkg.houseId !== houseId || pkg.homeownerId !== homeownerId) return false;
@@ -10962,6 +10972,18 @@ export class DbStorage implements IStorage {
       .where(and(eq(insuranceClaimPackages.id, id), eq(insuranceClaimPackages.homeownerId, homeownerId)))
       .limit(1);
     return result[0];
+  }
+
+  async updateInsuranceClaimPackageLabel(id: string, houseId: string, homeownerId: string, label: string | null): Promise<InsuranceClaimPackage | undefined> {
+    const updated = await db.update(insuranceClaimPackages)
+      .set({ label })
+      .where(and(
+        eq(insuranceClaimPackages.id, id),
+        eq(insuranceClaimPackages.houseId, houseId),
+        eq(insuranceClaimPackages.homeownerId, homeownerId),
+      ))
+      .returning();
+    return updated[0];
   }
 
   async deleteInsuranceClaimPackage(id: string, houseId: string, homeownerId: string): Promise<boolean> {

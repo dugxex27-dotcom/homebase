@@ -111,6 +111,16 @@ export async function runMigrations() {
     console.warn('[MIGRATE] insurance_email_logs FK constraint warning (non-fatal):', err?.message ?? err);
   }
 
+  // Allow homeowners to give saved insurance claim packages memorable names.
+  try {
+    await pool.query(`
+      ALTER TABLE "insurance_claim_packages"
+        ADD COLUMN IF NOT EXISTS "label" text;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] insurance_claim_packages label column warning (non-fatal):', err?.message ?? err);
+  }
+
   // Ensure quiz_results table exists
   try {
     await pool.query(`

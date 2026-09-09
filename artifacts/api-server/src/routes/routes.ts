@@ -17765,6 +17765,28 @@ ${esc(claimMemo)}
     }
   });
 
+  // Add, edit, or clear a memorable label on a saved package owned by this homeowner.
+  app.patch("/api/houses/:houseId/insurance-claim-packages/:packageId/label", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
+    try {
+      const parsed = z.object({
+        label: z.string().trim().max(100).nullable(),
+      }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Label must be 100 characters or fewer" });
+      }
+
+      const { houseId, packageId } = req.params;
+      const homeownerId = req.session.user.id;
+      const label = parsed.data.label?.trim() || null;
+      const updated = await storage.updateInsuranceClaimPackageLabel(packageId, houseId, homeownerId, label);
+      if (!updated) return res.status(404).json({ message: "Claim package not found" });
+      res.json(updated);
+    } catch (error) {
+      console.error("[INSURANCE CLAIM PACKAGE LABEL] Error:", error);
+      res.status(500).json({ message: "Failed to update claim package label" });
+    }
+  });
+
   // Permanently delete a saved insurance claim package owned by this homeowner.
   app.delete("/api/houses/:houseId/insurance-claim-packages/:packageId", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {

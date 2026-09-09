@@ -18,7 +18,7 @@ import {
 import {
   Shield, Loader2, AlertTriangle, RefreshCw, Copy, Printer,
   CheckSquare, FileText, Clock, Sparkles, ChevronDown, ChevronUp, Info, Mail,
-  History, Plus, ArrowLeft, Trash2
+  History, Plus, ArrowLeft, Trash2, Pencil
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +59,7 @@ interface InsurancePrepResult {
 
 interface PastPackage {
   id: string;
+  label: string | null;
   claimArea: string;
   incidentDescription: string | null;
   incidentDate: string | null;
@@ -143,6 +144,8 @@ export function InsurancePrepTab({ houses }: Props) {
   const [view, setView] = useState<"form" | "result" | "past">("form");
   const [viewingPastId, setViewingPastId] = useState<string | null>(null);
   const [packageToDelete, setPackageToDelete] = useState<PastPackage | null>(null);
+  const [packageToLabel, setPackageToLabel] = useState<PastPackage | null>(null);
+  const [labelDraft, setLabelDraft] = useState("");
 
   // Fetch past packages
   const { data: pastPackages = [], isLoading: pastLoading } = useQuery<PastPackage[]>({
@@ -200,6 +203,43 @@ export function InsurancePrepTab({ houses }: Props) {
       });
     },
   });
+
+  const updateLabelMutation = useMutation({
+    mutationFn: async ({ packageId, label }: { packageId: string; label: string | null }) => {
+      const res = await apiRequest(
+        `/api/houses/${selectedHouseId}/insurance-claim-packages/${packageId}/label`,
+        "PATCH",
+        { label },
+      );
+      return res.json() as Promise<PastPackage>;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<PastPackage[]>(
+        ["/api/houses", selectedHouseId, "insurance-claim-packages"],
+        (current = []) => current.map(pkg => pkg.id === updated.id ? updated : pkg),
+      );
+      setPackageToLabel(null);
+      setLabelDraft("");
+      toast({
+        title: updated.label ? "Report name saved" : "Report name removed",
+        description: updated.label
+          ? "Your custom name now appears in Past Reports."
+          : "This report will use its claim area as the title.",
+      });
+    },
+    onError: (err: unknown) => {
+      toast({
+        title: "Could not update report name",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openLabelDialog = (pkg: PastPackage) => {
+    setPackageToLabel(pkg);
+    setLabelDraft(pkg.label ?? "");
+  };
 
   const handleSubmit = () => {
     if (!selectedHouseId || !claimArea) return;
@@ -518,12 +558,15 @@ export function InsurancePrepTab({ houses }: Props) {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-sm font-semibold text-gray-800">{pkg.claimArea} Claim</span>
+                         <div className="flex items-center gap-2 mb-1">
+                           <span className="text-sm font-semibold text-gray-800">{pkg.label || `${pkg.claimArea} Claim`}</span>
                           {pkg.incidentDate && (
                             <span className="text-xs text-gray-400 font-mono">Incident: {pkg.incidentDate}</span>
                           )}
                         </div>
+                         {pkg.label && (
+                           <p className="text-xs font-medium text-blue-700 mb-1">{pkg.claimArea} Claim</p>
+                         )}
                         <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{pkg.summary}</p>
                         <div className="flex items-center gap-3 mt-2">
                           <span className="text-xs text-gray-400">
@@ -540,6 +583,20 @@ export function InsurancePrepTab({ houses }: Props) {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
+                         <Button
+                           type="button"
+                           variant="ghost"
+                           size="icon"
+                           className="h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
+                           aria-label={`${pkg.label ? "Edit" : "Add"} name for ${pkg.claimArea} claim report`}
+                           data-testid={`edit-past-report-label-${pkg.id}`}
+                           onClick={(event) => {
+                             event.stopPropagation();
+                             openLabelDialog(pkg);
+                           }}
+                         >
+                           <Pencil className="w-4 h-4" />
+                         </Button>
                         <Button
                           type="button"
                           variant="ghost"
@@ -564,6 +621,63 @@ export function InsurancePrepTab({ houses }: Props) {
           )}
         </div>
       )}
+
+      <Dialog
+        open={packageToLabel !== null}
+        onOpenChange={(open) => {
+          if (!open && !updateLabelMutation.isPending) {
+            setPackageToLabel(null);
+            setLabelDraft("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Name this saved report</DialogTitle>
+            <DialogDescription>
+              Add a memorable name. The {packageToLabel?.claimArea ?? "claim"} area will still appear in Past Reports.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="claim-package-label">Report name</Label>
+            <Input
+              id="claim-package-label"
+              value={labelDraft}
+              onChange={(event) => setLabelDraft(event.target.value)}
+              maxLength={100}
+              placeholder="e.g. 2024 Storm Damage"
+              autoFocus
+              data-testid="input-past-report-label"
+            />
+            <p className="text-xs text-gray-500">{labelDraft.length}/100 characters</p>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={updateLabelMutation.isPending}
+              onClick={() => {
+                setPackageToLabel(null);
+                setLabelDraft("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={!packageToLabel || updateLabelMutation.isPending}
+              onClick={() => packageToLabel && updateLabelMutation.mutate({
+                packageId: packageToLabel.id,
+                label: labelDraft.trim() || null,
+              })}
+              data-testid="save-past-report-label"
+            >
+              {updateLabelMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save name
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={packageToDelete !== null}
