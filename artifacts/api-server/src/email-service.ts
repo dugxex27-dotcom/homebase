@@ -11,13 +11,7 @@ const fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@gotohomebase.com';
 const fromName = 'HomeBase';
 const testEmailOverride = '';
 
-if (apiKey) {
-  sgMail.setApiKey(apiKey);
-  console.log(`[EMAIL] SendGrid client initialized (from: ${fromEmail})`);
-} else {
-  console.warn('[EMAIL] SendGrid API key not configured - email notifications disabled');
-}
-
+const defaultAlertEmail = 'gotohomebase2025@gmail.com';
 interface EmailData {
   to: string;
   subject: string;
@@ -1820,7 +1814,6 @@ export async function sendDemoSeedingFailureAlert(
   failedSections: string[],
   seedResults: Record<string, SeedSectionResult>
 ): Promise<void> {
-  const alertRecipient = process.env.ALERT_EMAIL || 'gotohomebase2025@gmail.com';
   if (!apiKey) {
     console.warn('[EMAIL] SendGrid not configured — cannot send demo seeding failure alert');
     return;
@@ -2068,3 +2061,7 @@ export async function sendAffiliatePayoutProcessedEmail(
     },
   });
 }
+
+const configuredAlertEmail = process.env.ALERT_EMAIL?.trim();
+
+const alertRecipient = configuredAlertEmail || defaultAlertEmail;

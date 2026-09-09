@@ -202,6 +202,7 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAILS = "lihandyman2008@gmail.com"
+ALERT_EMAIL = "gotohomebase2025@gmail.com"
 
 [objectStorage]
 defaultBucketID = "replit-objstore-6b6c0a35-de9a-48e9-9110-28f95a385aae"

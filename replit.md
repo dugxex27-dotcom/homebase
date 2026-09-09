@@ -26,6 +26,10 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Environment Variables
+
+- `ALERT_EMAIL` — recipient for operational alerts such as demo seeding failures. Set this in the Replit environment configuration to reroute alerts without changing application code. If omitted, the API server logs a warning at startup and uses `gotohomebase2025@gmail.com`.
+
 ## Landing Page Architecture (artifacts/myhomebase)
 
 The landing page (`artifacts/myhomebase/src/pages/landing.tsx` + `landing.css`) follows the conversion architecture: Problem → Stakes → Villain → Hero → Proof → CTA.
