@@ -54,6 +54,174 @@ describe("MemStorage.transferHouseOwnership", () => {
     storage = new MemStorage();
   });
 
+  it("transfers maintenance logs from homeowner A to homeowner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Maintenance Log House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "1 Maintenance Way",
+      isDefault: false,
+    });
+
+    await storage.createMaintenanceLog({
+      homeownerId: ownerA,
+      houseId: house.id,
+      serviceDate: "2026-08-01",
+      serviceType: "HVAC service",
+    });
+    await storage.createMaintenanceLog({
+      homeownerId: ownerA,
+      houseId: house.id,
+      serviceDate: "2026-08-15",
+      serviceType: "Roof inspection",
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.maintenanceLogsTransferred).toBe(2);
+    const recordsForB = await storage.getMaintenanceLogs(ownerB, house.id);
+    expect(recordsForB).toHaveLength(2);
+    recordsForB.forEach((record) => expect(record.homeownerId).toBe(ownerB));
+    expect(await storage.getMaintenanceLogs(ownerA, house.id)).toHaveLength(0);
+  });
+
+  it("transfers home appliances from homeowner A to homeowner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Appliance House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "2 Appliance Way",
+      isDefault: false,
+    });
+
+    await storage.createHomeAppliance({
+      homeownerId: ownerA,
+      houseId: house.id,
+      name: "Kitchen Dishwasher",
+      make: "Test Make",
+      model: "DW-1",
+    });
+    await storage.createHomeAppliance({
+      homeownerId: ownerA,
+      houseId: house.id,
+      name: "Water Heater",
+      make: "Test Make",
+      model: "WH-1",
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.appliancesTransferred).toBe(2);
+    const recordsForB = await storage.getHomeAppliances(ownerB, house.id);
+    expect(recordsForB).toHaveLength(2);
+    recordsForB.forEach((record) => expect(record.homeownerId).toBe(ownerB));
+    expect(await storage.getHomeAppliances(ownerA, house.id)).toHaveLength(0);
+  });
+
+  it("transfers contractor appointments from homeowner A to homeowner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Appointment House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "3 Appointment Way",
+      isDefault: false,
+    });
+
+    await storage.createContractorAppointment({
+      homeownerId: ownerA,
+      houseId: house.id,
+      contractorName: "Test Contractor",
+      serviceType: "Plumbing",
+      serviceDescription: "Inspect water heater",
+      homeArea: "Basement",
+      scheduledDateTime: "2026-09-10T10:00:00.000Z",
+    });
+    await storage.createContractorAppointment({
+      homeownerId: ownerA,
+      houseId: house.id,
+      contractorName: "Test Contractor",
+      serviceType: "Electrical",
+      serviceDescription: "Inspect panel",
+      homeArea: "Garage",
+      scheduledDateTime: "2026-09-11T10:00:00.000Z",
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.appointmentsTransferred).toBe(2);
+    const recordsForB = await storage.getContractorAppointments(ownerB, house.id);
+    expect(recordsForB).toHaveLength(2);
+    recordsForB.forEach((record) => expect(record.homeownerId).toBe(ownerB));
+    expect(await storage.getContractorAppointments(ownerA, house.id)).toHaveLength(0);
+  });
+
+  it("transfers custom maintenance tasks from homeowner A to homeowner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Custom Task House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "4 Custom Task Way",
+      isDefault: false,
+    });
+
+    await storage.createCustomMaintenanceTask({
+      homeownerId: ownerA,
+      houseId: house.id,
+      title: "Flush water heater",
+      category: "plumbing",
+      frequencyType: "annually",
+    });
+    await storage.createCustomMaintenanceTask({
+      homeownerId: ownerA,
+      houseId: house.id,
+      title: "Clean dryer vent",
+      category: "appliances",
+      frequencyType: "annually",
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.customTasksTransferred).toBe(2);
+    const recordsForB = await storage.getCustomMaintenanceTasks(ownerB, house.id);
+    expect(recordsForB).toHaveLength(2);
+    recordsForB.forEach((record) => expect(record.homeownerId).toBe(ownerB));
+    expect(await storage.getCustomMaintenanceTasks(ownerA, house.id)).toHaveLength(0);
+  });
+
+  it("transfers home systems from homeowner A to homeowner B", async () => {
+    const house = await storage.createHouse({
+      homeownerId: ownerA,
+      name: "Home System House",
+      climateZone: "mixed",
+      homeSystems: [],
+      address: "5 Home System Way",
+      isDefault: false,
+    });
+
+    await storage.createHomeSystem({
+      homeownerId: ownerA,
+      houseId: house.id,
+      systemType: "Central Air",
+    });
+    await storage.createHomeSystem({
+      homeownerId: ownerA,
+      houseId: house.id,
+      systemType: "Gas Heat",
+    });
+
+    const result = await storage.transferHouseOwnership(house.id, ownerA, ownerB);
+
+    expect(result.homeSystemsTransferred).toBe(2);
+    const recordsForB = await storage.getHomeSystems(ownerB, house.id);
+    expect(recordsForB).toHaveLength(2);
+    recordsForB.forEach((record) => expect(record.homeownerId).toBe(ownerB));
+    expect(await storage.getHomeSystems(ownerA, house.id)).toHaveLength(0);
+  });
+
   it("transfers task completions from homeowner A to homeowner B", async () => {
     const house = await storage.createHouse({
       homeownerId: ownerA,
