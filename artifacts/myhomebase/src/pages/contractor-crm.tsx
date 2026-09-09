@@ -161,6 +161,7 @@ interface CrmInvoice {
   sentAt: string | null;
   paidAt: string | null;
   paymentMethod: string | null;
+  paymentNotes: string | null;
   notes: string | null;
   createdAt: string;
 }
@@ -427,6 +428,7 @@ export default function ContractorCRMPage() {
   const [paymentInvoice, setPaymentInvoice] = useState<CrmInvoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentNotes, setPaymentNotes] = useState("");
   
   // Pro benefits dialog state
   const [showProBenefitsDialog, setShowProBenefitsDialog] = useState(false);
@@ -791,8 +793,12 @@ export default function ContractorCRMPage() {
   });
 
   const recordPaymentMutation = useMutation({
-    mutationFn: async ({ invoiceId, amount, paymentMethod }: { invoiceId: string; amount: string; paymentMethod: string }) => {
-      return await apiRequest(`/api/crm/invoices/${invoiceId}/payment`, 'POST', { amount, paymentMethod });
+    mutationFn: async ({ invoiceId, amount, paymentMethod, paymentNotes }: { invoiceId: string; amount: string; paymentMethod: string; paymentNotes?: string }) => {
+      return await apiRequest(`/api/crm/invoices/${invoiceId}/payment`, 'POST', {
+        amount,
+        paymentMethod,
+        paymentNotes: paymentNotes || undefined,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/crm/invoices'] });
@@ -800,6 +806,8 @@ export default function ContractorCRMPage() {
       setIsPaymentDialogOpen(false);
       setPaymentInvoice(null);
       setPaymentAmount("");
+      setPaymentMethod("cash");
+      setPaymentNotes("");
       toast({ title: "Payment recorded", description: "Payment has been recorded successfully." });
     },
     onError: (error: any) => {
@@ -1099,6 +1107,7 @@ export default function ContractorCRMPage() {
         invoiceId: paymentInvoice.id,
         amount: paymentAmount,
         paymentMethod,
+        paymentNotes: paymentNotes.trim(),
       });
     }
   };
@@ -2759,8 +2768,8 @@ export default function ContractorCRMPage() {
                                 <Send className="h-4 w-4 mr-2" />Send Invoice
                               </Button>
                             )}
-                            {['sent', 'viewed', 'partial'].includes(invoice.status) && (
-                              <Button variant="outline" size="sm" onClick={() => { setPaymentInvoice(invoice); setPaymentAmount(invoice.amountDue); setIsPaymentDialogOpen(true); }} data-testid={`button-record-payment-${invoice.id}`}>
+                            {['sent', 'viewed', 'overdue', 'partial'].includes(invoice.status) && (
+                              <Button variant="outline" size="sm" onClick={() => { setPaymentInvoice(invoice); setPaymentAmount(invoice.amountDue); setPaymentMethod("cash"); setPaymentNotes(""); setIsPaymentDialogOpen(true); }} data-testid={`button-record-payment-${invoice.id}`}>
                                 <DollarSign className="h-4 w-4 mr-2" />Record Payment
                               </Button>
                             )}
@@ -2793,16 +2802,34 @@ export default function ContractorCRMPage() {
                         <SelectContent>
                           <SelectItem value="cash">Cash</SelectItem>
                           <SelectItem value="check">Check</SelectItem>
-                          <SelectItem value="credit_card">Credit Card</SelectItem>
+                          <SelectItem value="credit_card">Card</SelectItem>
                           <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Notes <span className="text-muted-foreground font-normal">(optional)</span></label>
+                      <Textarea
+                        value={paymentNotes}
+                        onChange={(event) => setPaymentNotes(event.target.value)}
+                        placeholder="Check number or other payment details"
+                        maxLength={1000}
+                        data-testid="textarea-payment-notes"
+                      />
                     </div>
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)} data-testid="button-cancel-payment">Cancel</Button>
-                    <Button onClick={handleRecordPayment} disabled={recordPaymentMutation.isPending} data-testid="button-submit-payment">
+                    <Button
+                      onClick={handleRecordPayment}
+                      disabled={
+                        recordPaymentMutation.isPending
+                        || !paymentAmount
+                        || Number(paymentAmount) <= 0
+                        || Number(paymentAmount) > Number(paymentInvoice?.amountDue ?? 0)
+                      }
+                      data-testid="button-submit-payment"
+                    >
                       {recordPaymentMutation.isPending ? "Recording..." : "Record Payment"}
                     </Button>
                   </DialogFooter>

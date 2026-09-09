@@ -10256,9 +10256,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const paymentSchema = z.object({
-        amount: z.string().or(z.number()).transform(val => String(val)),
-        paymentMethod: z.string().optional(),
-        paymentNotes: z.string().optional(),
+        amount: z.coerce.number().finite().positive(),
+        paymentMethod: z.enum(['cash', 'check', 'credit_card', 'bank_transfer']),
+        paymentNotes: z.string().trim().max(1000).optional(),
       });
 
       const validationResult = paymentSchema.safeParse(req.body);
@@ -10270,25 +10270,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const paymentAmount = parseFloat(validationResult.data.amount);
-      const currentAmountPaid = parseFloat(existingInvoice.amountPaid || '0');
-      const newAmountPaid = currentAmountPaid + paymentAmount;
-      const totalAmount = parseFloat(existingInvoice.total);
-      const newAmountDue = totalAmount - newAmountPaid;
-
-      let newStatus = existingInvoice.status;
-      if (newAmountDue <= 0) {
-        newStatus = 'paid';
-      } else if (newAmountPaid > 0) {
-        newStatus = 'partial';
+      const RECORDABLE_STATUSES = ['sent', 'viewed', 'overdue', 'partial'];
+      if (!RECORDABLE_STATUSES.includes(existingInvoice.status)) {
+        return res.status(409).json({
+          message: `Payments cannot be recorded on an invoice with status "${existingInvoice.status}"`,
+          currentStatus: existingInvoice.status,
+        });
       }
 
+      const paymentCents = Math.round(validationResult.data.amount * 100);
+      const currentPaidCents = Math.round(parseFloat(existingInvoice.amountPaid || '0') * 100);
+      const amountDueCents = Math.round(parseFloat(existingInvoice.amountDue) * 100);
+      const totalCents = Math.round(parseFloat(existingInvoice.total) * 100);
+
+      if (paymentCents > amountDueCents) {
+        return res.status(400).json({
+          message: "Payment amount cannot exceed the remaining balance",
+          amountDue: existingInvoice.amountDue,
+        });
+      }
+
+      const newAmountPaidCents = currentPaidCents + paymentCents;
+      const newAmountDueCents = amountDueCents - paymentCents;
+      const newStatus = newAmountDueCents === 0 ? 'paid' : 'partial';
+      const paymentAmount = paymentCents / 100;
+      const totalAmount = totalCents / 100;
+
       const updatedInvoice = await storage.updateCrmInvoice(req.params.id, {
-        amountPaid: newAmountPaid.toFixed(2),
-        amountDue: Math.max(0, newAmountDue).toFixed(2),
+        amountPaid: (newAmountPaidCents / 100).toFixed(2),
+        amountDue: (newAmountDueCents / 100).toFixed(2),
         status: newStatus,
         paidAt: newStatus === 'paid' ? new Date() : existingInvoice.paidAt,
-        paymentMethod: validationResult.data.paymentMethod || existingInvoice.paymentMethod,
+        paymentMethod: validationResult.data.paymentMethod,
         paymentNotes: validationResult.data.paymentNotes || existingInvoice.paymentNotes,
       });
 
