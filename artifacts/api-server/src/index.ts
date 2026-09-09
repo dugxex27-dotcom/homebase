@@ -32,6 +32,7 @@ import { fraudScheduler } from "./fraud-scheduler";
 import { referralAccrualScheduler } from "./referral-accrual-scheduler";
 import { stripeDedupCleanupScheduler } from "./stripe-dedup-cleanup-scheduler";
 import { stripeIncompleteEventRecoveryScheduler } from "./stripe-incomplete-event-recovery-scheduler";
+import { quizSpikeScheduler } from "./quiz-spike-scheduler";
 import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
 
 const allSchedulers = [
@@ -50,6 +51,7 @@ const allSchedulers = [
   referralAccrualScheduler,
   stripeDedupCleanupScheduler,
   stripeIncompleteEventRecoveryScheduler,
+  quizSpikeScheduler,
 ];
 
 // ---------------------------------------------------------------------------
