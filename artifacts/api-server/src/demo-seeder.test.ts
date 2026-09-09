@@ -248,6 +248,38 @@ describe("contractor demo seeder", () => {
   }, 60_000);
 });
 
+describe("contractor read-path", () => {
+  it("GET /api/companies/:id returns the canonical demo company after seeding", async () => {
+    const companyId = "demo-company-permanent-id";
+    const agent = supertest.agent(app);
+
+    const loginRes = await agent
+      .post("/api/auth/contractor-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(
+      loginRes.status,
+      `Demo login failed with ${loginRes.status}: ${JSON.stringify(loginRes.body)}`
+    ).toBe(200);
+    expect(loginRes.body.success).toBe(true);
+
+    const companyRes = await agent
+      .get(`/api/companies/${companyId}`)
+      .timeout(30_000);
+
+    expect(
+      companyRes.status,
+      `GET /api/companies/${companyId} failed with ${companyRes.status}: ${JSON.stringify(companyRes.body)}`
+    ).toBe(200);
+    expect(companyRes.body).toMatchObject({
+      id: companyId,
+      ownerId: "demo-contractor-permanent-id",
+      name: "Precision HVAC & Plumbing",
+    });
+  }, 60_000);
+});
+
 describe("homeowner demo seeder", () => {
   it("seeds all sections without errors", async () => {
     const res = await request
@@ -426,6 +458,38 @@ describe("agent demo seeder", () => {
       .where(like(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_%"));
 
     expect(Number(cycleCount)).toBe(EXPECTED_CYCLE_EVENTS);
+  }, 60_000);
+});
+
+describe("agent read-path", () => {
+  it("GET /api/user returns the canonical demo agent after seeding", async () => {
+    const agent = supertest.agent(app);
+
+    const loginRes = await agent
+      .post("/api/auth/agent-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(
+      loginRes.status,
+      `Demo login failed with ${loginRes.status}: ${JSON.stringify(loginRes.body)}`
+    ).toBe(200);
+    expect(loginRes.body.success).toBe(true);
+
+    const userRes = await agent
+      .get("/api/user")
+      .timeout(30_000);
+
+    expect(
+      userRes.status,
+      `GET /api/user failed with ${userRes.status}: ${JSON.stringify(userRes.body)}`
+    ).toBe(200);
+    expect(userRes.body).toMatchObject({
+      id: "demo-agent-permanent-id",
+      role: "agent",
+      firstName: "Jessica",
+      lastName: "Roberts",
+    });
   }, 60_000);
 });
 
