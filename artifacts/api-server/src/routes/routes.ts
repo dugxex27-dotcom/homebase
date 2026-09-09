@@ -3,7 +3,7 @@ import express from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage, type IStorage } from "../storage";
-import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
+import { setupAuth, isAuthenticated, requireRole, requirePropertyOwner, suspendedUserIds, invalidateUserSessions, refreshUserSessionRole, requireCompanyRole, requireCompanyRoleAny, requireDivisionAccess, requireBulkImport, requireNotSuspended, requireSameCompany, isOAuthUserSuspended } from "../replitAuth";
 import { isConversationParticipant } from "./conversation-access";
 import { ensureHomeownerContactLead } from "./homeowner-contact-lead";
 import { contractorTeamInvoiceJoinCondition } from "./team-invoice-aggregation";
@@ -33,7 +33,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendOwnershipTransferredEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID } from "../demo-seeder";
@@ -25303,6 +25303,83 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
     } catch (error) {
       req.log?.error({ error }, '[CONTRACTOR_TEAM] Error cancelling invite');
       res.status(500).json({ message: "Failed to cancel invite" });
+    }
+  });
+
+  // Transfer company ownership to an active team member (owner only)
+  app.post('/api/contractor/transfer-ownership', isAuthenticated, requireNotSuspended(), requireCompanyRole('owner'), async (req: any, res: any) => {
+    try {
+      const actor = req.session.user;
+      const parsed = z.object({ newOwnerId: z.string().min(1) }).safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: parsed.error.issues[0]?.message ?? 'Invalid new owner' });
+      }
+
+      const [freshActor] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        companyId: users.companyId,
+        companyRole: users.companyRole,
+        status: users.status,
+      }).from(users).where(eq(users.id, actor.id)).limit(1);
+      if (
+        !freshActor
+        || freshActor.companyId !== actor.companyId
+        || freshActor.companyRole !== 'owner'
+        || (freshActor.status !== null && freshActor.status !== 'active')
+      ) {
+        return res.status(403).json({ message: 'Only the active company owner can transfer ownership' });
+      }
+      const companyId = freshActor.companyId;
+      if (!companyId) {
+        return res.status(400).json({ message: 'Company not found' });
+      }
+
+      const result = await executeTransferOwnership(
+        freshActor.id,
+        companyId,
+        parsed.data.newOwnerId,
+        db,
+      );
+      if (result.outcome === 'self') {
+        return res.status(400).json({ message: 'You are already the company owner' });
+      }
+      if (result.outcome === 'target_not_found') {
+        return res.status(404).json({ message: 'Active team member not found' });
+      }
+
+      req.session.user = { ...req.session.user, companyRole: 'admin' };
+      refreshUserSessionRole(req.sessionStore, result.targetUser.id, { companyRole: 'owner' }, req.log);
+
+      const [company] = await db.select({ name: companies.name }).from(companies)
+        .where(eq(companies.id, companyId)).limit(1);
+      const recipientName = [result.targetUser.firstName, result.targetUser.lastName].filter(Boolean).join(' ') || 'there';
+      const previousOwnerName = [freshActor.firstName, freshActor.lastName].filter(Boolean).join(' ') || freshActor.email || 'the previous owner';
+      const companyName = company?.name || 'your company';
+
+      if (result.targetUser.email) {
+        try {
+          await sendOwnershipTransferredEmail(
+            result.targetUser.email,
+            recipientName,
+            companyName,
+            previousOwnerName,
+            `${companyId}:${freshActor.id}:${result.targetUser.id}`,
+          );
+        } catch (emailError) {
+          req.log?.error(
+            { emailError, companyId, newOwnerId: result.targetUser.id },
+            '[CONTRACTOR_TEAM] Failed to send ownership transfer email',
+          );
+        }
+      }
+
+      res.json({ message: 'Ownership transferred successfully.' });
+    } catch (error) {
+      req.log?.error({ error }, '[CONTRACTOR_TEAM] Error transferring ownership');
+      res.status(500).json({ message: 'Failed to transfer ownership' });
     }
   });
 

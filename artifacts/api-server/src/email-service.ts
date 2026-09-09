@@ -330,6 +330,39 @@ export async function sendTeamMemberAccountUpdatedEmail(
   });
 }
 
+export async function sendOwnershipTransferredEmail(
+  email: string,
+  recipientName: string,
+  companyName: string,
+  previousOwnerName: string,
+  eventKey: string,
+): Promise<boolean> {
+  const safeRecipientName = escapeHtml(recipientName || 'there');
+  const safeCompanyName = escapeHtml(companyName);
+  const safePreviousOwnerName = escapeHtml(previousOwnerName);
+
+  const html = wrapEmailContent(
+    getEmailHeader('You are now the company owner'),
+    `
+      <p>Hi ${safeRecipientName},</p>
+      <p>You are now the <strong>owner</strong> of <strong>${safeCompanyName}</strong> in HomeBase.</p>
+      <p>${safePreviousOwnerName} transferred company ownership to you. You can now manage company settings, team access, and other owner responsibilities.</p>
+      <p>If you weren't expecting this change, please contact ${safePreviousOwnerName}.</p>
+      <p>- The HomeBase Team</p>
+    `,
+  );
+
+  const text = `Hi ${recipientName || 'there'}, you are now the owner of ${companyName} in HomeBase. ${previousOwnerName} transferred company ownership to you. You can now manage company settings, team access, and other owner responsibilities. If you weren't expecting this change, please contact ${previousOwnerName}.`;
+
+  return sendEmail({
+    to: email,
+    subject: `You are now the owner of ${companyName}`,
+    text,
+    html,
+    deduplication: { key: `ownership-transferred:${eventKey}` },
+  });
+}
+
 export async function sendWelcomeEmail(userId: string, userName: string, userRole: string): Promise<boolean> {
   const user = await storage.getUser(userId);
   if (!user?.email) return false;

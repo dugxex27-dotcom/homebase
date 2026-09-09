@@ -16,7 +16,7 @@ vi.mock('./storage', () => ({ storage: {} }));
 vi.mock('./db', () => ({ db: {} }));
 vi.mock('./qa-access', () => ({ isSyntheticAccountUserId: vi.fn() }));
 
-import { sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail } from './email-service';
+import { sendCompanyOwnerTeamActionEmail, sendOwnershipTransferredEmail, sendTeamMemberAccountUpdatedEmail } from './email-service';
 
 describe('sendTeamMemberAccountUpdatedEmail', () => {
   beforeEach(() => {
@@ -113,5 +113,49 @@ describe('sendCompanyOwnerTeamActionEmail', () => {
     expect(message.html).not.toContain('<script>');
     expect(message.html).not.toContain('<img src=x>');
     expect(message.html).toContain('&lt;b&gt;Owner&lt;/b&gt;');
+  });
+});
+
+describe('sendOwnershipTransferredEmail', () => {
+  beforeEach(() => {
+    sendMock.mockClear();
+    sendMock.mockResolvedValue(undefined);
+  });
+
+  it('confirms the new role, company, and previous owner', async () => {
+    const sent = await sendOwnershipTransferredEmail(
+      'new-owner@example.com',
+      'Nora Newowner',
+      'Acme Home Services',
+      'Olivia Owner',
+      'company-1:old-owner:new-owner',
+    );
+
+    expect(sent).toBe(true);
+    expect(sendMock).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'new-owner@example.com',
+      subject: 'You are now the owner of Acme Home Services',
+      text: expect.stringContaining('Olivia Owner transferred company ownership to you'),
+      html: expect.stringContaining('<strong>owner</strong>'),
+    }));
+    const message = sendMock.mock.calls[0][0];
+    expect(message.html).toContain('Acme Home Services');
+    expect(message.html).toContain('Olivia Owner');
+  });
+
+  it('escapes names and company values in HTML content', async () => {
+    await sendOwnershipTransferredEmail(
+      'new-owner@example.com',
+      '<script>owner</script>',
+      '<b>Company</b>',
+      '<img src=x>',
+      'event-2',
+    );
+
+    const message = sendMock.mock.calls[0][0];
+    expect(message.html).not.toContain('<script>');
+    expect(message.html).not.toContain('<b>Company</b>');
+    expect(message.html).not.toContain('<img src=x>');
+    expect(message.html).toContain('&lt;b&gt;Company&lt;/b&gt;');
   });
 });
