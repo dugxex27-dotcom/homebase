@@ -960,7 +960,7 @@ export default function ContractorDashboard() {
   const resendInviteMutation = useMutation({
     mutationFn: async ({ userId, email }: { userId: string; email: string }) => {
       const res = await fetch(`/api/contractor/team/${userId}/resend-invite`, {
-        method: 'PATCH',
+        method: 'POST',
         credentials: 'include',
       });
       const data = await res.json();
@@ -1666,7 +1666,7 @@ export default function ContractorDashboard() {
                         )}
                         {isPending && member.lastInviteSentAt && (
                           <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                            Invited {formatDistanceToNow(new Date(member.lastInviteSentAt), { addSuffix: true })}
+                            Invite sent {format(new Date(member.lastInviteSentAt), 'MMM d, yyyy')}
                           </div>
                         )}
                         <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
