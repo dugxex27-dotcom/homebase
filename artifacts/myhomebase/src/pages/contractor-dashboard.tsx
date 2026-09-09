@@ -1064,6 +1064,10 @@ export default function ContractorDashboard() {
 
 
   const { needsSubscription, isInTrial, isLoading: subscriptionLoading, hasDivisions, hasBulkImport, seatInfo, subscriptionStatus, trialExpired } = useContractorSubscription();
+  const maxTeamSeats = teamData?.teamSeatLimit ?? seatInfo.teamSeatLimit;
+  const remainingTeamSeats = maxTeamSeats > 0
+    ? Math.max(0, maxTeamSeats - reservedTeamCount)
+    : null;
   
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
@@ -2200,6 +2204,14 @@ export default function ContractorDashboard() {
                 ) : (
                   <>
                     <div style={{ fontWeight: 700, fontSize: 16, color: '#0C3460', marginBottom: 4 }}>Invite Team Member</div>
+                    <div style={{ fontSize: 12, color: remainingTeamSeats === 1 ? '#b45309' : '#64748b', marginBottom: 4 }}>
+                      {maxTeamSeats > 0
+                        ? `${reservedTeamCount} of ${maxTeamSeats} seats used`
+                        : `${reservedTeamCount} seat${reservedTeamCount === 1 ? '' : 's'} used`}
+                      {remainingTeamSeats === 1 && (
+                        <span style={{ fontWeight: 600 }}> · 1 seat remaining</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>They'll receive an email with a link to set up their account. Invite links expire in 7 days.</div>
                     <div style={{ marginBottom: 10 }}>
                       <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
@@ -2250,7 +2262,6 @@ export default function ContractorDashboard() {
                         <option value="dispatcher">Dispatcher</option>
                       </select>
                       <div style={{ marginTop: 5, fontSize: 11, color: isTeamAtCapacity ? '#dc2626' : '#64748b' }}>
-                        {reservedTeamCount} of {teamData?.teamSeatLimit ?? seatInfo.teamSeatLimit} total team places reserved.
                         Pending invitations count toward capacity but are not billed until accepted.
                       </div>
                       {isTeamAtCapacity && (
