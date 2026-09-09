@@ -67,6 +67,16 @@ interface AnalyticsData {
     churnSeries: Array<{ date: string; rate: number }>;
   };
   features: Array<{ feature: string; count: number }>;
+  boostDetails: Array<{
+    id: string;
+    contractorId: string;
+    contractorName: string;
+    companyName: string;
+    serviceCategory: string;
+    startDate: string;
+    endDate: string;
+    status: 'expired' | 'cancelled';
+  }>;
 }
 
 interface AgentWithUser {
@@ -142,6 +152,7 @@ The MyHomeBase™ Team`);
   // Bulk SMS state
   const [bulkSmsAudience, setBulkSmsAudience] = useState<"all" | "homeowners" | "contractors">("all");
   const [bulkSmsMessage, setBulkSmsMessage] = useState("MyHomeBase™: We hope you're enjoying the app! Reply with any questions or feedback. We'd love to hear from you!");
+  const [boostDrilldownStatus, setBoostDrilldownStatus] = useState<'expired' | 'cancelled' | null>(null);
 
   // Fetch admin stats
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<AdminStats>({
@@ -1518,8 +1529,18 @@ The MyHomeBase™ Team`);
                       badge: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
                       description: 'Boosts cancelled before their end date',
                     },
-                  ].map(({ label, count, icon, bg, text, badge, description }) => (
-                    <div key={label} className={`flex items-center justify-between rounded-lg px-4 py-3 ${bg}`} data-testid={`boost-status-${label.toLowerCase()}`}>
+                  ].map(({ label, count, icon, bg, text, badge, description }) => {
+                    const drilldownStatus = label === 'Expired' ? 'expired' : label === 'Cancelled' ? 'cancelled' : null;
+                    return (
+                    <button
+                      type="button"
+                      key={label}
+                      className={`flex w-full items-center justify-between rounded-lg px-4 py-3 text-left ${bg} ${drilldownStatus ? 'cursor-pointer transition hover:ring-2 hover:ring-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current' : 'cursor-default'}`}
+                      data-testid={`boost-status-${label.toLowerCase()}`}
+                      onClick={() => drilldownStatus && setBoostDrilldownStatus(drilldownStatus)}
+                      disabled={!drilldownStatus}
+                      aria-label={drilldownStatus ? `View ${label.toLowerCase()} boost details` : undefined}
+                    >
                       <div className="flex items-center gap-3">
                         {icon}
                         <div>
@@ -1528,13 +1549,62 @@ The MyHomeBase™ Team`);
                         </div>
                       </div>
                       <span className={`rounded-full px-3 py-1 text-sm font-bold ${badge}`}>{count}</span>
-                    </div>
-                  ))}
+                    </button>
+                  )})}
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
+
+        <Dialog open={boostDrilldownStatus !== null} onOpenChange={(open) => !open && setBoostDrilldownStatus(null)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle className="capitalize">{boostDrilldownStatus} Contractor Boosts</DialogTitle>
+              <DialogDescription>
+                Sorted by most recent end date.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {(analytics?.boostDetails || []).filter((boost) => boost.status === boostDrilldownStatus).length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">No {boostDrilldownStatus} boosts found.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Contractor</TableHead>
+                      <TableHead>Service category</TableHead>
+                      <TableHead>Start date</TableHead>
+                      <TableHead>End date</TableHead>
+                      <TableHead className="text-right">Profile</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(analytics?.boostDetails || [])
+                      .filter((boost) => boost.status === boostDrilldownStatus)
+                      .map((boost) => (
+                        <TableRow key={boost.id} data-testid={`boost-detail-${boost.id}`}>
+                          <TableCell>
+                            <div className="font-medium">{boost.contractorName}</div>
+                            {boost.companyName && <div className="text-xs text-muted-foreground">{boost.companyName}</div>}
+                          </TableCell>
+                          <TableCell>{boost.serviceCategory}</TableCell>
+                          <TableCell>{format(new Date(boost.startDate), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>{format(new Date(boost.endDate), 'MMM d, yyyy')}</TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => navigate(`/contractor/${boost.contractorId}`)}>
+                              View profile
+                              <ExternalLink className="ml-2 h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Recent Searches Timeline */}
         <Card className="mb-8" data-testid="card-recent-searches">

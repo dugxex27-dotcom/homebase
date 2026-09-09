@@ -432,6 +432,17 @@ export interface IStorage {
 
   getContractorBoosts(contractorId: string): Promise<ContractorBoost[]>;
 
+  getBoostStatusDetails(): Promise<Array<{
+    id: string;
+    contractorId: string;
+    contractorName: string;
+    companyName: string;
+    serviceCategory: string;
+    startDate: Date;
+    endDate: Date;
+    status: 'expired' | 'cancelled';
+  }>>;
+
   createContractorBoost(boost: InsertContractorBoost): Promise<ContractorBoost>;
 
   updateContractorBoost(id: string, boost: Partial<InsertContractorBoost>): Promise<ContractorBoost | undefined>;
@@ -6354,6 +6365,43 @@ export class MemStorage implements IStorage {
     ];
   }
 
+  async getBoostStatusDetails(): Promise<Array<{
+    id: string;
+    contractorId: string;
+    contractorName: string;
+    companyName: string;
+    serviceCategory: string;
+    startDate: Date;
+    endDate: Date;
+    status: 'expired' | 'cancelled';
+  }>> {
+    const now = new Date();
+    return Array.from(this.contractorBoosts.values())
+      .filter((boost) =>
+        boost.status === 'cancelled'
+        || boost.status === 'expired'
+        || (boost.status === 'active' && new Date(boost.endDate) < now)
+      )
+      .map((boost) => {
+        const contractor = Array.from(this.contractors.values())
+          .find((entry) => entry.userId === boost.contractorId || entry.id === boost.contractorId);
+        const user = this.users.get(boost.contractorId);
+        return {
+          id: boost.id,
+          contractorId: contractor?.id ?? boost.contractorId,
+          contractorName: contractor?.name
+            ?? [user?.firstName, user?.lastName].filter(Boolean).join(' ')
+            ?? 'Unknown contractor',
+          companyName: contractor?.company ?? '',
+          serviceCategory: boost.serviceCategory,
+          startDate: new Date(boost.startDate),
+          endDate: new Date(boost.endDate),
+          status: boost.status === 'cancelled' ? 'cancelled' : 'expired',
+        };
+      })
+      .sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
+  }
+
   // Agent profile operations (in-memory stubs — MemStorage is dev/test only)
   private agentProfilesMap = new Map<string, AgentProfile>();
 
@@ -12134,6 +12182,47 @@ export class DbStorage implements IStorage {
       { feature: 'Service Records', count: serviceRecordsArr.length },
       { feature: 'Houses Tracked', count: housesArr.length },
     ];
+  }
+
+  async getBoostStatusDetails(): Promise<Array<{
+    id: string;
+    contractorId: string;
+    contractorName: string;
+    companyName: string;
+    serviceCategory: string;
+    startDate: Date;
+    endDate: Date;
+    status: 'expired' | 'cancelled';
+  }>> {
+    const now = new Date();
+    const rows = await db.select({
+      id: contractorBoosts.id,
+      contractorId: contractors.id,
+      contractorName: contractors.name,
+      companyName: contractors.company,
+      serviceCategory: contractorBoosts.serviceCategory,
+      startDate: contractorBoosts.startDate,
+      endDate: contractorBoosts.endDate,
+      status: contractorBoosts.status,
+    })
+      .from(contractorBoosts)
+      .innerJoin(users, eq(contractorBoosts.contractorId, users.id))
+      .innerJoin(contractors, eq(contractors.userId, users.id))
+      .where(and(
+        eq(users.isQaAccount, false),
+        eq(users.isDemoAccount, false),
+        or(
+          eq(contractorBoosts.status, 'cancelled'),
+          eq(contractorBoosts.status, 'expired'),
+          and(eq(contractorBoosts.status, 'active'), lt(contractorBoosts.endDate, now)),
+        ),
+      ))
+      .orderBy(desc(contractorBoosts.endDate));
+
+    return rows.map((row) => ({
+      ...row,
+      status: row.status === 'cancelled' ? 'cancelled' : 'expired',
+    }));
   }
 
   // Agent profile operations - DATABASE BACKED

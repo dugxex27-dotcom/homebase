@@ -481,6 +481,7 @@ function Router() {
         {/* Admin routes */}
         {isAdmin && (
           <>
+            <Route path="/contractor/:id" component={ContractorDetail} />
             <Route path="/admin/developer-console" component={DeveloperConsole} />
             <Route path="/admin/flagged-reviews" component={AdminFlaggedReviews} />
             <Route path="/admin/maintenance-evidence-reviews" component={AdminMaintenanceEvidenceReviews} />

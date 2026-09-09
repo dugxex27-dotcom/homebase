@@ -7089,13 +7089,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const days = parseInt(req.query.days as string) || 30;
       
-      const [activeUsers, referrals, contractors, revenue, churn, features] = await Promise.all([
+      const [activeUsers, referrals, contractors, revenue, churn, features, boostDetails] = await Promise.all([
         storage.getActiveUsersSeries(days),
         storage.getReferralGrowthSeries(days),
         storage.getContractorSignupsSeries(days),
         storage.getRevenueMetrics(days),
         storage.getChurnMetrics(days),
-        storage.getFeatureUsageStats()
+        storage.getFeatureUsageStats(),
+        storage.getBoostStatusDetails(),
       ]);
       
       res.json({
@@ -7104,7 +7105,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractors,
         revenue,
         churn,
-        features
+        features,
+        boostDetails,
       });
     } catch (error) {
       console.error("Error fetching advanced analytics:", error);
