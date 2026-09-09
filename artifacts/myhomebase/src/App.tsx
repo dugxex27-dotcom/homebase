@@ -302,8 +302,10 @@ function Router() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ resultId }),
-      }).then(() => {
-        localStorage.removeItem('mhb_quiz_result_id');
+      }).then((response) => {
+        if (response.ok) {
+          localStorage.removeItem('mhb_quiz_result_id');
+        }
       }).catch(() => {});
     } catch {
       // Non-critical
