@@ -56,6 +56,15 @@ type MaintenanceTasksResponse = {
 type OnboardingProgress = {
   completedAt: string | null;
 };
+
+type QuizResult = {
+  id: string;
+  score: number;
+  tier: string;
+  completedAt: string;
+  createdAt: string;
+};
+
 function getMechanicalAgeInfo(house: House) {
   const currentYear = new Date().getFullYear();
   return MECHANICAL_FEATURES.map(({ key, label, icon, lifespan, category }) => {
@@ -184,6 +193,11 @@ export default function Home() {
   // User data
   const { data: userData } = useQuery({
     queryKey: ["/api/user"],
+    enabled: typedUser?.role === "homeowner",
+  });
+
+  const { data: quizResult, isLoading: isLoadingQuizResult } = useQuery<QuizResult | null>({
+    queryKey: ["/api/quiz-result/me"],
     enabled: typedUser?.role === "homeowner",
   });
 
@@ -563,6 +577,26 @@ export default function Home() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {typedUser?.role === "homeowner" && !isLoadingQuizResult && (
+        <div className="dash-body dash-quiz-section">
+          <div className="dash-quiz-card" data-testid="dashboard-quiz-score">
+            <div className="dash-quiz-score" aria-label={quizResult ? `Quiz score ${quizResult.score} out of 100` : undefined}>
+              {quizResult ? quizResult.score : <TrendingUp size={22} aria-hidden="true" />}
+            </div>
+            <div className="dash-quiz-copy">
+              <div className="dash-quiz-title">Home Health Score™</div>
+              <div className="dash-quiz-tier">
+                {quizResult ? quizResult.tier : "See how healthy your home is"}
+              </div>
+            </div>
+            <Link href="/quiz/" className="dash-quiz-link">
+              {quizResult ? "Retake quiz" : "Take the quiz"}
+              <ChevronRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       )}
 

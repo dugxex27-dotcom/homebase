@@ -246,6 +246,71 @@
   padding: 24px 28px;
 }
 
+/* ─── QUIZ SCORE TILE ─────────────────────────────────────────── */
+.dash-quiz-section {
+  padding-bottom: 0;
+}
+
+.dash-quiz-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1px solid rgba(60, 37, 142, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 1px 6px rgba(44, 15, 91, 0.06);
+}
+
+.dash-quiz-score {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--purple-tint, #EEEDFE);
+  color: var(--purple-deep, #2C0F5B);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.dash-quiz-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-quiz-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.dash-quiz-tier {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #7B6FA0;
+}
+
+.dash-quiz-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  color: var(--purple, #3C258E);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dash-quiz-link:hover {
+  text-decoration: underline;
+}
+
 /* ─── PROPERTY CARDS ──────────────────────────────────────────── */
 .property-card {
   background: #ffffff;
