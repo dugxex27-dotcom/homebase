@@ -20004,6 +20004,16 @@ Respond as JSON with exactly this shape:
     (req: any, res: any) => handleCreateReviewFlag(req, res, storage),
   );
 
+  app.get('/api/review-flags/mine', isAuthenticated, async (req: any, res: any) => {
+    try {
+      const flags = await storage.getReviewFlagsByReporter(req.session.user.id);
+      res.json({ reviewIds: flags.map((flag) => flag.reviewId) });
+    } catch (error) {
+      console.error("Error fetching user's review flags:", error);
+      res.status(500).json({ message: "Failed to fetch review flags" });
+    }
+  });
+
   app.get('/api/admin/review-flags', requireAdmin, async (req: any, res: any) => {
     try {
       const status = req.query.status as string | undefined;

@@ -344,6 +344,8 @@ export interface IStorage {
 
   getReviewFlags(status?: string): Promise<ReviewFlag[]>;
 
+  getReviewFlagsByReporter(reportedBy: string): Promise<ReviewFlag[]>;
+
   getReviewFlag(id: string): Promise<ReviewFlag | undefined>;
 
   updateReviewFlag(id: string, flag: Partial<InsertReviewFlag>): Promise<ReviewFlag | undefined>;
@@ -3075,6 +3077,16 @@ export class MemStorage implements IStorage {
 
   // Review flag operations
   async createReviewFlag(flagData: InsertReviewFlag): Promise<ReviewFlag> {
+    const duplicate = Array.from(this.reviewFlags.values()).find(
+      (flag) => flag.reviewId === flagData.reviewId && flag.reportedBy === flagData.reportedBy,
+    );
+    if (duplicate) {
+      throw Object.assign(new Error('duplicate review flag'), {
+        code: '23505',
+        constraint: 'UX_review_flags_review_reporter',
+      });
+    }
+
     const id = randomUUID();
     const flag: ReviewFlag = {
       ...flagData,
@@ -3097,6 +3109,12 @@ export class MemStorage implements IStorage {
       return flags.filter(f => f.status === status);
     }
     return flags;
+  }
+
+  async getReviewFlagsByReporter(reportedBy: string): Promise<ReviewFlag[]> {
+    return Array.from(this.reviewFlags.values()).filter(
+      (flag) => flag.reportedBy === reportedBy,
+    );
   }
 
   async getReviewFlag(id: string): Promise<ReviewFlag | undefined> {
@@ -8817,6 +8835,10 @@ export class DbStorage implements IStorage {
       return db.select().from(reviewFlags).where(eq(reviewFlags.status, status));
     }
     return db.select().from(reviewFlags);
+  }
+
+  async getReviewFlagsByReporter(reportedBy: string): Promise<ReviewFlag[]> {
+    return db.select().from(reviewFlags).where(eq(reviewFlags.reportedBy, reportedBy));
   }
 
   async getReviewFlag(id: string): Promise<ReviewFlag | undefined> {

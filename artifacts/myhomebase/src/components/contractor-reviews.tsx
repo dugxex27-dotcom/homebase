@@ -52,6 +52,10 @@ type RatingData = {
   starBreakdown?: { 1: number; 2: number; 3: number; 4: number; 5: number };
 };
 
+type MyReviewFlagsData = {
+  reviewIds: string[];
+};
+
 function StarRating({
   rating,
   onRatingChange,
@@ -190,10 +194,12 @@ function ReviewCard({
   review,
   isContractorOwner,
   onFlag,
+  hasFlagged,
 }: {
   review: ContractorReview & { contractorResponse?: string | null; contractorRespondedAt?: string | null };
   isContractorOwner: boolean;
   onFlag?: (review: ContractorReview) => void;
+  hasFlagged?: boolean;
 }) {
   const [responseRefresh, setResponseRefresh] = useState(0);
 
@@ -234,14 +240,17 @@ function ReviewCard({
             </div>
           </div>
 
-          {onFlag && (
+          {(onFlag || hasFlagged) && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => onFlag(review)}
+              onClick={() => onFlag?.(review)}
+              disabled={hasFlagged}
               className="text-muted-foreground hover:text-red-600"
+              aria-label={hasFlagged ? "Review already reported" : "Report review"}
             >
               <Flag className="w-4 h-4" />
+              {hasFlagged && <span className="ml-1">Reported</span>}
             </Button>
           )}
         </div>
@@ -534,10 +543,23 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
     enabled: isHomeowner,
   });
 
+  const { data: myReviewFlags, isLoading: areMyReviewFlagsLoading } = useQuery<MyReviewFlagsData>({
+    queryKey: ["/api/review-flags/mine"],
+    enabled: isHomeowner,
+  });
+
+  const flaggedReviewIds = new Set(myReviewFlags?.reviewIds ?? []);
+
   const flagMutation = useMutation({
     mutationFn: ({ reviewId, reason, notes }: { reviewId: string; reason: string; notes?: string }) =>
       apiRequest(`/api/reviews/${reviewId}/flag`, "POST", { reason, notes }),
-    onSuccess: () => {
+    onSuccess: (_response, variables) => {
+      queryClient.setQueryData<MyReviewFlagsData>(
+        ["/api/review-flags/mine"],
+        (current) => ({
+          reviewIds: Array.from(new Set([...(current?.reviewIds ?? []), variables.reviewId])),
+        }),
+      );
       toast({ title: "Review reported", description: "Our team will investigate this review." });
       setFlagDialogOpen(false);
       setReviewToFlag(null);
@@ -545,6 +567,18 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
       setFlagNotes("");
     },
     onError: (e: any) => {
+      if (reviewToFlag && String(e?.message).includes("REVIEW_ALREADY_FLAGGED")) {
+        queryClient.setQueryData<MyReviewFlagsData>(
+          ["/api/review-flags/mine"],
+          (current) => ({
+            reviewIds: Array.from(new Set([...(current?.reviewIds ?? []), reviewToFlag.id])),
+          }),
+        );
+        setFlagDialogOpen(false);
+        setReviewToFlag(null);
+        toast({ title: "Already reported", description: "You have already reported this review." });
+        return;
+      }
       toast({ title: "Error", description: e.message || "Failed to flag review", variant: "destructive" });
     },
   });
@@ -673,7 +707,8 @@ export function ContractorReviews({ contractorId, contractorName }: ContractorRe
                 key={review.id}
                 review={review as any}
                 isContractorOwner={isReviewContractor}
-                onFlag={user && !isReviewContractor ? handleFlag : undefined}
+                onFlag={isHomeowner && !areMyReviewFlagsLoading && !isReviewContractor && !flaggedReviewIds.has(review.id) ? handleFlag : undefined}
+                hasFlagged={isHomeowner && flaggedReviewIds.has(review.id)}
               />
             );
           })
