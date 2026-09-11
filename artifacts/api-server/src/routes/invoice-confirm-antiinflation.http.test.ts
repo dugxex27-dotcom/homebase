@@ -667,6 +667,31 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     expect(insertedValues!.year).not.toBe(submittedYear);
     expect(insertedValues!.month).not.toBe(submittedMonth);
   });
+
+  it("rejects a future extracted serviceDate before creating scored records", async () => {
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    queueInvoiceConfirmQueries({
+      ...OLD_ANALYSIS_FIXTURE,
+      serviceDate: "2099-01-01",
+    });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: "Service date cannot be in the future. Choose today or an earlier date.",
+      code: "FUTURE_SERVICE_DATE",
+    });
+    expect(findMaintenanceLogInsert(mockInsertValues)).toBeUndefined();
+    expect(findTaskCompletionInsert(mockInsertValues)).toBeUndefined();
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------

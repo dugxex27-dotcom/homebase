@@ -528,16 +528,11 @@ export function serializeTeamAuditLogEntry(
   };
 }
 
-function resolveInvoiceScoringDate(
-  stored: unknown,
-  requested: unknown,
+function parseCalendarServiceDate(
+  value: unknown,
 ): { serviceDate: string; date: Date; year: number } | null {
-  const storedValue = typeof stored === "string" ? stored.trim() : "";
-  const requestedValue = typeof requested === "string" ? requested.trim() : "";
-  const serviceDate =
-    storedValue
-    || requestedValue
-    || new Date().toISOString().split("T")[0];
+  if (typeof value !== "string") return null;
+  const serviceDate = value;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(serviceDate)) return null;
   const date = new Date(`${serviceDate}T12:00:00`);
   if (Number.isNaN(date.getTime())) return null;
@@ -550,6 +545,31 @@ function resolveInvoiceScoringDate(
     return null;
   }
   return { serviceDate, date, year };
+}
+
+function resolveInvoiceScoringDate(
+  stored: unknown,
+  requested: unknown,
+): { serviceDate: string; date: Date; year: number } | null {
+  const serviceDate =
+    (typeof stored === "string" && stored.length > 0 ? stored : null)
+    ?? (typeof requested === "string" && requested.length > 0 ? requested : null)
+    ?? new Date().toISOString().split("T")[0];
+  return parseCalendarServiceDate(serviceDate);
+}
+
+function isFutureServiceDate(
+  serviceDate: { serviceDate: string },
+  now = new Date(),
+): boolean {
+  return serviceDate.serviceDate > now.toISOString().split("T")[0];
+}
+
+function sendFutureServiceDateError(res: any) {
+  return res.status(400).json({
+    message: "Service date cannot be in the future. Choose today or an earlier date.",
+    code: "FUTURE_SERVICE_DATE",
+  });
 }
 
 export function isInvoiceOutsideScoringWindow(
@@ -14998,6 +15018,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate request body (excluding homeownerId which we set from session)
       const validatedData = insertMaintenanceLogSchema.omit({ homeownerId: true }).parse(req.body);
+
+      const parsedServiceDate = parseCalendarServiceDate(validatedData.serviceDate);
+      if (!parsedServiceDate) {
+        return res.status(400).json({ message: "Service date must be a valid YYYY-MM-DD date." });
+      }
+      if (isFutureServiceDate(parsedServiceDate)) {
+        return sendFutureServiceDateError(res);
+      }
       
       // Use authenticated user's ID, never trust client input
       const logData = {
@@ -15380,6 +15408,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Anti-gaming: block serviceDate changes on logs linked to a taskCompletion.
       // Shifting the date would move the completion into a different scoring window.
       if (partialData.serviceDate !== undefined) {
+        const parsedServiceDate = parseCalendarServiceDate(partialData.serviceDate);
+        if (!parsedServiceDate) {
+          return res.status(400).json({ message: "Service date must be a valid YYYY-MM-DD date." });
+        }
+        if (isFutureServiceDate(parsedServiceDate)) {
+          return sendFutureServiceDateError(res);
+        }
+
         if ((existingLog as any).taskCompletionId) {
           return res.status(403).json({
             message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
@@ -24603,6 +24639,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       if (!preliminaryScoringDate) {
         return res.status(400).json({ message: "serviceDate must be a valid YYYY-MM-DD date" });
       }
+      if (isFutureServiceDate(preliminaryScoringDate)) {
+        return sendFutureServiceDateError(res);
+      }
       const scoringLockKey = invoiceScoringLockKey(
         preliminaryAnalysis.houseId,
         normalizeInvoiceServiceType(preliminaryServiceType),
@@ -24671,6 +24710,9 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const scoringDate = resolveInvoiceScoringDate(analysis.serviceDate, serviceDate);
       if (!scoringDate) {
         return res.status(400).json({ message: "serviceDate must be a valid YYYY-MM-DD date" });
+      }
+      if (isFutureServiceDate(scoringDate)) {
+        return sendFutureServiceDateError(res);
       }
       const lockedScoringKey = invoiceScoringLockKey(
         analysis.houseId,

@@ -25,6 +25,7 @@ const {
   LOG_ID,
   TC_ID,
   mockGetMaintenanceLog,
+  mockCreateMaintenanceLog,
   mockUpdateMaintenanceLog,
   mockGetHouse,
   mockGetUser,
@@ -36,6 +37,7 @@ const {
   LOG_ID: "log-001",
   TC_ID: "tc-001",
   mockGetMaintenanceLog: vi.fn(),
+  mockCreateMaintenanceLog: vi.fn(),
   mockUpdateMaintenanceLog: vi.fn(),
   mockGetHouse: vi.fn(),
   mockGetUser: vi.fn(),
@@ -195,6 +197,7 @@ vi.mock("../storage", async () => {
   return {
     storage: createStorageMock({
       getMaintenanceLog: mockGetMaintenanceLog,
+      createMaintenanceLog: mockCreateMaintenanceLog,
       updateMaintenanceLog: mockUpdateMaintenanceLog,
       getHouse: mockGetHouse,
       getUser: mockGetUser,
@@ -254,6 +257,103 @@ const USER_FIXTURE = {
   status: "active",
   subscriptionStatus: "active",
 };
+
+const FUTURE_SERVICE_DATE = "2099-01-01";
+
+describe("maintenance log service dates", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects a future serviceDate when creating a maintenance log", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    const res = await request(app)
+      .post("/api/maintenance-logs")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        serviceDate: FUTURE_SERVICE_DATE,
+        serviceType: "HVAC service",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: "Service date cannot be in the future. Choose today or an earlier date.",
+      code: "FUTURE_SERVICE_DATE",
+    });
+    expect(mockCreateMaintenanceLog).not.toHaveBeenCalled();
+  });
+
+  it("rejects non-canonical dates instead of bypassing the future-date comparison", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    const res = await request(app)
+      .post("/api/maintenance-logs")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        serviceDate: ` ${FUTURE_SERVICE_DATE}`,
+        serviceType: "HVAC service",
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/valid YYYY-MM-DD date/i);
+    expect(mockCreateMaintenanceLog).not.toHaveBeenCalled();
+  });
+
+  it("accepts today's date when creating a maintenance log", async () => {
+    const app = await buildApp();
+    const today = new Date().toISOString().split("T")[0];
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCreateMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: today,
+      serviceType: "HVAC service",
+    });
+
+    const res = await request(app)
+      .post("/api/maintenance-logs")
+      .set("x-test-user", "owner")
+      .send({
+        houseId: HOUSE_ID,
+        serviceDate: today,
+        serviceType: "HVAC service",
+      });
+
+    expect(res.status).toBe(201);
+    expect(mockCreateMaintenanceLog).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a future serviceDate when editing an unlinked maintenance log", async () => {
+    const app = await buildApp();
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: "2026-01-01",
+      taskCompletionId: null,
+    });
+
+    const res = await request(app)
+      .patch(`/api/maintenance-logs/${LOG_ID}`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate: FUTURE_SERVICE_DATE });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: "Service date cannot be in the future. Choose today or an earlier date.",
+      code: "FUTURE_SERVICE_DATE",
+    });
+    expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
+    expect(mockDbSelect).not.toHaveBeenCalled();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // PATCH /api/maintenance-logs/:id — anti-gaming date lock
