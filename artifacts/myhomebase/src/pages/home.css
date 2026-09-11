@@ -244,6 +244,12 @@
 }
 
 /* ─── PAGE BODY ───────────────────────────────────────────────── */
+.home-page {
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
 .dash-body {
   background: var(--gray-50, #F9FAFB);
   padding: 24px 28px;
@@ -251,7 +257,31 @@
 
 .home-dashboard-width {
   width: 100%;
+  max-width: 1400px;
+  min-width: 0;
   margin-inline: auto;
+  box-sizing: border-box;
+}
+
+.home-dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 32px;
+  width: 100%;
+  min-width: 0;
+  align-items: start;
+}
+
+.home-dashboard-main,
+.home-dashboard-rail {
+  min-width: 0;
+}
+
+@media (max-width: 1023px) {
+  .home-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
 }
 
 /* ─── QUIZ SCORE TILE ─────────────────────────────────────────── */

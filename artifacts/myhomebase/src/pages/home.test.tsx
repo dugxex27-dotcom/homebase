@@ -331,6 +331,21 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("Property card details", () => {
+  it("keeps property content in the main column beside the score rail", () => {
+    renderHome();
+
+    const grid = screen.getByTestId("home-dashboard-grid");
+    const main = screen.getByTestId("home-dashboard-main");
+    const rail = screen.getByTestId("home-dashboard-rail");
+    const propertyMap = screen.getByTestId("mock-house-map");
+
+    expect(grid.children).toHaveLength(2);
+    expect(grid.children[0]).toBe(main);
+    expect(grid.children[1]).toBe(rail);
+    expect(main.contains(propertyMap)).toBe(true);
+    expect(rail.textContent).toContain("Home Wellness Score");
+  });
+
   it("shows year built and formatted square footage when both are saved", () => {
     flags.propertyYearBuilt = 1998;
     flags.propertySquareFootage = 2450;

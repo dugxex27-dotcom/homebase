@@ -44,7 +44,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
-            style={{ flex: 1, overflowY: 'auto' }}
+            style={{ flex: 1, width: '100%', minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}
             className="pb-16 lg:pb-0"
           >
             <ErrorBoundary>

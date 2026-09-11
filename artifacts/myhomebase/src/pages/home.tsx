@@ -650,7 +650,7 @@ export default function Home() {
   };
 
   return (
-    <div>
+    <div className="home-page">
       <DemoWarningBanner />
 
       {/* ── DASHBOARD HEADER (homeowners only) ──────────────── */}
@@ -843,10 +843,10 @@ export default function Home() {
       {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (
         <div className="bg-[#F9FAFB] p-4 md:p-6 lg:p-8 min-h-[calc(100vh-140px)]">
           <div className="home-dashboard-width">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="home-dashboard-grid" data-testid="home-dashboard-grid">
 
               {/* Left/Main Column: Next Actions & Property */}
-              <div className="md:col-span-2 space-y-4 next-actions-container">
+              <div className="home-dashboard-main space-y-4 next-actions-container" data-testid="home-dashboard-main">
                 {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
 
                 {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length > 0 && (
@@ -1013,11 +1013,7 @@ export default function Home() {
               </button>
             )}
 
-            {/* Property Cards */}
-              </div>
-
-              {/* Right Column: Score & Properties */}
-              <div className="space-y-6">
+                {/* Property Cards */}
                 <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
                 <div data-tour-id="health-score">
                   {houses.map((house: House) => (
@@ -1438,7 +1434,7 @@ export default function Home() {
 
               </div>
               {/* Right Column: Score & Actions to Improve */}
-              <div className="md:col-span-1 space-y-6">
+              <aside className="home-dashboard-rail space-y-6" data-testid="home-dashboard-rail">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                   <div className="p-5 border-b border-gray-100 bg-[#F9FAFB]">
                     <h3 className="text-sm font-bold text-[#2C0F5B] mb-3">Home Wellness Score™</h3>
@@ -1490,7 +1486,7 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-              </div>
+              </aside>
 
             </div>
           </div>
