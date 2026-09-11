@@ -4,7 +4,8 @@ This project already uses Capacitor for the native mobile shell.
 
 ### What this setup does
 
-- Keeps the current low-risk runtime strategy: the native app loads `https://gotohomebase.com` in the WebView.
+- Loads the live production site, `https://gotohomebase.com`, in both the Android and iOS WebViews.
+- Uses `gotohomebase.com` for both the UI and API at runtime.
 - Rebuilds the web bundle before each native sync so Capacitor assets and splash/icon resources stay current.
 - Gives you one-command Android and iOS sync/open workflows from the repo root.
 
@@ -40,9 +41,23 @@ export PATH="$JAVA_HOME/bin:$PATH"
 3. Open the platform project with `npm run mobile:open:android` or `npm run mobile:open:ios`.
 4. Build/sign from Android Studio or Xcode.
 
+For the repository's direct pnpm Android build and sync command, run:
+
+```bash
+pnpm run build:mobile:android
+```
+
+### Store release required for this configuration change
+
+One new Android and iOS store release is required to ship the native `server.url` configuration to devices that already have the app installed. After users install that release, normal Replit publishes update the UI shown inside the app without requiring another store binary.
+
+Future native releases are still required for changes to Capacitor plugins, native permissions, icons, splash resources, or other Android/iOS code and configuration.
+
 ### Notes
 
 - `BASE_PATH=/` is used for mobile builds so Capacitor assets resolve correctly.
 - `VITE_API_BASE_URL=https://gotohomebase.com` is set for the mobile web build.
-- Because much of the app still uses direct `fetch('/api/...')` calls, the native shell intentionally stays pointed at the live website instead of switching fully to offline-bundled local API mode.
+- `webDir` remains configured because Capacitor sync and native splash/asset workflows still require a web output directory.
+- Offline or bundled UI is no longer the Android or iOS runtime mode. The app requires network access to load the production UI.
+- Because the WebView origin is `https://gotohomebase.com`, direct relative `fetch('/api/...')` calls use the same production origin.
 - The iOS project uses Swift Package Manager for Capacitor dependencies, so CocoaPods is not required for the current plugin set.
