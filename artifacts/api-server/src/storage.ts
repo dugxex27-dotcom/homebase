@@ -1,11 +1,10 @@
-// @ts-nocheck
 import { type Contractor, type InsertContractor, type Company, type InsertCompany, type CompanyInviteCode, type InsertCompanyInviteCode, type ContractorLicense, type InsertContractorLicense, type Product, type InsertProduct, type HomeAppliance, type InsertHomeAppliance, type HomeApplianceManual, type InsertHomeApplianceManual, type MaintenanceLog, type InsertMaintenanceLog, type ContractorAppointment, type InsertContractorAppointment, type House, type InsertHouse, type Notification, type InsertNotification, type User, type UpsertUser, type ServiceRecord, type InsertServiceRecord, type Conversation, type InsertConversation, type Message, type InsertMessage, type ContractorReview, type InsertContractorReview, type CustomMaintenanceTask, type InsertCustomMaintenanceTask, type Proposal, type InsertProposal, type HomeSystem, type InsertHomeSystem, type PushSubscription, type InsertPushSubscription, type PushToken, type InsertPushToken, type ContractorBoost, type InsertContractorBoost, type HouseTransfer, type InsertHouseTransfer, type ContractorAnalytics, type InsertContractorAnalytics, type TaskOverride, type InsertTaskOverride, type Country, type InsertCountry, type Region, type InsertRegion, type ClimateZone, type InsertClimateZone, type RegulatoryBody, type InsertRegulatoryBody, type RegionalMaintenanceTask, type InsertRegionalMaintenanceTask, type TaskCompletion, type InsertTaskCompletion, type Achievement, type InsertAchievement, type AchievementDefinition, type UserAchievement, type InsertUserAchievement, type SearchAnalytics, type InsertSearchAnalytics, type InviteCode, type InsertInviteCode, type AgentProfile, type InsertAgentProfile, type AffiliateReferral, type InsertAffiliateReferral, type SubscriptionCycleEvent, type InsertSubscriptionCycleEvent, type AffiliatePayout, type InsertAffiliatePayout, type AgentVerificationAudit, type InsertAgentVerificationAudit, contractorAppointments, notifications, type SupportTicket, type InsertSupportTicket, type TicketReply, type InsertTicketReply, type SubscriptionPlan, users, contractors, companies, contractorLicenses, countries, regions, climateZones, regulatoryBodies, regionalMaintenanceTasks, taskCompletions, achievements, achievementDefinitions, userAchievements, maintenanceLogs, searchAnalytics, inviteCodes, agentProfiles, affiliateReferrals, subscriptionCycleEvents, affiliatePayouts, agentVerificationAudits, supportTickets, ticketReplies, houses, homeSystems, customMaintenanceTasks, taskOverrides, serviceRecords, conversations, messages, proposals, houseTransfers, subscriptionPlans, pushTokens, contractorAnalytics, contractorBoosts, pushSubscriptions, homeAppliances, homeApplianceManuals, companyInviteCodes, products, contractorReviews, reviewFlags, type ReviewFlag, type InsertReviewFlag, type CrmLead, type InsertCrmLead, type CrmNote, type InsertCrmNote, type ErrorLog, type InsertErrorLog, type ErrorBreadcrumb, type InsertErrorBreadcrumb, type CrmIntegration, type InsertCrmIntegration, type WebhookLog, type InsertWebhookLog, crmLeads, crmNotes, errorLogs, errorBreadcrumbs, crmIntegrations, webhookLogs, type CrmClient, type InsertCrmClient, type CrmInvoiceEvent, type InsertCrmInvoiceEvent, type CrmJob, type InsertCrmJob, type CrmQuote, type InsertCrmQuote, type CrmInvoice, type InsertCrmInvoice, crmClients, crmJobs, crmQuotes, crmInvoices, crmInvoiceEvents, referralCredits } from "@workspace/db";
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs, invoiceAnalyses } from "@workspace/db";
 import { contracts, type Contract, type InsertContract } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count, ilike, type SQL } from "drizzle-orm";
+import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count, ilike, inArray, type SQL } from "drizzle-orm";
 import { logger } from "./lib/logger";
 import { achievements as defaultAchievementDefinitions } from "./seed-achievements";
 
@@ -825,7 +824,7 @@ export interface IStorage {
     ticket: SupportTicket;
     replies: TicketReply[];
     user: { id: string; firstName: string | null; lastName: string | null; email: string | null };
-  }>;
+  } | undefined>;
 
   getCrmLeads(contractorUserId: string, filters?: {
     status?: string;
@@ -878,7 +877,7 @@ export interface IStorage {
   getCrmLeadWithNotes(id: string): Promise<{
     lead: CrmLead;
     notes: CrmNote[];
-  }>;
+  } | undefined>;
 
   getCrmClients(contractorUserId: string, filters?: {
     status?: string;
@@ -1027,7 +1026,7 @@ export interface IStorage {
   getErrorLogWithBreadcrumbs(id: string): Promise<{
     error: ErrorLog;
     breadcrumbs: ErrorBreadcrumb[];
-  }>;
+  } | undefined>;
 
   getHouseDisclosure(houseId: string): Promise<HouseDisclosure | undefined>;
 
@@ -1118,6 +1117,9 @@ export class MemStorage implements IStorage {
   private houseTransfers: Map<string, HouseTransfer>;
 
   private notifications: Map<string, Notification>;
+  // Profiles are maintained separately from contractor account rows in the
+  // in-memory implementation (the database implementation joins these).
+  private contractorProfiles: Map<string, Contractor>;
 
   private serviceRecords: ServiceRecord[];
 
@@ -1303,6 +1305,8 @@ export class MemStorage implements IStorage {
         planType: 'homeowner',
         stripeProductId: null,
         stripePriceId: null,
+        includedTeamSeats: null,
+        additionalTeamSeatPrice: null,
         features: ['Up to 2 properties', 'Maintenance tracking', 'Task reminders'],
         referralCreditCap: null,
         hasCrmAccess: false,
@@ -1322,6 +1326,8 @@ export class MemStorage implements IStorage {
         planType: 'homeowner',
         stripeProductId: null,
         stripePriceId: null,
+        includedTeamSeats: null,
+        additionalTeamSeatPrice: null,
         features: ['Unlimited properties', 'AI recommendations', 'Priority support', 'Analytics'],
         referralCreditCap: null,
         hasCrmAccess: false,
@@ -1341,6 +1347,8 @@ export class MemStorage implements IStorage {
         planType: 'contractor',
         stripeProductId: null,
         stripePriceId: null,
+        includedTeamSeats: null,
+        additionalTeamSeatPrice: null,
         features: ['Contractor profile', 'Lead management', 'Proposal tools'],
         referralCreditCap: null,
         hasCrmAccess: false,
@@ -1360,6 +1368,8 @@ export class MemStorage implements IStorage {
         planType: 'contractor',
         stripeProductId: null,
         stripePriceId: null,
+        includedTeamSeats: null,
+        additionalTeamSeatPrice: null,
         features: ['Everything in Contractor', 'Full CRM', 'Invoice management', 'Advanced analytics'],
         referralCreditCap: null,
         hasCrmAccess: true,
@@ -1404,7 +1414,7 @@ export class MemStorage implements IStorage {
 
   async upsertUser(userData: UpsertUser): Promise<User> {
     const existingUser = this.users.get(userData.id!);
-    const user: User = {
+    const user = ({
       id: userData.id!,
       email: userData.email || null,
       firstName: userData.firstName || null,
@@ -1429,7 +1439,26 @@ export class MemStorage implements IStorage {
       subscriptionPlanId: userData.subscriptionPlanId ?? existingUser?.subscriptionPlanId ?? null,
       subscriptionStatus: userData.subscriptionStatus ?? existingUser?.subscriptionStatus ?? 'inactive',
       maxHousesAllowed: userData.maxHousesAllowed ?? existingUser?.maxHousesAllowed ?? 2,
-    };
+      stripePriceId: existingUser?.stripePriceId ?? null, status: existingUser?.status ?? "active",
+      phone: existingUser?.phone ?? null, address: existingUser?.address ?? null, connectionCode: existingUser?.connectionCode ?? null,
+      emailVerified: existingUser?.emailVerified ?? false, emailVerifiedAt: existingUser?.emailVerifiedAt ?? null,
+      emailVerificationToken: existingUser?.emailVerificationToken ?? null, emailVerificationTokenExpiry: existingUser?.emailVerificationTokenExpiry ?? null,
+      divisionId: existingUser?.divisionId ?? null, inviteToken: existingUser?.inviteToken ?? null,
+      inviteExpiresAt: existingUser?.inviteExpiresAt ?? null, lastInviteSentAt: existingUser?.lastInviteSentAt ?? null,
+      deletedAt: existingUser?.deletedAt ?? null, lastLoginAt: existingUser?.lastLoginAt ?? null,
+      rememberToken: existingUser?.rememberToken ?? null, rememberTokenExpiresAt: existingUser?.rememberTokenExpiresAt ?? null,
+      trialEndsAt: existingUser?.trialEndsAt ?? null, trialRemindersSent: existingUser?.trialRemindersSent ?? [],
+      lastReengagementEmailSent: existingUser?.lastReengagementEmailSent ?? null, lastReferralReminderSent: existingUser?.lastReferralReminderSent ?? null,
+      onboardingNudgeSentAt: existingUser?.onboardingNudgeSentAt ?? null, stripeSubscriptionEventAt: existingUser?.stripeSubscriptionEventAt ?? null,
+      subscriptionStartDate: existingUser?.subscriptionStartDate ?? null, subscriptionEndDate: existingUser?.subscriptionEndDate ?? null,
+      subscriptionSource: existingUser?.subscriptionSource ?? "stripe", appleOriginalTransactionId: existingUser?.appleOriginalTransactionId ?? null,
+      appleProductId: existingUser?.appleProductId ?? null, promoCodeApplied: existingUser?.promoCodeApplied ?? null,
+      promoFreeMonths: existingUser?.promoFreeMonths ?? null, accountStatus: existingUser?.accountStatus ?? "active",
+      accountCancelledAt: existingUser?.accountCancelledAt ?? null, isQaAccount: existingUser?.isQaAccount ?? false,
+      qaAccessScopes: existingUser?.qaAccessScopes ?? [], qaFixtureKey: existingUser?.qaFixtureKey ?? null,
+      isDemoAccount: existingUser?.isDemoAccount ?? false, homeWizardStep: existingUser?.homeWizardStep ?? 0,
+      homeWizardCompletedAt: existingUser?.homeWizardCompletedAt ?? null, homeWizardData: existingUser?.homeWizardData ?? null,
+    });
     this.users.set(user.id, user);
     return user;
   }
@@ -1479,7 +1508,7 @@ export class MemStorage implements IStorage {
       console.error('🛡️ DEMO DATA PROTECTION: seedData attempted to use non-demo homeowner ID!');
       return;
     }
-    const demoHomeowner: User = {
+    const demoHomeowner = ({
       id: demoHomeownerId,
       email: "sarah.anderson@homebase.com",
       firstName: "Sarah",
@@ -1505,7 +1534,8 @@ export class MemStorage implements IStorage {
       isAdmin: false,
       inviteCode: null,
       trialEndDate: null,
-    };
+       stripePriceId: null, status: "active", phone: null, address: null, connectionCode: null, emailVerified: false, emailVerifiedAt: null, emailVerificationToken: null, emailVerificationTokenExpiry: null, divisionId: null, inviteToken: null, inviteExpiresAt: null, lastInviteSentAt: null, deletedAt: null, lastLoginAt: null, rememberToken: null, rememberTokenExpiresAt: null, trialEndsAt: null, trialRemindersSent: [], lastReengagementEmailSent: null, lastReferralReminderSent: null, onboardingNudgeSentAt: null, stripeSubscriptionEventAt: null, subscriptionStartDate: null, subscriptionEndDate: null, subscriptionSource: "stripe", appleOriginalTransactionId: null, appleProductId: null, promoCodeApplied: null, promoFreeMonths: null, accountStatus: "active", accountCancelledAt: null, isQaAccount: false, qaAccessScopes: [], qaFixtureKey: null, isDemoAccount: true, homeWizardStep: 0, homeWizardCompletedAt: null, homeWizardData: null,
+    });
     this.users.set(demoHomeownerId, demoHomeowner);
 
     // Create Elite Roofing Solutions demo contractor
@@ -1515,7 +1545,7 @@ export class MemStorage implements IStorage {
     // Set creation date to 2023 to show tenure
     const year2023 = new Date('2023-01-15T00:00:00Z');
     
-    const eliteRoofingUser: User = {
+    const eliteRoofingUser = ({
       id: eliteRoofingUserId,
       email: "tom.chen@eliteroofing.com",
       firstName: "Tom",
@@ -1529,11 +1559,11 @@ export class MemStorage implements IStorage {
       subscriptionPlanId: "plan_contractor_base",
       maxHousesAllowed: 0,
       isPremium: true,
-      zipCode: "98004",
       profileImageUrl: null,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
       companyId: eliteRoofingCompanyId,
+      zipCode: "98004",
       companyRole: "owner",
       canRespondToProposals: true,
       createdAt: year2023,
@@ -1541,7 +1571,8 @@ export class MemStorage implements IStorage {
       isAdmin: false,
       inviteCode: null,
       trialEndDate: null,
-    };
+       stripePriceId: null, status: "active", phone: null, address: null, connectionCode: null, emailVerified: false, emailVerifiedAt: null, emailVerificationToken: null, emailVerificationTokenExpiry: null, divisionId: null, inviteToken: null, inviteExpiresAt: null, lastInviteSentAt: null, deletedAt: null, lastLoginAt: null, rememberToken: null, rememberTokenExpiresAt: null, trialEndsAt: null, trialRemindersSent: [], lastReengagementEmailSent: null, lastReferralReminderSent: null, onboardingNudgeSentAt: null, stripeSubscriptionEventAt: null, subscriptionStartDate: null, subscriptionEndDate: null, subscriptionSource: "stripe", appleOriginalTransactionId: null, appleProductId: null, promoCodeApplied: null, promoFreeMonths: null, accountStatus: "active", accountCancelledAt: null, isQaAccount: false, qaAccessScopes: [], qaFixtureKey: null, isDemoAccount: true, homeWizardStep: 0, homeWizardCompletedAt: null, homeWizardData: null,
+    });
     this.users.set(eliteRoofingUserId, eliteRoofingUser);
     
     // Create Elite Roofing Solutions company
@@ -1554,28 +1585,29 @@ export class MemStorage implements IStorage {
       countryId: "USA",
       regionId: "WA",
       postalCode: "98004",
-      latitude: 47.6101,
-      longitude: -122.2015,
+      latitude: "47.6101",
+      longitude: "-122.2015",
       website: "https://eliteroofing.example.com",
       phone: "(425) 555-0199",
       email: "tom.chen@eliteroofing.com",
       bio: "Professional roofing contractor serving the greater Seattle area since 2023. Specializing in residential roof inspections, repairs, and replacements. Licensed and insured.",
       services: ["Roofing Services", "Roof Inspection", "Roof Repair", "Roof Replacement", "Emergency Services"],
+      experience: 2,
       serviceRadius: 30,
       hasEmergencyServices: true,
       isLicensed: true,
       licenseNumber: "WA-ROOF-54321",
-      licenseState: "WA",
-      licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      isInsured: true,
-      insuranceProvider: "Travelers Insurance",
-      insuranceExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      insuranceCoverageAmount: "$1,000,000",
-      businessHours: "Mon-Sat: 8am-5pm, Sun: Closed",
       rating: "4.8",
       referralCode: "ELITE2023",
       businessLogo: null,
       projectPhotos: [],
+      city: "Bellevue", state: "WA", reviewCount: 12,
+      facebook: null, instagram: null, linkedin: null, googleBusinessUrl: null,
+      licenseMunicipality: "WA", licenses: null, insuranceInfo: null,
+      stripeConnectAccountId: null, stripeOnboardingComplete: false, stripeChargesEnabled: false,
+      stripePayoutsEnabled: false, stripeDefaultCurrency: "usd", subscriptionTier: "individual",
+      tier: "solo", ssoEnabled: false, ssoProvider: null, ssoDomain: null, customPricingNotes: null,
+      accountManagerEmail: null, apiAccessEnabled: false, bulkImportEnabled: false, seatUsageAlertThreshold: 80,
       createdAt: year2023,
       updatedAt: new Date()
     };
@@ -1593,16 +1625,16 @@ export class MemStorage implements IStorage {
       reviewCount: 12,
       services: ["Roofing Services", "Roof Inspection", "Roof Repair", "Roof Replacement", "Emergency Services"],
       bio: "Professional roofing contractor serving the greater Seattle area since 2023. Specializing in residential roof inspections, repairs, and replacements. Licensed and insured.",
-      experience: "2",
-      availability: "Available this week",
+      experience: 2,
+      serviceRadius: 30,
       profileImage: null,
       businessLogo: null,
       projectPhotos: [],
       hasEmergencyServices: true,
-      phoneNumber: "(425) 555-0199",
+      phone: "(425) 555-0199",
+       userId: eliteRoofingUserId, address: null, city: "Bellevue", state: "WA", postalCode: "98004", licenseMunicipality: "WA", isLicensed: true, isVerified: true, insuranceCarrier: "Travelers Insurance", insurancePolicyNumber: null, insuranceExpiryDate: null, insuranceCoverageAmount: "$1,000,000", website: null, facebook: null, instagram: null, linkedin: null, googleBusinessUrl: null, countryId: null, regionId: null, licenses: null, insuranceInfo: null, teamSizeRange: "2_10",
       email: "tom.chen@eliteroofing.com",
       licenseNumber: "WA-ROOF-54321",
-      zipCode: "98004",
       createdAt: year2023,
     };
     this.contractors.set(eliteRoofingUserId, eliteRoofingContractor);
@@ -1681,10 +1713,17 @@ export class MemStorage implements IStorage {
         isDefault: true,
         latitude: "47.6281",
         longitude: "-122.3121",
+        postalCode: null, countryId: null, regionId: null, climateZoneId: null,
+        coordinatesCachedAt: null, homeType: null, squareFootage: null, yearBuilt: null,
+        roofInstalledYear: null, roofType: null, hvacInstalledYear: null, hvacType: null,
+        plumbingType: null, foundationType: null, waterHeaterInstalledYear: null,
+        waterHeaterType: null, garageType: null, numberOfStories: null, primaryHeatingFuel: null,
+        hin: null, hinAssignedAt: null, hvacAge: null, hvacCondition: null,
+        propertyAddressVerified: null, fieldSources: null,
         createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // 6 months ago
       },
       {
-        id: "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b", 
+        id: "f5c8a9d2-3e1b-4f7c-a6b3-8d9e5f2c1a4b",
         homeownerId: demoHomeownerId,
         name: "Lake House",
         address: "1523 Lakefront Road, Bellevue, WA 98004",
@@ -1693,6 +1732,13 @@ export class MemStorage implements IStorage {
         isDefault: false,
         latitude: "47.6101",
         longitude: "-122.2015",
+        postalCode: null, countryId: null, regionId: null, climateZoneId: null,
+        coordinatesCachedAt: null, homeType: null, squareFootage: null, yearBuilt: null,
+        roofInstalledYear: null, roofType: null, hvacInstalledYear: null, hvacType: null,
+        plumbingType: null, foundationType: null, waterHeaterInstalledYear: null,
+        waterHeaterType: null, garageType: null, numberOfStories: null, primaryHeatingFuel: null,
+        hin: null, hinAssignedAt: null, hvacAge: null, hvacCondition: null,
+        propertyAddressVerified: null, fieldSources: null,
         createdAt: new Date(Date.now() - 150 * 24 * 60 * 60 * 1000), // 5 months ago
       }
     ];
@@ -1703,7 +1749,7 @@ export class MemStorage implements IStorage {
 
     // Add demo home systems with installation years for Sarah's Main Residence
     const mainResidenceId = "8d44c1d0-af55-4f1c-bada-b70e54c823bc";
-    const demoHomeSystems = [
+    const demoHomeSystems: HomeSystem[] = [
       {
         id: randomUUID(),
         homeownerId: demoHomeownerId,
@@ -1714,6 +1760,7 @@ export class MemStorage implements IStorage {
         installationYear: 2007, // 17 years old - should trigger important/critical recommendation
         lastServiceYear: 2023,
         notes: null,
+        serialNumber: null, sourceDocumentId: null,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -1727,6 +1774,7 @@ export class MemStorage implements IStorage {
         installationYear: 2010, // 14 years old - should trigger critical recommendation
         lastServiceYear: 2024,
         notes: null,
+        serialNumber: null, sourceDocumentId: null,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -1740,6 +1788,7 @@ export class MemStorage implements IStorage {
         installationYear: 2015, // 9 years old - approaching replacement
         lastServiceYear: 2024,
         notes: null,
+        serialNumber: null, sourceDocumentId: null,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -1753,6 +1802,7 @@ export class MemStorage implements IStorage {
         installationYear: 2018, // 6 years old
         lastServiceYear: null,
         notes: null,
+        serialNumber: null, sourceDocumentId: null,
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -1776,7 +1826,7 @@ export class MemStorage implements IStorage {
       if (filters.services && filters.services.length > 0) {
         contractors = contractors.filter(contractor =>
           filters.services!.some(service =>
-            contractor.services.some(contractorService =>
+            contractor.services.some((contractorService: string) =>
               contractorService.toLowerCase().includes(service.toLowerCase())
             )
           )
@@ -1857,7 +1907,7 @@ export class MemStorage implements IStorage {
 
   async createContractor(contractor: InsertContractor): Promise<Contractor> {
     const id = randomUUID();
-    const newContractor: Contractor = { 
+    const newContractor: Contractor = {
       ...contractor, 
       id,
       distance: contractor.distance || null,
@@ -1869,6 +1919,27 @@ export class MemStorage implements IStorage {
       businessLogo: contractor.businessLogo || null,
       projectPhotos: contractor.projectPhotos || [],
       googleBusinessUrl: contractor.googleBusinessUrl || null,
+      website: contractor.website ?? null,
+      facebook: contractor.facebook ?? null,
+      instagram: contractor.instagram ?? null,
+      linkedin: contractor.linkedin ?? null,
+      insuranceCoverageAmount: contractor.insuranceCoverageAmount ?? null,
+      userId: contractor.userId,
+      companyId: contractor.companyId,
+      isVerified: contractor.isVerified ?? false,
+      insuranceCarrier: contractor.insuranceCarrier ?? null,
+      insurancePolicyNumber: contractor.insurancePolicyNumber ?? null,
+      insuranceExpiryDate: contractor.insuranceExpiryDate ?? null,
+      address: contractor.address ?? null,
+      city: contractor.city ?? null,
+      state: contractor.state ?? null,
+      licenseMunicipality: contractor.licenseMunicipality ?? "",
+      countryId: contractor.countryId ?? null,
+      regionId: contractor.regionId ?? null,
+      licenses: contractor.licenses ?? null,
+      insuranceInfo: contractor.insuranceInfo ?? null,
+      postalCode: contractor.postalCode ?? null,
+      teamSizeRange: contractor.teamSizeRange ?? null,
       createdAt: new Date()
     };
     this.contractors.set(id, newContractor);
@@ -1944,6 +2015,43 @@ export class MemStorage implements IStorage {
       phone: companyData.phone || '',
       email: companyData.email || '',
       services: companyData.services || [],
+      experience: companyData.experience ?? 0,
+      address: companyData.address ?? null,
+      city: companyData.city ?? null,
+      state: companyData.state ?? null,
+      postalCode: companyData.postalCode ?? null,
+      latitude: companyData.latitude ?? null,
+      longitude: companyData.longitude ?? null,
+      serviceRadius: companyData.serviceRadius ?? 25,
+      hasEmergencyServices: companyData.hasEmergencyServices ?? false,
+      businessLogo: companyData.businessLogo ?? null,
+      projectPhotos: companyData.projectPhotos ?? [],
+      website: companyData.website ?? null,
+      facebook: companyData.facebook ?? null,
+      instagram: companyData.instagram ?? null,
+      linkedin: companyData.linkedin ?? null,
+      googleBusinessUrl: companyData.googleBusinessUrl ?? null,
+      countryId: companyData.countryId ?? null,
+      regionId: companyData.regionId ?? null,
+      isLicensed: companyData.isLicensed ?? true,
+      licenses: companyData.licenses ?? null,
+      insuranceInfo: companyData.insuranceInfo ?? null,
+      referralCode: companyData.referralCode ?? null,
+      stripeConnectAccountId: companyData.stripeConnectAccountId ?? null,
+      stripeOnboardingComplete: companyData.stripeOnboardingComplete ?? false,
+      stripeChargesEnabled: companyData.stripeChargesEnabled ?? false,
+      stripePayoutsEnabled: companyData.stripePayoutsEnabled ?? false,
+      stripeDefaultCurrency: companyData.stripeDefaultCurrency ?? "usd",
+      subscriptionTier: companyData.subscriptionTier ?? "individual",
+      tier: companyData.tier ?? "solo",
+      ssoEnabled: companyData.ssoEnabled ?? false,
+      ssoProvider: companyData.ssoProvider ?? null,
+      ssoDomain: companyData.ssoDomain ?? null,
+      customPricingNotes: companyData.customPricingNotes ?? null,
+      accountManagerEmail: companyData.accountManagerEmail ?? null,
+      apiAccessEnabled: companyData.apiAccessEnabled ?? false,
+      bulkImportEnabled: companyData.bulkImportEnabled ?? false,
+      seatUsageAlertThreshold: companyData.seatUsageAlertThreshold ?? 80,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -2099,12 +2207,16 @@ export class MemStorage implements IStorage {
     const newAppliance: HomeAppliance = {
       ...appliance,
       id,
+      houseId: appliance.houseId ?? null,
+      purchaseDate: appliance.purchaseDate ?? null,
+      installDate: appliance.installDate ?? null,
       yearInstalled: appliance.yearInstalled ?? null,
       serialNumber: appliance.serialNumber ?? null,
       notes: appliance.notes ?? null,
       location: appliance.location ?? null,
       warrantyExpiration: appliance.warrantyExpiration ?? null,
       lastServiceDate: appliance.lastServiceDate ?? null,
+      sourceDocumentId: appliance.sourceDocumentId ?? null,
       createdAt: new Date()
     };
     this.homeAppliances.set(id, newAppliance);
@@ -2143,6 +2255,9 @@ export class MemStorage implements IStorage {
     const newManual: HomeApplianceManual = {
       id: randomUUID(),
       ...manual,
+      type: manual.type ?? "owner",
+      fileName: manual.fileName ?? null,
+      fileSize: manual.fileSize ?? null,
       createdAt: new Date(),
     };
     this.homeApplianceManuals.set(newManual.id, newManual);
@@ -2191,6 +2306,8 @@ export class MemStorage implements IStorage {
     const newLog: MaintenanceLog = {
       ...log,
       id,
+      homeArea: log.homeArea ?? null,
+      serviceDescription: log.serviceDescription ?? null,
       cost: log.cost ?? null,
       contractorName: log.contractorName ?? null,
       contractorCompany: log.contractorCompany ?? null,
@@ -2198,6 +2315,32 @@ export class MemStorage implements IStorage {
       notes: log.notes ?? null,
       warrantyPeriod: log.warrantyPeriod ?? null,
       nextServiceDue: log.nextServiceDue ?? null,
+      receiptUrls: log.receiptUrls ?? [],
+      beforePhotoUrls: log.beforePhotoUrls ?? [],
+      afterPhotoUrls: log.afterPhotoUrls ?? [],
+      completionMethod: log.completionMethod ?? null,
+      diySavingsAmount: log.diySavingsAmount ?? null,
+      taskCompletionId: log.taskCompletionId ?? null,
+      verificationTier: log.verificationTier ?? "self_reported",
+      deviceTimestamp: log.deviceTimestamp ?? null,
+      locationFlag: log.locationFlag ?? false,
+      timestampFlag: log.timestampFlag ?? false,
+      distanceFromPropertyMiles: log.distanceFromPropertyMiles ?? null,
+      timestampDeltaHours: log.timestampDeltaHours ?? null,
+      verificationReasonCodes: log.verificationReasonCodes ?? [],
+      aiVerificationStatus: log.aiVerificationStatus ?? null,
+      aiVerificationResponse: log.aiVerificationResponse ?? null,
+      gpsLat: log.gpsLat ?? null,
+      gpsLng: log.gpsLng ?? null,
+      propertyLat: log.propertyLat ?? null,
+      propertyLng: log.propertyLng ?? null,
+      beforePhotoHashes: log.beforePhotoHashes ?? [],
+      afterPhotoHashes: log.afterPhotoHashes ?? [],
+      contractorAccountId: log.contractorAccountId ?? null,
+      invoiceRef: log.invoiceRef ?? null,
+      contractorBusinessName: log.contractorBusinessName ?? null,
+      contractorLicenseNumber: log.contractorLicenseNumber ?? null,
+      contractorJobDate: log.contractorJobDate ?? null,
       createdAt: new Date()
     };
     this.maintenanceLogs.set(id, newLog);
@@ -2250,6 +2393,12 @@ export class MemStorage implements IStorage {
       cost: taskData.cost || null,
       frequencyValue: taskData.frequencyValue || null,
       specificMonths: taskData.specificMonths || null,
+      description: taskData.description ?? null,
+      proLow: taskData.proLow ?? null,
+      proHigh: taskData.proHigh ?? null,
+      materialsLow: taskData.materialsLow ?? null,
+      materialsHigh: taskData.materialsHigh ?? null,
+      frequencyType: taskData.frequencyType,
       isActive: taskData.isActive ?? true,
       createdAt: now,
       updatedAt: now,
@@ -2296,6 +2445,33 @@ export class MemStorage implements IStorage {
       ...house,
       id,
       isDefault: house.isDefault ?? false,
+      postalCode: house.postalCode ?? null,
+      countryId: house.countryId ?? null,
+      regionId: house.regionId ?? null,
+      climateZoneId: house.climateZoneId ?? null,
+      latitude: house.latitude ?? null,
+      longitude: house.longitude ?? null,
+      coordinatesCachedAt: house.coordinatesCachedAt ?? null,
+      homeType: house.homeType ?? null,
+      squareFootage: house.squareFootage ?? null,
+      yearBuilt: house.yearBuilt ?? null,
+      roofInstalledYear: house.roofInstalledYear ?? null,
+      roofType: house.roofType ?? null,
+      hvacInstalledYear: house.hvacInstalledYear ?? null,
+      hvacType: house.hvacType ?? null,
+      plumbingType: house.plumbingType ?? null,
+      foundationType: house.foundationType ?? null,
+      waterHeaterInstalledYear: house.waterHeaterInstalledYear ?? null,
+      waterHeaterType: house.waterHeaterType ?? null,
+      garageType: house.garageType ?? null,
+      numberOfStories: house.numberOfStories ?? null,
+      primaryHeatingFuel: house.primaryHeatingFuel ?? null,
+      hin: house.hin ?? null,
+      hinAssignedAt: house.hinAssignedAt ?? null,
+      hvacAge: house.hvacAge ?? null,
+      hvacCondition: house.hvacCondition ?? null,
+      propertyAddressVerified: house.propertyAddressVerified ?? null,
+      fieldSources: house.fieldSources ?? null,
       createdAt: new Date(),
     };
     this.houses.set(id, newHouse);
@@ -2452,6 +2628,7 @@ export class MemStorage implements IStorage {
       isRead: notification.isRead ?? false,
       priority: notification.priority ?? "medium",
       actionUrl: notification.actionUrl ?? null,
+      deduplicationEnforced: notification.deduplicationEnforced ?? false,
       createdAt: new Date()
     };
     this.notifications.set(id, newNotification);
@@ -2486,14 +2663,14 @@ export class MemStorage implements IStorage {
   async getContractorNotifications(contractorId: string): Promise<Notification[]> {
     const notifications = Array.from(this.notifications.values());
     return notifications.filter(notification => 
-      notification.contractorId === contractorId
-    ).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      (notification as Notification & { contractorId?: string }).contractorId === contractorId
+    ).sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async getUnreadContractorNotifications(contractorId: string): Promise<Notification[]> {
     const notifications = Array.from(this.notifications.values());
     return notifications.filter(notification => 
-      notification.contractorId === contractorId && !notification.isRead
+      (notification as Notification & { contractorId?: string }).contractorId === contractorId && !notification.isRead
     );
   }
 
@@ -2690,7 +2867,7 @@ export class MemStorage implements IStorage {
     if (services && services.length > 0) {
       contractors = contractors.filter(contractor => {
         // Check if contractor offers the requested service(s)
-        const hasRequestedService = contractor.services.some(contractorService => 
+        const hasRequestedService = contractor.services.some((contractorService: string) =>
           services.some(requestedService => 
             contractorService.toLowerCase() === requestedService.toLowerCase()
           )
@@ -2706,7 +2883,7 @@ export class MemStorage implements IStorage {
           'general contracting'
         ];
         
-        const isHandyman = contractor.services.some(s => 
+        const isHandyman = contractor.services.some((s: string) =>
           s.toLowerCase() === 'handyman services'
         );
         
@@ -2722,7 +2899,7 @@ export class MemStorage implements IStorage {
         contractor.name.toLowerCase().includes(query.toLowerCase()) ||
         contractor.company.toLowerCase().includes(query.toLowerCase()) ||
         contractor.bio.toLowerCase().includes(query.toLowerCase()) ||
-        contractor.services.some(service => service.toLowerCase().includes(query.toLowerCase()));
+        contractor.services.some((service: string) => service.toLowerCase().includes(query.toLowerCase()));
       
       const matchesLocation = !location || 
         contractor.location.toLowerCase().includes(location.toLowerCase());
@@ -2763,6 +2940,8 @@ export class MemStorage implements IStorage {
       // Create new contractor profile if it doesn't exist (upsert pattern)
       const newContractor: Contractor = {
         id: contractorId,
+         userId: profileData.userId ?? contractorId,
+         companyId: profileData.companyId ?? "",
         name: profileData.name || 'Contractor',
         company: profileData.company || 'My Company',
         email: profileData.email || '',
@@ -2791,6 +2970,12 @@ export class MemStorage implements IStorage {
         licenseNumber: profileData.licenseNumber || 'Pending',
         licenseMunicipality: profileData.licenseMunicipality || 'Not specified',
         isLicensed: profileData.isLicensed !== undefined ? profileData.isLicensed : true,
+         isVerified: profileData.isVerified ?? false,
+         insuranceCarrier: profileData.insuranceCarrier ?? null,
+         insurancePolicyNumber: profileData.insurancePolicyNumber ?? null,
+         insuranceExpiryDate: profileData.insuranceExpiryDate ?? null,
+         insuranceCoverageAmount: profileData.insuranceCoverageAmount ?? null,
+         teamSizeRange: profileData.teamSizeRange ?? null,
         countryId: profileData.countryId || null,
         regionId: profileData.regionId || null,
         licenses: profileData.licenses || null,
@@ -2856,6 +3041,9 @@ export class MemStorage implements IStorage {
       id: randomUUID(),
       homeownerId: serviceRecord.homeownerId ?? null,
       houseId: serviceRecord.houseId ?? null,
+      homeArea: serviceRecord.homeArea ?? null,
+      companyId: serviceRecord.companyId ?? null,
+      employeeId: serviceRecord.employeeId ?? null,
       customerPhone: serviceRecord.customerPhone ?? null,
       customerEmail: serviceRecord.customerEmail ?? null,
       cost: serviceRecord.cost ?? null,
@@ -2866,6 +3054,9 @@ export class MemStorage implements IStorage {
       warrantyPeriod: serviceRecord.warrantyPeriod ?? null,
       followUpDate: serviceRecord.followUpDate ?? null,
       isVisibleToHomeowner: serviceRecord.isVisibleToHomeowner ?? true,
+      completedAt: serviceRecord.completedAt ?? null,
+      invoiceUrl: serviceRecord.invoiceUrl ?? null,
+      servicePhotos: serviceRecord.servicePhotos ?? [],
       createdAt: new Date(),
     };
     this.serviceRecords.push(newRecord);
@@ -2968,6 +3159,8 @@ export class MemStorage implements IStorage {
       ...message,
       id,
       isRead: message.isRead ?? false,
+      imageUrl: message.imageUrl ?? null,
+      attachments: message.attachments ?? null,
       readAt: null,
       createdAt: new Date()
     };
@@ -3054,6 +3247,14 @@ export class MemStorage implements IStorage {
       serviceDate: reviewData.serviceDate || null,
       serviceType: reviewData.serviceType || null,
       wouldRecommend: reviewData.wouldRecommend ?? true,
+      companyId: reviewData.companyId ?? null,
+      deviceFingerprint: reviewData.deviceFingerprint ?? null,
+      ipAddress: reviewData.ipAddress ?? null,
+      isVerifiedService: reviewData.isVerifiedService ?? false,
+      serviceRecordId: reviewData.serviceRecordId ?? null,
+      reviewPhotoUrl: reviewData.reviewPhotoUrl ?? null,
+      contractorResponse: reviewData.contractorResponse ?? null,
+      contractorRespondedAt: reviewData.contractorRespondedAt ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -3120,7 +3321,7 @@ export class MemStorage implements IStorage {
       resolution: flagData.resolution || null,
       notes: flagData.notes || null,
       createdAt: new Date(),
-      resolvedAt: flagData.resolvedAt || null,
+      resolvedAt: (flagData as InsertReviewFlag & { resolvedAt?: Date | null }).resolvedAt || null,
     };
     
     this.reviewFlags.set(id, flag);
@@ -3220,6 +3421,8 @@ export class MemStorage implements IStorage {
     const proposal: Proposal = {
       ...proposalData,
       id,
+      companyId: proposalData.companyId ?? null,
+      createdBy: proposalData.createdBy ?? null,
       materials: proposalData.materials || [],
       warrantyPeriod: proposalData.warrantyPeriod || null,
       customerNotes: proposalData.customerNotes || null,
@@ -3402,6 +3605,7 @@ export class MemStorage implements IStorage {
         installationYear: 2007,
         lastServiceYear: 2023,
         notes: null,
+        serialNumber: null, sourceDocumentId: null,
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -3940,6 +4144,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Check and clean AC filters",
         taskCategory: "HVAC",
         year: 2025,
@@ -3955,6 +4160,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Inspect roof and gutters",
         taskCategory: "Roofing",
         year: 2025,
@@ -3971,6 +4177,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Test well water system",
         taskCategory: "Plumbing",
         year: 2025,
@@ -3987,6 +4194,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Service lawn mower and outdoor equipment",
         taskCategory: "Landscaping",
         year: 2025,
@@ -4002,6 +4210,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Check exterior paint and siding",
         taskCategory: "Exterior",
         year: 2025,
@@ -4081,6 +4290,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Clean gutters and downspouts",
         taskCategory: "Roofing",
         year: 2025,
@@ -4096,6 +4306,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Winterize outdoor faucets",
         taskCategory: "Plumbing",
         year: 2025,
@@ -4112,6 +4323,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Winterize plumbing system",
         taskCategory: "Plumbing",
         year: 2025,
@@ -4128,6 +4340,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Test heating system before winter",
         taskCategory: "HVAC",
         year: 2025,
@@ -4143,6 +4356,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: mainHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Check weatherstripping on doors and windows",
         taskCategory: "Windows & Doors",
         year: 2025,
@@ -4159,6 +4373,7 @@ export class MemStorage implements IStorage {
         homeownerId: demoHomeownerId,
         houseId: lakeHouseId,
         taskType: "maintenance",
+        serviceType: "maintenance",
         taskTitle: "Close up lake house for winter",
         taskCategory: "General Maintenance",
         year: 2025,
@@ -4181,10 +4396,17 @@ export class MemStorage implements IStorage {
         this.taskCompletionsMap.set(task.id, {
           ...task,
           taskId: null,
+          serviceType: task.serviceType ?? null,
           taskCategory: task.taskCategory ?? null,
           estimatedCost: null,
           actualCost: null,
           documentsUploaded: 0,
+          verificationTier: 'self_reported',
+          distanceFromPropertyMiles: null,
+          timestampDeltaHours: null,
+          verificationReasonCodes: [],
+          aiVerificationStatus: null,
+          aiVerificationResponse: null,
         });
       });
       console.log('[DEMO DATA] Inserted 15 task completions for Sarah Anderson');
@@ -4229,6 +4451,7 @@ export class MemStorage implements IStorage {
       notes: systemData.notes ?? null,
       installationYear: systemData.installationYear ?? null,
       lastServiceYear: systemData.lastServiceYear ?? null,
+      sourceDocumentId: systemData.sourceDocumentId ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -4272,7 +4495,14 @@ export class MemStorage implements IStorage {
     const subscription: PushSubscription = {
       id,
       ...subscriptionData,
+      provider: subscriptionData.provider ?? "web-push",
+      endpoint: subscriptionData.endpoint ?? null,
+      p256dhKey: subscriptionData.p256dhKey ?? null,
+      authKey: subscriptionData.authKey ?? null,
+      token: subscriptionData.token ?? null,
+      deviceInfo: subscriptionData.deviceInfo ?? null,
       userAgent: subscriptionData.userAgent || null,
+      lastSeenAt: subscriptionData.lastSeenAt ?? null,
       isActive: subscriptionData.isActive ?? true,
       createdAt: now,
       updatedAt: now,
@@ -4531,13 +4761,17 @@ export class MemStorage implements IStorage {
     const transfer: HouseTransfer = {
       id: randomUUID(),
       ...transferData,
+      toHomeownerId: transferData.toHomeownerId ?? null,
       status: transferData.status || 'pending',
+      transferNote: transferData.transferNote ?? null,
       maintenanceLogsTransferred: 0,
       appliancesTransferred: 0,
       appointmentsTransferred: 0,
       customTasksTransferred: 0,
       homeSystemsTransferred: 0,
+      serviceRecordsTransferred: 0,
       createdAt: new Date(),
+      updatedAt: new Date(),
       completedAt: null,
     };
     this.houseTransfers.set(transfer.id, transfer);
@@ -4888,7 +5122,7 @@ export class MemStorage implements IStorage {
   async upsertTaskOverride(overrideData: InsertTaskOverride): Promise<TaskOverride> {
     const existing = await this.getTaskOverride(overrideData.homeownerId, overrideData.houseId, overrideData.taskId);
     if (existing) {
-      const updated: TaskOverride = {
+    const updated: TaskOverride = {
         ...existing,
         isEnabled: overrideData.isEnabled ?? true,
         frequencyType: overrideData.frequencyType || null,
@@ -4955,6 +5189,7 @@ export class MemStorage implements IStorage {
       isActive: countryData.isActive ?? true,
       defaultCurrency: countryData.defaultCurrency,
       createdAt: new Date(),
+      updatedAt: new Date(),
     };
     this.countries.set(country.id, country);
     return country;
@@ -5180,6 +5415,13 @@ export class MemStorage implements IStorage {
       notes: completion.notes ?? null,
       documentsUploaded: completion.documentsUploaded ?? 0,
       createdAt: new Date(),
+      serviceType: completion.serviceType ?? null,
+      verificationTier: completion.verificationTier ?? 'self_reported',
+      distanceFromPropertyMiles: completion.distanceFromPropertyMiles ?? null,
+      timestampDeltaHours: completion.timestampDeltaHours ?? null,
+      verificationReasonCodes: completion.verificationReasonCodes ?? [],
+      aiVerificationStatus: completion.aiVerificationStatus ?? null,
+      aiVerificationResponse: completion.aiVerificationResponse ?? null,
     };
     this.taskCompletionsMap.set(created.id, created);
     return created;
@@ -5650,7 +5892,8 @@ export class MemStorage implements IStorage {
         case 'detailed_logs': {
           // Count logs with detailed descriptions (50+ characters)
           const detailedLogs = allLogs.filter(log => 
-            log.description && log.description.length >= 50
+          (log as unknown as ServiceRecord & { description?: string }).description &&
+          (log as unknown as ServiceRecord & { description?: string }).description!.length >= 50
           );
           
           progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
@@ -5882,8 +6125,8 @@ export class MemStorage implements IStorage {
           achievementKey: def.achievementKey,
           progress: userAchiev ? parseFloat(userAchiev.progress?.toString() || "0") : 0,
           isUnlocked: userAchiev?.isUnlocked || false,
-          unlockedAt: userAchiev?.unlockedAt,
-          metadata: userAchiev?.metadata
+          unlockedAt: userAchiev?.unlockedAt ?? undefined,
+          metadata: userAchiev?.metadata ?? undefined
         });
       }
       return results;
@@ -5967,7 +6210,8 @@ export class MemStorage implements IStorage {
         
         case 'detailed_logs': {
           const detailedLogs = houseMaintenanceLogs.filter(log => 
-            log.description && log.description.length >= 50
+          (log as unknown as { description?: string }).description &&
+          (log as unknown as { description?: string }).description!.length >= 50
           );
           progress = Math.min(100, (detailedLogs.length / criteria.count) * 100);
           break;
@@ -5987,8 +6231,8 @@ export class MemStorage implements IStorage {
         achievementKey: def.achievementKey,
         progress,
         isUnlocked: isHouseUnlocked,
-        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? userAchiev.unlockedAt : undefined,
-        metadata: userAchiev?.metadata
+        unlockedAt: isHouseUnlocked && userAchiev?.isUnlocked ? (userAchiev.unlockedAt ?? undefined) : undefined,
+        metadata: userAchiev?.metadata ?? undefined
       });
     }
     
@@ -6049,11 +6293,50 @@ export class MemStorage implements IStorage {
       isPremium: false,
       stripeCustomerId: null,
       stripeSubscriptionId: null,
+      stripeSubscriptionEventAt: null,
       stripePriceId: null,
       subscriptionStartDate: null,
       subscriptionEndDate: null,
       createdAt: new Date(),
       updatedAt: new Date(),
+      phone: null,
+      address: null,
+      connectionCode: null,
+      emailVerified: false,
+      emailVerifiedAt: null,
+      emailVerificationToken: null,
+      emailVerificationTokenExpiry: null,
+      companyId: null,
+      companyRole: null,
+      divisionId: null,
+      status: 'active',
+      inviteToken: null,
+      inviteExpiresAt: null,
+      lastInviteSentAt: null,
+      deletedAt: null,
+      lastLoginAt: null,
+      rememberToken: null,
+      rememberTokenExpiresAt: null,
+      canRespondToProposals: false,
+      trialEndsAt: null,
+      trialRemindersSent: [],
+      lastReengagementEmailSent: null,
+      lastReferralReminderSent: null,
+      onboardingNudgeSentAt: null,
+      subscriptionSource: 'stripe',
+      appleOriginalTransactionId: null,
+      appleProductId: null,
+      promoCodeApplied: null,
+      promoFreeMonths: null,
+      accountStatus: 'active',
+      accountCancelledAt: null,
+      isQaAccount: false,
+      qaAccessScopes: [],
+      qaFixtureKey: null,
+      isDemoAccount: false,
+      homeWizardStep: 0,
+      homeWizardCompletedAt: null,
+      homeWizardData: null,
     };
     this.users.set(id, user);
     return user;
@@ -6185,7 +6468,7 @@ export class MemStorage implements IStorage {
     signupsByZip: Array<{ zipCode: string; count: number }>;
     staleStripePendingEvents: Array<{ eventId: string; processedAt: Date }>;
   }> {
-    const allUsers = Array.from(this.users.values());
+    const allUsers = Array.from(this.users.values()) as Array<User & { subscriptionTier?: string }>;
     
     const totalUsers = allUsers.length;
     const homeownerCount = allUsers.filter(u => u.role === 'homeowner').length;
@@ -6230,7 +6513,7 @@ export class MemStorage implements IStorage {
 
   // Advanced admin analytics methods
   async getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>> {
-    const allUsers = Array.from(this.users.values());
+    const allUsers = Array.from(this.users.values()) as Array<User & { subscriptionTier?: string }>;
     const now = new Date();
     const series: Array<{ date: string; count: number }> = [];
     
@@ -6317,10 +6600,14 @@ export class MemStorage implements IStorage {
     revenueByPlan: Array<{ plan: string; revenue: number }>;
     revenueSeries: Array<{ date: string; amount: number }>;
   }> {
-    const allUsers = Array.from(this.users.values());
+    const allUsers = Array.from(this.users.values()) as Array<User & { subscriptionTier?: string }>;
     const activeSubscribers = allUsers.filter(u => u.subscriptionStatus === 'active');
     
-    const cycleEvents = this.subscriptionCycleEventsArr;
+    const cycleEvents = this.subscriptionCycleEventsArr as Array<SubscriptionCycleEvent & {
+      eventType?: string;
+      eventTimestamp?: Date | string;
+      amountInCents?: number;
+    }>;
     
     const mrr = activeSubscribers.length * 20;
     
@@ -6457,7 +6744,7 @@ export class MemStorage implements IStorage {
           serviceCategory: boost.serviceCategory,
           startDate: new Date(boost.startDate),
           endDate: new Date(boost.endDate),
-          status: boost.status === 'cancelled' ? 'cancelled' : 'expired',
+          status: (boost.status === 'cancelled' ? 'cancelled' : 'expired') as 'expired' | 'cancelled',
         };
       })
       .sort((a, b) => b.endDate.getTime() - a.endDate.getTime());
@@ -6626,7 +6913,7 @@ export class MemStorage implements IStorage {
   async getVerificationAudits(agentId: string): Promise<AgentVerificationAudit[]> {
     return this.agentVerificationAuditsArr
       .filter(a => a.agentId === agentId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   // Affiliate referral operations (in-memory stubs — MemStorage is dev/test only)
@@ -6841,6 +7128,15 @@ export class MemStorage implements IStorage {
       createdAt: now,
       updatedAt: now,
       closedAt: null,
+      userId: ticket.userId ?? null,
+      category: ticket.category,
+      priority: ticket.priority ?? 'medium',
+      status: ticket.status ?? 'open',
+      subject: ticket.subject,
+      description: ticket.description,
+      assignedToAdminId: ticket.assignedToAdminId ?? null,
+      assignedToAdminEmail: ticket.assignedToAdminEmail ?? null,
+      metadata: ticket.metadata ?? null,
     };
     this.supportTickets.set(id, newTicket);
     return newTicket;
@@ -6877,6 +7173,9 @@ export class MemStorage implements IStorage {
       id,
       ...reply,
       createdAt: now,
+      metadata: reply.metadata ?? null,
+      isInternal: reply.isInternal ?? false,
+      isAutomated: reply.isAutomated ?? false,
     };
     this.ticketReplies.set(id, newReply);
     return newReply;
@@ -6891,7 +7190,7 @@ export class MemStorage implements IStorage {
     const ticket = await this.getSupportTicket(id);
     if (!ticket) return undefined;
     
-    const user = await this.getUser(ticket.userId);
+    const user = await this.getUser(ticket.userId ?? '');
     if (!user) return undefined;
     
     const replies = await this.getTicketReplies(id);
@@ -6980,6 +7279,26 @@ export class MemStorage implements IStorage {
       ...lead,
       createdAt: now,
       updatedAt: now,
+      companyId: lead.companyId ?? null,
+      email: lead.email ?? null,
+      phone: lead.phone ?? null,
+      address: lead.address ?? null,
+      city: lead.city ?? null,
+      state: lead.state ?? null,
+      postalCode: lead.postalCode ?? null,
+      source: lead.source ?? 'other',
+      status: lead.status ?? 'new',
+      priority: lead.priority ?? 'medium',
+      projectType: lead.projectType ?? null,
+      estimatedValue: lead.estimatedValue ?? null,
+      followUpDate: lead.followUpDate ?? null,
+      lastContactedAt: lead.lastContactedAt ?? null,
+      wonAt: lead.wonAt ?? null,
+      lostAt: lead.lostAt ?? null,
+      lostReason: lead.lostReason ?? null,
+      tags: lead.tags ?? [],
+      notes: lead.notes ?? null,
+      metadata: lead.metadata ?? null,
     };
     this.crmLeads.set(id, newLead);
     return newLead;
@@ -7036,6 +7355,9 @@ export class MemStorage implements IStorage {
       ...note,
       createdAt: now,
       updatedAt: now,
+      noteType: note.noteType ?? 'general',
+      isPinned: note.isPinned ?? false,
+      metadata: note.metadata ?? null,
     };
     this.crmNotes.set(id, newNote);
     return newNote;
@@ -7096,6 +7418,19 @@ export class MemStorage implements IStorage {
       ...integration,
       createdAt: now,
       updatedAt: now,
+      companyId: integration.companyId ?? null,
+      platformName: integration.platformName ?? null,
+      isActive: integration.isActive ?? true,
+      webhookSecret: integration.webhookSecret ?? null,
+      apiKey: integration.apiKey ?? null,
+      apiSecret: integration.apiSecret ?? null,
+      accessToken: integration.accessToken ?? null,
+      refreshToken: integration.refreshToken ?? null,
+      tokenExpiresAt: integration.tokenExpiresAt ?? null,
+      lastSyncAt: integration.lastSyncAt ?? null,
+      syncFrequency: integration.syncFrequency ?? 'manual',
+      fieldMapping: integration.fieldMapping ?? null,
+      metadata: integration.metadata ?? null,
     };
     this.crmIntegrations.set(id, newIntegration);
     return newIntegration;
@@ -7133,6 +7468,11 @@ export class MemStorage implements IStorage {
       id,
       ...log,
       createdAt: now,
+      headers: log.headers ?? null,
+      ipAddress: log.ipAddress ?? null,
+      errorMessage: log.errorMessage ?? null,
+      leadId: log.leadId ?? null,
+      processedAt: log.processedAt ?? null,
     };
     this.webhookLogs.set(id, newLog);
     return newLog;
@@ -7189,6 +7529,21 @@ export class MemStorage implements IStorage {
       ...client,
       createdAt: now,
       updatedAt: now,
+      companyId: client.companyId ?? null,
+      email: client.email ?? null,
+      phone: client.phone ?? null,
+      secondaryPhone: client.secondaryPhone ?? null,
+      address: client.address ?? null,
+      city: client.city ?? null,
+      state: client.state ?? null,
+      postalCode: client.postalCode ?? null,
+      notes: client.notes ?? null,
+      tags: client.tags ?? [],
+      preferredContactMethod: client.preferredContactMethod ?? 'phone',
+      isActive: client.isActive ?? true,
+      totalJobsCompleted: client.totalJobsCompleted ?? 0,
+      totalRevenue: client.totalRevenue ?? '0.00',
+      lastServiceDate: client.lastServiceDate ?? null,
     };
     this.crmClientsMap.set(id, newClient);
     return newClient;
@@ -7279,6 +7634,26 @@ export class MemStorage implements IStorage {
       ...job,
       createdAt: now,
       updatedAt: now,
+      companyId: job.companyId ?? null,
+      quoteId: job.quoteId ?? null,
+      description: job.description ?? null,
+      status: job.status ?? 'scheduled',
+      priority: job.priority ?? 'normal',
+      scheduledEndDate: job.scheduledEndDate ?? null,
+      actualStartTime: job.actualStartTime ?? null,
+      actualEndTime: job.actualEndTime ?? null,
+      estimatedDuration: job.estimatedDuration ?? null,
+      actualDuration: job.actualDuration ?? null,
+      address: job.address ?? null,
+      city: job.city ?? null,
+      state: job.state ?? null,
+      postalCode: job.postalCode ?? null,
+      laborCost: job.laborCost ?? null,
+      materialsCost: job.materialsCost ?? null,
+      totalCost: job.totalCost ?? null,
+      notes: job.notes ?? null,
+      internalNotes: job.internalNotes ?? null,
+      completionNotes: job.completionNotes ?? null,
     };
     this.crmJobsMap.set(id, newJob);
     return newJob;
@@ -7355,6 +7730,20 @@ export class MemStorage implements IStorage {
       ...quote,
       createdAt: now,
       updatedAt: now,
+      companyId: quote.companyId ?? null,
+      description: quote.description ?? null,
+      status: quote.status ?? 'draft',
+      lineItems: quote.lineItems ?? [],
+      taxRate: quote.taxRate ?? '0.00',
+      taxAmount: quote.taxAmount ?? '0.00',
+      discount: quote.discount ?? '0.00',
+      validUntil: quote.validUntil ?? null,
+      sentAt: quote.sentAt ?? null,
+      viewedAt: quote.viewedAt ?? null,
+      acceptedAt: quote.acceptedAt ?? null,
+      declinedAt: quote.declinedAt ?? null,
+      notes: quote.notes ?? null,
+      termsAndConditions: quote.termsAndConditions ?? null,
     };
     this.crmQuotesMap.set(id, newQuote);
     return newQuote;
@@ -7431,6 +7820,32 @@ export class MemStorage implements IStorage {
       ...invoice,
       createdAt: now,
       updatedAt: now,
+      companyId: invoice.companyId ?? null,
+      jobId: invoice.jobId ?? null,
+      quoteId: invoice.quoteId ?? null,
+      idempotencyKey: invoice.idempotencyKey ?? null,
+      description: invoice.description ?? null,
+      status: invoice.status ?? 'draft',
+      lineItems: invoice.lineItems ?? [],
+      taxRate: invoice.taxRate ?? '0.00',
+      taxAmount: invoice.taxAmount ?? '0.00',
+      discount: invoice.discount ?? '0.00',
+      amountPaid: invoice.amountPaid ?? '0.00',
+      dueDate: invoice.dueDate ?? null,
+      sentAt: invoice.sentAt ?? null,
+      viewedAt: invoice.viewedAt ?? null,
+      paidAt: invoice.paidAt ?? null,
+      paymentMethod: invoice.paymentMethod ?? null,
+      paymentNotes: invoice.paymentNotes ?? null,
+      notes: invoice.notes ?? null,
+      termsAndConditions: invoice.termsAndConditions ?? null,
+      homeownerId: invoice.homeownerId ?? null,
+      houseId: invoice.houseId ?? null,
+      paymentToken: invoice.paymentToken ?? null,
+      paymentTokenExpiresAt: invoice.paymentTokenExpiresAt ?? null,
+      stripeCheckoutSessionId: invoice.stripeCheckoutSessionId ?? null,
+      stripeCheckoutSessionAmount: invoice.stripeCheckoutSessionAmount ?? null,
+      stripeCheckoutSessionExpiresAt: invoice.stripeCheckoutSessionExpiresAt ?? null,
     };
     this.crmInvoicesMap.set(id, newInvoice);
     return newInvoice;
@@ -7661,7 +8076,15 @@ export class MemStorage implements IStorage {
       return updated;
     }
     const id = randomUUID();
-    const newDisclosure: HouseDisclosure = { ...data, id, createdAt: new Date(), updatedAt: new Date() };
+    const newDisclosure: HouseDisclosure = {
+      ...data,
+      id,
+      formType: data.formType ?? 'pcds',
+      stateCode: data.stateCode ?? 'UNKNOWN',
+      answers: data.answers ?? {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
     this.houseDisclosuresMap.set(id, newDisclosure);
     return newDisclosure;
   }
@@ -7669,7 +8092,17 @@ export class MemStorage implements IStorage {
   // Insurance claim package operations (in-memory fallback)
   async saveInsuranceClaimPackage(data: InsertInsuranceClaimPackage): Promise<InsuranceClaimPackage> {
     const id = randomUUID();
-    const pkg: InsuranceClaimPackage = { ...data, id, createdAt: new Date() };
+    const pkg: InsuranceClaimPackage = {
+      ...data,
+      id,
+      label: data.label ?? null,
+      incidentDescription: data.incidentDescription ?? null,
+      incidentDate: data.incidentDate ?? null,
+      evidenceTimeline: data.evidenceTimeline ?? [],
+      documentsToGather: data.documentsToGather ?? [],
+      totalRecords: data.totalRecords ?? 0,
+      createdAt: new Date(),
+    };
     this.insuranceClaimPackagesMap.set(id, pkg);
     return pkg;
   }
@@ -7751,10 +8184,42 @@ export class MemStorage implements IStorage {
     return [...(this.crmInvoiceEventsMap.get(invoiceId) || [])]
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   }
+  async getUserByStripeCustomerId(stripeCustomerId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(user => user.stripeCustomerId === stripeCustomerId);
+  }
+  async updateUserSubscriptionStatus(userId: string, status: string, eventAt?: Date): Promise<User | undefined> {
+    const user = this.users.get(userId);
+    if (!user) return undefined;
+    const updated = { ...user, subscriptionStatus: status, ...(eventAt ? { stripeSubscriptionEventAt: eventAt } : {}), updatedAt: new Date() };
+    this.users.set(userId, updated);
+    return updated;
+  }
+  async updateUserStripeSubscription(userId: string, subscriptionId: string, priceId: string, eventAt?: Date): Promise<User | undefined> {
+    return this.applyUserStripeSubscriptionState(userId, subscriptionId, priceId, this.users.get(userId)?.subscriptionStatus ?? 'active', eventAt);
+  }
+  async getCompanyByReferralCode(code: string): Promise<Company | undefined> {
+    return Array.from(this.companies.values()).find(company => company.referralCode === code);
+  }
+  async getContractorProfileForUser(userId: string): Promise<Contractor | undefined> {
+    return Array.from(this.contractors.values()).find(contractor => contractor.userId === userId);
+  }
+  async getOrCreatePermanentConnectionCode(_userId: string): Promise<string> { return randomUUID(); }
+  async validatePermanentConnectionCode(_code: string): Promise<{ homeownerId: string; homeownerName: string; homeownerEmail: string; homeownerZipCode: string | null; houses: Array<{id: string; name: string; address: string}> } | null> { return null; }
+  async regeneratePermanentConnectionCode(_userId: string): Promise<string> { return randomUUID(); }
+  async getUserByAppleOriginalTransactionId(_originalTransactionId: string): Promise<User | undefined> { return undefined; }
+  async getErrorLogs(_filters?: { errorType?: string; severity?: string; resolved?: boolean; userId?: string; limit?: number }): Promise<ErrorLog[]> { return []; }
+  async getErrorLog(_id: string): Promise<ErrorLog | undefined> { return undefined; }
+  async createErrorLog(_error: InsertErrorLog): Promise<ErrorLog> { throw new Error('Error logs are database-backed in MemStorage'); }
+  async updateErrorLog(_id: string, _error: Partial<InsertErrorLog>): Promise<ErrorLog | undefined> { return undefined; }
+  async getErrorBreadcrumbs(_errorLogId: string): Promise<ErrorBreadcrumb[]> { return []; }
+  async createErrorBreadcrumb(_breadcrumb: InsertErrorBreadcrumb): Promise<ErrorBreadcrumb> { throw new Error('Error breadcrumbs are database-backed in MemStorage'); }
+  async getErrorLogWithBreadcrumbs(_id: string): Promise<{ error: ErrorLog; breadcrumbs: ErrorBreadcrumb[] } | undefined> { return undefined; }
 }
 
 // Database-backed storage for users (OAuth persistence)
 export class DbStorage implements IStorage {
+  // Retained for startup migration compatibility with legacy in-memory data.
+  private memStorage = new MemStorage();
   // Upload metadata storage (in-memory for file upload tracking)
   private uploadedFiles = new Map<string, {
     userId: string;
@@ -8720,7 +9185,7 @@ export class DbStorage implements IStorage {
           target = criteria.count;
           break;
         case "detailed_logs":
-          value = logs.filter((log) => (log.description?.length ?? 0) >= 50).length;
+          value = logs.filter((log) => (((log as unknown as { description?: string }).description?.length) ?? 0) >= 50).length;
           target = criteria.count;
           break;
         case "photos_uploaded":
@@ -8882,7 +9347,7 @@ export class DbStorage implements IStorage {
           break;
         }
         case "detailed_logs": {
-          const count = houseLogs.filter((log) => (log.description?.length ?? 0) >= 50).length;
+          const count = houseLogs.filter((log) => (((log as unknown as { description?: string }).description?.length) ?? 0) >= 50).length;
           progress = Math.min(100, (count / criteria.count) * 100);
           break;
         }
@@ -9407,7 +9872,7 @@ export class DbStorage implements IStorage {
       }
 
       // For contractors who own a company, check if they can cancel
-      if (role === 'contractor' && user.companyRole === 'owner') {
+      if (_role === 'contractor' && user.companyRole === 'owner') {
         // Check if there are other employees in the company
         const employees = await db.select().from(users).where(eq(users.companyId, user.companyId!));
         if (employees.length > 1) {
@@ -9429,7 +9894,7 @@ export class DbStorage implements IStorage {
         })
         .where(eq(users.id, userId));
 
-      console.log(`[ACCOUNT_CANCELLATION] User ${userId} (${role}) cancelled their account at ${new Date().toISOString()}`);
+      console.log(`[ACCOUNT_CANCELLATION] User ${userId} (${_role}) cancelled their account at ${new Date().toISOString()}`);
       
       return { success: true, message: 'Account cancelled successfully' };
     } catch (error) {
@@ -9538,7 +10003,6 @@ export class DbStorage implements IStorage {
       licenseNumber: c.licenseNumber || '',
       insuranceExpiry: null,
       hasEmergencyServices: c.hasEmergencyServices,
-      businessHours: {},
       email: c.email,
       phone: c.phoneNumber || '',
       businessLogo: c.businessLogo || '',
@@ -9636,7 +10100,7 @@ export class DbStorage implements IStorage {
           'general contracting'
         ];
         
-        const isHandyman = contractor.services.some(s => 
+        const isHandyman = contractor.services.some((s: string) =>
           s.toLowerCase() === 'handyman services'
         );
         
@@ -9656,7 +10120,7 @@ export class DbStorage implements IStorage {
         contractor.services.some(service => service.toLowerCase().includes(query.toLowerCase()));
       
       return matchesQuery;
-    });
+    }) as unknown as Contractor[];
   }
   
   // Helper method to estimate distance between zip codes
@@ -9713,7 +10177,7 @@ export class DbStorage implements IStorage {
       if (!response.ok) return null;
       
       const data = await response.json();
-      if (data && data.length > 0) {
+      if (Array.isArray(data) && data.length > 0) {
         return {
           lat: parseFloat(data[0].lat),
           lon: parseFloat(data[0].lon)
@@ -10505,7 +10969,7 @@ export class DbStorage implements IStorage {
     const [contractorRecords, diyLogs] = await Promise.all([serviceRecordsQuery, maintenanceLogsQuery]);
     
     // Convert maintenanceLogs to ServiceRecord format for display
-    const diyAsServiceRecords: ServiceRecord[] = diyLogs.map(log => ({
+    const diyAsServiceRecords = diyLogs.map(log => ({
       id: log.id,
       contractorId: '', // Empty for DIY
       companyId: null,
@@ -10529,7 +10993,7 @@ export class DbStorage implements IStorage {
       followUpDate: null,
       isVisibleToHomeowner: true,
       createdAt: log.createdAt || new Date(),
-    }));
+    })) as unknown as ServiceRecord[];
     
     // Combine and sort by date (most recent first)
     const allRecords = [...contractorRecords, ...diyAsServiceRecords];
@@ -12089,7 +12553,7 @@ export class DbStorage implements IStorage {
       conditions.push(or(
         ilike(supportTickets.subject, pattern),
         ilike(supportTickets.description, pattern),
-      ));
+      )!);
     }
 
     const query = conditions.length > 0
@@ -12141,7 +12605,7 @@ export class DbStorage implements IStorage {
     const ticket = await this.getSupportTicket(id);
     if (!ticket) return undefined;
 
-    const user = await this.getUser(ticket.userId);
+    const user = await this.getUser(ticket.userId ?? '');
     if (!user) return undefined;
 
     const replies = await this.getTicketReplies(id);
@@ -12336,13 +12800,17 @@ export class DbStorage implements IStorage {
     revenueSeries: Array<{ date: string; amount: number }>;
   }> {
     const activeSubscribers = await db.select().from(users)
-      .where(and(eq(users.subscriptionStatus, 'active'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
+      .where(and(eq(users.subscriptionStatus, 'active'), eq(users.isQaAccount, false), eq(users.isDemoAccount, false))) as Array<User & { subscriptionTier?: string }>;
     const cycleEventRows = await db
       .select({ event: subscriptionCycleEvents })
       .from(subscriptionCycleEvents)
       .innerJoin(users, eq(subscriptionCycleEvents.userId, users.id))
       .where(and(eq(users.isQaAccount, false), eq(users.isDemoAccount, false)));
-    const cycleEvents = cycleEventRows.map(row => row.event);
+    const cycleEvents = cycleEventRows.map(row => row.event) as Array<SubscriptionCycleEvent & {
+      eventType?: string;
+      eventTimestamp?: Date | string;
+      amountInCents?: number;
+    }>;
     const mrr = activeSubscribers.length * 20;
     const totalRevenue = cycleEvents
       .filter(e => e.eventType === 'payment_succeeded')

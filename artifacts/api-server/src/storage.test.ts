@@ -16,6 +16,27 @@ vi.mock("./lib/logger", () => ({
 
 import { MemStorage } from "./storage";
 
+describe("MemStorage agent verification status", () => {
+  it("returns the submitted license state", async () => {
+    const storage = new MemStorage();
+    await storage.createAgentProfile({ agentId: "agent-verification-state" });
+
+    await storage.submitAgentVerification("agent-verification-state", {
+      licenseNumber: "LIC-123",
+      licenseState: "WA",
+      licenseExpiration: new Date("2027-09-11T00:00:00Z"),
+      stateIdStorageKey: "verification/state-id",
+      stateIdOriginalFilename: "state-id.png",
+      stateIdMimeType: "image/png",
+      stateIdFileSize: 1024,
+      stateIdChecksum: "checksum",
+    });
+
+    await expect(storage.getAgentVerificationStatus("agent-verification-state"))
+      .resolves.toMatchObject({ licenseState: "WA" });
+  });
+});
+
 describe("MemStorage CRM invoice history", () => {
   it("records amount, due date, status, and payment changes chronologically", async () => {
     vi.useFakeTimers();
