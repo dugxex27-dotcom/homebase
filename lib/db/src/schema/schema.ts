@@ -1868,6 +1868,15 @@ export const affiliatePayouts = pgTable("affiliate_payouts", {
   stripeTransferId: varchar("stripe_transfer_id"),
   errorMessage: text("error_message"),
   paidAt: timestamp("paid_at"),
+  // Durable, independently retried confirmation email delivery state. The
+  // payout row is the idempotency boundary for both transfer and email.
+  emailStatus: text("email_status").notNull().default("not_applicable"), // not_applicable, pending, processing, sent, skipped, permanently_failed
+  emailAttemptCount: integer("email_attempt_count").notNull().default(0),
+  emailNextAttemptAt: timestamp("email_next_attempt_at"),
+  emailSentAt: timestamp("email_sent_at"),
+  emailLastError: text("email_last_error"),
+  emailClaimToken: varchar("email_claim_token"),
+  emailClaimLeaseUntil: timestamp("email_claim_lease_until"),
   escalationAlertSentAt: timestamp("escalation_alert_sent_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -1875,6 +1884,7 @@ export const affiliatePayouts = pgTable("affiliate_payouts", {
   index("IDX_affiliate_payouts_agent_id").on(table.agentId),
   index("IDX_affiliate_payouts_referral_id").on(table.affiliateReferralId),
   index("IDX_affiliate_payouts_status").on(table.status),
+  index("IDX_affiliate_payouts_email_delivery").on(table.emailStatus, table.emailNextAttemptAt),
 ]);
 
 export const insertAffiliatePayoutSchema = createInsertSchema(affiliatePayouts).omit({ id: true, createdAt: true, updatedAt: true });

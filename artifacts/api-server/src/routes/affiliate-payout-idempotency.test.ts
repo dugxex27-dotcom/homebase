@@ -373,7 +373,6 @@ import express from "express";
 import request from "supertest";
 import type Stripe from "stripe";
 import { processedWebhookEventIds, inFlightWebhookEventIds, registerRoutes } from "./routes";
-import { sendAffiliatePayoutProcessedEmail } from "../email-service";
 
 const REFERRED_USER = {
   id: USER_ID,
@@ -492,16 +491,14 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
       expect.objectContaining({ idempotencyKey: expect.stringContaining(payoutState.id) }),
     );
     expect(mockCreateAffiliatePayout).toHaveBeenCalledOnce();
-    expect(payoutState).toMatchObject({ status: "paid", agentId: AGENT_ID });
-    expect(referralState).toMatchObject({ status: "paid", consecutiveMonthsPaid: 4 });
-    expect(sendAffiliatePayoutProcessedEmail).toHaveBeenCalledOnce();
-    expect(sendAffiliatePayoutProcessedEmail).toHaveBeenCalledWith({
+    expect(payoutState).toMatchObject({
+      status: "paid",
       agentId: AGENT_ID,
-      referredUserId: USER_ID,
-      referredUserRole: "homeowner",
-      amount: "15.00",
-      transferId: expect.stringMatching(/^tr_/),
+      emailStatus: "pending",
+      emailAttemptCount: 0,
+      emailNextAttemptAt: expect.any(Date),
     });
+    expect(referralState).toMatchObject({ status: "paid", consecutiveMonthsPaid: 4 });
     expect(mockSendAgentPayoutPaidEmail).not.toHaveBeenCalled();
   });
 
@@ -672,13 +669,19 @@ describe("Agent affiliate payout — duplicate webhook delivery cannot double-pa
 
     // The critical assertion: only ONE real Stripe transfer was ever attempted.
     expect(mockTransfersCreate).toHaveBeenCalledOnce();
-    expect(sendAffiliatePayoutProcessedEmail).toHaveBeenCalledOnce();
     expect(mockSendAgentPayoutPaidEmail).not.toHaveBeenCalled();
 
     // Final state: exactly one $15 payout, marked paid, referral fully advanced
     // to 4 consecutive months and 'paid' — not double-counted to 5/6/etc.
     const { payoutState, referralState } = getAffiliateState();
-    expect(payoutState).toMatchObject({ status: "paid", amount: "15.00", agentId: AGENT_ID });
+    expect(payoutState).toMatchObject({
+      status: "paid",
+      amount: "15.00",
+      agentId: AGENT_ID,
+      emailStatus: "pending",
+      emailAttemptCount: 0,
+      emailNextAttemptAt: expect.any(Date),
+    });
     expect(referralState).toMatchObject({ status: "paid", consecutiveMonthsPaid: 4 });
 
     // Idempotency key defense-in-depth: the single transfer call used a key

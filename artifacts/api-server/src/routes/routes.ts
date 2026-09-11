@@ -35,7 +35,7 @@ import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePrope
 import { auditLogger, sessionManager, AuditEventTypes, getClientIP } from "../security-audit";
 import { smsService } from "../sms-service";
 import { notificationOrchestrator } from "../notification-orchestrator";
-import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendOwnershipTransferredEmail, sendAffiliatePayoutProcessedEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
+import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendOwnershipTransferredEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID } from "../demo-seeder";
@@ -3400,21 +3400,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                           status: 'paid',
                           stripeTransferId: transfer.id,
                           paidAt: new Date(),
+                          emailStatus: 'pending',
+                          emailAttemptCount: 0,
+                          emailNextAttemptAt: new Date(),
+                          emailLastError: null,
+                          emailClaimToken: null,
+                          emailClaimLeaseUntil: null,
                         });
 
                         // Update the referral status
                         await storage.updateAffiliateReferral(affiliateReferral.id, {
                           status: 'paid',
-                        });
-
-                        sendAffiliatePayoutProcessedEmail({
-                          agentId: affiliateReferral.agentId,
-                          referredUserId: affiliateReferral.referredUserId,
-                          referredUserRole: affiliateReferral.referredUserRole,
-                          amount: payout.amount,
-                          transferId: transfer.id,
-                        }).catch((emailError) => {
-                          console.error(`[AFFILIATE] Failed to send payout notification for payout ${payout.id}:`, emailError);
                         });
 
                         console.log(`[AFFILIATE] Successfully transferred $15 to agent ${affiliateReferral.agentId}, transfer ID: ${transfer.id}`);
@@ -13730,6 +13726,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stripeTransferId: transfer.id,
           errorMessage: null,
           paidAt: new Date(),
+          emailStatus: "pending",
+          emailAttemptCount: 0,
+          emailNextAttemptAt: new Date(),
+          emailLastError: null,
+          emailClaimToken: null,
+          emailClaimLeaseUntil: null,
         });
         await storage.updateAffiliateReferral(claimedPayout.affiliateReferralId, { status: "paid" });
 
@@ -14201,6 +14203,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stripeTransferId: transfer.id,
         paidAt: new Date(),
         errorMessage: null,
+        emailStatus: 'pending',
+        emailAttemptCount: 0,
+        emailNextAttemptAt: new Date(),
+        emailLastError: null,
+        emailClaimToken: null,
+        emailClaimLeaseUntil: null,
       });
       return res.json(paidPayout);
     } catch (error: any) {
