@@ -504,6 +504,38 @@ export function normalizeInvoiceServiceType(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
+export const CRM_INVOICE_DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+
+export function findRecentDuplicateCrmInvoice(
+  existingInvoices: Array<{
+    contractorUserId: string;
+    homeownerId?: string | null;
+    title?: string | null;
+    amountDue?: string | number | null;
+    createdAt?: Date | string | null;
+  }>,
+  candidate: {
+    contractorUserId: string;
+    homeownerId?: string | null;
+    title?: string | null;
+    amountDue?: string | number | null;
+  },
+  now = Date.now(),
+) {
+  const toNumeric = (value: string | number | null | undefined) =>
+    parseFloat(String(value ?? "0")) || 0;
+
+  return existingInvoices.find((existing) => {
+    if (existing.contractorUserId !== candidate.contractorUserId) return false;
+    if ((existing.homeownerId ?? null) !== (candidate.homeownerId ?? null)) return false;
+    if ((existing.title ?? "") !== (candidate.title ?? "")) return false;
+    if (toNumeric(existing.amountDue) !== toNumeric(candidate.amountDue)) return false;
+
+    const age = now - new Date(existing.createdAt || 0).getTime();
+    return age >= 0 && age <= CRM_INVOICE_DUPLICATE_WINDOW_MS;
+  });
+}
+
 export function serializeTeamAuditLogEntry(
   log: {
     id: string;
@@ -10414,7 +10446,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const invoice = await storage.createCrmInvoiceWithGeneratedNumber(validationResult.data, year);
+      const duplicateLockKey = companyIdToAdvisoryLockKey(`crm-invoice-duplicate:${JSON.stringify([
+        validationResult.data.contractorUserId,
+        validationResult.data.homeownerId ?? null,
+        validationResult.data.title ?? "",
+        validationResult.data.amountDue ?? "0",
+      ])}`);
+      const persistenceResult = await withDbAdvisoryLock(
+        duplicateLockKey,
+        pool,
+        async () => {
+          const latestInvoices = await storage.getCrmInvoices(req.session.user.id, {});
+          const duplicateInvoice = findRecentDuplicateCrmInvoice(
+            latestInvoices,
+            validationResult.data,
+          );
+          if (duplicateInvoice) {
+            return { invoice: duplicateInvoice, created: false } as const;
+          }
+          return {
+            invoice: await storage.createCrmInvoiceWithGeneratedNumber(validationResult.data, year),
+            created: true,
+          } as const;
+        },
+      );
+      if (!persistenceResult.created) {
+        return res.status(200).json(persistenceResult.invoice);
+      }
+      const invoice = persistenceResult.invoice;
 
       if (resolvedHomeownerId) {
           const contractorUser = req.session.user;

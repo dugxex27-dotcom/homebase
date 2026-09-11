@@ -27,6 +27,12 @@ const {
   mockCheckoutSessionsCreate,
   mockClaimInvoiceCheckoutSession,
   mockUnlinkInvoiceFromHomeowner,
+  mockGetCrmInvoices,
+  mockCreateCrmInvoiceWithGeneratedNumber,
+  mockValidatePermanentConnectionCode,
+  mockSendNewLinkedInvoiceEmail,
+  mockPoolConnect,
+  crmInvoiceRows,
   invoiceLinkState,
 } = vi.hoisted(() => ({
   INVOICE_ID: "inv-token-001",
@@ -39,6 +45,12 @@ const {
   mockGetCompany: vi.fn(),
   mockCheckoutSessionsCreate: vi.fn(),
   mockUnlinkInvoiceFromHomeowner: vi.fn(),
+  mockGetCrmInvoices: vi.fn(),
+  mockCreateCrmInvoiceWithGeneratedNumber: vi.fn(),
+  mockValidatePermanentConnectionCode: vi.fn(),
+  mockSendNewLinkedInvoiceEmail: vi.fn().mockResolvedValue(true),
+  mockPoolConnect: vi.fn(),
+  crmInvoiceRows: [] as Array<Record<string, any>>,
   invoiceLinkState: {
     homeownerId: "homeowner-token-001" as string | null,
     houseId: "house-token-001" as string | null,
@@ -103,7 +115,16 @@ function sessionForTestUser(who: unknown) {
   if (who === "contractor" || who === "agent" || who === "admin") {
     return {
       isAuthenticated: true,
-      user: { id: `${who}-token-001`, role: who, email: `${who}@test.com`, status: "active" },
+      user: {
+        id: `${who}-token-001`,
+        role: who,
+        email: `${who}@test.com`,
+        status: "active",
+        companyId: who === "contractor" ? "company-001" : null,
+        subscriptionTierName: who === "contractor" ? "contractor_pro" : null,
+        firstName: "Test",
+        lastName: "Contractor",
+      },
     };
   }
   return undefined;
@@ -158,7 +179,11 @@ vi.mock("../notification-orchestrator", () => ({
 }));
 vi.mock("../email-service", () => ({
   sendEmail: vi.fn().mockResolvedValue(undefined),
-  emailService: { send: vi.fn().mockResolvedValue(undefined), sendInvoiceEmail: vi.fn().mockResolvedValue(true) },
+  emailService: {
+    send: vi.fn().mockResolvedValue(undefined),
+    sendInvoiceEmail: vi.fn().mockResolvedValue(true),
+    sendNewLinkedInvoiceEmail: mockSendNewLinkedInvoiceEmail,
+  },
   sendCheckoutFailureEmail: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("../sms-service", () => ({ smsService: { send: vi.fn().mockResolvedValue(undefined), sendInvoiceSMS: vi.fn().mockResolvedValue(true) } }));
@@ -223,11 +248,18 @@ vi.mock("../storage", async () => {
       getCompany: mockGetCompany,
       claimInvoiceCheckoutSession: mockClaimInvoiceCheckoutSession,
       unlinkInvoiceFromHomeowner: mockUnlinkInvoiceFromHomeowner,
+      getCrmInvoices: mockGetCrmInvoices,
+      createCrmInvoiceWithGeneratedNumber: mockCreateCrmInvoiceWithGeneratedNumber,
+      validatePermanentConnectionCode: mockValidatePermanentConnectionCode,
     }),
   };
 });
 vi.mock("../db", () => ({
-  pool: { query: vi.fn().mockResolvedValue({ rows: [] }), end: vi.fn() },
+  pool: {
+    connect: mockPoolConnect,
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    end: vi.fn(),
+  },
   db: {
     insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ onConflictDoNothing: vi.fn().mockResolvedValue(undefined), returning: vi.fn().mockResolvedValue([]) }) }),
     select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue([]) }) }) }),
@@ -492,4 +524,78 @@ describe("PATCH /api/homeowner/unlink-invoice/:invoiceId — ownership", () => {
       expect(invoiceLinkState).toEqual(originalLinkage);
     },
   );
+});
+
+describe("POST /api/crm/invoices — concurrent duplicate submissions", () => {
+  beforeEach(() => {
+    crmInvoiceRows.length = 0;
+    mockGetCrmInvoices.mockReset().mockImplementation(async () => [...crmInvoiceRows]);
+    mockValidatePermanentConnectionCode.mockReset().mockResolvedValue({
+      homeownerId: HOMEOWNER_ID,
+      houses: [{ id: "house-token-001" }],
+    });
+    mockCreateCrmInvoiceWithGeneratedNumber.mockReset().mockImplementation(
+      async (invoice: Record<string, any>, year: number) => {
+        await Promise.resolve();
+        const created = {
+          id: `invoice-created-${crmInvoiceRows.length + 1}`,
+          ...invoice,
+          invoiceNumber: `INV-${year}-${String(crmInvoiceRows.length + 1).padStart(4, "0")}`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        crmInvoiceRows.push(created);
+        return created;
+      },
+    );
+    mockSendNewLinkedInvoiceEmail.mockClear();
+
+    let lockTail = Promise.resolve();
+    mockPoolConnect.mockReset().mockImplementation(async () => {
+      const previousLock = lockTail;
+      let releaseLock!: () => void;
+      lockTail = new Promise<void>((resolve) => {
+        releaseLock = resolve;
+      });
+      return {
+        query: async (statement: string) => {
+          if (statement.includes("pg_advisory_lock")) await previousLock;
+          if (statement.includes("pg_advisory_unlock")) releaseLock();
+          return { rows: [] };
+        },
+        release: vi.fn(),
+      };
+    });
+  });
+
+  it("creates and emails one invoice for two simultaneous identical requests", async () => {
+    const app = await buildApp();
+    const payload = {
+      connectionCode: "HOME-123",
+      houseId: "house-token-001",
+      clientId: CLIENT_ID,
+      title: "Replace water heater",
+      description: "Same submitted work",
+      lineItems: [{ description: "Water heater", quantity: 1, unitPrice: 1250, total: 1250 }],
+      subtotal: "1250.00",
+      taxRate: "0.00",
+      taxAmount: "0.00",
+      discount: "0.00",
+      total: "1250.00",
+      amountPaid: "0.00",
+      amountDue: "1250.00",
+      status: "draft",
+    };
+
+    const [first, second] = await Promise.all([
+      request(app).post("/api/crm/invoices").set("x-test-user", "contractor").send(payload),
+      request(app).post("/api/crm/invoices").set("x-test-user", "contractor").send(payload),
+    ]);
+
+    expect([first.status, second.status].sort()).toEqual([200, 201]);
+    expect(first.body.id).toBe(second.body.id);
+    expect(crmInvoiceRows).toHaveLength(1);
+    expect(mockCreateCrmInvoiceWithGeneratedNumber).toHaveBeenCalledTimes(1);
+    expect(mockSendNewLinkedInvoiceEmail).toHaveBeenCalledTimes(1);
+  });
 });
