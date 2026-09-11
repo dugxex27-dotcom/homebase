@@ -8,7 +8,7 @@
  *   3. POST /api/pay/invoice/:id/checkout — same access rules
  */
 
-import { vi, describe, it, expect, afterEach } from "vitest";
+import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createHash } from "crypto";
 
 // ---------------------------------------------------------------------------
@@ -26,6 +26,8 @@ const {
   mockGetCompany,
   mockCheckoutSessionsCreate,
   mockClaimInvoiceCheckoutSession,
+  mockUnlinkInvoiceFromHomeowner,
+  invoiceLinkState,
 } = vi.hoisted(() => ({
   INVOICE_ID: "inv-token-001",
   HOMEOWNER_ID: "homeowner-token-001",
@@ -36,6 +38,11 @@ const {
   mockGetUser: vi.fn(),
   mockGetCompany: vi.fn(),
   mockCheckoutSessionsCreate: vi.fn(),
+  mockUnlinkInvoiceFromHomeowner: vi.fn(),
+  invoiceLinkState: {
+    homeownerId: "homeowner-token-001" as string | null,
+    houseId: "house-token-001" as string | null,
+  },
   // Checkout-session idempotency claim — default to "claimed" so this
   // file's existing tests exercise the normal (uncontested) path, same as
   // before the idempotency guard existed.
@@ -85,6 +92,22 @@ const HOMEOWNER_SESSION = {
   isAuthenticated: true,
   user: { id: HOMEOWNER_ID, role: "homeowner", email: "h@test.com", status: "active" },
 };
+const OTHER_HOMEOWNER_SESSION = {
+  isAuthenticated: true,
+  user: { id: "homeowner-token-002", role: "homeowner", email: "other@test.com", status: "active" },
+};
+
+function sessionForTestUser(who: unknown) {
+  if (who === "homeowner") return HOMEOWNER_SESSION;
+  if (who === "other-homeowner") return OTHER_HOMEOWNER_SESSION;
+  if (who === "contractor" || who === "agent" || who === "admin") {
+    return {
+      isAuthenticated: true,
+      user: { id: `${who}-token-001`, role: who, email: `${who}@test.com`, status: "active" },
+    };
+  }
+  return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -96,10 +119,7 @@ vi.mock("../replitAuth", async (importOriginal) => {
     ...actual,
     setupAuth: vi.fn().mockResolvedValue(undefined),
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
-      const who = req.headers?.["x-test-user"];
-      if (who === "homeowner") {
-        req.session = HOMEOWNER_SESSION;
-      }
+      req.session = sessionForTestUser(req.headers?.["x-test-user"]);
       // else: no session injected — simulates unauthenticated request
       next();
     }),
@@ -202,6 +222,7 @@ vi.mock("../storage", async () => {
       getUser: mockGetUser,
       getCompany: mockGetCompany,
       claimInvoiceCheckoutSession: mockClaimInvoiceCheckoutSession,
+      unlinkInvoiceFromHomeowner: mockUnlinkInvoiceFromHomeowner,
     }),
   };
 });
@@ -232,10 +253,7 @@ async function buildApp() {
     // isAuthenticated middleware (e.g. token-based public endpoints) can still
     // receive an authenticated session in tests.
     _app.use((req: any, _res: any, next: any) => {
-      const who = req.headers?.["x-test-user"];
-      if (who === "homeowner") {
-        req.session = HOMEOWNER_SESSION;
-      }
+      req.session = sessionForTestUser(req.headers?.["x-test-user"]);
       next();
     });
     process.env.STRIPE_SECRET_KEY = "sk_test_invoice_token_placeholder";
@@ -415,4 +433,63 @@ describe("POST /api/pay/invoice/:id/checkout — token-based access control", ()
     expect(res.status).toBe(200);
     expect(res.body.url).toContain("checkout.stripe.com");
   });
+});
+
+describe("PATCH /api/homeowner/unlink-invoice/:invoiceId — ownership", () => {
+  beforeEach(() => {
+    invoiceLinkState.homeownerId = HOMEOWNER_ID;
+    invoiceLinkState.houseId = "house-token-001";
+    mockUnlinkInvoiceFromHomeowner.mockReset().mockImplementation(
+      async (invoiceId: string, homeownerId: string) => {
+        if (invoiceId !== INVOICE_ID || invoiceLinkState.homeownerId !== homeownerId) {
+          return false;
+        }
+        invoiceLinkState.homeownerId = null;
+        invoiceLinkState.houseId = null;
+        return true;
+      },
+    );
+  });
+
+  it("allows a homeowner to unlink their own linked invoice", async () => {
+    const app = await buildApp();
+    const res = await request(app)
+      .patch(`/api/homeowner/unlink-invoice/${INVOICE_ID}`)
+      .set("x-test-user", "homeowner");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true });
+    expect(mockUnlinkInvoiceFromHomeowner).toHaveBeenCalledWith(INVOICE_ID, HOMEOWNER_ID);
+    expect(invoiceLinkState).toEqual({ homeownerId: null, houseId: null });
+  });
+
+  it("returns not found when a homeowner tries to unlink another homeowner's invoice", async () => {
+    const app = await buildApp();
+    const originalLinkage = { ...invoiceLinkState };
+    const res = await request(app)
+      .patch(`/api/homeowner/unlink-invoice/${INVOICE_ID}`)
+      .set("x-test-user", "other-homeowner");
+
+    expect(res.status).toBe(404);
+    expect(mockUnlinkInvoiceFromHomeowner).toHaveBeenCalledWith(
+      INVOICE_ID,
+      OTHER_HOMEOWNER_SESSION.user.id,
+    );
+    expect(invoiceLinkState).toEqual(originalLinkage);
+  });
+
+  it.each(["contractor", "agent", "admin"])(
+    "rejects the %s role without changing invoice linkage",
+    async (role) => {
+      const app = await buildApp();
+      const originalLinkage = { ...invoiceLinkState };
+      const res = await request(app)
+        .patch(`/api/homeowner/unlink-invoice/${INVOICE_ID}`)
+        .set("x-test-user", role);
+
+      expect(res.status).toBe(403);
+      expect(mockUnlinkInvoiceFromHomeowner).not.toHaveBeenCalled();
+      expect(invoiceLinkState).toEqual(originalLinkage);
+    },
+  );
 });
