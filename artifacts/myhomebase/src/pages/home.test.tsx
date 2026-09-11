@@ -1182,6 +1182,25 @@ describe("Profile nudge card — visibility based on completion", () => {
     expect(flags.savedWaterHeaterYear).toBeNull();
   });
 
+  it("ignores a stored dismissal when the health score is critically low", () => {
+    flags.healthScore = 29;
+    localStorage.setItem("profile-nudge-dismissed-house-1", "1");
+
+    renderHome();
+
+    expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+  });
+
+  it("respects a session dismissal when the health score is critically low", async () => {
+    flags.healthScore = 29;
+    const user = userEvent.setup();
+
+    renderHome();
+    await user.click(screen.getByTestId("button-dismiss-profile-nudge"));
+
+    expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
+  });
+
   it("does not persist a low-score dismissal and shows again on the next visit", async () => {
     flags.healthScore = 29;
     const user = userEvent.setup();
