@@ -62,4 +62,43 @@ describe("Stripe webhook monitoring PostgreSQL concurrency", () => {
     const store = createPostgresStripeWebhookMonitoringStore(pool, tableName);
     await expect(store.read()).rejects.toThrow("state row is missing");
   });
+
+  it("claims only one alert for an unchanged stale event set", async () => {
+    const processA = createPostgresStripeWebhookMonitoringStore(pool, tableName);
+    const processB = createPostgresStripeWebhookMonitoringStore(pool, tableName);
+    const nowMs = Date.parse("2026-09-07T12:00:00.000Z");
+
+    const first = await processA.recordStaleEvents(2, ["evt_a", "evt_b"], nowMs);
+    const repeated = await processB.recordStaleEvents(
+      2,
+      ["evt_a", "evt_b"],
+      nowMs + 60 * 60 * 1000,
+    );
+    const changed = await processB.recordStaleEvents(
+      2,
+      ["evt_a", "evt_c"],
+      nowMs + 60 * 60 * 1000,
+    );
+
+    expect(first.shouldAlert).toBe(true);
+    expect(repeated.shouldAlert).toBe(false);
+    expect(changed.shouldAlert).toBe(true);
+  });
+
+  it("releases only the matching failed delivery claim", async () => {
+    const store = createPostgresStripeWebhookMonitoringStore(pool, tableName);
+    const nowMs = Date.parse("2026-09-07T13:00:00.000Z");
+    await store.recordStaleEvents(0, [], nowMs - 1);
+    const claimed = await store.recordStaleEvents(1, ["evt_retry"], nowMs);
+
+    await store.releaseStaleAlertClaim("not-the-claim");
+    expect(
+      (await store.recordStaleEvents(1, ["evt_retry"], nowMs + 1)).shouldAlert,
+    ).toBe(false);
+
+    await store.releaseStaleAlertClaim(claimed.alertClaimToken!);
+    expect(
+      (await store.recordStaleEvents(1, ["evt_retry"], nowMs + 2)).shouldAlert,
+    ).toBe(true);
+  });
 });

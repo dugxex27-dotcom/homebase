@@ -19,7 +19,6 @@ function createSharedMemoryStore(): StripeWebhookMonitoringStore {
     monitoringCheckError: null,
   };
   let failureAlertAtMs: number | null = null;
-  let staleAlertAtMs: number | null = null;
   let queue = Promise.resolve();
 
   const atomic = async <T>(operation: () => T): Promise<T> => {
@@ -46,7 +45,7 @@ function createSharedMemoryStore(): StripeWebhookMonitoringStore {
           && (failureAlertAtMs === null || nowMs - failureAlertAtMs >= STRIPE_WEBHOOK_ALERT_COOLDOWN_MS);
         if (shouldAlert) failureAlertAtMs = nowMs;
         state = { ...state, consecutive5xxFailures: count, lastFailureAtMs: nowMs };
-        return { ...state, shouldAlert, previousCount };
+        return { ...state, shouldAlert, previousCount, alertClaimToken: null };
       });
     },
     async recordSuccess(nowMs) {
@@ -54,23 +53,33 @@ function createSharedMemoryStore(): StripeWebhookMonitoringStore {
         const previousCount = state.consecutive5xxFailures;
         failureAlertAtMs = null;
         state = { ...state, consecutive5xxFailures: 0, lastSuccessfulResponseAtMs: nowMs };
-        return { ...state, shouldAlert: false, previousCount };
+        return { ...state, shouldAlert: false, previousCount, alertClaimToken: null };
       });
     },
     async recordStaleEvents(count, eventIds, nowMs) {
       return atomic(() => {
         const previousCount = state.stalePendingCount;
+        const previousEventIds = state.lastStalePendingEventIds;
         const shouldAlert = count > 0
-          && (previousCount !== count || staleAlertAtMs === null
-            || nowMs - staleAlertAtMs >= STRIPE_WEBHOOK_ALERT_COOLDOWN_MS);
-        staleAlertAtMs = count === 0 ? null : shouldAlert ? nowMs : staleAlertAtMs;
+          && (previousCount !== count
+            || previousEventIds.join("\n") !== eventIds.join("\n"));
         state = {
           ...state,
           stalePendingCount: count,
           lastStalePendingEventIds: [...eventIds],
           monitoringCheckError: null,
         };
-        return { ...state, shouldAlert, previousCount };
+        return {
+          ...state,
+          shouldAlert,
+          previousCount,
+          alertClaimToken: shouldAlert ? "stale-alert-claim" : null,
+        };
+      });
+    },
+    async releaseStaleAlertClaim() {
+      return atomic(() => {
+        state = { ...state, stalePendingCount: 0, lastStalePendingEventIds: [] };
       });
     },
     async recordCheckError(errorCode) {
@@ -208,12 +217,56 @@ describe("Stripe webhook fleet monitoring", () => {
     expect(health.lastStalePendingEventIds).toHaveLength(10);
   });
 
+  it("alerts once for the same stuck events and alerts again when the stuck set changes", async () => {
+    const sendAlert = vi.fn().mockResolvedValue(true);
+    const monitor = createStripeWebhookMonitor(createSharedMemoryStore(), sendAlert);
+    const firstSet = [{
+      eventId: "evt_stale_b",
+      processedAt: new Date("2026-08-29T12:00:00.000Z"),
+    }, {
+      eventId: "evt_stale_a",
+      processedAt: new Date("2026-08-29T12:01:00.000Z"),
+    }];
+
+    await monitor.checkHealth(async () => firstSet, 2_000);
+    await monitor.checkHealth(async () => [...firstSet].reverse(), 3_000);
+    await monitor.checkHealth(async () => [
+      firstSet[0],
+      { eventId: "evt_stale_c", processedAt: firstSet[1].processedAt },
+    ], 4_000);
+
+    expect(sendAlert).toHaveBeenCalledTimes(2);
+    expect(sendAlert).toHaveBeenNthCalledWith(1, {
+      stalePendingCount: 2,
+      eventIds: ["evt_stale_a", "evt_stale_b"],
+      oldestClaimedAt: "2026-08-29T12:00:00.000Z",
+      olderThanMinutes: 15,
+    });
+  });
+
+  it("releases a failed delivery claim so the next check can retry", async () => {
+    const sendAlert = vi.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const monitor = createStripeWebhookMonitor(createSharedMemoryStore(), sendAlert);
+    const events = [{
+      eventId: "evt_stale",
+      processedAt: new Date("2026-08-29T12:00:00.000Z"),
+    }];
+
+    await monitor.checkHealth(async () => events, 2_000);
+    await monitor.checkHealth(async () => events, 3_000);
+
+    expect(sendAlert).toHaveBeenCalledTimes(2);
+  });
+
   it("fails health closed but preserves webhook handling when shared state is unavailable", async () => {
     const unavailableStore = {
       read: vi.fn().mockRejectedValue(new Error("database unavailable")),
       recordFailure: vi.fn().mockRejectedValue(new Error("database unavailable")),
       recordSuccess: vi.fn().mockRejectedValue(new Error("database unavailable")),
       recordStaleEvents: vi.fn().mockRejectedValue(new Error("database unavailable")),
+      releaseStaleAlertClaim: vi.fn().mockRejectedValue(new Error("database unavailable")),
       recordCheckError: vi.fn().mockRejectedValue(new Error("database unavailable")),
     } satisfies StripeWebhookMonitoringStore;
     const monitor = createStripeWebhookMonitor(unavailableStore);

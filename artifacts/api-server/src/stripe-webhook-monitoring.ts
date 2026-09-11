@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { pool } from "./db";
+import { sendEmail } from "./email-service";
 import { logger } from "./lib/logger";
 
 export const STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD = 3;
@@ -54,6 +55,7 @@ export interface StripeWebhookMonitoringState {
 interface StateMutationResult extends StripeWebhookMonitoringState {
   shouldAlert: boolean;
   previousCount: number;
+  alertClaimToken: string | null;
 }
 
 export interface StripeWebhookMonitoringStore {
@@ -61,8 +63,18 @@ export interface StripeWebhookMonitoringStore {
   recordFailure(nowMs: number): Promise<StateMutationResult>;
   recordSuccess(nowMs: number): Promise<StateMutationResult>;
   recordStaleEvents(count: number, eventIds: string[], nowMs: number): Promise<StateMutationResult>;
+  releaseStaleAlertClaim(alertClaimToken: string): Promise<void>;
   recordCheckError(errorCode: string): Promise<StripeWebhookMonitoringState>;
 }
+
+export interface StaleStripeWebhookAlert {
+  eventIds: string[];
+  oldestClaimedAt: string;
+  stalePendingCount: number;
+  olderThanMinutes: number;
+}
+
+type SendStaleStripeWebhookAlert = (alert: StaleStripeWebhookAlert) => Promise<boolean>;
 
 type MonitoringRow = {
   consecutive_5xx_failures: number;
@@ -144,7 +156,12 @@ export function createPostgresStripeWebhookMonitoringStore(
       [now, STRIPE_WEBHOOK_5XX_ALERT_THRESHOLD, STRIPE_WEBHOOK_ALERT_COOLDOWN_MS, alertClaimToken],
     );
     const row = result.rows[0];
-    return { ...fromRow(row), shouldAlert: row?.should_alert === true, previousCount: row?.previous_count ?? 0 };
+    return {
+      ...fromRow(row),
+      shouldAlert: row?.should_alert === true,
+      previousCount: row?.previous_count ?? 0,
+      alertClaimToken: row?.should_alert === true ? alertClaimToken : null,
+    };
   },
 
   async recordSuccess(nowMs) {
@@ -163,7 +180,12 @@ export function createPostgresStripeWebhookMonitoringStore(
       [new Date(nowMs)],
     );
     const row = result.rows[0];
-    return { ...fromRow(row), shouldAlert: false, previousCount: row?.previous_count ?? 0 };
+    return {
+      ...fromRow(row),
+      shouldAlert: false,
+      previousCount: row?.previous_count ?? 0,
+      alertClaimToken: null,
+    };
   },
 
   async recordStaleEvents(count, eventIds, nowMs) {
@@ -173,9 +195,9 @@ export function createPostgresStripeWebhookMonitoringStore(
          id, stale_pending_count, last_stale_pending_event_ids,
          last_stale_alert_at, last_stale_alert_token, monitoring_check_error
        ) VALUES (
-         1, $1, $2,
-         CASE WHEN $1 > 0 THEN $3 ELSE NULL END,
-         CASE WHEN $1 > 0 THEN $5 ELSE NULL END,
+         1, $1, $2::text[],
+         CASE WHEN $1 > 0 THEN $3::timestamptz ELSE NULL END,
+         CASE WHEN $1 > 0 THEN $4 ELSE NULL END,
          NULL
        )
        ON CONFLICT (id) DO UPDATE SET
@@ -184,25 +206,41 @@ export function createPostgresStripeWebhookMonitoringStore(
          monitoring_check_error = NULL,
          last_stale_alert_at = CASE
            WHEN $1 > 0 AND (
-             ${table}.stale_pending_count <> $1 OR ${table}.last_stale_alert_at IS NULL
-             OR ${table}.last_stale_alert_at <= $3 - ($4 * interval '1 millisecond')
-           ) THEN $3
+             ${table}.stale_pending_count <> $1
+             OR ${table}.last_stale_pending_event_ids IS DISTINCT FROM $2::text[]
+             OR ${table}.last_stale_alert_at IS NULL
+           ) THEN $3::timestamptz
            WHEN $1 = 0 THEN NULL
            ELSE ${table}.last_stale_alert_at END,
          last_stale_alert_token = CASE
            WHEN $1 > 0 AND (
-             ${table}.stale_pending_count <> $1 OR ${table}.last_stale_alert_at IS NULL
-             OR ${table}.last_stale_alert_at <= $3 - ($4 * interval '1 millisecond')
-           ) THEN $5
+             ${table}.stale_pending_count <> $1
+             OR ${table}.last_stale_pending_event_ids IS DISTINCT FROM $2::text[]
+             OR ${table}.last_stale_alert_at IS NULL
+           ) THEN $4
            WHEN $1 = 0 THEN NULL
            ELSE ${table}.last_stale_alert_token END
        RETURNING *,
-         ($1 > 0 AND last_stale_alert_token = $5) AS should_alert,
+         ($1 > 0 AND last_stale_alert_token = $4) AS should_alert,
          0 AS previous_count`,
-      [count, eventIds, new Date(nowMs), STRIPE_WEBHOOK_ALERT_COOLDOWN_MS, alertClaimToken],
+      [count, eventIds, new Date(nowMs), alertClaimToken],
     );
     const row = result.rows[0];
-    return { ...fromRow(row), shouldAlert: row?.should_alert === true, previousCount: row?.previous_count ?? 0 };
+    return {
+      ...fromRow(row),
+      shouldAlert: row?.should_alert === true,
+      previousCount: row?.previous_count ?? 0,
+      alertClaimToken: row?.should_alert === true ? alertClaimToken : null,
+    };
+  },
+
+  async releaseStaleAlertClaim(alertClaimToken) {
+    await queryable.query(
+      `UPDATE ${table}
+       SET last_stale_alert_at = NULL, last_stale_alert_token = NULL
+       WHERE id = 1 AND last_stale_alert_token = $1`,
+      [alertClaimToken],
+    );
   },
 
   async recordCheckError(errorCode) {
@@ -219,6 +257,39 @@ export function createPostgresStripeWebhookMonitoringStore(
 }
 
 const postgresStore = createPostgresStripeWebhookMonitoringStore(pool);
+
+function getStripeWebhookAlertRecipients(): string[] {
+  const configured =
+    process.env.STRIPE_WEBHOOK_ALERT_EMAILS
+    || process.env.ADMIN_EMAILS
+    || process.env.ADMIN_EMAIL
+    || "gotohomebase2025@gmail.com";
+  return [...new Set(configured.split(",").map((email) => email.trim()).filter(Boolean))];
+}
+
+export async function sendStaleStripeWebhookAlert(
+  alert: StaleStripeWebhookAlert,
+): Promise<boolean> {
+  const [to, ...cc] = getStripeWebhookAlertRecipients();
+  const eventList = alert.eventIds.join(", ");
+  return sendEmail({
+    to,
+    ...(cc.length > 0 ? { cc } : {}),
+    subject: `Action required: ${alert.stalePendingCount} Stripe webhook event(s) stuck`,
+    text:
+      `HomeBase detected ${alert.stalePendingCount} Stripe webhook event(s) still pending after `
+      + `${alert.olderThanMinutes} minutes. Oldest claim: ${alert.oldestClaimedAt}. `
+      + `Event IDs: ${eventList}. Review webhook processing and recover or clear the stuck events.`,
+    html: `
+      <h1>Stripe webhook events are stuck</h1>
+      <p>HomeBase detected <strong>${alert.stalePendingCount} Stripe webhook event(s)</strong>
+      still pending after ${alert.olderThanMinutes} minutes.</p>
+      <p><strong>Oldest claim:</strong> ${alert.oldestClaimedAt}</p>
+      <p><strong>Event IDs:</strong> ${eventList}</p>
+      <p>Review webhook processing and recover or clear the stuck events.</p>
+    `,
+  });
+}
 
 function sanitizeToken(value: unknown, fallback: string): string {
   if (typeof value !== "string" || value.length === 0) return fallback;
@@ -262,7 +333,10 @@ function toSnapshot(state: StripeWebhookMonitoringState): StripeWebhookHealthSna
   };
 }
 
-export function createStripeWebhookMonitor(store: StripeWebhookMonitoringStore) {
+export function createStripeWebhookMonitor(
+  store: StripeWebhookMonitoringStore,
+  sendStaleAlert: SendStaleStripeWebhookAlert = async () => true,
+) {
   const unavailableState = (): StripeWebhookMonitoringState => ({
     ...EMPTY_STATE,
     lastStalePendingEventIds: [],
@@ -335,14 +409,38 @@ export function createStripeWebhookMonitor(store: StripeWebhookMonitoringStore) 
     async checkHealth(readStalePendingEvents: () => Promise<readonly StaleStripePendingEvent[]>, nowMs = Date.now()) {
       try {
         const events = await readStalePendingEvents();
-        const eventIds = events.slice(0, 10).map((event) => sanitizeStripeWebhookEventId(event.eventId));
+        const eventIds = events
+          .map((event) => sanitizeStripeWebhookEventId(event.eventId))
+          .sort()
+          .slice(0, 10);
         const result = await store.recordStaleEvents(events.length, eventIds, nowMs);
         if (result.shouldAlert) {
           const oldestClaimedAtMs = Math.min(...events.map((event) => event.processedAt.getTime()));
+          const alert = {
+            stalePendingCount: events.length,
+            eventIds,
+            oldestClaimedAt: new Date(oldestClaimedAtMs).toISOString(),
+            olderThanMinutes: STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES,
+          };
           logger.error(
-            { alert: true, stalePendingCount: events.length, threshold: 1, eventIds, oldestClaimedAt: new Date(oldestClaimedAtMs).toISOString(), olderThanMinutes: STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES },
+            { alert: true, ...alert, threshold: 1 },
             "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims detected — recovery required",
           );
+          let delivered = false;
+          try {
+            delivered = await sendStaleAlert(alert);
+          } catch {
+            delivered = false;
+          }
+          if (!delivered) {
+            if (result.alertClaimToken) {
+              await store.releaseStaleAlertClaim(result.alertClaimToken);
+            }
+            logger.error(
+              { failureReason: "stale_pending_alert_delivery_failed", stalePendingCount: events.length },
+              "[STRIPE-WEBHOOK-MONITOR] Failed to deliver stale pending Stripe webhook alert",
+            );
+          }
         } else if (events.length === 0 && result.previousCount > 0) {
           logger.info({ previousStalePendingCount: result.previousCount }, "[STRIPE-WEBHOOK-MONITOR] Stale pending Stripe event claims cleared");
         }
@@ -360,7 +458,7 @@ export function createStripeWebhookMonitor(store: StripeWebhookMonitoringStore) 
   };
 }
 
-const monitor = createStripeWebhookMonitor(postgresStore);
+const monitor = createStripeWebhookMonitor(postgresStore, sendStaleStripeWebhookAlert);
 
 export const getStripeWebhookHealthSnapshot = monitor.getHealthSnapshot;
 export const recordStripeWebhookSuccess = monitor.recordSuccess;
