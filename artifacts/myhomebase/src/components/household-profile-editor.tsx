@@ -105,6 +105,17 @@ export function HouseholdProfileEditor({
           save.values,
         );
         await response.json();
+        const definedValues = Object.fromEntries(
+          Object.entries(save.values).filter(([, value]) => value !== undefined),
+        );
+        queryClient.setQueryData<Record<string, unknown>[]>(
+          ["/api/houses"],
+          (cachedHouses) => cachedHouses?.map((cachedHouse) => (
+            cachedHouse.id === save.houseId
+              ? { ...cachedHouse, ...definedValues }
+              : cachedHouse
+          )),
+        );
         if (save.houseId === activeHouseIdRef.current) {
           lastSavedValuesRef.current = JSON.stringify(save.values);
         }

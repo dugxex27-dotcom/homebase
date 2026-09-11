@@ -2,15 +2,16 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HouseholdProfileEditor } from "./household-profile-editor";
 
-const { apiRequest, invalidateQueries, toast } = vi.hoisted(() => ({
+const { apiRequest, invalidateQueries, setQueryData, toast } = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   invalidateQueries: vi.fn(),
+  setQueryData: vi.fn(),
   toast: vi.fn(),
 }));
 
 vi.mock("@/lib/queryClient", () => ({ apiRequest }));
 vi.mock("@tanstack/react-query", () => ({
-  useQueryClient: () => ({ invalidateQueries }),
+  useQueryClient: () => ({ invalidateQueries, setQueryData }),
 }));
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast }),
@@ -56,6 +57,7 @@ describe("HouseholdProfileEditor autosave", { timeout: 20_000 }, () => {
     vi.useFakeTimers();
     apiRequest.mockReset();
     invalidateQueries.mockReset();
+    setQueryData.mockReset();
     toast.mockReset();
   });
 
@@ -86,6 +88,22 @@ describe("HouseholdProfileEditor autosave", { timeout: 20_000 }, () => {
       "PATCH",
       expect.objectContaining({ squareFootage: 1200 }),
     );
+    expect(setQueryData.mock.calls[0]?.[0]).toEqual(["/api/houses"]);
+    const updateCachedHouses = setQueryData.mock.calls[0]?.[1];
+    const otherHouse = {
+      id: "house-2",
+      squareFootage: 900,
+      homeSystems: ["plumbing"],
+    };
+    expect(updateCachedHouses([{
+      id: "house-1",
+      squareFootage: 1000,
+      homeSystems: ["hvac", "roof"],
+    }, otherHouse])).toEqual([{
+      id: "house-1",
+      squareFootage: 1200,
+      homeSystems: ["hvac", "roof"],
+    }, otherHouse]);
     expect(screen.getByTestId("profile-save-status")).toHaveTextContent("Saved");
   });
 
