@@ -141,6 +141,13 @@
       "when": 1789084800000,
       "tag": "20260911-task-completion-service-year-uniqueness",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789113600000,
+      "tag": "20260911-suspended-user-push-subscription-cleanup",
+      "breakpoints": true
     }
   ]
 }
