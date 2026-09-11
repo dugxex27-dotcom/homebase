@@ -35,7 +35,7 @@ def main() -> int:
         return 2
 
     git("fetch", "origin", "main")
-    behind, ahead = map(
+    ahead, behind = map(
         int,
         git(
             "rev-list",
