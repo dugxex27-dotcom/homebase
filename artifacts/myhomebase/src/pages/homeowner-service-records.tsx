@@ -739,6 +739,7 @@ export default function HomeownerServiceRecords() {
 
     return matchesHomeArea && matchesScoreHistory;
   }) || [];
+  const scoringFilteredLogsCount = filteredLogs.filter((log) => isScoringMaintenanceLog(log)).length;
 
   // Stat chip computations
   const totalRecords = maintenanceLogs?.length || 0;
@@ -1015,6 +1016,17 @@ export default function HomeownerServiceRecords() {
             );
           })}
         </div>
+
+        {!maintenanceLogsLoading && filteredLogs.length > 0 && (
+          <p
+            className="mb-4 text-sm text-gray-600"
+            data-testid="score-impact-summary"
+            aria-live="polite"
+          >
+            <span className="font-semibold text-[#2C0F5B]">{scoringFilteredLogsCount} of {filteredLogs.length}</span>
+            {" "}record{filteredLogs.length === 1 ? "" : "s"} {filteredLogs.length === 1 ? "is" : "are"} counting toward your score
+          </p>
+        )}
 
         {/* Service Records List */}
         {maintenanceLogsLoading ? (

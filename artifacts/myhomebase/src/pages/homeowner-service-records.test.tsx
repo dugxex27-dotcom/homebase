@@ -337,17 +337,20 @@ describe("Service Records — scoring history filter", () => {
 
     renderPage();
 
+    expect(screen.getByTestId("score-impact-summary").textContent).toContain("2 of 3 records are counting toward your score");
     expect(document.querySelector('[data-log-id="scoring-1"]')).not.toBeNull();
     expect(document.querySelector('[data-log-id="scoring-2"]')).not.toBeNull();
     expect(screen.getByTestId("button-toggle-older-records").textContent).toContain("1 Older Record");
 
     await userEvent.click(screen.getByTestId("filter-maintenance-scoring"));
+    expect(screen.getByTestId("score-impact-summary").textContent).toContain("2 of 2 records are counting toward your score");
     expect(document.querySelector('[data-log-id="scoring-1"]')).not.toBeNull();
     expect(document.querySelector('[data-log-id="scoring-2"]')).not.toBeNull();
     expect(document.querySelector('[data-log-id="historical-1"]')).toBeNull();
     expect(screen.queryByTestId("button-toggle-older-records")).toBeNull();
 
     await userEvent.click(screen.getByTestId("filter-maintenance-historical"));
+    expect(screen.getByTestId("score-impact-summary").textContent).toContain("0 of 1 record is counting toward your score");
     expect(document.querySelector('[data-log-id="scoring-1"]')).toBeNull();
     expect(document.querySelector('[data-log-id="historical-1"]')).not.toBeNull();
 
