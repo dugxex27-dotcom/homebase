@@ -68,4 +68,34 @@ describe("AI contractor message tone API", () => {
     expect(response.body).toEqual({ message: "Invalid request body" });
     expect(mockCompletionCreate).not.toHaveBeenCalled();
   });
+
+  it("returns the draft and 2-3 follow-up questions from one AI call", async () => {
+    const followUpQuestions = [
+      "When are you available?",
+      "What does the estimate include?",
+      "Do you warranty this repair?",
+    ];
+    mockCompletionCreate.mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            message: "The furnace is making a loud noise. Could you provide an estimate?",
+            followUpQuestions,
+          }),
+        },
+      }],
+    });
+
+    const response = await request(createApp())
+      .post("/api/ai/draft-contractor-message")
+      .send({ issueDescription: "The furnace is making a loud noise", tone: "Friendly" });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      message: "The furnace is making a loud noise. Could you provide an estimate?",
+      followUpQuestions,
+    });
+    expect(response.body.followUpQuestions).toHaveLength(3);
+    expect(mockCompletionCreate).toHaveBeenCalledTimes(1);
+  });
 });

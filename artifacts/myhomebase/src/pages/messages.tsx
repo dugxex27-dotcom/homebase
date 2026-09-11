@@ -33,6 +33,10 @@ import {
   MessageToneControls,
   type MessageTone,
 } from "@/components/message-tone-controls";
+import {
+  appendFollowUpQuestion,
+  FollowUpQuestionChips,
+} from "@/components/follow-up-question-chips";
 
 const ROLE_PALETTE = {
   homeowner: { bg: '#3C258E', eyebrow: '#B6A6F4', label: 'Homeowner' },
@@ -706,28 +710,14 @@ export default function Messages() {
                           rows={4}
                           data-testid="textarea-compose-message"
                         />
-                        {composeFollowUpQuestions.length > 0 && (
-                          <div className="mt-2 space-y-1.5" data-testid="follow-up-questions-compose">
-                            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Suggested questions</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {composeFollowUpQuestions.map((question, index) => (
-                                <button
-                                  key={`${question}-${index}`}
-                                  type="button"
-                                  onClick={() => setComposeForm(prev => ({
-                                    ...prev,
-                                    message: `${prev.message.trimEnd()}\n\n${question}`.trimStart(),
-                                  }))}
-                                  className="rounded-full border px-2.5 py-1 text-left text-xs transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
-                                  style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-accent)' }}
-                                  data-testid={`follow-up-question-compose-${index}`}
-                                >
-                                  {question}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                        <FollowUpQuestionChips
+                          questions={composeFollowUpQuestions}
+                          onSelect={(question) => setComposeForm((prev) => ({
+                            ...prev,
+                            message: appendFollowUpQuestion(prev.message, question),
+                          }))}
+                          testIdSuffix="compose"
+                        />
                         {typedUser.role === 'homeowner' && (
                           <div className="mt-2">
                             {!aiComposeOpen ? (
@@ -1488,25 +1478,11 @@ export default function Messages() {
                       <Send className="h-5 w-5" />
                     </Button>
                   </div>
-                  {conversationFollowUpQuestions.length > 0 && (
-                    <div className="mt-2 space-y-1.5" data-testid="follow-up-questions-conversation">
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Suggested questions</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {conversationFollowUpQuestions.map((question, index) => (
-                          <button
-                            key={`${question}-${index}`}
-                            type="button"
-                            onClick={() => handleTypingChange(`${newMessage.trimEnd()}\n\n${question}`.trimStart())}
-                            className="rounded-full border px-2.5 py-1 text-left text-xs transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
-                            style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-accent)' }}
-                            data-testid={`follow-up-question-conversation-${index}`}
-                          >
-                            {question}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <FollowUpQuestionChips
+                    questions={conversationFollowUpQuestions}
+                    onSelect={(question) => handleTypingChange(appendFollowUpQuestion(newMessage, question))}
+                    testIdSuffix="conversation"
+                  />
                 </div>
               </>
             ) : (
