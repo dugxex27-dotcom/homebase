@@ -21,6 +21,7 @@ const {
   APPLIANCE_ID,
   mockGetHomeAppliance,
   mockGetHouse,
+  mockCreateHomeAppliance,
   mockUpdateHomeAppliance,
 } = vi.hoisted(() => ({
   OWNER_ID: "homeowner-owner-001",
@@ -29,6 +30,7 @@ const {
   APPLIANCE_ID: "appliance-001",
   mockGetHomeAppliance: vi.fn(),
   mockGetHouse: vi.fn(),
+  mockCreateHomeAppliance: vi.fn(),
   mockUpdateHomeAppliance: vi.fn(),
 }));
 
@@ -186,6 +188,7 @@ vi.mock("../storage", async () => {
     storage: createStorageMock({
       getHomeAppliance: mockGetHomeAppliance,
       getHouse: mockGetHouse,
+      createHomeAppliance: mockCreateHomeAppliance,
       updateHomeAppliance: mockUpdateHomeAppliance,
     }),
   };
@@ -225,6 +228,36 @@ async function buildApp() {
   await registerRoutes(app);
   return app;
 }
+
+describe("POST /api/appliances — auth & ownership", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when no session is present", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post("/api/appliances")
+      .send({ houseId: HOUSE_ID, name: "Dishwasher", make: "Whirlpool", model: "WDT750" });
+
+    expect(res.status).toBe(401);
+    expect(mockCreateHomeAppliance).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the target house belongs to a different homeowner", async () => {
+    const app = await buildApp();
+    mockGetHouse.mockResolvedValue({ id: HOUSE_ID, homeownerId: OTHER_HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post("/api/appliances")
+      .set("x-test-user", "owner")
+      .send({ houseId: HOUSE_ID, name: "Dishwasher", make: "Whirlpool", model: "WDT750" });
+
+    expect(res.status).toBe(404);
+    expect(mockCreateHomeAppliance).not.toHaveBeenCalled();
+  });
+});
 
 describe("PATCH /api/appliances/:id — auth & ownership", () => {
   afterEach(() => {
@@ -279,6 +312,25 @@ describe("PATCH /api/appliances/:id — auth & ownership", () => {
       .patch(`/api/appliances/${APPLIANCE_ID}`)
       .set("x-test-user", "owner")
       .send({ make: "Whirlpool" });
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateHomeAppliance).toHaveBeenCalledWith(APPLIANCE_ID, { make: "Whirlpool" });
+  });
+
+  it("does not allow ownership or house reassignment through editable fields", async () => {
+    const app = await buildApp();
+    mockGetHomeAppliance.mockResolvedValue({ id: APPLIANCE_ID, houseId: HOUSE_ID });
+    mockGetHouse.mockResolvedValue({ id: HOUSE_ID, homeownerId: OWNER_ID });
+    mockUpdateHomeAppliance.mockResolvedValue({ id: APPLIANCE_ID, make: "Whirlpool" });
+
+    const res = await request(app)
+      .patch(`/api/appliances/${APPLIANCE_ID}`)
+      .set("x-test-user", "owner")
+      .send({
+        make: "Whirlpool",
+        homeownerId: OTHER_HOMEOWNER_ID,
+        houseId: "other-homeowner-house",
+      });
 
     expect(res.status).toBe(200);
     expect(mockUpdateHomeAppliance).toHaveBeenCalledWith(APPLIANCE_ID, { make: "Whirlpool" });

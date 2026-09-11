@@ -14663,22 +14663,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/appliances", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
-      const applianceData = insertHomeApplianceSchema.parse(req.body);
+      const applianceData = insertHomeApplianceSchema.parse({
+        ...req.body,
+        homeownerId: req.session.user.id,
+      });
       // Verify the target house belongs to the authenticated user before creating
       if (!applianceData.houseId) {
-        return res.status(403).json({ message: "Forbidden" });
+        return res.status(404).json({ message: "House not found" });
       }
       const targetHouse = await storage.getHouse(applianceData.houseId);
       if (!targetHouse || targetHouse.homeownerId !== req.session.user.id) {
-        return res.status(403).json({ message: "Forbidden" });
+        return res.status(404).json({ message: "House not found" });
       }
-      // Always derive homeownerId server-side — never trust the client-supplied value
-      const appliance = await storage.createHomeAppliance({
-        ...applianceData,
-        homeownerId: req.session.user.id,
-      });
+      // homeownerId was derived server-side above — never trust the client-supplied value
+      const appliance = await storage.createHomeAppliance(applianceData);
       res.status(201).json(appliance);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -14701,7 +14701,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const partialData = insertHomeApplianceSchema.partial().parse(req.body);
-      const appliance = await storage.updateHomeAppliance(req.params.id, partialData);
+      const {
+        homeownerId: _ignoredHomeownerId,
+        houseId: _ignoredHouseId,
+        ...editableApplianceData
+      } = partialData;
+      const appliance = await storage.updateHomeAppliance(req.params.id, editableApplianceData);
       if (!appliance) {
         return res.status(404).json({ message: "Appliance not found" });
       }
@@ -14776,7 +14781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/appliances/:applianceId/manuals", isAuthenticated, async (req: any, res: any) => {
+  app.post("/api/appliances/:applianceId/manuals", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       // Verify ownership before creating: appliance → house → homeowner
       const manualCreateAppliance = await storage.getHomeAppliance(req.params.applianceId);
@@ -14785,7 +14790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const manualCreateHouse = await storage.getHouse(manualCreateAppliance.houseId);
       if (!manualCreateHouse || manualCreateHouse.homeownerId !== req.session.user.id) {
-        return res.status(403).json({ message: "Forbidden" });
+        return res.status(404).json({ message: "Appliance not found" });
       }
       const manualData = insertHomeApplianceManualSchema.parse({
         ...req.body,
@@ -14814,7 +14819,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const partialData = insertHomeApplianceManualSchema.partial().parse(req.body);
-      const manual = await storage.updateHomeApplianceManual(req.params.id, partialData);
+      const {
+        applianceId: _ignoredApplianceId,
+        ...editableManualData
+      } = partialData;
+      const manual = await storage.updateHomeApplianceManual(req.params.id, editableManualData);
       if (!manual) {
         return res.status(404).json({ message: "Manual not found" });
       }

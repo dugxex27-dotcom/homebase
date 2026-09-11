@@ -23,6 +23,7 @@ const {
   mockGetHomeApplianceManual,
   mockGetHomeAppliance,
   mockGetHouse,
+  mockCreateHomeApplianceManual,
   mockUpdateHomeApplianceManual,
   mockDeleteHomeApplianceManual,
 } = vi.hoisted(() => ({
@@ -34,6 +35,7 @@ const {
   mockGetHomeApplianceManual: vi.fn(),
   mockGetHomeAppliance: vi.fn(),
   mockGetHouse: vi.fn(),
+  mockCreateHomeApplianceManual: vi.fn(),
   mockUpdateHomeApplianceManual: vi.fn(),
   mockDeleteHomeApplianceManual: vi.fn(),
 }));
@@ -193,6 +195,7 @@ vi.mock("../storage", async () => {
       getHomeApplianceManual: mockGetHomeApplianceManual,
       getHomeAppliance: mockGetHomeAppliance,
       getHouse: mockGetHouse,
+      createHomeApplianceManual: mockCreateHomeApplianceManual,
       updateHomeApplianceManual: mockUpdateHomeApplianceManual,
       deleteHomeApplianceManual: mockDeleteHomeApplianceManual,
     }),
@@ -233,6 +236,37 @@ async function buildApp() {
   await registerRoutes(app);
   return app;
 }
+
+describe("POST /api/appliances/:applianceId/manuals — auth & ownership", () => {
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when no session is present", async () => {
+    const app = await buildApp();
+
+    const res = await request(app)
+      .post(`/api/appliances/${APPLIANCE_ID}/manuals`)
+      .send({ url: "https://example.com/manual.pdf" });
+
+    expect(res.status).toBe(401);
+    expect(mockCreateHomeApplianceManual).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the appliance belongs to a different homeowner's house", async () => {
+    const app = await buildApp();
+    mockGetHomeAppliance.mockResolvedValue({ id: APPLIANCE_ID, houseId: HOUSE_ID });
+    mockGetHouse.mockResolvedValue({ id: HOUSE_ID, homeownerId: OTHER_HOMEOWNER_ID });
+
+    const res = await request(app)
+      .post(`/api/appliances/${APPLIANCE_ID}/manuals`)
+      .set("x-test-user", "owner")
+      .send({ url: "https://example.com/manual.pdf" });
+
+    expect(res.status).toBe(404);
+    expect(mockCreateHomeApplianceManual).not.toHaveBeenCalled();
+  });
+});
 
 describe("PATCH /api/appliance-manuals/:id — auth & ownership", () => {
   afterEach(() => {
@@ -295,6 +329,28 @@ describe("PATCH /api/appliance-manuals/:id — auth & ownership", () => {
     expect(mockUpdateHomeApplianceManual).toHaveBeenCalledWith(
       MANUAL_ID,
       expect.objectContaining({ url: "https://example.com/manual.pdf" })
+    );
+  });
+
+  it("does not allow reassignment to another appliance through editable fields", async () => {
+    const app = await buildApp();
+    mockGetHomeApplianceManual.mockResolvedValue({ id: MANUAL_ID, applianceId: APPLIANCE_ID });
+    mockGetHomeAppliance.mockResolvedValue({ id: APPLIANCE_ID, houseId: HOUSE_ID });
+    mockGetHouse.mockResolvedValue({ id: HOUSE_ID, homeownerId: OWNER_ID });
+    mockUpdateHomeApplianceManual.mockResolvedValue({ id: MANUAL_ID, applianceId: APPLIANCE_ID });
+
+    const res = await request(app)
+      .patch(`/api/appliance-manuals/${MANUAL_ID}`)
+      .set("x-test-user", "owner")
+      .send({
+        url: "https://example.com/manual.pdf",
+        applianceId: "other-homeowner-appliance",
+      });
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateHomeApplianceManual).toHaveBeenCalledWith(
+      MANUAL_ID,
+      { url: "https://example.com/manual.pdf" },
     );
   });
 });
