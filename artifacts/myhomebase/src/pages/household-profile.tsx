@@ -4,6 +4,7 @@ import { useRoute } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import { HouseholdProfileEditor } from "@/components/household-profile-editor";
 import { MaintenanceScheduleDisplay } from "@/components/maintenance-schedule-display";
 import { Home, Edit, AlertCircle, Calendar, CheckCircle2, Circle } from "lucide-react";
@@ -128,6 +129,8 @@ export default function HouseholdProfilePage() {
   }
 
   const hasCompleteProfile = draftProgress.homeType && draftProgress.yearBuilt && draftProgress.roofType && draftProgress.hvacType;
+  const completedFieldCount = CHECKLIST_FIELDS.filter((field) => Boolean(draftProgress[field.key] ?? null)).length;
+  const profileCompletionPercentage = Math.floor((completedFieldCount / CHECKLIST_FIELDS.length) * 100);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5">
@@ -179,6 +182,14 @@ export default function HouseholdProfilePage() {
             <CardDescription>
               Click any field to open the editor focused on that item.
             </CardDescription>
+            <div className="space-y-2 pt-2">
+              <span className="text-sm font-medium">{profileCompletionPercentage}% complete</span>
+              <Progress
+                value={profileCompletionPercentage}
+                data-testid="profile-progress-bar"
+                aria-label="Profile completion"
+              />
+            </div>
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">

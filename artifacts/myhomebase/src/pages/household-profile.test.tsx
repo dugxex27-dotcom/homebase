@@ -192,6 +192,41 @@ describe("Profile checklist — live checklist update while editor is open", () 
     // called and the editor has not been closed yet.
     expect(homeTypeRow.getAttribute("aria-label")).toMatch(/filled/i);
   });
+
+  it("keeps the progress percentage in sync as multiple checklist fields are filled before saving", () => {
+    renderPage();
+
+    const homeTypeRow = screen.getByTestId("checklist-field-homeType");
+    const squareFootageRow = screen.getByTestId("checklist-field-squareFootage");
+    const roofTypeRow = screen.getByTestId("checklist-field-roofType");
+    const hvacTypeRow = screen.getByTestId("checklist-field-hvacType");
+    const progressBar = screen.getByTestId("profile-progress-bar");
+
+    expect(homeTypeRow.getAttribute("aria-label")).toMatch(/missing/i);
+    expect(squareFootageRow.getAttribute("aria-label")).toMatch(/missing/i);
+    expect(roofTypeRow.getAttribute("aria-label")).toMatch(/missing/i);
+    expect(hvacTypeRow.getAttribute("aria-label")).toMatch(/missing/i);
+    expect(progressBar).toHaveAttribute("aria-valuenow", "12");
+    expect(screen.getByText("12% complete")).toBeInTheDocument();
+
+    fireEvent.click(homeTypeRow);
+
+    act(() => {
+      capturedOnFieldChange?.({
+        homeType: "single_family",
+        squareFootage: 2400,
+        roofType: "asphalt_shingle",
+        hvacType: "central_air",
+      });
+    });
+
+    expect(homeTypeRow.getAttribute("aria-label")).toMatch(/filled/i);
+    expect(squareFootageRow.getAttribute("aria-label")).toMatch(/filled/i);
+    expect(roofTypeRow.getAttribute("aria-label")).toMatch(/filled/i);
+    expect(hvacTypeRow.getAttribute("aria-label")).toMatch(/filled/i);
+    expect(progressBar).toHaveAttribute("aria-valuenow", "62");
+    expect(screen.getByText("62% complete")).toBeInTheDocument();
+  });
 });
 
 describe("Profile checklist — editor focus wiring for filled fields", () => {
