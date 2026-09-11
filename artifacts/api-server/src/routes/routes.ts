@@ -28,6 +28,7 @@ import { ObjectStorageService, ObjectNotFoundError } from "../objectStorage";
 import { pool, db } from "../db";
 import OpenAI from "openai";
 import { createDraftContractorMessageHandler } from "./ai-draft-contractor-message";
+import { createDeleteInsuranceClaimPackageHandler } from "./delete-insurance-claim-package";
 import multer from "multer";
 import Stripe from "stripe";
 import { geocodeAddress, calculateDistance, calculateDistanceExact, resolvePropertyCoordinates } from "../geocoding-service";
@@ -18632,18 +18633,12 @@ ${esc(claimMemo)}
   });
 
   // Permanently delete a saved insurance claim package owned by this homeowner.
-  app.delete("/api/houses/:houseId/insurance-claim-packages/:packageId", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
-    try {
-      const { houseId, packageId } = req.params;
-      const homeownerId = req.session.user.id;
-      const deleted = await storage.deleteInsuranceClaimPackage(packageId, houseId, homeownerId);
-      if (!deleted) return res.status(404).json({ message: "Claim package not found" });
-      res.status(204).send();
-    } catch (error) {
-      console.error("[INSURANCE CLAIM PACKAGE DELETE] Error:", error);
-      res.status(500).json({ message: "Failed to delete claim package" });
-    }
-  });
+  app.delete(
+    "/api/houses/:houseId/insurance-claim-packages/:packageId",
+    isAuthenticated,
+    requirePropertyOwner,
+    createDeleteInsuranceClaimPackageHandler(storage),
+  );
 
   app.get("/api/insurance-prep/email-logs", isAuthenticated, requireHomeownerSubscription, async (req: any, res: any) => {
     try {
