@@ -34,6 +34,8 @@ const flags = vi.hoisted(() => ({
   savedRoofYear: null as number | null,
   savedHvacYear: null as number | null,
   savedWaterHeaterYear: null as number | null,
+  propertyYearBuilt: 2000 as number | null,
+  propertySquareFootage: 2000 as number | null,
   // Captured from the install-year mutation in each render.
   patchOnSuccess: null as (() => void) | null,
   mutateSpy: vi.fn(),
@@ -137,8 +139,8 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
             state: "IL",
             zip: "62701",
             homeType: "single-family",
-            yearBuilt: 2000,
-            squareFootage: 2000,
+            yearBuilt: flags.propertyYearBuilt,
+            squareFootage: flags.propertySquareFootage,
             bedrooms: 3,
             bathrooms: 2,
             roofType: null,
@@ -308,6 +310,8 @@ afterEach(() => {
   flags.savedRoofYear = null;
   flags.savedHvacYear = null;
   flags.savedWaterHeaterYear = null;
+  flags.propertyYearBuilt = 2000;
+  flags.propertySquareFootage = 2000;
   flags.patchOnSuccess = null;
   flags.allInstallYearsDone = false;
   flags.healthScore = 55;
@@ -325,6 +329,43 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+
+describe("Property card details", () => {
+  it("shows year built and formatted square footage when both are saved", () => {
+    flags.propertyYearBuilt = 1998;
+    flags.propertySquareFootage = 2450;
+
+    renderHome();
+
+    expect(screen.getByTestId("property-year-built-house-1").textContent).toBe("Built 1998");
+    expect(screen.getByTestId("property-square-footage-house-1").textContent).toBe("2,450 sq ft");
+  });
+
+  it("shows either saved detail independently and hides missing details", () => {
+    flags.propertyYearBuilt = null;
+    flags.propertySquareFootage = 1800;
+    const { rerender } = renderHome();
+
+    expect(screen.queryByTestId("property-year-built-house-1")).toBeNull();
+    expect(screen.getByTestId("property-square-footage-house-1").textContent).toBe("1,800 sq ft");
+
+    flags.propertyYearBuilt = 2005;
+    flags.propertySquareFootage = null;
+    rerender(<Home />);
+
+    expect(screen.getByTestId("property-year-built-house-1").textContent).toBe("Built 2005");
+    expect(screen.queryByTestId("property-square-footage-house-1")).toBeNull();
+  });
+
+  it("does not render an empty metadata row when both details are missing", () => {
+    flags.propertyYearBuilt = null;
+    flags.propertySquareFootage = null;
+
+    renderHome();
+
+    expect(screen.queryByLabelText("Property details")).toBeNull();
+  });
+});
 
 describe("Homeowner onboarding tour banner", () => {
   it("shows for incomplete onboarding and hides after dismissing the matching reminder", async () => {

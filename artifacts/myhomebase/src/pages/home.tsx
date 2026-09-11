@@ -424,10 +424,18 @@ export default function Home() {
       if (!res.ok) throw new Error('Failed to save');
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       nudgeSavingRef.current = false;
       setActiveNudge(null);
       setNudgeYear("");
+      if (variables) {
+        const { houseId, field, year } = variables;
+        queryClient.setQueryData<House[]>(["/api/houses"], (current = []) =>
+          current.map((house) =>
+            house.id === houseId ? { ...house, [field]: year } : house,
+          ),
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/houses"] });
     },
     onError: () => {
@@ -904,6 +912,23 @@ export default function Home() {
             <div data-tour-id="health-score">
               {houses.map((house: House) => (
                 <div key={`map-${house.id}`} className="property-card">
+                  {(house.yearBuilt || house.squareFootage) && (
+                    <div className="property-card-metadata" aria-label="Property details">
+                      {house.yearBuilt && (
+                        <span data-testid={`property-year-built-${house.id}`}>
+                          Built {house.yearBuilt}
+                        </span>
+                      )}
+                      {house.yearBuilt && house.squareFootage && (
+                        <span className="property-card-metadata-divider" aria-hidden="true">•</span>
+                      )}
+                      {house.squareFootage && (
+                        <span data-testid={`property-square-footage-${house.id}`}>
+                          {house.squareFootage.toLocaleString()} sq ft
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <HouseMap
                     houseId={house.id}
                     homeownerId={typedUser?.id ?? ""}
