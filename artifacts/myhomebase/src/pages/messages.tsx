@@ -27,9 +27,12 @@ import { z } from "zod";
 import type { User as UserType, Conversation, Message, Contractor, Proposal, ContractorReview } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { contractorMatchesTaskCategory } from "@/lib/contractor-category-match";
-
-const MESSAGE_TONES = ["Urgent", "Friendly", "Formal"] as const;
-type MessageTone = typeof MESSAGE_TONES[number];
+import {
+  buildDraftContractorMessageRequest,
+  DEFAULT_MESSAGE_TONE,
+  MessageToneControls,
+  type MessageTone,
+} from "@/components/message-tone-controls";
 
 const ROLE_PALETTE = {
   homeowner: { bg: '#3C258E', eyebrow: '#B6A6F4', label: 'Homeowner' },
@@ -76,12 +79,12 @@ export default function Messages() {
   // AI Draft state — active conversation composer
   const [aiDraftOpen, setAiDraftOpen] = useState(false);
   const [aiDraftIssue, setAiDraftIssue] = useState("");
-  const [aiDraftTone, setAiDraftTone] = useState<MessageTone>("Friendly");
+  const [aiDraftTone, setAiDraftTone] = useState<MessageTone>(DEFAULT_MESSAGE_TONE);
   const [conversationFollowUpQuestions, setConversationFollowUpQuestions] = useState<string[]>([]);
   // AI Draft state — compose dialog
   const [aiComposeOpen, setAiComposeOpen] = useState(false);
   const [aiComposeIssue, setAiComposeIssue] = useState("");
-  const [aiComposeTone, setAiComposeTone] = useState<MessageTone>("Friendly");
+  const [aiComposeTone, setAiComposeTone] = useState<MessageTone>(DEFAULT_MESSAGE_TONE);
   const [composeFollowUpQuestions, setComposeFollowUpQuestions] = useState<string[]>([]);
   // Task context and house ID passed in via URL query params
   const [urlTaskContext, setUrlTaskContext] = useState("");
@@ -300,10 +303,7 @@ export default function Messages() {
   const draftMutation = useMutation({
     mutationFn: async ({ issueDescription, targetField, tone }: { issueDescription: string; targetField: "conversation" | "compose"; tone: MessageTone }) => {
       const res = await apiRequest("/api/ai/draft-contractor-message", "POST", {
-        issueDescription,
-        tone,
-        houseId: urlHouseId || undefined,
-        taskContext: urlTaskContext || undefined,
+        ...buildDraftContractorMessageRequest(issueDescription, tone, urlHouseId, urlTaskContext),
       });
       const data = await res.json() as { message: string; followUpQuestions: string[] };
       return { draft: data.message, followUpQuestions: data.followUpQuestions, targetField };
@@ -759,39 +759,14 @@ export default function Messages() {
                                   className="text-sm resize-none"
                                   data-testid="textarea-ai-compose-issue"
                                 />
-                                <div className="flex items-center gap-2" aria-label="Message tone">
-                                  <span className="text-xs text-gray-500">Tone:</span>
-                                  {MESSAGE_TONES.map((tone) => (
-                                    <button
-                                      key={tone}
-                                      type="button"
-                                      onClick={() => setAiComposeTone(tone)}
-                                      aria-pressed={aiComposeTone === tone}
-                                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                        aiComposeTone === tone
-                                          ? "border-transparent text-white"
-                                          : "bg-white text-gray-600 hover:bg-gray-50"
-                                      }`}
-                                      style={aiComposeTone === tone ? { background: "var(--theme-accent)" } : { borderColor: "var(--theme-border)" }}
-                                      data-testid={`button-ai-compose-tone-${tone.toLowerCase()}`}
-                                    >
-                                      {tone}
-                                    </button>
-                                  ))}
-                                </div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  disabled={!aiComposeIssue.trim() || draftMutation.isPending}
-                                  onClick={() => draftMutation.mutate({ issueDescription: aiComposeIssue, targetField: "compose", tone: aiComposeTone })}
-                                  className="text-white text-xs h-7 px-3"
-                                  style={{ background: 'var(--theme-accent)' }}
-                                  data-testid="button-ai-generate-compose"
-                                >
-                                  {draftMutation.isPending ? (
-                                    <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Generating...</>
-                                  ) : "Generate Draft"}
-                                </Button>
+                                <MessageToneControls
+                                  tone={aiComposeTone}
+                                  onToneChange={setAiComposeTone}
+                                  onGenerate={(tone) => draftMutation.mutate({ issueDescription: aiComposeIssue, targetField: "compose", tone })}
+                                  disabled={!aiComposeIssue.trim()}
+                                  pending={draftMutation.isPending}
+                                  testIdPrefix="ai-compose"
+                                />
                               </div>
                             )}
                           </div>
@@ -1391,39 +1366,14 @@ export default function Messages() {
                             className="text-sm resize-none"
                             data-testid="textarea-ai-draft-issue"
                           />
-                          <div className="flex items-center gap-2" aria-label="Message tone">
-                            <span className="text-xs text-gray-500">Tone:</span>
-                            {MESSAGE_TONES.map((tone) => (
-                              <button
-                                key={tone}
-                                type="button"
-                                onClick={() => setAiDraftTone(tone)}
-                                aria-pressed={aiDraftTone === tone}
-                                className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                                  aiDraftTone === tone
-                                    ? "border-transparent text-white"
-                                    : "bg-white text-gray-600 hover:bg-gray-50"
-                                }`}
-                                style={aiDraftTone === tone ? { background: "var(--theme-accent)" } : { borderColor: "var(--theme-border)" }}
-                                data-testid={`button-ai-draft-tone-${tone.toLowerCase()}`}
-                              >
-                                {tone}
-                              </button>
-                            ))}
-                          </div>
-                          <Button
-                            type="button"
-                            size="sm"
-                            disabled={!aiDraftIssue.trim() || draftMutation.isPending}
-                            onClick={() => draftMutation.mutate({ issueDescription: aiDraftIssue, targetField: "conversation", tone: aiDraftTone })}
-                            className="text-white text-xs h-7 px-3"
-                            style={{ background: 'var(--theme-accent)' }}
-                            data-testid="button-ai-generate-conversation"
-                          >
-                            {draftMutation.isPending ? (
-                              <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />Generating...</>
-                            ) : "Generate Draft"}
-                          </Button>
+                          <MessageToneControls
+                            tone={aiDraftTone}
+                            onToneChange={setAiDraftTone}
+                            onGenerate={(tone) => draftMutation.mutate({ issueDescription: aiDraftIssue, targetField: "conversation", tone })}
+                            disabled={!aiDraftIssue.trim()}
+                            pending={draftMutation.isPending}
+                            testIdPrefix="ai-draft"
+                          />
                         </div>
                       )}
                     </div>
