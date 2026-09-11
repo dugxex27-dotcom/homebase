@@ -22,7 +22,7 @@ import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { MaintenanceVerificationStatus } from "@/components/maintenance-verification-status";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import { 
   FileText, 
   Calendar, 
@@ -107,6 +107,7 @@ export default function HomeownerServiceRecords() {
         ["/api/homeowner/linked-invoices/unclaimed-count"],
         { count: 0 },
       );
+      notifyInvoiceBadgeChanged();
     }).finally(() => {
       queryClient.invalidateQueries({
         queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"],

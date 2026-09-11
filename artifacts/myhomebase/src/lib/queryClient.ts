@@ -126,3 +126,40 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+const INVOICE_BADGE_QUERY_KEY = ["/api/homeowner/linked-invoices/unclaimed-count"] as const;
+const INVOICE_BADGE_CHANNEL_NAME = "myhomebase-invoice-badge";
+const INVOICE_BADGE_STORAGE_KEY = "myhomebase:invoice-badge-changed";
+
+function invalidateInvoiceBadge() {
+  void queryClient.invalidateQueries({ queryKey: INVOICE_BADGE_QUERY_KEY });
+}
+
+let invoiceBadgeChannel: BroadcastChannel | null = null;
+
+if (typeof window !== "undefined") {
+  if (typeof BroadcastChannel !== "undefined") {
+    invoiceBadgeChannel = new BroadcastChannel(INVOICE_BADGE_CHANNEL_NAME);
+    invoiceBadgeChannel.addEventListener("message", invalidateInvoiceBadge);
+  } else {
+    window.addEventListener("storage", (event) => {
+      if (event.key === INVOICE_BADGE_STORAGE_KEY && event.newValue) {
+        invalidateInvoiceBadge();
+      }
+    });
+  }
+}
+
+export function notifyInvoiceBadgeChanged() {
+  invalidateInvoiceBadge();
+
+  if (invoiceBadgeChannel) {
+    invoiceBadgeChannel.postMessage("changed");
+    return;
+  }
+
+  if (typeof window !== "undefined") {
+    localStorage.setItem(INVOICE_BADGE_STORAGE_KEY, String(Date.now()));
+    localStorage.removeItem(INVOICE_BADGE_STORAGE_KEY);
+  }
+}

@@ -20,6 +20,7 @@ const flags = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   invalidateQueriesSpy: vi.fn(),
   setQueryDataSpy: vi.fn(),
+  notifyInvoiceBadgeChangedSpy: vi.fn(),
   invoiceAnalyses: [] as Array<Record<string, unknown>>,
   maintenanceLogs: [] as Array<Record<string, unknown>>,
 }));
@@ -161,6 +162,7 @@ vi.mock("@/lib/queryClient", () => ({
     json: async () => ({}),
   }),
   getQueryFn: vi.fn(),
+  notifyInvoiceBadgeChanged: flags.notifyInvoiceBadgeChangedSpy,
   queryClient: {
     invalidateQueries: vi.fn(),
     getQueryData: vi.fn(),
@@ -206,6 +208,7 @@ afterEach(() => {
   flags.toastSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
   flags.setQueryDataSpy.mockClear();
+  flags.notifyInvoiceBadgeChangedSpy.mockClear();
   vi.restoreAllMocks();
 });
 
@@ -224,6 +227,7 @@ describe("Service Records — linked invoice badge", () => {
         ["/api/homeowner/linked-invoices/unclaimed-count"],
         { count: 0 },
       );
+      expect(flags.notifyInvoiceBadgeChangedSpy).toHaveBeenCalled();
     });
   });
 });

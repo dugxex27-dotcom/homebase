@@ -12,6 +12,7 @@ import { Link, useLocation } from "wouter";
 import { HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
+import { notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
 
@@ -391,6 +392,9 @@ export default function Home() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/homeowner/linked-invoices/unclaimed-count"] });
+    },
+    onSuccess: () => {
+      notifyInvoiceBadgeChanged();
     },
   });
 
