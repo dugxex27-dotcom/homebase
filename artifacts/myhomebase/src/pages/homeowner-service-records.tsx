@@ -90,6 +90,7 @@ const maintenanceLogFormSchema = insertMaintenanceLogSchema.extend({
 
 type MaintenanceLogFormData = z.infer<typeof maintenanceLogFormSchema>;
 
+type ScoreHistoryFilter = "all" | "scoring" | "historical";
 export default function HomeownerServiceRecords() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -125,6 +126,7 @@ export default function HomeownerServiceRecords() {
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   const [serviceRecordsHouseFilter, setServiceRecordsHouseFilter] = useState<string>("all");
+  const [scoreHistoryFilter, setScoreHistoryFilter] = useState<ScoreHistoryFilter>("all");
   const [showAllRecords, setShowAllRecords] = useState<boolean>(false);
   const [isInvoiceHistoryOpen, setIsInvoiceHistoryOpen] = useState(false);
 
@@ -727,7 +729,16 @@ export default function HomeownerServiceRecords() {
     }
   };
 
-  const filteredLogs = maintenanceLogs?.filter(log => homeAreaFilter === "all" || log.homeArea === homeAreaFilter) || [];
+  const filteredLogs = maintenanceLogs?.filter((log) => {
+    const matchesHomeArea = homeAreaFilter === "all" || log.homeArea === homeAreaFilter;
+    const isScoring = isScoringMaintenanceLog(log);
+    const matchesScoreHistory =
+      scoreHistoryFilter === "all"
+      || (scoreHistoryFilter === "scoring" && isScoring)
+      || (scoreHistoryFilter === "historical" && !isScoring);
+
+    return matchesHomeArea && matchesScoreHistory;
+  }) || [];
 
   // Stat chip computations
   const totalRecords = maintenanceLogs?.length || 0;
@@ -969,6 +980,40 @@ export default function HomeownerServiceRecords() {
               </button>
             </div>
           )}
+        </div>
+
+        <div
+          className="mb-4 inline-flex w-full rounded-lg border border-[#D9D6F5] bg-white p-1 sm:w-auto"
+          role="group"
+          aria-label="Filter maintenance history"
+          data-testid="score-history-filter"
+        >
+          {([
+            ["all", "All"],
+            ["scoring", "Scoring"],
+            ["historical", "Historical"],
+          ] as const).map(([value, label]) => {
+            const isActive = scoreHistoryFilter === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setScoreHistoryFilter(value);
+                  setShowAllRecords(false);
+                }}
+                className="flex-1 rounded-md px-4 py-2 text-sm font-semibold transition-colors sm:flex-none"
+                style={{
+                  backgroundColor: isActive ? "#3C258E" : "transparent",
+                  color: isActive ? "#ffffff" : "#3C258E",
+                }}
+                aria-pressed={isActive}
+                data-testid={`filter-maintenance-${value}`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Service Records List */}
@@ -1980,3 +2025,15 @@ export default function HomeownerServiceRecords() {
     </div>
   );
 }
+
+export const isScoringMaintenanceLog = (log: MaintenanceLog, now = new Date()): boolean => {
+  const dateOnlyMatch = String(log.serviceDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const serviceDate = dateOnlyMatch ? null : new Date(log.serviceDate);
+  if (!dateOnlyMatch && (!serviceDate || Number.isNaN(serviceDate.getTime()))) return false;
+
+  const currentAbsoluteMonth = now.getFullYear() * 12 + (now.getMonth() + 1);
+  const serviceYear = dateOnlyMatch ? Number(dateOnlyMatch[1]) : serviceDate!.getFullYear();
+  const serviceMonth = dateOnlyMatch ? Number(dateOnlyMatch[2]) : serviceDate!.getMonth() + 1;
+  const serviceAbsoluteMonth = serviceYear * 12 + serviceMonth;
+  return serviceAbsoluteMonth >= currentAbsoluteMonth - 12;
+};

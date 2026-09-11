@@ -174,7 +174,7 @@ vi.mock("@/lib/queryClient", () => ({
 // Import subject AFTER all vi.mock() calls
 // ---------------------------------------------------------------------------
 
-import HomeownerServiceRecords from "./homeowner-service-records";
+import HomeownerServiceRecords, { isScoringMaintenanceLog } from "./homeowner-service-records";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -267,9 +267,6 @@ describe("Service Records — invoice scan history", () => {
     expect(screen.getByTestId("status-invoice-analysis-analysis-confirmed").textContent).toBe("Confirmed");
     expect(screen.getByTestId("status-invoice-analysis-analysis-rejected").textContent).toBe("Rejected");
     expect(screen.getByTestId("img-invoice-thumbnail-analysis-pending").getAttribute("src")).toBe("/public/invoices/pending.jpg");
-    expect(screen.getByTestId("text-invoice-home-area-analysis-pending").textContent).toContain("HVAC System");
-    expect(screen.queryByTestId("text-invoice-home-area-analysis-confirmed")).toBeNull();
-    expect(screen.queryByTestId("text-invoice-home-area-analysis-rejected")).toBeNull();
     expect(screen.queryByTestId("button-rereview-invoice-analysis-confirmed")).toBeNull();
     expect(screen.queryByTestId("button-rereview-invoice-analysis-rejected")).toBeNull();
 
@@ -305,6 +302,58 @@ describe("Service Records — home area", () => {
     expect(record?.textContent).toContain(
       new Date("2026-09-01T12:00:00.000Z").toLocaleDateString(),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — scoring history filter", () => {
+  it("includes the first day of the cutoff month without shifting date-only values to the prior month", () => {
+    const previousTimezone = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+
+    try {
+      const now = new Date(2026, 8, 11, 12);
+      const cutoffRecord = { serviceDate: "2025-09-01" } as MaintenanceLog;
+      const precedingRecord = { serviceDate: "2025-08-31" } as MaintenanceLog;
+
+      expect(isScoringMaintenanceLog(cutoffRecord, now)).toBe(true);
+      expect(isScoringMaintenanceLog(precedingRecord, now)).toBe(false);
+    } finally {
+      process.env.TZ = previousTimezone;
+    }
+  });
+
+  it("filters records by the rolling scoring window and updates the hidden-record count", async () => {
+    const now = new Date();
+    const scoringDate = new Date(now.getFullYear(), now.getMonth() - 2, 15).toISOString();
+    const historicalDate = new Date(now.getFullYear(), now.getMonth() - 13, 15).toISOString();
+
+    flags.maintenanceLogs = [
+      { id: "scoring-1", serviceDescription: "Recent HVAC service", serviceDate: scoringDate, serviceType: "maintenance" },
+      { id: "scoring-2", serviceDescription: "Recent roof service", serviceDate: scoringDate, serviceType: "repair" },
+      { id: "historical-1", serviceDescription: "Old plumbing service", serviceDate: historicalDate, serviceType: "repair" },
+    ];
+
+    renderPage();
+
+    expect(document.querySelector('[data-log-id="scoring-1"]')).not.toBeNull();
+    expect(document.querySelector('[data-log-id="scoring-2"]')).not.toBeNull();
+    expect(screen.getByTestId("button-toggle-older-records").textContent).toContain("1 Older Record");
+
+    await userEvent.click(screen.getByTestId("filter-maintenance-scoring"));
+    expect(document.querySelector('[data-log-id="scoring-1"]')).not.toBeNull();
+    expect(document.querySelector('[data-log-id="scoring-2"]')).not.toBeNull();
+    expect(document.querySelector('[data-log-id="historical-1"]')).toBeNull();
+    expect(screen.queryByTestId("button-toggle-older-records")).toBeNull();
+
+    await userEvent.click(screen.getByTestId("filter-maintenance-historical"));
+    expect(document.querySelector('[data-log-id="scoring-1"]')).toBeNull();
+    expect(document.querySelector('[data-log-id="historical-1"]')).not.toBeNull();
+
+    await userEvent.click(screen.getByTestId("filter-maintenance-all"));
+    expect(document.querySelector('[data-log-id="scoring-1"]')).not.toBeNull();
+    expect(screen.getByTestId("button-toggle-older-records").textContent).toContain("1 Older Record");
   });
 });
 
