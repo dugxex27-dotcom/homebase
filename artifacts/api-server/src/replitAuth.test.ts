@@ -887,3 +887,43 @@ describe("userStatusCache — bounded LRU eviction", () => {
     expect(userStatusCache.get("lru-user-new")).toBeDefined();
   });
 });
+
+describe("activeStatusCache — bounded LRU eviction", () => {
+  const MAX_SIZE = 5000;
+
+  beforeEach(() => {
+    activeStatusCache.clear();
+  });
+
+  it("never grows beyond its configured maximum", () => {
+    for (let i = 0; i < MAX_SIZE + 100; i++) {
+      activeStatusCache.set(`active-user-${i}`, {
+        status: "active",
+        expiresAt: Date.now() + 30_000,
+      });
+    }
+
+    expect((activeStatusCache as any).map.size).toBe(MAX_SIZE);
+    expect(activeStatusCache.get("active-user-0")).toBeUndefined();
+    expect(activeStatusCache.get(`active-user-${MAX_SIZE + 99}`)).toBeDefined();
+  });
+
+  it("evicts the least-recently-used entry first once the cache is full", () => {
+    for (let i = 0; i < MAX_SIZE; i++) {
+      activeStatusCache.set(`active-lru-user-${i}`, {
+        status: "active",
+        expiresAt: Date.now() + 30_000,
+      });
+    }
+
+    activeStatusCache.get("active-lru-user-0");
+    activeStatusCache.set("active-lru-user-new", {
+      status: "active",
+      expiresAt: Date.now() + 30_000,
+    });
+
+    expect(activeStatusCache.get("active-lru-user-0")).toBeDefined();
+    expect(activeStatusCache.get("active-lru-user-1")).toBeUndefined();
+    expect(activeStatusCache.get("active-lru-user-new")).toBeDefined();
+  });
+});

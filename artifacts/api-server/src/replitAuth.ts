@@ -448,7 +448,7 @@ const USER_STATUS_TTL_MS = 0;
 const ACTIVE_ACCOUNT_FRESH_TTL_MS = 30_000;
 
 export const userStatusCache = new LruCache<string, StatusCacheEntry>(5000);
-export const activeStatusCache = new Map<string, StatusCacheEntry>();
+export const activeStatusCache = new LruCache<string, StatusCacheEntry>(5000);
 const suspensionRecheckCache = new Map<string, number>();
 const _revocationCache = new Map<string, StatusCacheEntry>();
 
