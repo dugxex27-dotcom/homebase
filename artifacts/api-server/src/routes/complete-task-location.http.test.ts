@@ -256,6 +256,20 @@ vi.mock("../db", () => ({
     insert: vi.fn().mockReturnValue({
       values: mockDbInsertValues,
     }),
+    transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+      const tx = {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockImplementation(async (data: any) => {
+            if (data?.serviceDate) {
+              await mockCreateMaintenanceLog(data);
+            } else {
+              await mockDbInsertValues(data);
+            }
+          }),
+        }),
+      };
+      return callback(tx);
+    }),
     update: vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -392,6 +406,11 @@ describe("POST /api/maintenance-logs/complete-task — EXIF GPS location flag", 
     expect(mockDbInsertValues).toHaveBeenCalledWith(
       expect.objectContaining({ taskId: "us-northeast-hvac-filter" }),
     );
+    const completionData = mockDbInsertValues.mock.calls
+      .map(([data]) => data)
+      .find((data) => data?.taskId === "us-northeast-hvac-filter");
+    const maintenanceLogData = mockCreateMaintenanceLog.mock.calls[0][0];
+    expect(maintenanceLogData.taskCompletionId).toBe(completionData.id);
     expect(mockArchiveMaintenanceNotificationForTask).toHaveBeenCalledWith(
       HOMEOWNER_ID,
       "us-northeast-hvac-filter",

@@ -15334,8 +15334,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contractorAccountId: contractorAccountId ?? null,
       };
       
-      const log = await storage.createMaintenanceLog(logData as any);
-      
       // Also create task completion record for health score tracking
       const now = new Date();
       
@@ -15356,6 +15354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const taskCompletionData = {
+        id: randomUUID(),
         homeownerId: req.session.user.id,
         houseId,
         taskId: taskId ?? null,
@@ -15378,8 +15377,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aiVerificationStatus: evidenceDecision.aiVerificationStatus,
         aiVerificationResponse: directCompletionAudit,
       };
-      
-      await db.insert(taskCompletions).values(taskCompletionData);
+
+      const log = {
+        ...logData,
+        id: randomUUID(),
+        taskCompletionId: taskCompletionData.id,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      // Keep the scored completion and its maintenance-log link atomic. A log
+      // must never become editable merely because its completion was inserted
+      // without the direct taskCompletionId link used by the PATCH date lock.
+      await db.transaction(async (tx) => {
+        await tx.insert(taskCompletions).values(taskCompletionData);
+        await tx.insert(maintenanceLogs).values(log as any);
+      });
 
       if (taskId) {
         await storage.archiveMaintenanceNotificationForTask(req.session.user.id, taskId);
@@ -15432,19 +15445,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sendFutureServiceDateError(res);
         }
 
-        let isInvoiceConfirmed = Boolean((existingLog as any).taskCompletionId);
+        let isScoredLog = Boolean((existingLog as any).taskCompletionId);
 
         // Fallback: check invoiceAnalyses for a linked taskCompletionId when the
         // log was created by the invoice-confirm flow (no direct taskCompletionId column).
-        if (!isInvoiceConfirmed) {
+        if (!isScoredLog) {
           const linkedAnalyses = await db.select()
             .from(invoiceAnalyses)
             .where(eq(invoiceAnalyses.maintenanceLogId, req.params.id))
             .limit(1);
-          isInvoiceConfirmed = Boolean(linkedAnalyses[0]?.taskCompletionId);
+          isScoredLog = Boolean(linkedAnalyses[0]?.taskCompletionId);
         }
 
-        if (isInvoiceConfirmed) {
+        // Legacy complete-task records predate the direct taskCompletionId link.
+        // Recognize them by the manual-completion marker plus the score record
+        // created in the same house/month for the same maintenance task.
+        const legacyCompletionMethod = (existingLog as any).completionMethod;
+        if (
+          !isScoredLog
+          && (legacyCompletionMethod === "diy" || legacyCompletionMethod === "contractor")
+        ) {
+          const originalServiceDate = parseCalendarServiceDate(existingLog.serviceDate);
+          if (originalServiceDate) {
+            const legacyCompletions = await db.select({ id: taskCompletions.id })
+              .from(taskCompletions)
+              .where(and(
+                eq(taskCompletions.homeownerId, existingLog.homeownerId),
+                eq(taskCompletions.houseId, existingLog.houseId),
+                eq(taskCompletions.taskTitle, existingLog.serviceType),
+                eq(taskCompletions.year, originalServiceDate.year),
+                eq(taskCompletions.month, originalServiceDate.date.getUTCMonth() + 1),
+                eq(
+                  taskCompletions.completionMethod,
+                  legacyCompletionMethod === "diy" ? "diy" : "professional",
+                ),
+              ))
+              .limit(1);
+            isScoredLog = legacyCompletions.length > 0;
+          }
+        }
+
+        if (isScoredLog) {
           return res.status(403).json({
             message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
             code: "DATE_LOCKED",

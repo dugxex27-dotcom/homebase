@@ -398,6 +398,84 @@ describe("PATCH /api/maintenance-logs/:id — anti-gaming date lock", () => {
     expect(mockDbUpdate).not.toHaveBeenCalled();
   });
 
+  it("blocks serviceDate changes on a manually-completed scored log (returns 403, no write)", async () => {
+    const app = await buildApp();
+
+    // POST /api/maintenance-logs/complete-task creates a manual log and links
+    // its scored completion directly through taskCompletionId.
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: "2025-06-15",
+      serviceType: "Replace HVAC filter",
+      serviceDescription: "Completed DIY",
+      completionMethod: "diy",
+      verificationTier: "self_reported",
+      taskCompletionId: TC_ID,
+    });
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+
+    // Move the date across both a month and year boundary. The legacy lookup
+    // must use the original June 2025 scoring bucket, not this requested date.
+    const res = await request(app)
+      .patch(`/api/maintenance-logs/${LOG_ID}`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate: "2024-12-15" });
+
+    expect(res.status).toBe(403);
+    expect(res.body).toEqual({
+      message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
+      code: "DATE_LOCKED",
+    });
+    expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
+    expect(mockDbSelect).not.toHaveBeenCalled();
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+  });
+
+  it("blocks serviceDate changes on a legacy manually-completed scored log without a direct link", async () => {
+    const app = await buildApp();
+
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: "2025-06-15",
+      serviceType: "Replace HVAC filter",
+      serviceDescription: "Completed DIY",
+      completionMethod: "diy",
+      verificationTier: "self_reported",
+      taskCompletionId: null,
+    });
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockDbSelect
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      })
+      .mockReturnValueOnce({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: TC_ID }]),
+          }),
+        }),
+      });
+
+    const res = await request(app)
+      .patch(`/api/maintenance-logs/${LOG_ID}`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate: "2025-05-15" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe("DATE_LOCKED");
+    expect(mockDbSelect).toHaveBeenCalledTimes(2);
+    expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+  });
+
   it("does NOT touch taskCompletions when serviceDate is unchanged", async () => {
     const app = await buildApp();
 
