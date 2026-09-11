@@ -21,6 +21,7 @@ interface DraftValues {
   roofInstalledYear?: number | null;
   hvacInstalledYear?: number | null;
   waterHeaterInstalledYear?: number | null;
+  homeSystems?: string[] | null;
   [key: string]: unknown;
 }
 
@@ -74,6 +75,7 @@ export default function HouseholdProfilePage() {
       roofInstalledYear: house.roofInstalledYear,
       hvacInstalledYear: house.hvacInstalledYear,
       waterHeaterInstalledYear: house.waterHeaterInstalledYear,
+      homeSystems: house.homeSystems,
     });
   }, [house]);
 
@@ -292,6 +294,7 @@ export default function HouseholdProfilePage() {
             garageType: house.garageType,
             numberOfStories: house.numberOfStories,
             primaryHeatingFuel: house.primaryHeatingFuel,
+            homeSystems: house.homeSystems,
             ...draftProgress,
           }}
         />

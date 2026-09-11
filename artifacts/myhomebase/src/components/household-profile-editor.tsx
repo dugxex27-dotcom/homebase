@@ -29,6 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { HOME_SYSTEM_GROUPS } from "@/lib/home-systems";
 import { Home, Wrench, Droplets, CheckCircle2, Loader2 } from "lucide-react";
 
 type HouseholdProfileFormData = z.infer<typeof updateHouseholdProfileSchema>;
@@ -608,6 +610,53 @@ export function HouseholdProfileEditor({
                   )}
                 />
               </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Wrench className="h-4 w-4" />
+                Home Systems & Features
+              </h3>
+              <FormField
+                control={form.control}
+                name="homeSystems"
+                render={({ field }) => {
+                  const selectedSystems = field.value ?? [];
+                  return (
+                    <FormItem>
+                      <div className="space-y-5">
+                        {HOME_SYSTEM_GROUPS.map(([group, systems]) => (
+                          <fieldset key={group} className="space-y-2">
+                            <legend className="text-sm font-medium capitalize">{group}</legend>
+                            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                              {systems.map((system) => (
+                                <label
+                                  key={system.value}
+                                  className="flex items-center gap-2 rounded-md border p-2 text-sm"
+                                >
+                                  <Checkbox
+                                    checked={selectedSystems.includes(system.value)}
+                                    onCheckedChange={(checked) => {
+                                      field.onChange(
+                                        checked
+                                          ? [...selectedSystems, system.value]
+                                          : selectedSystems.filter((value) => value !== system.value),
+                                      );
+                                    }}
+                                    data-testid={`checkbox-home-system-${system.value}`}
+                                  />
+                                  {system.label}
+                                </label>
+                              ))}
+                            </div>
+                          </fieldset>
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
             </div>
 
             <div

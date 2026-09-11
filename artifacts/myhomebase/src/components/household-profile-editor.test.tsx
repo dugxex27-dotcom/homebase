@@ -30,6 +30,7 @@ const CURRENT_PROFILE = {
   roofInstalledYear: null,
   hvacInstalledYear: null,
   waterHeaterInstalledYear: null,
+  homeSystems: ["central-ac", "sump-pump"],
 } as any;
 
 function editor(
@@ -102,9 +103,31 @@ describe("HouseholdProfileEditor autosave", { timeout: 20_000 }, () => {
     }, otherHouse])).toEqual([{
       id: "house-1",
       squareFootage: 1200,
-      homeSystems: ["hvac", "roof"],
+      homeSystems: ["central-ac", "sump-pump"],
     }, otherHouse]);
     expect(screen.getByTestId("profile-save-status")).toHaveTextContent("Saved");
+  });
+
+  it("pre-checks saved home systems and autosaves changes", async () => {
+    apiRequest.mockResolvedValue(response());
+    renderEditor();
+
+    expect(screen.getByTestId("checkbox-home-system-central-ac")).toBeChecked();
+    expect(screen.getByTestId("checkbox-home-system-sump-pump")).toBeChecked();
+    expect(screen.getByTestId("checkbox-home-system-gas-furnace")).not.toBeChecked();
+
+    fireEvent.click(screen.getByTestId("checkbox-home-system-gas-furnace"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(800);
+    });
+
+    expect(apiRequest).toHaveBeenCalledWith(
+      "/api/houses/house-1/profile",
+      "PATCH",
+      expect.objectContaining({
+        homeSystems: ["central-ac", "sump-pump", "gas-furnace"],
+      }),
+    );
   });
 
   it("serializes saves and persists the newest values last", async () => {

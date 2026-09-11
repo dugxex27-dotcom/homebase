@@ -213,6 +213,17 @@ describe("Profile checklist — editor focus wiring for filled fields", () => {
 });
 
 describe("Profile editor — immediate reopen after saving", () => {
+  it("passes home systems selected in Maintenance to the editor", () => {
+    MOCK_HOUSE.homeSystems.push("central-ac", "sump-pump");
+
+    renderPage();
+    fireEvent.click(screen.getByTestId("button-edit-profile"));
+
+    expect(capturedCurrentProfile?.homeSystems).toEqual(["central-ac", "sump-pump"]);
+
+    MOCK_HOUSE.homeSystems.length = 0;
+  });
+
   it("passes the latest draft values back to the editor before the houses query refetches", () => {
     renderPage();
 
