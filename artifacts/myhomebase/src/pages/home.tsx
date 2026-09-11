@@ -659,10 +659,10 @@ export default function Home() {
           {/* Title Row + CTA */}
           <div className="px-4 py-3 md:px-6 md:py-4">
             <div className="home-dashboard-width flex items-center justify-between">
-              <div>
-                <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Your Home</h1>
-                <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">
-                  {getGreeting()}{firstName ? `, ${firstName}` : ""}
+              <div className="min-w-0 pr-3">
+                <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Home</h1>
+                <p className="truncate text-xs font-medium text-gray-500 md:text-sm">
+                  {primaryHouse?.address || primaryHouse?.name || `${getGreeting()}${firstName ? `, ${firstName}` : ""}`}
                 </p>
               </div>
               <Button className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all" onClick={() => setLocation('/maintenance?action=log')}>
@@ -715,6 +715,22 @@ export default function Home() {
               </span>
               <span className="inline-flex min-h-11 items-center rounded-full bg-[#3C258E] px-4 text-sm font-bold text-white">Start</span>
             </Link>
+
+            {nextUpActions.length > 1 && (
+              <div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-3 md:hidden" aria-label="Upcoming work">
+                {nextUpActions.slice(1, 3).map((action, index) => (
+                  <Link
+                    key={`${action.title}-mobile-upcoming-${index}`}
+                    href={action.href}
+                    className="flex min-h-11 items-center gap-2 py-2.5 text-sm font-semibold text-[#2C0F5B]"
+                  >
+                    <span className="text-[#65558F]">{action.icon}</span>
+                    <span className="min-w-0 flex-1 truncate">{action.title}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3]" />
+                  </Link>
+                ))}
+              </div>
+            )}
 
             <div className="hidden grid-cols-3 gap-3 md:grid" data-testid="home-next-up-desktop">
               {nextUpActions.slice(0, 3).map((action, index) => (
@@ -829,11 +845,10 @@ export default function Home() {
           <div className="home-dashboard-width">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
-              {/* Left/Main Column: Next Actions */}
+              {/* Left/Main Column: Next Actions & Property */}
               <div className="md:col-span-2 space-y-4 next-actions-container">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 hidden md:block">Next Actions</h2>
-
                 {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
+
                 {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length > 0 && (
                   <div className="dash-light-card" style={{ borderLeft: '3px solid #7c3aed', marginBottom: 0 }} data-testid="pending-job-records-section">
                 <div className="dash-light-card-row" style={{ marginBottom: 10 }}>
@@ -927,7 +942,9 @@ export default function Home() {
                           </div>
                         </div>
                         {isAccepted && (
-                          <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }}>✓ Saved to your home history</div>
+                          <div style={{ fontSize: 11, color: '#22c55e', fontWeight: 600 }} className="flex items-center gap-1">
+                            <CheckCircle2 size={12} /> Saved to your home history
+                          </div>
                         )}
                       </div>
                     );
@@ -1358,10 +1375,10 @@ export default function Home() {
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                                  <div style={{ fontSize: 11, color: '#2C0F5B' }}>
+                                  <div style={{ fontSize: 11, color: '#2C0F5B', display: 'flex', alignItems: 'center' }}>
                                     {effectiveHouse
-                                      ? <>📍 <strong>{(effectiveHouse as any).name || (effectiveHouse as any).address || 'Your home'}</strong></>
-                                      : <span style={{ color: '#dc2626' }}>⚠ No property selected — choose one before saving</span>
+                                      ? <><MapPin size={12} className="inline mr-1" /> <strong>{(effectiveHouse as any).name || (effectiveHouse as any).address || 'Your home'}</strong></>
+                                      : <span style={{ color: '#dc2626' }} className="flex items-center gap-1"><Wrench size={12} /> No property selected — choose one before saving</span>
                                     }
                                     {multiHouse && effectiveHouse && (
                                       <button
@@ -1407,8 +1424,8 @@ export default function Home() {
                           )}
 
                           {isClaimed && (
-                            <div style={{ borderTop: '1px solid var(--purple-border)', paddingTop: 8, fontSize: 11, color: '#22c55e', fontWeight: 600 }}>
-                              ✓ Saved to {effectiveHouse ? ((effectiveHouse as any).name || (effectiveHouse as any).address) : 'your home history'}
+                            <div style={{ borderTop: '1px solid var(--purple-border)', paddingTop: 8, fontSize: 11, color: '#22c55e', fontWeight: 600 }} className="flex items-center gap-1">
+                              <CheckCircle2 size={12} /> Saved to {effectiveHouse ? ((effectiveHouse as any).name || (effectiveHouse as any).address) : 'your home history'}
                             </div>
                           )}
                         </div>
@@ -1420,6 +1437,61 @@ export default function Home() {
             )}
 
               </div>
+              {/* Right Column: Score & Actions to Improve */}
+              <div className="md:col-span-1 space-y-6">
+                <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                  <div className="p-5 border-b border-gray-100 bg-[#F9FAFB]">
+                    <h3 className="text-sm font-bold text-[#2C0F5B] mb-3">Home Wellness Score™</h3>
+                    <div className="flex items-end gap-3 mb-4">
+                      <span className="text-4xl font-extrabold" style={{ color: getScoreClass(primaryHouseScore) === 'good' ? '#16a34a' : getScoreClass(primaryHouseScore) === 'warn' ? '#d97706' : '#dc2626' }}>
+                        {primaryHouseScore ?? "—"}
+                      </span>
+                      <span className="text-sm font-semibold text-gray-500 mb-1 leading-tight">
+                        {primaryHouseScore !== undefined ? getHomeWellnessScoreStatus(primaryHouseScore).label : "Calculating..."}
+                      </span>
+                    </div>
+                    {/* Honest band */}
+                    <Progress value={primaryHouseScore ? primaryHouseScore / 10 : 0} className="h-2 mb-2" />
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <span>0</span>
+                      <span>1000</span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Actions to Improve</h4>
+                    <div className="space-y-3">
+                      {showProfileNudge && (
+                        <div className="flex items-start gap-3 p-3 bg-[#EEEDFE] rounded-xl border border-[#DED8F7]">
+                           <Wrench className="w-4 h-4 text-[#3C258E] mt-0.5 shrink-0" />
+                           <div>
+                             <p className="text-xs font-bold text-[#2C0F5B]">Add install years</p>
+                             <p className="text-[11px] text-[#4C3B6E] mt-0.5 leading-snug">Add age for roof or HVAC to boost score</p>
+                           </div>
+                        </div>
+                      )}
+                      {!inspectionSummary && (
+                        <Link href="/documents?upload=inspection" className="flex items-start gap-3 p-3 bg-[#F9FAFB] rounded-xl border border-gray-100 hover:border-[#DED8F7] transition cursor-pointer">
+                           <FileText className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
+                           <div>
+                             <p className="text-xs font-bold text-[#2C0F5B]">Upload Inspection</p>
+                             <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">AI extracts issues to track</p>
+                           </div>
+                        </Link>
+                      )}
+                      {tasksCount !== null && tasksCount > 0 && (
+                        <Link href="/maintenance" className="flex items-start gap-3 p-3 bg-[#F9FAFB] rounded-xl border border-gray-100 hover:border-[#DED8F7] transition cursor-pointer">
+                           <ClipboardList className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
+                           <div>
+                             <p className="text-xs font-bold text-[#2C0F5B]">Complete {tasksCount} tasks</p>
+                             <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">Log maintenance to raise your score</p>
+                           </div>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -1538,9 +1610,9 @@ export default function Home() {
               </div>
               <div className="hdm-info-cards">
                 {[
-                  { icon: "🌡️", title: "Climate-aware", desc: `Tasks are tailored for ${climateZone}.` },
-                  { icon: "📅", title: "Monthly rotation", desc: "Tasks update each month so nothing gets missed year-round." },
-                  { icon: "✅", title: "Raises your Home Wellness Score™", desc: "Completing tasks improves your Home Wellness Score™." },
+                  { icon: <TrendingUp size={16} />, title: "Climate-aware", desc: `Tasks are tailored for ${climateZone}.` },
+                  { icon: <Calendar size={16} />, title: "Monthly rotation", desc: "Tasks update each month so nothing gets missed year-round." },
+                  { icon: <CheckCircle2 size={16} />, title: "Raises your Home Wellness Score™", desc: "Completing tasks improves your Home Wellness Score™." },
                 ].map(c => (
                   <div key={c.title} className="hdm-info-card">
                     <span className="hdm-info-icon">{c.icon}</span>

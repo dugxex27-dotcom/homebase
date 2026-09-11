@@ -1542,9 +1542,9 @@ function TaskCard({
           />
         ) : (
           <div className="flex items-center justify-between mt-3 border-t border-gray-100 pt-3">
-            <span className="text-sm font-bold text-[#3C258E] flex items-center gap-1">
+            <span className="inline-flex min-h-8 items-center gap-1 rounded-full bg-[#EEEDFE] px-3 text-xs font-bold text-[#3C258E]">
               <TrendingUp className="w-4 h-4" />
-              Score impact after verification
+              + Score after verification
             </span>
             <Button size="sm" className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white rounded-full px-4 h-8 text-xs font-semibold shadow-sm" onClick={(e) => { e.stopPropagation(); onOpenDialog(); }}>
               Log Work
@@ -1694,6 +1694,12 @@ export default function Maintenance() {
   // Task detail dialog state
   const [selectedTask, setSelectedTask] = useState<MaintenanceTask | null>(null);
   const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
+
+  // Score query for selected house
+  const { data: scoreData } = useQuery<{score: number, completedTasks: number}>({
+    queryKey: ['/api/houses', selectedHouseId, 'health-score'],
+    enabled: !!selectedHouseId,
+  });
 
   // DIY completion dialog state
   const [pendingDiyTask, setPendingDiyTask] = useState<MaintenanceTask | null>(null);
@@ -2067,7 +2073,7 @@ export default function Maintenance() {
       if (data.newAchievements && data.newAchievements.length > 0) {
         const achievementNames = data.newAchievements.map((a: any) => a.achievementKey).join(', ');
         toast({
-          title: "🎉 Achievement Unlocked!",
+          title: "Achievement Unlocked!",
           description: `You've earned ${data.newAchievements.length} new achievement${data.newAchievements.length > 1 ? 's' : ''}!`,
           duration: 5000,
         });
@@ -3859,20 +3865,54 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               </div>
             </div>
 
-            <aside className="rounded-2xl border border-[#DED8F7] bg-[#F7F5FF] p-4 shadow-sm">
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#65558F]">Score context</p>
-              {selectedHouseId && (
-                <div className="mt-3">
-                  <HomeHealthScore
-                    houseId={selectedHouseId}
-                    houseName={houses.find((house: House) => house.id === selectedHouseId)?.name}
-                    compact
-                  />
+            <aside className="space-y-4">
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h3 className="mb-1 text-sm font-bold text-[#2C0F5B]">If you finish today</h3>
+                <p className="mb-4 text-xs text-gray-500">Verified work can improve your score.</p>
+
+                <div className="space-y-4">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <span className="mb-1 block text-xs font-semibold text-gray-400">Current score</span>
+                      <span className="text-xl font-bold text-gray-900">{scoreData?.score ?? "—"}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="mb-1 block text-xs font-semibold text-[#3C258E]">After verification</span>
+                      <span className="inline-flex items-center gap-1 text-sm font-extrabold text-[#3C258E]">
+                        <TrendingUp className="h-4 w-4" />
+                        Recalculated
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="relative h-2 overflow-hidden rounded-full bg-gray-100" aria-label="Current Home Wellness Score out of 1000">
+                    <div
+                      className="absolute inset-y-0 left-0 rounded-full bg-[#3C258E] transition-all"
+                      style={{ width: `${Math.max(0, Math.min(100, ((scoreData?.score ?? 0) / 1000) * 100))}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <span>0</span>
+                    <span>1000</span>
+                  </div>
+
+                  {dueTasks.length > 0 ? (
+                    <p className="text-center text-[11px] leading-tight text-gray-500">
+                      Finish and verify <span className="font-bold text-[#2C0F5B]">{dueTasks.length} due task{dueTasks.length !== 1 ? 's' : ''}</span>. The score engine will calculate the actual impact.
+                    </p>
+                  ) : (
+                    <p className="text-center text-[11px] leading-tight text-gray-500">
+                      You are caught up today. Log completed DIY or contractor work for verification.
+                    </p>
+                  )}
                 </div>
-              )}
-              <p className="mt-3 text-xs leading-5 text-[#65558F]">
-                Completed work affects your Home Wellness Score™ only after it is recorded and verified.
-              </p>
+              </div>
+
+              <div className="rounded-2xl border border-gray-200 bg-[#F9FAFB] p-4 text-center">
+                <p className="text-[11px] leading-5 text-gray-500">
+                  Completed work affects your Home Wellness Score™ after it is recorded and verified.
+                </p>
+              </div>
             </aside>
           </div>
         </section>
@@ -3884,25 +3924,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <ActivatingPlanBanner />
           <HomeownerTrialBanner />
         </div>
-      )}
-      {/* Home Wellness Score™ Cards - Wrapped in Feature Gate for Homeowners */}
-      {userRole === 'homeowner' && houses.length > 0 && (
-        <HomeownerFeatureGate featureName="Maintenance Scheduling">
-          <section className="py-4 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-              <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-                {houses.map((house: House) => (
-                  <HomeHealthScore
-                    key={house.id}
-                    houseId={house.id}
-                    houseName={house.name}
-                    compact={true}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        </HomeownerFeatureGate>
       )}
       {userRole === 'homeowner' && houses.some((house: House) =>
         getMechanicalAgeInfo(house).some(item => item.tone === 'alert' || item.tone === 'warn')
@@ -4431,9 +4452,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                   variant={rec.urgency === 'critical' ? 'destructive' : 'secondary'}
                                   className="text-xs"
                                 >
-                                  {rec.urgency === 'critical' ? '🔴 Critical' :
-                                   rec.urgency === 'important' ? '🟠 Important' :
-                                   '🟢 Routine'}
+                                  {rec.urgency === 'critical' ? 'Critical' :
+                                   rec.urgency === 'important' ? 'Important' :
+                                   'Routine'}
                                 </Badge>
                                 {rec.system.installationYear && (
                                   <span className="text-xs text-muted-foreground">
@@ -5075,8 +5096,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
                 {aiDiyVerifyResult && (
                   <div className={`p-3 rounded-lg border ${aiDiyVerifyResult.diyVerified ? "bg-[#F0FAF4] border-[#A7D7B8]" : "bg-red-50 border-red-200"}`}>
-                    <p className={`text-sm font-medium ${aiDiyVerifyResult.diyVerified ? "text-[#09694A]" : "text-red-800"}`}>
-                      {aiDiyVerifyResult.diyVerified ? "✓ Verification passed" : "✗ Verification inconclusive"}
+                    <p className={`text-sm font-medium flex items-center gap-1 ${aiDiyVerifyResult.diyVerified ? "text-[#09694A]" : "text-red-800"}`}>
+                      {aiDiyVerifyResult.diyVerified ? <><CheckCircle2 className="w-4 h-4" /> Verification passed</> : <><X className="w-4 h-4" /> Verification inconclusive</>}
                     </p>
                     {aiDiyVerifyResult.verificationNotes && <p className="text-xs mt-1" style={{ color: aiDiyVerifyResult.diyVerified ? 'var(--green-deep)' : '#991b1b' }}>{aiDiyVerifyResult.verificationNotes}</p>}
                   </div>
@@ -6433,7 +6454,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     setDiyBeforeFile(valid[0] ?? null);
                   }}
                 />
-                {diyBeforeFile && <p className="text-xs text-green-600 mt-1">✓ {diyBeforeFile.name}</p>}
+                {diyBeforeFile && <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {diyBeforeFile.name}</p>}
               </div>
               <div>
                 <p className="text-sm font-medium mb-1">After Photo (optional)</p>
@@ -6448,7 +6469,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     setDiyAfterFile(valid[0] ?? null);
                   }}
                 />
-                {diyAfterFile && <p className="text-xs text-green-600 mt-1">✓ {diyAfterFile.name}</p>}
+                {diyAfterFile && <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {diyAfterFile.name}</p>}
               </div>
             </div>
             <DialogFooter className="gap-2 flex-col sm:flex-row">
@@ -6517,7 +6538,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     setCxInvoiceFile(valid[0] ?? null);
                   }}
                 />
-                {cxInvoiceFile && <p className="text-xs text-green-600 mt-1">✓ {cxInvoiceFile.name}</p>}
+                {cxInvoiceFile && <p className="text-xs text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> {cxInvoiceFile.name}</p>}
               </div>
             </div>
             <DialogFooter className="gap-2 flex-col sm:flex-row">

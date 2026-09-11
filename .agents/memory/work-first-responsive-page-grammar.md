@@ -9,6 +9,8 @@ On desktop, dashboard content should use the pane beside the sidebar fluidly wit
 
 The stable primary navigation is Home / Maintain / Record / Pros / More for homeowners, Jobs / Messages / Clients / Profile for contractors, and Dashboard / Handoffs / Referrals / Account for agents.
 
-**Why:** Large decorative headers and hidden destinations delayed useful work, while narrow centered desktop wrappers left conspicuous empty gutters beside the sidebar and made the dashboard feel disconnected.
+Predicted-score UI must never invent per-task points. When the scoring engine does not provide a real projection, show the current 0–1000 position and explain that verified work triggers recalculation; use nonnumeric “+ Score after verification” chips.
+
+**Why:** Large decorative headers and hidden destinations delayed useful work, while narrow centered desktop wrappers left conspicuous empty gutters beside the sidebar and made the dashboard feel disconnected. Fabricated point estimates undermine the canonical score even when labeled as predictions.
 
 **How to apply:** Preserve this grammar when adding or redesigning authenticated pages. Put secondary tools behind the role's final account/more destination rather than expanding primary navigation or adding flyouts.

@@ -672,20 +672,7 @@ export default function Contractors() {
           </div>
         </div>
 
-        {!hasAppliedFilters && !filters.searchQuery && !filters.searchLocation ? (
-              <div className="text-center py-16 rounded-2xl" style={{ background: '#fff', border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }}>
-                <div className="max-w-md mx-auto">
-                  <Search className="w-16 h-16 mx-auto mb-4" style={{ color: '#b6a6f4' }} />
-                  <h3 className="text-xl font-semibold mb-2" style={{ color: '#2c0f5b' }}>Ready to Find Contractors?</h3>
-                  <p className="mb-4" style={{ color: '#4a3670' }}>
-                    Use the filters above to search for contractors by distance, services, rating, and more.
-                  </p>
-                  <p className="text-sm" style={{ color: '#7c6fa0' }}>
-                    Select your preferences and click "Apply Filters" to see available contractors.
-                  </p>
-                </div>
-              </div>
-            ) : isLoading ? (
+        {isLoading ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-sm border border-gray-300 dark:border-gray-700 p-6 animate-pulse">
@@ -710,56 +697,57 @@ export default function Contractors() {
                 ))}
               </div>
             ) : sortedContractors.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm mt-2 mb-8 px-4">
-                <div className="w-16 h-16 bg-[#f0ebfa] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-8 h-8 text-[#3c258e]" />
+              <div className="text-center py-12 px-4 bg-white rounded-2xl border border-gray-200 shadow-sm max-w-3xl mx-auto">
+                <div className="mx-auto w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-xl font-bold text-[#2c0f5b] mb-2">No contractors found</h3>
-                <p className="text-[#4a3670] mb-8 max-w-md mx-auto">
-                  We couldn't find any verified professionals matching your exact criteria in this area.
+                <h3 className="text-xl font-bold text-[#2C0F5B] mb-2">No pros match your criteria</h3>
+                <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                  We don't have a verified pro matching these exact requirements in our network right now. What would you like to do?
                 </p>
-
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap max-w-3xl mx-auto">
-                  <Button
-                    onClick={() => {
-                      setFilters({});
-                      setSelectedDistance('');
-                      setSelectedRating('');
-                      setHasEmergencyServices(false);
-                      setSelectedServices([]);
-                      setSearchQuery('');
-                      setHasAppliedFilters(true);
-                    }}
-                    className="bg-[#3c258e] text-white hover:opacity-90 w-full sm:w-auto"
-                  >
-                    Clear Filters
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  >
-                    Invite Your Contractor
-                  </Button>
-
-                  <Link href="/messages?taskTitle=Contractor%20Matching%20Request&taskDescription=Please%20help%20me%20find%20a%20contractor%20for%20my%20project.">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto">
+                  <div className="bg-[#F9FAFB] border border-gray-100 rounded-xl p-5 flex flex-col h-full items-center text-center">
+                    <h4 className="font-bold text-[#2C0F5B] mb-2 text-sm">Widen Search</h4>
+                    <p className="text-xs text-gray-500 mb-4 flex-grow">Expand your radius or clear filters to see more options nearby.</p>
                     <Button
                       variant="outline"
-                      className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
+                      className="min-h-11 w-full text-xs font-semibold"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setFilters({});
+                        setSelectedServices([]);
+                        setSelectedDistance('');
+                        setSelectedRating('');
+                        setHasEmergencyServices(false);
+                        hasInitializedFromUrl.current = false;
+                        setHasAppliedFilters(true);
+                      }}
                     >
-                      Request Matching
+                      Expand Radius
                     </Button>
-                  </Link>
-
-                  <Link href="/maintenance">
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-[#E5E7EB] rounded-xl p-5 flex flex-col h-full items-center text-center">
+                    <h4 className="font-bold text-[#2C0F5B] mb-2 text-sm">Bring Your Own</h4>
+                    <p className="text-xs text-gray-500 mb-4 flex-grow">Already have a pro you trust? Invite them to MyHomeBase.</p>
                     <Button
-                      variant="outline"
-                      className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
+                      className="min-h-11 w-full bg-[#3C258E] text-xs font-semibold text-white hover:bg-[#2C0F5B]"
+                      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                     >
-                      Log DIY Work
+                      Invite Contractor
                     </Button>
-                  </Link>
+                  </div>
+                  <div className="bg-[#F9FAFB] border border-gray-100 rounded-xl p-5 flex flex-col h-full items-center text-center">
+                    <h4 className="font-bold text-[#2C0F5B] mb-2 text-sm">Do It Yourself</h4>
+                    <p className="text-xs text-gray-500 mb-4 flex-grow">Planning to tackle this yourself? Log it to boost your home score.</p>
+                    <Link href="/maintenance?action=log" className="w-full">
+                      <Button
+                        variant="outline"
+                        className="min-h-11 w-full text-xs font-semibold"
+                      >
+                        Log DIY Work
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             ) : (
