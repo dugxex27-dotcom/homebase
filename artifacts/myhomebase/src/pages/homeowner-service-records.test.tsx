@@ -140,7 +140,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useMutation: vi.fn((options: {
       mutationFn?: (variables: unknown) => Promise<unknown>;
       onSuccess?: (data: unknown) => void;
-      onError?: (error: Error) => void;
+      onError?: (error: Error, variables: unknown) => void;
     }) => {
       const run = async (variables: unknown) => {
         try {
@@ -148,7 +148,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           options.onSuccess?.(data);
           return data;
         } catch (error) {
-          options.onError?.(error as Error);
+          options.onError?.(error as Error, variables);
           throw error;
         }
       };
@@ -354,6 +354,43 @@ describe("Service Records — maintenance log date errors", () => {
 
     await waitFor(() => expect(screen.getByText(apiMessage)).toBeDefined());
     expect(dateInput.getAttribute("aria-invalid")).toBe("true");
+    expect(flags.toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — locked record deletion", () => {
+  it("shows the score-lock explanation inline without a destructive toast", async () => {
+    flags.maintenanceLogs = [{
+      id: "scored-record",
+      homeownerId: "user-001",
+      houseId: "house-1",
+      serviceDescription: "Verified HVAC service",
+      serviceDate: "2026-08-15T12:00:00.000Z",
+      serviceType: "maintenance",
+    }];
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/maintenance-logs/scored-record" && init?.method === "DELETE") {
+        return {
+          status: 403,
+          ok: false,
+          json: async () => ({ code: "VERIFIED_RECORD", message: "Verified records cannot be deleted" }),
+        } as Response;
+      }
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({}),
+      } as Response;
+    });
+
+    renderPage();
+    await userEvent.click(screen.getByTestId("button-delete-record-scored-record"));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This record has been counted in your Home Health Score and cannot be deleted.",
+    );
     expect(flags.toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
   });
 });

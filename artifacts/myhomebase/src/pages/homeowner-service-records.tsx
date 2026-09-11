@@ -152,6 +152,7 @@ export default function HomeownerServiceRecords() {
 
   const [isMaintenanceLogDialogOpen, setIsMaintenanceLogDialogOpen] = useState(false);
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
+  const [lockedDeleteRecordId, setLockedDeleteRecordId] = useState<string | null>(null);
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   const [serviceRecordsHouseFilter, setServiceRecordsHouseFilter] = useState<string>("all");
   const [scoreHistoryFilter, setScoreHistoryFilter] = useState<ScoreHistoryFilter>("all");
@@ -405,15 +406,22 @@ export default function HomeownerServiceRecords() {
 
   const deleteMaintenanceLogMutation = useMutation({
     mutationFn: async (id: string) => {
+      setLockedDeleteRecordId(null);
       const response = await fetch(`/api/maintenance-logs/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('Failed to delete maintenance log');
+      if (!response.ok) {
+        throw await maintenanceLogRequestError(response, 'Failed to delete maintenance log');
+      }
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/maintenance-logs'] });
       toast({ title: "Success", description: "Maintenance log deleted successfully" });
     },
-    onError: () => {
+    onError: (error, id) => {
+      if (error instanceof MaintenanceLogRequestError && error.code === "VERIFIED_RECORD") {
+        setLockedDeleteRecordId(id);
+        return;
+      }
       toast({ title: "Error", description: "Failed to delete maintenance log", variant: "destructive" });
     },
   });
@@ -1136,6 +1144,16 @@ export default function HomeownerServiceRecords() {
                       </Button>
                     </div>
                   </div>
+                  {lockedDeleteRecordId === log.id && (
+                    <div
+                      className="mb-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+                      role="alert"
+                      data-testid={`delete-locked-message-${log.id}`}
+                    >
+                      <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                      <span>This record has been counted in your Home Health Score and cannot be deleted.</span>
+                    </div>
+                  )}
 
                   {(log.cost || log.contractorName || log.contractorCompany || log.nextServiceDue) && (
                     <div className="flex flex-wrap gap-4" style={{ fontSize: 12, color: '#6b7280', marginBottom: log.notes ? 12 : 0 }}>
