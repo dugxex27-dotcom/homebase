@@ -11,6 +11,7 @@
 <meta name="robots" content="index, follow">
 <meta name="application-name" content="MyHomeBase">
 <link rel="canonical" href="https://www.gotohomebase.com">
+<link rel="stylesheet" href="/marketing-mobile-nav.css">
 
 <!-- Open Graph — Facebook, LinkedIn -->
 <meta property="og:type" content="website">
@@ -349,7 +350,10 @@ html,body{
 
 <div class="hero">
   <div class="signin-wrap">
-    <a href="/signin/homeowner" class="nav-signin-btn">Sign in</a>
+    <a href="/signin/homeowner" class="nav-signin-btn marketing-desktop-actions">Sign in</a>
+    <button class="marketing-menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="marketing-mobile-menu" data-marketing-menu-toggle>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
   </div>
   <div class="hero-logo">
     <a href="/"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™"></a>
@@ -381,8 +385,9 @@ html,body{
           <span class="price-num" style="color:var(--purple);">$5</span>
           <span class="price-per">/month · 14-day free trial</span>
         </div>
-        <a href="/homeowner" class="card-cta purple" onclick="event.stopPropagation()">Check my home's risk — free →</a>
+        <a href="/quiz/quiz.html" class="card-cta purple" onclick="event.stopPropagation()">Check my home's risk — free →</a>
         <a href="/demo?role=homeowner" class="card-demo-link" onclick="event.stopPropagation()">Try Demo</a>
+        <a href="/homeowner" class="card-demo-link" onclick="event.stopPropagation()">Learn about homeowner tools</a>
         <a href="/signin/homeowner" class="card-signin-link" onclick="event.stopPropagation()">Already have an account? Sign in</a>
       </div>
     </div>
@@ -449,5 +454,22 @@ html,body{
   © 2026 MyHomeBase™. All rights reserved. &nbsp;·&nbsp; gotohomebase.com
 </div>
 
+<div class="marketing-mobile-panel" id="marketing-mobile-menu" hidden data-marketing-mobile-panel>
+  <div class="marketing-mobile-backdrop" aria-hidden="true" data-marketing-menu-backdrop></div>
+  <div class="marketing-mobile-drawer" role="dialog" aria-modal="true" aria-labelledby="marketing-mobile-title" data-marketing-mobile-drawer>
+    <div class="marketing-mobile-drawer-header">
+      <span class="marketing-mobile-drawer-title" id="marketing-mobile-title">Menu</span>
+      <button class="marketing-menu-close" type="button" aria-label="Close navigation menu" data-marketing-menu-close>×</button>
+    </div>
+    <nav class="marketing-mobile-links" aria-label="Mobile navigation">
+      <a class="marketing-mobile-link" href="/homeowner#how-it-works">How It Works</a>
+      <a class="marketing-mobile-link" href="/homeowner#pricing">Pricing</a>
+      <a class="marketing-mobile-link" href="/faq">FAQ</a>
+      <a class="marketing-mobile-link marketing-mobile-link-primary" href="/signin/homeowner?tab=register">Get Started</a>
+      <a class="marketing-mobile-link marketing-mobile-link-signin" href="/signin/homeowner">Sign in</a>
+    </nav>
+  </div>
+</div>
+<script src="/marketing-mobile-nav.js?v=2"></script>
 </body>
 </html>

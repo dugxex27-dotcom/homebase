@@ -8,6 +8,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://www.gotohomebase.com/agent.html">
 <link rel="stylesheet" href="/native-safe-area.css">
+<link rel="stylesheet" href="/marketing-mobile-nav.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -357,10 +358,13 @@ nav{
       <a href="/agent"><img src="/my-homebase-logo-tm-final-white.png" alt="MyHomeBase™"></a>
     </div>
   </div>
-  <div class="nav-right">
-    <a href="/login" class="nav-link">Sign in</a>
+  <div class="nav-right marketing-desktop-actions">
+    <a href="/signin/agent" class="nav-link">Sign in</a>
     <button class="nav-cta" onclick="handleTourDemo(this)">Get Started Free</button>
   </div>
+  <button class="marketing-menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="marketing-mobile-menu" data-marketing-menu-toggle>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
 </nav>
 <div class="demo-underbar">
   <a href="/" class="demo-underbar-back">← All users</a>
@@ -403,7 +407,7 @@ nav{
 </div>
 
 <!-- CLOSING GIFT WORKFLOW -->
-<div class="section">
+<div class="section" id="how-it-works">
   <div class="section-eyebrow">The closing day workflow</div>
   <h2 class="section-title">Five minutes at closing.<br>Years of client loyalty.</h2>
   <p class="section-sub">Most agents give a gift card at closing. You give your client a verified home record, a live wellness score, and a system that runs their home. The difference is unforgettable.</p>
@@ -539,6 +543,7 @@ nav{
   </div>
 
   <!-- PRICING -->
+  <div id="pricing"></div>
   <div class="section-eyebrow">Simple pricing</div>
   <h2 class="section-title" style="margin-bottom:32px;">Free for agents.<br>Always.</h2>
   <div class="pricing-card">
@@ -608,6 +613,23 @@ nav{
     <p class="footer-sub-tagline">Built for homeowners who take ownership seriously.</p>
   </div>
 </footer>
+<div class="marketing-mobile-panel" id="marketing-mobile-menu" hidden data-marketing-mobile-panel>
+  <div class="marketing-mobile-backdrop" aria-hidden="true" data-marketing-menu-backdrop></div>
+  <div class="marketing-mobile-drawer" role="dialog" aria-modal="true" aria-labelledby="marketing-mobile-title" data-marketing-mobile-drawer>
+    <div class="marketing-mobile-drawer-header">
+      <span class="marketing-mobile-drawer-title" id="marketing-mobile-title">Menu</span>
+      <button class="marketing-menu-close" type="button" aria-label="Close navigation menu" data-marketing-menu-close>×</button>
+    </div>
+    <nav class="marketing-mobile-links" aria-label="Mobile navigation">
+      <a class="marketing-mobile-link" href="#how-it-works">How It Works</a>
+      <a class="marketing-mobile-link" href="#pricing">Pricing</a>
+      <a class="marketing-mobile-link" href="/faq">FAQ</a>
+      <a class="marketing-mobile-link marketing-mobile-link-primary" href="/signin/agent?tab=register">Get Started</a>
+      <a class="marketing-mobile-link marketing-mobile-link-signin" href="/signin/agent">Sign in</a>
+    </nav>
+  </div>
+</div>
+<script src="/marketing-mobile-nav.js?v=2"></script>
 
 <script>
   function handleDemo(btn) {
@@ -617,7 +639,7 @@ nav{
     window.location.href = '/demo?role=agent';
   }
   function handleTourDemo(el) {
-    window.location.href = '/signin/agent';
+    window.location.href = '/signin/agent?tab=register';
   }
 </script>
 

@@ -6,6 +6,7 @@
   <title>MyHomeBase™ — For Homeowners</title>
   <meta name="description" content="Carfax for your home. Track maintenance history, protect your warranty, and document everything — so your home tells its story the way it should." />
   <link rel="stylesheet" href="/native-safe-area.css" />
+  <link rel="stylesheet" href="/marketing-mobile-nav.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
@@ -618,7 +619,7 @@
 </div>
 
 <!-- ═══ 42% DENIED MODAL ═══ -->
-<div class="overlay" id="denied-overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="denied-overlay" role="dialog" aria-modal="true" aria-labelledby="denied-modal-title">
   <div class="modal-card">
     <button class="modal-close" data-close="denied-overlay" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -627,7 +628,7 @@
       <div class="mdn-bar"></div>
       <div class="mdn-header">
         <p class="mdn-eyebrow">Why Claims Get Denied</p>
-        <h2 class="mdn-heading">42% of claims are denied or underpaid.</h2>
+        <h2 class="mdn-heading" id="denied-modal-title">42% of claims are denied or underpaid.</h2>
         <p class="mdn-subtitle">That's not a rounding error — it's nearly every other homeowner who files a claim.</p>
         <div class="mdn-divider"></div>
       </div>
@@ -679,7 +680,7 @@
 </div>
 
 <!-- ═══ $18K COST MODAL ═══ -->
-<div class="overlay" id="cost-overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="cost-overlay" role="dialog" aria-modal="true" aria-labelledby="cost-modal-title">
   <div class="modal-card">
     <button class="modal-close" data-close="cost-overlay" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -688,7 +689,7 @@
       <div class="mco-bar"></div>
       <div class="mco-header">
         <p class="mco-eyebrow">The Real Cost of a Denied Claim</p>
-        <h2 class="mco-heading">$18,311 — the average out-of-pocket loss.</h2>
+        <h2 class="mco-heading" id="cost-modal-title">$18,311 — the average out-of-pocket loss.</h2>
         <p class="mco-subtitle">When a claim is denied, you don't just lose the claim — you absorb the full repair cost yourself.</p>
         <div class="mco-divider"></div>
       </div>
@@ -726,14 +727,14 @@
       </div>
       <div class="mco-footer-row">
         <span class="mco-footer-icon">📋</span>
-        <p class="mco-footer-text">MyHomeBase™ gives you a permanent, verifiable record of every repair, inspection, and maintenance task. <a href="/signin/homeowner" class="mco-footer-link">Start protecting your home →</a></p>
+        <p class="mco-footer-text">MyHomeBase™ gives you a permanent, verifiable record of every repair, inspection, and maintenance task. <a href="/signin/homeowner?tab=register" class="mco-footer-link">Start protecting your home →</a></p>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══ PLANS MODAL ═══ -->
-<div class="overlay" id="plans-overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="plans-overlay" role="dialog" aria-modal="true" aria-labelledby="plans-modal-title">
   <div class="modal-card">
     <button class="modal-close" data-close="plans-overlay" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -742,7 +743,7 @@
       <div class="plans-bar"></div>
       <div class="plans-header">
         <p class="plans-eyebrow">Pricing Plans</p>
-        <h2 class="plans-heading">Simple, honest pricing.</h2>
+        <h2 class="plans-heading" id="plans-modal-title">Simple, honest pricing.</h2>
         <p class="plans-sub">No hidden fees. Cancel anytime. 14-day free trial on all plans.</p>
         <div class="plans-divider"></div>
       </div>
@@ -799,7 +800,7 @@
         </div>
       </div>
       <div class="plans-cta-row">
-        <a href="/signin/homeowner" class="plans-cta">Get started — free for 14 days</a>
+        <a href="/signin/homeowner?tab=register" class="plans-cta">Get started — free for 14 days</a>
         <span class="plans-trial">No credit card required</span>
       </div>
     </div>
@@ -807,7 +808,7 @@
 </div>
 
 <!-- ═══ REFERRAL MODAL ═══ -->
-<div class="overlay" id="referral-overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="referral-overlay" role="dialog" aria-modal="true" aria-labelledby="referral-modal-title">
   <div class="modal-card">
     <button class="modal-close" data-close="referral-overlay" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -816,7 +817,7 @@
       <div class="ref-bar"></div>
       <div class="ref-header">
         <p class="ref-eyebrow">Referral Program</p>
-        <h2 class="ref-heading">Refer 5 people. Pay nothing — ever.</h2>
+        <h2 class="ref-heading" id="referral-modal-title">Refer 5 people. Pay nothing — ever.</h2>
       </div>
       <p class="ref-body">Every person you refer who becomes a paid subscriber takes $1 off your monthly plan. Refer 5 homeowners or contractors and your subscription is completely free — forever.</p>
       <div class="ref-steps">
@@ -847,14 +848,14 @@
         <div class="ref-callout-label">Free for life. No expiration.</div>
       </div>
       <div class="ref-cta-row">
-        <a href="/signin/homeowner" class="ref-cta">Start and earn your referral link →</a>
+        <a href="/signin/homeowner?tab=register" class="ref-cta">Start and earn your referral link →</a>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ═══ FAQ MODAL ═══ -->
-<div class="overlay" id="faq-overlay" role="dialog" aria-modal="true">
+<div class="overlay" id="faq-overlay" role="dialog" aria-modal="true" aria-labelledby="faq-modal-title">
   <div class="modal-card">
     <button class="modal-close" data-close="faq-overlay" aria-label="Close">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -862,7 +863,7 @@
     <div class="faq-modal-bar"></div>
     <div class="faq-modal-wrap">
       <p class="faq-modal-eyebrow">Frequently Asked Questions</p>
-      <h2 class="faq-modal-heading">Everything you want to know.</h2>
+      <h2 class="faq-modal-heading" id="faq-modal-title">Everything you want to know.</h2>
       <div id="faq-list">
         <!-- Populated by JS -->
       </div>
@@ -888,12 +889,15 @@
         <button class="nav-link" onclick="openModal('faq-overlay')">FAQ</button>
       </div>
     </div>
-    <div class="nav-right">
+    <div class="nav-right marketing-desktop-actions">
       <div class="signin-wrap">
         <a href="/signin/homeowner" class="nav-signin-btn">Sign in</a>
       </div>
-      <a href="/signin/homeowner" class="nav-get-started">Get Started</a>
+      <a href="/signin/homeowner?tab=register" class="nav-get-started">Get Started</a>
     </div>
+    <button class="marketing-menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="marketing-mobile-menu" data-marketing-menu-toggle>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
   </div>
 </nav>
 
@@ -912,7 +916,7 @@
     <h1 class="hero-h1">Your home's history, health and maintenance<br><em>all in one place.</em></h1>
     <p class="hero-sub">Homeownership is complicated. MyHomeBase™ makes it simple by organizing your home's history, tracking its health, and helping you stay ahead of maintenance before small issues become expensive problems.</p>
     <div class="hero-cta-row">
-      <a href="/signin/homeowner" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
+      <a href="/signin/homeowner?tab=register" class="hero-cta-primary">Start for $5/month — no guesswork →</a>
       <button class="hero-cta-quiz" onclick="openQuiz()">Free 2-minute quiz →</button>
     </div>
     <p class="hero-note" style="margin-top:10px;">14-day free trial · No credit card required</p>
@@ -1283,7 +1287,7 @@
     <h2 class="section-heading">Your home is too valuable to manage by memory.</h2>
     <p class="section-subhead">For just $5/month, keep your home's history, documents, and maintenance records organized and accessible—so you're prepared when it matters most.</p>
     <div class="pricing-compare">
-      <a href="/signin/homeowner" class="pricing-left pricing-left-link">
+      <a href="/signin/homeowner?tab=register" class="pricing-left pricing-left-link">
         <p class="pricing-amount">$5<span>/month</span></p>
         <p class="pricing-label">MyHomeBase™</p>
       </a>
@@ -1374,6 +1378,23 @@
   </div>
 </footer>
 
+<div class="marketing-mobile-panel" id="marketing-mobile-menu" hidden data-marketing-mobile-panel>
+  <div class="marketing-mobile-backdrop" aria-hidden="true" data-marketing-menu-backdrop></div>
+  <div class="marketing-mobile-drawer" role="dialog" aria-modal="true" aria-labelledby="marketing-mobile-title" data-marketing-mobile-drawer>
+    <div class="marketing-mobile-drawer-header">
+      <span class="marketing-mobile-drawer-title" id="marketing-mobile-title">Menu</span>
+      <button class="marketing-menu-close" type="button" aria-label="Close navigation menu" data-marketing-menu-close>×</button>
+    </div>
+    <nav class="marketing-mobile-links" aria-label="Mobile navigation">
+      <a class="marketing-mobile-link" href="#how-it-works">How It Works</a>
+      <a class="marketing-mobile-link" href="#pricing">Pricing</a>
+      <button class="marketing-mobile-link" type="button" data-marketing-menu-action onclick="setTimeout(() => openModal('faq-overlay'), 0)">FAQ</button>
+      <a class="marketing-mobile-link marketing-mobile-link-primary" href="/signin/homeowner?tab=register">Get Started</a>
+      <a class="marketing-mobile-link marketing-mobile-link-signin" href="/signin/homeowner">Sign in</a>
+    </nav>
+  </div>
+</div>
+
 <script>
   // ── FAQ data ──
   const FAQS = [
@@ -1406,15 +1427,48 @@
     items[i].classList.toggle('open');
   }
 
-  // ── Modal system ──
+  // ── Accessible modal system ──
+  let activeModal = null;
+  let modalTrigger = null;
+
+  function getModalFocusable(container) {
+    return Array.from(container.querySelectorAll(
+      'a[href], button:not([disabled]), iframe, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    )).filter(el => !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true');
+  }
+
+  function setPageInert(inert) {
+    Array.from(document.body.children).forEach(child => {
+      if (!(child instanceof HTMLElement) || child.classList.contains('overlay') ||
+          child.classList.contains('marketing-mobile-panel') || child.tagName === 'SCRIPT') return;
+      child.inert = inert;
+      if (inert) child.setAttribute('aria-hidden', 'true');
+      else child.removeAttribute('aria-hidden');
+    });
+  }
+
   function openModal(id) {
-    document.getElementById(id).classList.add('open');
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modalTrigger = document.activeElement;
+    activeModal = modal;
+    modal.classList.add('open');
+    setPageInert(true);
     document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => {
+      (modal.querySelector('.modal-close') || getModalFocusable(modal)[0])?.focus();
+    });
   }
 
   function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove('open');
+    activeModal = null;
+    setPageInert(false);
     document.body.style.overflow = '';
+    if (modalTrigger && typeof modalTrigger.focus === 'function') modalTrigger.focus();
+    modalTrigger = null;
   }
 
   // Close on overlay click
@@ -1431,6 +1485,19 @@
 
   // Escape key
   document.addEventListener('keydown', e => {
+    if (e.key === 'Tab' && activeModal) {
+      const items = getModalFocusable(activeModal);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
     if (e.key === 'Escape') {
       document.querySelectorAll('.overlay.open').forEach(o => {
         closeModal(o.id);
@@ -1485,6 +1552,7 @@
     window.location.href = '/demo?role=homeowner';
   }
 </script>
+<script src="/marketing-mobile-nav.js?v=2"></script>
 
 <!-- ── Back to Top ── -->
 <button id="btt-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top" style="display:none;position:fixed;bottom:24px;right:16px;z-index:900;width:44px;height:44px;border-radius:50%;background:#2c0f5b;color:#fff;border:none;cursor:pointer;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(44,15,91,0.45);">

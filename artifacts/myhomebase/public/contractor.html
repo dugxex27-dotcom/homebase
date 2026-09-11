@@ -8,6 +8,7 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://www.gotohomebase.com/contractor.html">
 <link rel="stylesheet" href="/native-safe-area.css">
+<link rel="stylesheet" href="/marketing-mobile-nav.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -405,12 +406,15 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
         <a href="#pricing" class="nav-link">Pricing</a>
       </div>
     </div>
-    <div class="nav-right">
+    <div class="nav-right marketing-desktop-actions">
       <div class="signin-wrap">
         <a href="/signin/contractor" class="nav-signin-btn">Sign in</a>
       </div>
-      <a href="/signin/contractor" class="nav-get-started">Get Started</a>
+      <a href="/signin/contractor?tab=register" class="nav-get-started">Get Started</a>
     </div>
+    <button class="marketing-menu-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="marketing-mobile-menu" data-marketing-menu-toggle>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
   </div>
 </nav>
 <div class="demo-underbar">
@@ -640,6 +644,23 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
     <p class="footer-sub-tagline">Built for contractors who work smarter.</p>
   </div>
 </footer>
+<div class="marketing-mobile-panel" id="marketing-mobile-menu" hidden data-marketing-mobile-panel>
+  <div class="marketing-mobile-backdrop" aria-hidden="true" data-marketing-menu-backdrop></div>
+  <div class="marketing-mobile-drawer" role="dialog" aria-modal="true" aria-labelledby="marketing-mobile-title" data-marketing-mobile-drawer>
+    <div class="marketing-mobile-drawer-header">
+      <span class="marketing-mobile-drawer-title" id="marketing-mobile-title">Menu</span>
+      <button class="marketing-menu-close" type="button" aria-label="Close navigation menu" data-marketing-menu-close>×</button>
+    </div>
+    <nav class="marketing-mobile-links" aria-label="Mobile navigation">
+      <a class="marketing-mobile-link" href="#how-it-works">How It Works</a>
+      <a class="marketing-mobile-link" href="#pricing">Pricing</a>
+      <a class="marketing-mobile-link" href="/faq">FAQ</a>
+      <a class="marketing-mobile-link marketing-mobile-link-primary" href="/signin/contractor?tab=register">Get Started</a>
+      <a class="marketing-mobile-link marketing-mobile-link-signin" href="/signin/contractor">Sign in</a>
+    </nav>
+  </div>
+</div>
+<script src="/marketing-mobile-nav.js?v=2"></script>
 
 <script>
   function handleDemo(btn) {
@@ -650,7 +671,7 @@ html,body{font-family:var(--font);background:var(--off-white);color:var(--gray-9
   }
 
   function handleTourDemo(el) {
-    window.location.href = '/signin/contractor';
+    window.location.href = '/signin/contractor?tab=register';
   }
 
 </script>

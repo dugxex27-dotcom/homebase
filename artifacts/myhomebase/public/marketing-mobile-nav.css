@@ -1,0 +1,101 @@
+.marketing-menu-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.marketing-menu-toggle svg { width: 22px; height: 22px; }
+.marketing-mobile-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: none;
+}
+.marketing-mobile-panel.open { display: block; }
+.marketing-mobile-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(13,6,32,.7);
+  cursor: default;
+}
+.marketing-mobile-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(88vw, 360px);
+  height: 100%;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 20px 24px;
+  background: #1a0a3e;
+  box-shadow: -16px 0 48px rgba(0,0,0,.3);
+  display: flex;
+  flex-direction: column;
+}
+.marketing-mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.marketing-mobile-drawer-title {
+  color: #fff;
+  font: 700 16px/1.2 Inter, system-ui, sans-serif;
+}
+.marketing-menu-close {
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+.marketing-mobile-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.marketing-mobile-link {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(255,255,255,.82);
+  text-decoration: none;
+  font: 600 15px/1.3 Inter, system-ui, sans-serif;
+}
+.marketing-mobile-link:hover,
+.marketing-mobile-link:focus-visible { background: rgba(255,255,255,.1); color: #fff; }
+.marketing-mobile-link-primary {
+  justify-content: center;
+  margin-top: 12px;
+  background: #fff;
+  color: #2c0f5b;
+}
+.marketing-mobile-link-primary:hover,
+.marketing-mobile-link-primary:focus-visible { background: #f2ecff; color: #2c0f5b; }
+.marketing-mobile-link-signin { justify-content: center; color: rgba(255,255,255,.72); }
+
+@media (max-width: 767px) {
+  .marketing-menu-toggle { display: inline-flex; }
+  .marketing-desktop-actions { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-mobile-panel *,
+  .marketing-mobile-panel *::before,
+  .marketing-mobile-panel *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}

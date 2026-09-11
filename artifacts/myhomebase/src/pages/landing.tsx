@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Info, UserCircle, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Info, Menu, UserCircle, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
@@ -36,15 +36,115 @@ export default function Landing() {
   const [homeownerModalOpen, setHomeownerModalOpen] = useState(false);
   const [contractorModalOpen, setContractorModalOpen] = useState(false);
   const [agentModalOpen, setAgentModalOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuCloseRef = useRef<HTMLButtonElement>(null);
+  const modalTriggerRef = useRef<HTMLElement | null>(null);
 
 
-  // ── Quiz escape key ──
+  // ── Accessible overlay focus management ──
   useEffect(() => {
-    if (!quizOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setQuizOpen(false); };
+    const overlay = document.querySelector<HTMLElement>('.mhb-overlay');
+    if (!overlay) return;
+    if (!modalTriggerRef.current) modalTriggerRef.current = document.activeElement as HTMLElement;
+
+    const landing = document.querySelector<HTMLElement>('.mhb-landing');
+    Array.from(landing?.children ?? []).forEach(child => {
+      if (child !== overlay && child instanceof HTMLElement) {
+        child.inert = true;
+        child.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    const focusableSelector = 'a[href], button:not([disabled]), iframe, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () => Array.from(overlay.querySelectorAll<HTMLElement>(focusableSelector));
+    requestAnimationFrame(() => (overlay.querySelector<HTMLElement>('.mhb-modal-close') ?? getFocusable()[0])?.focus());
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        overlay.querySelector<HTMLButtonElement>('.mhb-modal-close')?.click();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = getFocusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [quizOpen]);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      Array.from(landing?.children ?? []).forEach(child => {
+        if (child instanceof HTMLElement) {
+          child.inert = false;
+          child.removeAttribute('aria-hidden');
+        }
+      });
+      modalTriggerRef.current?.focus();
+      modalTriggerRef.current = null;
+    };
+  }, [quizOpen, claimsOpen, deniedOpen, costOpen, plansOpen, referralOpen, homeownerModalOpen, contractorModalOpen, agentModalOpen]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const landing = document.querySelector<HTMLElement>('.mhb-landing');
+    const nav = document.querySelector<HTMLElement>('.mhb-nav');
+    const navInner = nav?.querySelector<HTMLElement>('.mhb-nav-inner');
+    Array.from(landing?.children ?? []).forEach(child => {
+      if (child instanceof HTMLElement && child !== nav) {
+        child.inert = true;
+        child.setAttribute('aria-hidden', 'true');
+      }
+    });
+    if (navInner) {
+      navInner.inert = true;
+      navInner.setAttribute('aria-hidden', 'true');
+    }
+    mobileMenuCloseRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const panel = document.getElementById('landing-mobile-menu');
+      const items = Array.from(panel?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []);
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      Array.from(landing?.children ?? []).forEach(child => {
+        if (child instanceof HTMLElement) {
+          child.inert = false;
+          child.removeAttribute('aria-hidden');
+        }
+      });
+      if (navInner) {
+        navInner.inert = false;
+        navInner.removeAttribute('aria-hidden');
+      }
+      mobileMenuButtonRef.current?.focus();
+    };
+  }, [mobileMenuOpen]);
 
   // ── Quiz postMessage ──
   useEffect(() => {
@@ -83,7 +183,7 @@ export default function Landing() {
   };
 
   const handleRoleSelection = (role: 'homeowner' | 'contractor' | 'agent', plan?: string) => {
-    const url = plan ? `/signin/${role}?plan=${plan}` : `/signin/${role}`;
+    const url = plan ? `/signin/${role}?tab=register&plan=${plan}` : `/signin/${role}?tab=register`;
     window.location.href = url;
   };
 
@@ -130,7 +230,7 @@ export default function Landing() {
       )}
       {/* ═══ 42% DENIED MODAL ═══ */}
       {deniedOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setDeniedOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Why claims get denied" onClick={() => setDeniedOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setDeniedOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
@@ -196,7 +296,7 @@ export default function Landing() {
       )}
       {/* ═══ $18K COST MODAL ═══ */}
       {costOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setCostOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Average denied claim cost" onClick={() => setCostOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setCostOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
@@ -246,7 +346,7 @@ export default function Landing() {
         </div>
       )}
       {claimsOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setClaimsOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home insurance claim information" onClick={() => setClaimsOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setClaimsOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
@@ -299,7 +399,7 @@ export default function Landing() {
       )}
       {/* ═══ PLANS MODAL ═══ */}
       {plansOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setPlansOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Pricing plans" onClick={() => setPlansOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setPlansOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
@@ -479,7 +579,7 @@ export default function Landing() {
       )}
       {/* ═══ REFERRAL MODAL ═══ */}
       {referralOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setReferralOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Referral program" onClick={() => setReferralOpen(false)}>
           <div className="mhb-modal-card" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setReferralOpen(false)} aria-label="Close">
               <X size={20} strokeWidth={2.5} />
@@ -583,7 +683,7 @@ export default function Landing() {
       )}
       {/* ═══ HOMEOWNER LEARN MORE MODAL ═══ */}
       {homeownerModalOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setHomeownerModalOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Homeowner account options" onClick={() => setHomeownerModalOpen(false)}>
           <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setHomeownerModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
             <div className="mhb-role-modal-bar mhb-role-modal-bar-purple" />
@@ -618,7 +718,7 @@ export default function Landing() {
       )}
       {/* ═══ CONTRACTOR LEARN MORE MODAL ═══ */}
       {contractorModalOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setContractorModalOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Contractor account options" onClick={() => setContractorModalOpen(false)}>
           <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setContractorModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
             <div className="mhb-role-modal-bar mhb-role-modal-bar-blue" />
@@ -652,7 +752,7 @@ export default function Landing() {
       )}
       {/* ═══ AGENT LEARN MORE MODAL ═══ */}
       {agentModalOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" onClick={() => setAgentModalOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Agent account options" onClick={() => setAgentModalOpen(false)}>
           <div className="mhb-modal-card mhb-role-modal" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setAgentModalOpen(false)} aria-label="Close"><X size={20} strokeWidth={2.5} /></button>
             <div className="mhb-role-modal-bar mhb-role-modal-bar-green" />
@@ -704,10 +804,33 @@ export default function Landing() {
             <button className="mhb-nav-demo-btn" onClick={() => openDemoGate('homeowner')} disabled={demoLoading === 'homeowner'}>
               {demoLoading === 'homeowner' ? 'Loading…' : 'Homeowner Demo'}
             </button>
-            <a href="/signin/homeowner" className="mhb-nav-get-started-btn">Get Started</a>
+            <a href="/signin/homeowner?tab=register" className="mhb-nav-get-started-btn">Get Started</a>
             <a href="/signin/homeowner" className="mhb-nav-signin-btn">Sign In</a>
+            <button
+              ref={mobileMenuButtonRef}
+              className="mhb-nav-hamburger"
+              type="button"
+              aria-label="Open navigation menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="landing-mobile-menu"
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <Menu size={22} />
+            </button>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <div className="mhb-mobile-menu" id="landing-mobile-menu" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+            <button ref={mobileMenuCloseRef} className="mhb-mobile-menu-close" type="button" aria-label="Close navigation menu" onClick={() => setMobileMenuOpen(false)}>
+              <X size={22} />
+            </button>
+            <button className="mhb-mobile-link" onClick={() => { setMobileMenuOpen(false); scrollTo('how-it-works'); }}>How It Works</button>
+            <button className="mhb-mobile-link" onClick={() => { setMobileMenuOpen(false); scrollTo('pricing'); }}>Pricing</button>
+            <a className="mhb-mobile-link" href="/faq">FAQ</a>
+            <a className="mhb-mobile-link mhb-mobile-get-started" href="/signin/homeowner?tab=register">Get Started</a>
+            <a className="mhb-mobile-signin" href="/signin/homeowner">Sign in</a>
+          </div>
+        )}
       </nav>
       {/* Mobile-only demo text link below nav */}
       <div className="mhb-nav-demo-underbar">
@@ -728,7 +851,7 @@ export default function Landing() {
             Homeownership is a full-time job nobody trained you for. MyHomeBase™ tells you exactly what your home needs, when to do it, and who to call — so nothing falls through the cracks.
           </p>
           <div className="mhb-hero-ctas">
-            <a href="/signin" className="mhb-hero-cta-primary">
+            <a href="/signin/homeowner?tab=register" className="mhb-hero-cta-primary">
               Start for $5/month — No guesswork. No surprises.
             </a>
             <button className="mhb-hero-cta-secondary" onClick={() => scrollTo('how-it-works')}>

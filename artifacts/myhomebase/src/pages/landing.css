@@ -1894,11 +1894,16 @@ html {
 
 .mhb-nav-hamburger {
   display: none;
-  background: none;
-  border: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
   color: #fff;
   cursor: pointer;
-  padding: 4px;
+  padding: 0;
 }
 
 .mhb-mobile-menu {
@@ -1908,6 +1913,21 @@ html {
   gap: 2px;
   background: #1a0840;
   border-top: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+
+.mhb-mobile-menu-close {
+  width: 44px;
+  height: 44px;
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 12px;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  cursor: pointer;
 }
 
 .mhb-mobile-link {
@@ -1948,8 +1968,22 @@ html {
   text-align: center;
 }
 
+.mhb-mobile-get-started {
+  justify-content: center;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: #fff;
+  color: #2c0f5b;
+  text-align: center;
+  font-weight: 700;
+}
+
 @media (max-width: 767px) {
   .mhb-nav-links { display: none; }
+  .mhb-nav-demo-btn,
+  .mhb-nav-get-started-btn,
+  .mhb-nav-signin-btn { display: none; }
+  .mhb-nav-hamburger { display: inline-flex; }
 }
 
 /* ══════════════════════════════════════
