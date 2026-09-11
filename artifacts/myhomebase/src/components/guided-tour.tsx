@@ -50,35 +50,11 @@ const STEPS: StepDef[] = [
     preferBelow: true,
   },
   {
-    tourId: "resale-report",
-    page: "/",
-    title: "AI Resale Readiness Report",
-    body: "Thinking about selling? Generate an AI-powered report that grades your home's resale readiness, highlights buyer strengths, surfaces concerns to fix, and gives you a prioritized action plan.",
-    icon: TrendingUp,
-    preferBelow: true,
-  },
-  {
-    tourId: "home-systems",
-    page: "/maintenance",
-    title: "Home Systems & Features",
-    body: "Check off every system your home has — heating, cooling, water, roof, and more. Log each system's installation year to unlock age-based maintenance recommendations personalized to your equipment.",
-    icon: Settings,
-    preferBelow: true,
-  },
-  {
     tourId: "task-list",
     page: "/maintenance",
     title: "Monthly Maintenance Tasks",
     body: "Every month you get a personalized maintenance list based on your home's location, climate, and features. These tasks protect your home's health and your insurance coverage.",
     icon: ClipboardList,
-    preferBelow: false,
-  },
-  {
-    tourId: "task-complete",
-    page: "/maintenance",
-    title: "Completing a Task",
-    body: "Tap any task card to view details and mark it complete. Your Home Wellness Score™ goes up with every task — building your verified maintenance record over time.",
-    icon: CheckCircle2,
     preferBelow: false,
   },
   {
@@ -88,39 +64,7 @@ const STEPS: StepDef[] = [
     body: "Every task you complete and every contractor visit gets logged here automatically. You can also add records manually — with dates, costs, and photos all in one place.",
     icon: Wrench,
     preferBelow: true,
-  },
-  {
-    tourId: "appliances",
-    page: "/maintenance",
-    title: "Home Appliances",
-    body: "Add your appliances with model and serial numbers. We'll store your owner's manuals and alert you to any recalls or warranty expirations automatically.",
-    icon: Package,
-    preferBelow: false,
-  },
-  {
-    tourId: "documents",
-    page: "/documents",
-    title: "Documents & Disclosures",
-    body: "Store all your home records in one secure place — inspection reports, warranties, permits, insurance docs, and seller disclosure forms. Everything you need for a smooth sale or insurance claim.",
-    icon: FolderOpen,
-    preferBelow: true,
-  },
-  {
-    tourId: "find-contractors",
-    page: "/contractors",
-    title: "Finding Contractors",
-    body: "Find verified contractors in your area — linked to real service records and homeowner reviews. When you hire through MyHomeBase™, they can upload your service records directly.",
-    icon: Users,
-    preferBelow: true,
-  },
-  {
-    tourId: "achievements",
-    page: "/achievements",
-    title: "Achievements & Referrals",
-    body: "Earn medals and achievements as you complete tasks. Complete every task in a month for a Perfect Month medal. Share your referral code — you both get a free month!",
-    icon: Trophy,
-    preferBelow: false,
-  },
+  }
 ];
 
 function useGuidedTourState() {

@@ -776,7 +776,7 @@
       <div class="why-item">
         <span class="why-icon">📊</span>
         <div>
-          <div class="why-title">We generate a preliminary HWS™</div>
+          <div class="why-title">We generate a preliminary Home Wellness Score™</div>
           <div class="why-desc">A baseline Home Wellness Score calculated instantly from your property data.</div>
         </div>
       </div>
@@ -852,7 +852,7 @@
       <div class="cta-card fade-in">
         <p class="cta-eyebrow">Your next step</p>
         <h2 class="cta-headline">Give your home a record.<br>Give it a score.</h2>
-        <p class="cta-sub">This is a preliminary estimate. Your real HWS™ gets built from your maintenance history, completed tasks, and your home inspection report.</p>
+        <p class="cta-sub">This is a preliminary estimate. Your real Home Wellness Score™ gets built from your maintenance history, completed tasks, and your home inspection report.</p>
         <button class="cta-btn" onclick="goTo(2)">Claim this home & create my account →</button>
         <div class="cta-trial">14-day free trial · No credit card required · $5/month after</div>
       </div>
@@ -1136,7 +1136,7 @@
           </div>
         </div>
         <div class="tour-slide-body">
-          Your maintenance tasks are pre-scheduled based on your home's age, systems, and your exact location. No generic checklists — just what your home actually needs, when it needs it. Complete tasks to watch your HWS™ climb.
+          Your maintenance tasks are pre-scheduled based on your home's age, systems, and your exact location. No generic checklists — just what your home actually needs, when it needs it. Complete tasks to watch your Home Wellness Score™ climb.
         </div>
       </div>
 
@@ -1348,7 +1348,7 @@ function hideError(id) {
 
 // ─── HWS CALCULATION ─────────────────────────────────────────────────────────
 function calcHWS(yearBuilt) {
-  if (!yearBuilt) return { score: 500, band: 'Unknown', color: '#6B7280', barColor: '#6B7280', desc: 'We need your home\'s details to calculate a precise score. Completing your profile will unlock your real HWS™.' };
+  if (!yearBuilt) return { score: 500, band: 'Unknown', color: '#6B7280', barColor: '#6B7280', desc: 'We need your home\'s details to calculate a precise score. Completing your profile will unlock your real Home Wellness Score™.' };
   const age = new Date().getFullYear() - parseInt(yearBuilt);
   let score = 1000;
   if (age > 50)      score -= 320;
@@ -1361,8 +1361,8 @@ function calcHWS(yearBuilt) {
   const rounded = Math.round(score / 10) * 10;
   let band, color, barColor, desc;
   if (rounded >= 800)      { band='Excellent'; color='#079669'; barColor='#079669'; desc='Your home\'s age suggests it\'s in great shape. Keep logging maintenance to protect this score.'; }
-  else if (rounded >= 600) { band='Good';      color='#3C258E'; barColor='#3C258E'; desc='Your home has some age on it. Logging past maintenance and completing key tasks will improve this score.'; }
-  else if (rounded >= 400) { band='Needs Work'; color='#D97706'; barColor='#D97706'; desc='Older homes carry more maintenance risk. Start with the highest-priority tasks to see the fastest improvement.'; }
+  else if (rounded >= 600) { band='Doing Well'; color='#3C258E'; barColor='#3C258E'; desc='Your home has some age on it. Logging past maintenance and completing key tasks will improve this score.'; }
+  else if (rounded >= 400) { band='Progressing'; color='#D97706'; barColor='#D97706'; desc='Older homes carry more maintenance risk. Start with the highest-priority tasks to see the fastest improvement.'; }
   else                     { band='Critical';  color='#DC2626'; barColor='#DC2626'; desc='Significant attention needed. Start by documenting your home\'s major systems to understand the full picture.'; }
   return { score: rounded, band, color, barColor, desc };
 }

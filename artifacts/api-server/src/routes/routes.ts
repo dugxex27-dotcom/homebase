@@ -41,7 +41,7 @@ import { lookupByHIN } from "../hin-service";
 import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
 import { decidePhotoEvidence, hasDuplicatePhotoHash } from "../photo-evidence-decision";
-import { calculateHwsScore } from "../hws-scoring";
+import { calculateHwsScore, getHwsScoreBand } from "../hws-scoring";
 import {
   normalizeServiceRecordMutationInput,
   ServiceRecordInputError,
@@ -15371,7 +15371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (partialData.serviceDate !== undefined) {
         if ((existingLog as any).taskCompletionId) {
           return res.status(403).json({
-            message: "The service date of a verified record cannot be changed. This record has been counted in your home health score.",
+            message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
             code: "DATE_LOCKED",
           });
         }
@@ -15383,7 +15383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .limit(1);
         if (linkedAnalyses[0]?.taskCompletionId) {
           return res.status(403).json({
-            message: "The service date of a verified record cannot be changed. This record has been counted in your home health score.",
+            message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
             code: "DATE_LOCKED",
           });
         }
@@ -15416,7 +15416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ((existingLog as any).taskCompletionId) {
         return res.status(403).json({
           code: "VERIFIED_RECORD",
-          message: "This record cannot be deleted because it has been counted in your home health score.",
+          message: "This record cannot be deleted because it has been counted in your Home Wellness Score™.",
         });
       }
       
@@ -16705,22 +16705,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (subscriptionStatus === 'grandfathered' || user?.maxHousesAllowed === null) {
             // No limit - allow house creation
           } else {
-            // Subscription tier limits:
-            // Free: 0 homes (contractor search only)
+            // Activation tier: every homeowner can create one home and see a
+            // real score before deeper/multi-home features ask them to upgrade.
             // Base ($5): 1-2 homes
             // Premium ($20): 3-6 homes
             // Premium Plus ($40): 7+ (unlimited)
-            const maxHouses = user?.maxHousesAllowed ?? 0; // Default to free plan (0 houses)
+            const configuredMaxHouses = user?.maxHousesAllowed ?? 0;
+            const maxHouses = configuredMaxHouses === 0 ? 1 : configuredMaxHouses;
 
-            // Free tier users cannot add any homes
-            if (maxHouses === 0) {
+            // Free/inactive users get one activation home, but no multi-home access.
+            if (configuredMaxHouses === 0 && existingHousesCount >= 1) {
               outcome.limitError = {
                 status: 403,
                 body: {
-                  message: "Free accounts can search for contractors but cannot add properties. Upgrade to Base ($5/month) to add up to 2 homes.",
+                  message: "Your first home is included. Upgrade to Base ($5/month) to add another property.",
                   code: "FREE_TIER_LIMIT",
                   currentPlan: 'free',
-                  maxHouses: 0,
+                  maxHouses: 1,
                   currentHouses: existingHousesCount,
                   upgradeTo: 'base'
                 }
@@ -16728,7 +16729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return;
             }
 
-            if (existingHousesCount >= maxHouses) {
+            if (maxHouses > 0 && existingHousesCount >= maxHouses) {
               // User has reached their plan limit - determine current plan and upgrade path
               const isTrialing = subscriptionStatus === 'trialing' && trialEndsAt && new Date(trialEndsAt) > new Date();
               let currentPlan = 'free';
@@ -16951,8 +16952,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get home health score for a house - PAID FEATURE
-  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, requireHomeownerSubscription, async (req: any, res: any) => {
+  // The first Home Wellness Score is an activation feature, not a paywall.
+  app.get("/api/houses/:id/health-score", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
       const houseId = req.params.id;
       const homeownerId = req.session.user.id;
@@ -16974,6 +16975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         score: hwsScore.score,
+        scoreBand: getHwsScoreBand(hwsScore.score),
         scoringCount: hwsScore.scoringCount,
         historicalCount: hwsScore.historicalCount,
         contractorVerifiedCount: hwsScore.contractorVerifiedCount,
@@ -16986,7 +16988,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error calculating home health score:", error);
-      res.status(500).json({ message: "Failed to calculate home health score" });
+      res.status(500).json({ message: "Failed to calculate Home Wellness Score™" });
     }
   });
 
@@ -17374,7 +17376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/home-systems", isAuthenticated, requirePropertyOwner, async (req: any, res: any) => {
     try {
-      const systemData = insertHomeSystemSchema.parse(req.body);
+      const systemData = insertHomeSystemSchema.omit({ homeownerId: true }).parse(req.body);
       
       // Verify the house belongs to the authenticated user
       if (!systemData.houseId) {
@@ -17386,7 +17388,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied to house" });
       }
       
-      const system = await storage.createHomeSystem(systemData);
+      const system = await storage.createHomeSystem({
+        ...systemData,
+        homeownerId: req.session.user.id,
+      });
       res.status(201).json(system);
     } catch (error) {
       if (error instanceof z.ZodError) {

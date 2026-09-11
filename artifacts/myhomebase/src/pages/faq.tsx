@@ -57,7 +57,7 @@ export default function FAQ() {
                       <p>MyHomeBase™ offers tiered subscription plans based on the number of homes you manage:</p>
                       <ul className="list-disc pl-6 space-y-2">
                         <li><strong>Free:</strong> $0/month - Search for contractors, view your past contractors, and make payments through the app. No home management features.</li>
-                        <li><strong>Base:</strong> $5/month - Manage 1-2 homes with maintenance tracking, home health score, DIY savings tracker, and service records. Earn up to $5/month in referral credits.</li>
+                        <li><strong>Base:</strong> $5/month - Manage 1-2 homes with maintenance tracking, Home Wellness Score™, DIY savings tracker, and service records. Earn up to $5/month in referral credits.</li>
                         <li><strong>Premium:</strong> $20/month - Manage 3-6 homes with all Base features plus priority contractor matching and advanced maintenance insights. Earn up to $20/month in referral credits.</li>
                         <li><strong>Premium Plus:</strong> $40/month - Unlimited homes with all Premium features plus dedicated support and bulk maintenance scheduling. Earn up to $40/month in referral credits.</li>
                       </ul>
@@ -93,7 +93,7 @@ export default function FAQ() {
                         <li>View your past contractors</li>
                         <li>Make payments through the app</li>
                       </ul>
-                      <p className="mt-2 text-sm">Note: Home management features (maintenance tracking, home health score, service records) require a paid subscription starting at $5/month.</p>
+                      <p className="mt-2 text-sm">Note: Home management features (maintenance tracking, Home Wellness Score™, service records) require a paid subscription starting at $5/month.</p>
                       <p className="mt-3"><strong>Contractors:</strong></p>
                       <p>Contractors receive a 14-day free trial with full access. A card is required at signup but not charged until the trial ends. After the trial expires, an active Basic subscription ($20/month with three accepted people included, then $5/month per additional person) is required to continue using the platform.</p>
                     </AccordionContent>

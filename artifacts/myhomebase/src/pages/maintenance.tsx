@@ -3145,7 +3145,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       if (data.newAchievements?.length > 0) {
         toast({ title: "Achievement Unlocked!", description: data.newAchievements[0]?.title || "New achievement earned!" });
       }
-      toast({ title: "Record created", description: "Service record added and health score updated." });
+      toast({ title: "Record created", description: "Service record added and Home Wellness Score™ updated." });
       setAiStep("done");
       setTimeout(() => setAiInvoiceOpen(false), 1500);
     } catch {
@@ -3832,11 +3832,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     );
   }
 
-  // Block free tier homeowners from accessing maintenance features
-  if (userRole === 'homeowner' && isFreeUser && !subscriptionLoading) {
-    return <FreeUserUpgradePrompt />;
-  }
-
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
 
@@ -3848,7 +3843,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         <div className="dash-chips">
           <div className="dash-chip">
             <div className={`dash-chip-num${totalTasks > 0 && completedCount < totalTasks ? ' alert' : ''}`}>{totalTasks}</div>
-            <div className="dash-chip-label">Tasks this month</div>
+            <div className="dash-chip-label">Tasks this month · selected property</div>
           </div>
           <div className="dash-chip">
             <div className={`dash-chip-num${completedCount > 0 ? ' good' : ''}`}>{completedCount}</div>
@@ -5227,7 +5222,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <div className="text-center py-8">
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4" style={{ color: '#22c55e' }} />
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--purple-deep)' }}>Record Added!</h3>
-                <p className="text-sm text-muted-foreground">Your service record and health score have been updated.</p>
+                <p className="text-sm text-muted-foreground">Your service record and Home Wellness Score™ have been updated.</p>
               </div>
             )}
           </DialogContent>
@@ -6366,7 +6361,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <DialogHeader>
               <DialogTitle>DIY Completion — Optional Photo Proof</DialogTitle>
               <DialogDescription>
-                Add before/after photos from your camera for extra credit on your Home Wellness Score. Photos are optional for DIY completions.
+                Add before/after photos from your camera for extra credit on your Home Wellness Score™. Photos are optional for DIY completions.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">

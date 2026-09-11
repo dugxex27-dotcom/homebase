@@ -190,17 +190,10 @@ export default function Sidebar() {
         {isHomeowner && (
           <>
             <NavItem href="/" icon={Home} label="Home" testId="nav-home" />
-            <NavItem href="/maintenance" icon={Wrench} label="Tasks" badge={hasNotif('maintenance')} testId="nav-maintenance" />
-            <NavItem href="/service-records" icon={FileText} label="Service Records" testId="nav-service-records" />
-            <NavItem href="/proposals" icon={FileSignature} label="Proposals" testId="nav-proposals" />
-            <NavItem href="/contractors" paths={['/contractors', '/find-contractors']} icon={Building2} label="Contractors" testId="nav-contractors" />
-            <NavItem href="/messages" icon={MessageCircle} label="Messages" badge={hasNotif('messages')} testId="nav-messages" />
-            <NavItem href="/achievements" icon={Trophy} label="Achievements" testId="nav-achievements" />
-            <NavItem href="/homeowner-referral" icon={Gift} label="Referral" testId="nav-referral" />
-            <NavItem href="/documents" paths={['/documents', '/disclosures']} icon={FolderOpen} label="Documents / Disclosures" testId="nav-documents" />
-            <NavItem href="/account" icon={UserIcon} label="Account" testId="nav-account" />
-            <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
-            <NavItem href="/info" icon={Info} label="MHB Info" testId="nav-myhomebase-info" />
+            <NavItem href="/maintenance" icon={Wrench} label="Maintain" badge={hasNotif('maintenance')} testId="nav-maintenance" />
+            <NavItem href="/service-records" paths={['/service-records', '/documents', '/disclosures']} icon={FileText} label="Record" testId="nav-service-records" />
+            <NavItem href="/contractors" paths={['/contractors', '/find-contractors', '/proposals', '/messages']} icon={Building2} label="Pros" badge={hasNotif('messages')} testId="nav-contractors" />
+            <NavItem href="/account" paths={['/account', '/billing', '/achievements', '/homeowner-referral', '/support', '/info']} icon={UserIcon} label="More" testId="nav-account" />
             {isInstallable && (
               <button
                 onClick={handleInstall}
@@ -223,7 +216,7 @@ export default function Sidebar() {
               const isDashActive  = onDash && tabParam !== 'team';
               return (
                 <>
-                  <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Dashboard" badge={hasNotif('dashboard')} testId="nav-dashboard" active={isDashActive} />
+                  <NavItem href="/contractor-dashboard" icon={LayoutDashboard} label="Jobs" badge={hasNotif('dashboard')} testId="nav-dashboard" active={isDashActive} />
                   {!isTech && <NavItem href="/contractor-dashboard?tab=team" icon={Users} label="Manage Team" testId="nav-manage-team" active={isTeamActive} />}
                 </>
               );
@@ -244,9 +237,9 @@ export default function Sidebar() {
         {isAgent && (
           <>
             <NavItem href="/agent-dashboard" icon={LayoutDashboard} label="Dashboard" testId="nav-dashboard" />
-            <NavItem href="/agent-referral" icon={Gift} label="Referral" testId="nav-referral" />
+            <NavItem href="/agent-handoff" icon={FileSignature} label="Handoffs" testId="nav-handoffs" />
+            <NavItem href="/agent-referral" icon={Gift} label="Referrals" testId="nav-referral" />
             <NavItem href="/agent-account" icon={UserIcon} label="Account" testId="nav-account" />
-            <NavItem href="/support" icon={HelpCircle} label="Support" testId="nav-support" />
             {isInstallable && (
               <button onClick={handleInstall} className={navItemClass('/install')} style={{ ...navItemStyle('/install'), color: 'var(--theme-accent)' }} data-testid="button-install-app-sidebar">
                 <Download className="w-[15px] h-[15px] flex-shrink-0" />Install App

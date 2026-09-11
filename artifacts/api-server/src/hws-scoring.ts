@@ -4,6 +4,18 @@ import { calculateMechanicalDocumentationBonus } from "./shared/maintenance-sche
 export const HWS_VERIFIED_TASK_POINTS = 4;
 export const HWS_SELF_REPORTED_TASK_POINTS = 2.4;
 export const HWS_ALL_SELF_REPORTED_SOFT_CAP = 85;
+export const HWS_MAX_SCORE = 1000;
+
+export type HwsScoreBand = "Critical" | "Progressing" | "Doing Well" | "Excellent";
+
+/** Canonical score labels; mirrors the frontend helper and documented 0–1000 scale. */
+export function getHwsScoreBand(score: number): HwsScoreBand {
+  const normalized = Math.max(0, Math.min(HWS_MAX_SCORE, score));
+  if (normalized >= 800) return "Excellent";
+  if (normalized >= 600) return "Doing Well";
+  if (normalized >= 400) return "Progressing";
+  return "Critical";
+}
 
 export type HwsScoringCompletion = {
   year?: number | null;
@@ -93,7 +105,8 @@ export function calculateHwsScore<T extends HwsScoringCompletion>(
   const documentationBonus = calculateMechanicalDocumentationBonus(house);
 
   return {
-    score: Math.round(taskScore + documentationBonus),
+    // Scores are always on the documented 0–1000 scale.
+    score: Math.min(HWS_MAX_SCORE, Math.max(0, Math.round(taskScore + documentationBonus))),
     rawTaskScore,
     taskScore,
     documentationBonus,

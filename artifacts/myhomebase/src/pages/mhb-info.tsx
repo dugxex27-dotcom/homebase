@@ -7,7 +7,7 @@ import "./home.css";
 const FEATURES = [
   { icon: Wrench, title: "Maintenance Scheduling", desc: "AI-powered maintenance schedules tailored to your home's age, systems, and local climate." },
   { icon: FileText, title: "Document Vault", desc: "Store warranties, permits, inspection reports, and receipts — all in one secure place." },
-  { icon: Star, title: "Home Health Score", desc: "Get a real score on your home's maintenance posture and actionable steps to improve it." },
+  { icon: Star, title: "Home Wellness Score™", desc: "Get a clear view of your home's maintenance posture and actionable steps to improve it." },
   { icon: Shield, title: "Insurance Readiness", desc: "Stay prepared for claims with organized records, photos, and a claim-ready home package." },
   { icon: Users, title: "Contractor Directory", desc: "Find and message vetted local contractors directly through the platform." },
   { icon: FileText, title: "Resale & Disclosure", desc: "Generate disclosure-ready maintenance histories and handoff packages when you sell." },

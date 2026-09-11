@@ -9,12 +9,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
-import { HomeownerFeatureGate } from "@/components/homeowner-feature-gate";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
 import { notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
+import { getHomeWellnessScoreStatus } from "@/lib/home-wellness-score";
 import "./home.css";
+
+// Sample house banner
+function DemoWarningBanner() {
+  const { user } = useAuth();
+
+  if (!(user as any)?.isDemoAccount) return null;
+
+  return (
+    <div className="bg-amber-100 border-b border-amber-200 px-4 py-3 sticky top-0 z-40 flex items-center justify-between text-sm shadow-sm" style={{ paddingLeft: 'calc(16px + env(safe-area-inset-left))', paddingRight: 'calc(16px + env(safe-area-inset-right))' }}>
+      <div className="flex items-center gap-2 text-amber-800">
+        <Info className="w-4 h-4 flex-shrink-0" />
+        <span className="font-medium">You are viewing a sample home.</span>
+      </div>
+      <Button size="sm" onClick={() => window.location.href = '/signin'} className="bg-amber-600 hover:bg-amber-700 text-white border-0 text-xs px-3 h-8 shadow-sm transition-transform active:scale-95 font-bold shrink-0">
+        Start My Real Home
+      </Button>
+    </div>
+  );
+}
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -85,7 +104,7 @@ export default function Home() {
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
   const [, setLocation] = useLocation();
-  const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
+  const { isPaidSubscriber, subscriptionStatus, isFreeUser, isLoading: subLoading } = useHomeownerSubscription();
   const queryClient = useQueryClient();
   const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(false);
 
@@ -102,16 +121,8 @@ export default function Home() {
       setLocation("/contractor-dashboard");
     } else if (typedUser?.role === "agent") {
       setLocation("/agent-dashboard");
-    } else if (typedUser?.role === "homeowner" && !subLoading && subscriptionStatus === "inactive") {
-      const pendingPlan = sessionStorage.getItem('pendingPlan');
-      if (pendingPlan) {
-        sessionStorage.removeItem('pendingPlan');
-        setLocation(`/homeowner-pricing?onboarding=true&plan=${encodeURIComponent(pendingPlan)}`);
-      } else {
-        setLocation("/homeowner-pricing?onboarding=true");
-      }
     }
-  }, [typedUser, setLocation, subscriptionStatus, subLoading]);
+  }, [typedUser, setLocation]);
 
   const isContractor = typedUser?.role === "contractor" && !!typedUser.id;
 
@@ -503,7 +514,9 @@ export default function Home() {
   const climateZone = houses[0]?.climateZone || "your area";
 
   const getScoreClass = (s: number | undefined) =>
-    s === undefined ? "" : s >= 60 ? "good" : s >= 30 ? "warn" : "alert";
+    s === undefined ? "" : getHomeWellnessScoreStatus(s).label === "Excellent" || getHomeWellnessScoreStatus(s).label === "Doing Well"
+      ? "good"
+      : getHomeWellnessScoreStatus(s).label === "Progressing" ? "warn" : "alert";
 
   // Profile nudge: show inline-edit card when any install year is missing
   const primaryHouse = houses[0] as House | undefined;
@@ -580,6 +593,7 @@ export default function Home() {
 
   return (
     <div>
+      <DemoWarningBanner />
 
       {/* ── DASHBOARD HEADER (homeowners only) ──────────────── */}
       {typedUser?.role === "homeowner" && (
@@ -604,7 +618,7 @@ export default function Home() {
                     {score !== undefined ? score : "—"}
                   </div>
                   <div className="dash-chip-label dash-chip-label-info">
-                    {houses.length === 1 ? "HWS™ Score" : `${house.name || `Property ${i + 1}`} HWS™`}
+                    {houses.length === 1 ? "Home Wellness Score™" : `${house.name || `Property ${i + 1}`} · Home Wellness Score™`}
                     <Info size={9} className="dash-chip-info-icon" />
                   </div>
                 </button>
@@ -614,7 +628,7 @@ export default function Home() {
                   {tasksCount !== null ? tasksCount : "—"}
                 </div>
                 <div className="dash-chip-label dash-chip-label-info">
-                  Tasks this month
+                  Tasks in maintenance plan
                   <Info size={9} className="dash-chip-info-icon" />
                 </div>
               </button>
@@ -670,7 +684,7 @@ export default function Home() {
               {quizResult ? quizResult.score : <TrendingUp size={22} aria-hidden="true" />}
             </div>
             <div className="dash-quiz-copy">
-              <div className="dash-quiz-title">Home Health Score™</div>
+              <div className="dash-quiz-title">Home Readiness Checkup</div>
               <div className="dash-quiz-tier">
                 {quizResult ? quizResult.tier : "See how healthy your home is"}
               </div>
@@ -734,10 +748,10 @@ export default function Home() {
             <p style={{ fontSize: 14, color: "var(--purple-light)", marginBottom: 24, lineHeight: 1.6 }}>
               Create a living record of your home — systems, maintenance, upgrades, and health.
             </p>
-            <Link href="/maintenance">
+            <Link href="/add-home">
               <button className="btn-primary" style={{ maxWidth: 280 }}
                 data-testid="button-launch-home-record-first-time">
-                Launch Your Home Record
+                Add My Home
               </button>
             </Link>
           </div>
@@ -746,7 +760,6 @@ export default function Home() {
 
       {/* ── MAIN DASHBOARD BODY ─────────────────────────────── */}
       {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (
-        <HomeownerFeatureGate featureName="Home Dashboard">
           <div className="dash-body">
 
             {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
@@ -968,7 +981,7 @@ export default function Home() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="dash-light-card-title">Complete your home profile</div>
-                    <div className="dash-light-card-sub">Add install years to raise your HWS™ score</div>
+                    <div className="dash-light-card-sub">Add install years to raise your Home Wellness Score™</div>
                   </div>
                   <button
                     type="button"
@@ -1329,7 +1342,6 @@ export default function Home() {
             )}
 
           </div>
-        </HomeownerFeatureGate>
       )}
 
       {/* ── HWS SCORE MODAL ─────────────────────────────── */}
@@ -1341,7 +1353,7 @@ export default function Home() {
               <div className="hdm-bar hdm-bar-purple" />
               <div className="hdm-header">
                 <p className="hdm-eyebrow hdm-eyebrow-purple">Home Wellness Score™</p>
-                <h2 className="hdm-heading">What your HWS™ score means</h2>
+                <h2 className="hdm-heading">What your Home Wellness Score™ means</h2>
                 <p className="hdm-subtitle">Your score reflects how well-documented and maintained your home is — the same record insurers and buyers rely on.</p>
                 <div className="hdm-divider" />
               </div>
@@ -1353,12 +1365,9 @@ export default function Home() {
                     </div>
                     <div>
                       <p className="hdm-score-label">{houses.length === 1 ? "Your Home" : house.name || `Property ${i + 1}`}</p>
-                      <p className="hdm-score-tier">{
-                        score === undefined ? "Score calculating…" :
-                        score >= 60 ? "Healthy — well-documented" :
-                        score >= 30 ? "Needs attention — gaps in record" :
-                        "At risk — significant gaps"
-                      }</p>
+                      <p className="hdm-score-tier">
+                        {score === undefined ? "Score calculating…" : getHomeWellnessScoreStatus(score).label}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -1366,9 +1375,10 @@ export default function Home() {
               <div className="hdm-tiers">
                 <p className="hdm-tiers-label">Score guide</p>
                 {[
-                  { range: "60 – 100", label: "Healthy", desc: "Strong documentation, insurer-ready record.", color: "#4a9e2f", bg: "#f0fdf4" },
-                  { range: "30 – 59",  label: "Needs attention", desc: "Gaps that could affect a claim or a sale.", color: "#EF9F27", bg: "#fffbeb" },
-                  { range: "0 – 29",   label: "At risk", desc: "Missing records that could cost you thousands.", color: "#e03e3e", bg: "#fef2f2" },
+                  { range: "800 – 1000", label: "Excellent", desc: "Strong documentation and consistent maintenance.", color: "#2f7d32", bg: "#f0fdf4" },
+                  { range: "600 – 799", label: "Doing Well", desc: "A solid record with a few useful improvements remaining.", color: "#6da936", bg: "#f7fee7" },
+                  { range: "400 – 599", label: "Progressing", desc: "Important gaps remain, but each completed action improves the record.", color: "#a3a51b", bg: "#fffbeb" },
+                  { range: "0 – 399", label: "Critical", desc: "Start with the recommended actions to document and protect the home.", color: "#e03e3e", bg: "#fef2f2" },
                 ].map(t => (
                   <div key={t.range} className="hdm-tier-row" style={{ background: t.bg }}>
                     <div className="hdm-tier-badge" style={{ color: t.color }}>{t.range}</div>
@@ -1440,7 +1450,7 @@ export default function Home() {
                 <h2 className="hdm-heading">Your {getMonth()} task plan</h2>
                 <p className="hdm-subtitle">
                   {tasksCount !== null
-                    ? `${tasksCount} task${tasksCount !== 1 ? "s" : ""} this month — generated by your AI Maintenance Coach based on your home, climate zone, and season.`
+                    ? `${tasksCount} task${tasksCount !== 1 ? "s" : ""} in your maintenance plan — generated for your properties and climate zone.`
                     : "Your AI Maintenance Coach generates a personalized task plan each month based on your home, climate zone, and season."}
                 </p>
                 <div className="hdm-divider" />
@@ -1449,7 +1459,7 @@ export default function Home() {
                 {[
                   { icon: "🌡️", title: "Climate-aware", desc: `Tasks are tailored for ${climateZone}.` },
                   { icon: "📅", title: "Monthly rotation", desc: "Tasks update each month so nothing gets missed year-round." },
-                  { icon: "✅", title: "Raises your HWS™", desc: "Completing tasks improves your Home Wellness Score." },
+                  { icon: "✅", title: "Raises your Home Wellness Score™", desc: "Completing tasks improves your Home Wellness Score™." },
                 ].map(c => (
                   <div key={c.title} className="hdm-info-card">
                     <span className="hdm-info-icon">{c.icon}</span>
@@ -1480,7 +1490,7 @@ export default function Home() {
               <div className="hdm-header">
                 <p className="hdm-eyebrow hdm-eyebrow-teal">Home Systems</p>
                 <h2 className="hdm-heading">{totalSystems || "—"} system{totalSystems !== 1 ? "s" : ""} in your record</h2>
-                <p className="hdm-subtitle">Every tracked system generates maintenance reminders, raises your HWS™ score, and becomes part of your permanent home record.</p>
+                <p className="hdm-subtitle">Every tracked system generates maintenance reminders, raises your Home Wellness Score™, and becomes part of your permanent home record.</p>
                 <div className="hdm-divider" />
               </div>
               {allSystems.length > 0 ? (

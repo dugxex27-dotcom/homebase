@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { FileText, Clock, CheckCircle, XCircle, AlertCircle, ChevronRight, FileSignature } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Proposal } from "@shared/schema";
 import { format } from "date-fns";
@@ -83,9 +84,15 @@ export default function HomeownerProposals() {
               <FileText className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">No proposals yet</h3>
-            <p className="text-gray-500 mt-1 max-w-sm">
+            <p className="text-gray-500 mt-1 mb-8 max-w-sm">
               When a contractor sends you a proposal for a project, it will appear here for your review.
             </p>
+
+            <Link href="/contractors">
+              <Button className="bg-[#3c258e] hover:opacity-90 text-white">
+                Find a Contractor
+              </Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (

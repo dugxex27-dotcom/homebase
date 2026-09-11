@@ -40,25 +40,16 @@ function TabletNav({ role, location }: { role: string; location: string }) {
         <Home className="w-4 h-4" />Home
       </Link>
       <Link href="/maintenance" className={itemClass('/maintenance')}>
-        <Wrench className="w-4 h-4" />Tasks
+        <Wrench className="w-4 h-4" />Maintain
       </Link>
       <Link href="/service-records" className={itemClass(['/service-records', '/documents'])}>
-        <FileText className="w-4 h-4" />Records
+        <FileText className="w-4 h-4" />Record
       </Link>
-      <Link href="/proposals" className={itemClass(['/proposals'])}>
-        <FileSignature className="w-4 h-4" />Proposals
+      <Link href="/contractors" className={itemClass(['/contractors', '/find-contractors', '/proposals', '/messages'])}>
+        <Building2 className="w-4 h-4" />Pros
       </Link>
-      <Link href="/contractors" className={itemClass(['/contractors', '/find-contractors'])}>
-        <Building2 className="w-4 h-4" />Contractors
-      </Link>
-      <Link href="/messages" className={itemClass('/messages')}>
-        <MessageCircle className="w-4 h-4" />Messages
-      </Link>
-      <Link href="/achievements" className={itemClass('/achievements')}>
-        <Trophy className="w-4 h-4" />Achievements
-      </Link>
-      <Link href="/account" className={itemClass(['/account', '/billing'])}>
-        <UserIcon className="w-4 h-4" />Account
+      <Link href="/account" className={itemClass(['/account', '/billing', '/achievements', '/homeowner-referral', '/support', '/info'])}>
+        <UserIcon className="w-4 h-4" />More
       </Link>
     </nav>
   );
@@ -88,11 +79,14 @@ function TabletNav({ role, location }: { role: string; location: string }) {
       <Link href="/agent-dashboard" className={itemClass(['/agent-dashboard', '/'])}>
         <LayoutDashboard className="w-4 h-4" />Dashboard
       </Link>
+      <Link href="/agent-handoff" className={itemClass('/agent-handoff')}>
+        <FileSignature className="w-4 h-4" />Handoffs
+      </Link>
       <Link href="/agent-referral" className={itemClass('/agent-referral')}>
         <Gift className="w-4 h-4" />Referrals
       </Link>
       <Link href="/agent-account" className={itemClass(['/agent-account', '/billing'])}>
-        <UserIcon className="w-4 h-4" />Profile
+        <UserIcon className="w-4 h-4" />Account
       </Link>
     </nav>
   );

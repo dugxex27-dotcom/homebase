@@ -833,8 +833,8 @@ function calcHWS(yearBuilt) {
   const rounded = Math.round(score / 10) * 10;
   let band, color, barColor, desc;
   if (rounded >= 800) { band='Excellent'; color='#079669'; barColor='#079669'; desc='Home age suggests strong structural integrity. Logging maintenance will protect this score.'; }
-  else if (rounded >= 600) { band='Good'; color='#3C258E'; barColor='#3C258E'; desc='Some age on this home. Documentation of past maintenance will improve this score significantly.'; }
-  else if (rounded >= 400) { band='Needs Work'; color='#D97706'; barColor='#D97706'; desc='Older home — higher maintenance risk. Key tasks can drive significant score improvement.'; }
+  else if (rounded >= 600) { band='Doing Well'; color='#3C258E'; barColor='#3C258E'; desc='Some age on this home. Documentation of past maintenance will improve this score significantly.'; }
+  else if (rounded >= 400) { band='Progressing'; color='#D97706'; barColor='#D97706'; desc='Older home — higher maintenance risk. Key tasks can drive significant score improvement.'; }
   else { band='Critical'; color='#DC2626'; barColor='#DC2626'; desc='Significant attention required. Start by documenting all major systems.'; }
   return { score:rounded, band, color, barColor, desc };
 }
@@ -1010,7 +1010,7 @@ function renderScreen4() {
     { label:'Bathrooms', value: state.bathrooms || '—' },
     { label:'Living Area', value: fmt.sqft(state.sqft) || '—' },
     { label:'Estimated Value', value: fmt.money(state.estimatedValue) || '—' },
-    { label:'Preliminary HWS™', value: state.hws ? state.hws.score + ' / 1000' : '—' },
+    { label:'Preliminary Home Wellness Score™', value: state.hws ? state.hws.score + ' / 1000' : '—' },
     { label:'Property Type', value: state.propertyType || '—' },
   ];
 

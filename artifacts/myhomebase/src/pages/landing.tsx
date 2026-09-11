@@ -215,7 +215,7 @@ export default function Landing() {
     <div className="mhb-landing">
       {/* ═══ QUIZ FULL-SCREEN MODAL ═══ */}
       {quizOpen && (
-        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home Health Score Quiz" onClick={() => setQuizOpen(false)}>
+        <div className="mhb-overlay" role="dialog" aria-modal="true" aria-label="Home Wellness Score Quiz" onClick={() => setQuizOpen(false)}>
           <div className="mhb-quiz-modal" onClick={e => e.stopPropagation()}>
             <button className="mhb-modal-close" onClick={() => setQuizOpen(false)} aria-label="Close quiz">
               <X size={20} strokeWidth={2.5} />
@@ -223,7 +223,7 @@ export default function Landing() {
             <iframe
               className="mhb-quiz-frame"
               src="/quiz/quiz.html"
-              title="Home Health Score Quiz"
+              title="Home Wellness Score Quiz"
             />
           </div>
         </div>
@@ -866,7 +866,7 @@ export default function Landing() {
       <section id="quiz" className="mhb-quiz-entry-section">
         <div className="mhb-quiz-entry-inner">
           <p className="mhb-section-eyebrow mhb-quiz-eyebrow">Free 2-minute quiz</p>
-          <h2 className="mhb-quiz-entry-heading">Find out your Home Health Score</h2>
+          <h2 className="mhb-quiz-entry-heading">Find out your Home Wellness Score™</h2>
           <p className="mhb-quiz-entry-body">
             Answer 10 quick questions about your home's systems and maintenance habits to get a personalized score and see where your home may need attention.
           </p>

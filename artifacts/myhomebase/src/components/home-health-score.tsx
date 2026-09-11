@@ -17,13 +17,11 @@ interface HealthScoreData {
   totalExpectedTasks: number;
 }
 
-const POINTS_PER_TASK = 4;
-
 const IMPROVEMENT_TIPS = [
   {
     icon: ClipboardList,
     label: "Complete seasonal maintenance tasks",
-    detail: `Every task you mark done adds +${POINTS_PER_TASK} pts to your score`,
+    detail: "Self-reported completions add 2.4 points; verified completions add 4 points",
     color: "",
     bg: "",
     colorStyle: { color: 'var(--hw-primary)' } as React.CSSProperties,
@@ -32,18 +30,25 @@ const IMPROVEMENT_TIPS = [
   {
     icon: Wrench,
     label: "Log contractor or DIY work",
-    detail: "Logging service records counts as completed tasks",
+    detail: "Photo or contractor verification earns the full 4 points",
     color: "text-blue-600",
     bg: "bg-blue-50",
   },
   {
     icon: Star,
     label: "Stay consistent year over year",
-    detail: "Your score is cumulative — it never resets and keeps growing",
+    detail: "Complete the highest-priority overdue tasks first to strengthen your record",
     color: "text-amber-600",
     bg: "bg-amber-50",
   },
 ];
+
+function getNextAction(score: number): string {
+  if (score < 400) return "Start with the highest-priority overdue maintenance task.";
+  if (score < 600) return "Add photo evidence or contractor verification to recent work.";
+  if (score < 800) return "Keep your seasonal plan current and document each completion.";
+  return "Maintain your record with timely seasonal checks.";
+}
 
 export default function HomeHealthScore({ houseId, houseName, compact = false }: HomeHealthScoreProps) {
   const [showTips, setShowTips] = useState(false);
@@ -71,10 +76,10 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
   const { score: rawScore, completedTasks, missedTasks } = scoreData;
   const score = Math.max(0, rawScore);
 
-  const nextMilestone = Math.ceil((score + 1) / 50) * 50;
-  const tasksToNextMilestone = Math.ceil((nextMilestone - score) / POINTS_PER_TASK);
+  const nextMilestone = [400, 600, 800, 1000].find((milestone) => score < milestone);
+  const tasksToNextMilestone = nextMilestone === undefined ? 0 : Math.ceil((nextMilestone - score) / 4);
 
-  const percentage = completedTasks > 0 ? Math.min(100, Math.round((score / Math.max(score, 200)) * 100)) : 0;
+  const percentage = Math.min(100, Math.round((score / 1000) * 100));
 
   const { color: scoreColor, label: status } = getHomeWellnessScoreStatus(score);
 
@@ -138,7 +143,7 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
 
             {showTips && (
               <div className="mt-2 space-y-1.5">
-                {score > 0 && (
+                {nextMilestone !== undefined && (
                   <p className="text-[10px] text-gray-500 text-center">
                     {tasksToNextMilestone} more task{tasksToNextMilestone !== 1 ? "s" : ""} to reach {nextMilestone} pts
                   </p>
@@ -213,8 +218,9 @@ export default function HomeHealthScore({ houseId, houseName, compact = false }:
         <div className="border-t border-gray-100 pt-4">
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4" style={{ color: '#2c0f5b' }} />
-            <span className="text-sm font-semibold text-gray-800">Ways to improve your score</span>
+            <span className="text-sm font-semibold text-gray-800">Top next actions</span>
           </div>
+          <p className="text-xs text-gray-600 mb-2">{getNextAction(score)}</p>
           <div className="space-y-2">
             {IMPROVEMENT_TIPS.map((tip) => (
               <div key={tip.label} className={`flex items-start gap-3 rounded-xl p-3 ${tip.bg}`} style={'bgStyle' in tip ? tip.bgStyle : undefined}>

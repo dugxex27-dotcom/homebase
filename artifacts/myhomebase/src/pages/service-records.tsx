@@ -108,6 +108,7 @@ export default function ServiceRecords() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [showAdvancedDetails, setShowAdvancedDetails] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ServiceRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -275,7 +276,7 @@ export default function ServiceRecords() {
       homeArea: '',
       houseId: selectedHouseId || '',
       homeownerId: '',
-      serviceDate: '',
+      serviceDate: new Date().toISOString().split('T')[0],
       duration: '',
       cost: '',
       status: 'completed',
@@ -288,6 +289,7 @@ export default function ServiceRecords() {
     setMaterialInput('');
     setConnectionCode('');
     setLinkedHomeowner(null);
+    setShowAdvancedDetails(false);
   };
 
   // Validate connection code and link to homeowner
@@ -374,6 +376,7 @@ export default function ServiceRecords() {
 
   const openEditDialog = (record: ServiceRecord) => {
     setEditingRecord(record);
+    setShowAdvancedDetails(true);
     setFormData({
       customerName: record.customerName,
       customerAddress: record.customerAddress,
@@ -634,7 +637,7 @@ export default function ServiceRecords() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                       <div>
                         <Label htmlFor="serviceType" style={{ color: 'white' }}>Service Type</Label>
                         <Select value={formData.serviceType} onValueChange={(value) => handleInputChange('serviceType', value)}>
@@ -645,19 +648,6 @@ export default function ServiceRecords() {
                             {SERVICE_TYPES.map((type) => (
                               <SelectItem key={type} value={type}>{type}</SelectItem>
                             ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="status" style={{ color: 'white' }}>Status</Label>
-                        <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value as any)}>
-                          <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-status">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="in-progress">In Progress</SelectItem>
-                            <SelectItem value="scheduled">Scheduled</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -677,20 +667,6 @@ export default function ServiceRecords() {
                     </div>
 
                     <div>
-                      <Label htmlFor="homeArea" style={{ color: 'white' }}>Home Area</Label>
-                      <Select value={formData.homeArea} onValueChange={(value) => handleInputChange('homeArea', value)}>
-                        <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-home-area">
-                          <SelectValue placeholder="Select home area" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {HOME_AREAS.map((area) => (
-                            <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <Label htmlFor="serviceDate" style={{ color: 'white' }}>Service Date</Label>
                         <Input
@@ -702,104 +678,149 @@ export default function ServiceRecords() {
                           data-testid="input-service-date"
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="duration" style={{ color: 'white' }}>Duration</Label>
-                        <Input
-                          id="duration"
-                          value={formData.duration}
-                          onChange={(e) => handleInputChange('duration', e.target.value)}
-                          placeholder="2 hours"
-                          style={{ backgroundColor: '#ffffff' }}
-                          data-testid="input-duration"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="cost" style={{ color: 'white' }}>Service Cost</Label>
-                        <div className="relative">
-                          <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="cost"
-                            type="number"
-                            value={formData.cost}
-                            onChange={(e) => handleInputChange('cost', e.target.value)}
-                            className="pl-10"
-                            placeholder="0.00"
-                            step="0.01"
-                            min="0"
+                    </div>
+
+                    {/* Advanced Details Toggle */}
+                    <div className="flex justify-center mt-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setShowAdvancedDetails(!showAdvancedDetails)}
+                        className="text-white opacity-80 hover:opacity-100 hover:text-white"
+                      >
+                        {showAdvancedDetails ? 'Hide details' : 'Add details (status, area, cost, warranty, and notes)'}
+                      </Button>
+                    </div>
+
+                    {showAdvancedDetails && (
+                      <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="status" style={{ color: 'white' }}>Status</Label>
+                            <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value as any)}>
+                              <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-status">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="in-progress">In Progress</SelectItem>
+                                <SelectItem value="scheduled">Scheduled</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="homeArea" style={{ color: 'white' }}>Home Area</Label>
+                            <Select value={formData.homeArea} onValueChange={(value) => handleInputChange('homeArea', value)}>
+                              <SelectTrigger style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:bg-[#afd6f9] hover:text-black transition-colors" data-testid="select-home-area">
+                                <SelectValue placeholder="Select home area" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {HOME_AREAS.map((area) => (
+                                  <SelectItem key={area.value} value={area.value}>{area.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="duration" style={{ color: 'white' }}>Duration</Label>
+                            <Input
+                              id="duration"
+                              value={formData.duration}
+                              onChange={(e) => handleInputChange('duration', e.target.value)}
+                              placeholder="2 hours"
+                              style={{ backgroundColor: '#ffffff' }}
+                              data-testid="input-duration"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cost" style={{ color: 'white' }}>Service Cost</Label>
+                            <div className="relative">
+                              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                              <Input
+                                id="cost"
+                                type="number"
+                                value={formData.cost}
+                                onChange={(e) => handleInputChange('cost', e.target.value)}
+                                className="pl-10"
+                                placeholder="0.00"
+                                step="0.01"
+                                min="0"
+                                style={{ backgroundColor: '#ffffff' }}
+                                data-testid="input-cost"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Materials Used */}
+                        <div>
+                          <Label style={{ color: 'white' }}>Materials Used / Attachments</Label>
+                          <div className="flex gap-2 mt-2">
+                            <Input
+                              value={materialInput}
+                              onChange={(e) => setMaterialInput(e.target.value)}
+                              placeholder="Add material or link..."
+                              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addMaterial())}
+                              style={{ backgroundColor: '#ffffff' }}
+                            />
+                            <Button type="button" onClick={addMaterial} size="sm" style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          {formData.materialsUsed.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {formData.materialsUsed.map((material, index) => (
+                                <Badge key={index} variant="outline" className="px-2 py-1 bg-white text-gray-800">
+                                  {material}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeMaterial(material)}
+                                    className="ml-2 text-red-500 hover:text-red-700"
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="warrantyPeriod" style={{ color: 'white' }}>Warranty Period</Label>
+                            <Input
+                              id="warrantyPeriod"
+                              value={formData.warrantyPeriod}
+                              onChange={(e) => handleInputChange('warrantyPeriod', e.target.value)}
+                              placeholder="e.g. 1 year, 90 days"
+                              style={{ backgroundColor: '#ffffff' }}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="followUpDate" style={{ color: 'white' }}>Next Due / Follow-up</Label>
+                            <Input
+                              id="followUpDate"
+                              type="date"
+                              value={formData.followUpDate}
+                              onChange={(e) => handleInputChange('followUpDate', e.target.value)}
+                              style={{ backgroundColor: '#ffffff' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="notes" style={{ color: 'white' }}>Additional Notes</Label>
+                          <Textarea
+                            id="notes"
+                            value={formData.notes}
+                            onChange={(e) => handleInputChange('notes', e.target.value)}
+                            placeholder="Any additional notes or observations..."
+                            rows={3}
                             style={{ backgroundColor: '#ffffff' }}
-                            data-testid="input-cost"
                           />
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Materials Used */}
-                    <div>
-                      <Label style={{ color: 'white' }}>Materials Used</Label>
-                      <div className="flex gap-2 mt-2">
-                        <Input
-                          value={materialInput}
-                          onChange={(e) => setMaterialInput(e.target.value)}
-                          placeholder="Add material..."
-                          onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addMaterial())}
-                          style={{ backgroundColor: '#ffffff' }}
-                        />
-                        <Button type="button" onClick={addMaterial} size="sm" style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                      {formData.materialsUsed.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {formData.materialsUsed.map((material, index) => (
-                            <Badge key={index} variant="outline" className="px-2 py-1">
-                              {material}
-                              <button
-                                type="button"
-                                onClick={() => removeMaterial(material)}
-                                className="ml-2 text-red-500 hover:text-red-700"
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="warrantyPeriod" style={{ color: 'white' }}>Warranty Period</Label>
-                        <Input
-                          id="warrantyPeriod"
-                          value={formData.warrantyPeriod}
-                          onChange={(e) => handleInputChange('warrantyPeriod', e.target.value)}
-                          placeholder="1 year"
-                          style={{ backgroundColor: '#ffffff' }}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="followUpDate" style={{ color: 'white' }}>Follow-up Date</Label>
-                        <Input
-                          id="followUpDate"
-                          type="date"
-                          value={formData.followUpDate}
-                          onChange={(e) => handleInputChange('followUpDate', e.target.value)}
-                          style={{ backgroundColor: '#ffffff' }}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="notes" style={{ color: 'white' }}>Additional Notes</Label>
-                      <Textarea
-                        id="notes"
-                        value={formData.notes}
-                        onChange={(e) => handleInputChange('notes', e.target.value)}
-                        placeholder="Any additional notes or observations..."
-                        rows={3}
-                        style={{ backgroundColor: '#ffffff' }}
-                      />
-                    </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -893,23 +914,23 @@ export default function ServiceRecords() {
         {/* Service Records List */}
         <div className="space-y-4">
           {filteredRecords.length === 0 ? (
-            <Card >
-              <CardContent className="py-12 text-center">
-                <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Service Records</h3>
-                <p className="text-gray-600 mb-4">
-                  {searchTerm || statusFilter !== 'all' 
-                    ? 'No records match your current filters.' 
-                    : 'Start by creating your first service record.'}
-                </p>
-                {!searchTerm && statusFilter === 'all' && (
-                  <Button onClick={() => setIsDialogOpen(true)} style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add First Service Record
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+            <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200 shadow-sm mt-4">
+              <div className="w-16 h-16 bg-[#e6f1fb] rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-[#1560a2]" />
+              </div>
+              <h3 className="text-xl font-bold text-[#0c3460] mb-2">No service records</h3>
+              <p className="text-[#518ebc] mb-6 max-w-sm mx-auto">
+                {searchTerm || statusFilter !== 'all'
+                  ? 'No records match your current filters.'
+                  : 'Start by creating your first service record to track your work.'}
+              </p>
+              {!searchTerm && statusFilter === 'all' && (
+                <Button onClick={() => setIsDialogOpen(true)} style={{ backgroundColor: 'var(--theme-primary)', color: 'white' }} className="hover:opacity-90">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Record
+                </Button>
+              )}
+            </div>
           ) : (
             filteredRecords.map((record) => (
               <Card key={record.id}>

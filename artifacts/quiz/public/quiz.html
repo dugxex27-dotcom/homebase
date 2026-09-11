@@ -651,7 +651,7 @@
       <p class="result-msg" id="resultMsg"></p>
 
       <div class="score-breakdown">
-        <div class="score-breakdown-label">Home Health Score</div>
+        <div class="score-breakdown-label">Home Readiness Checkup</div>
         <div class="score-bar-track">
           <div class="score-bar-fill" id="scoreBarFill" style="width:0%"></div>
         </div>
@@ -663,7 +663,7 @@
       </div>
 
       <div class="share-section">
-        <div class="share-title">Share your Home Health Score</div>
+        <div class="share-title">Share your Home Readiness Checkup</div>
         <div class="share-buttons">
           <button class="share-btn primary" type="button" id="shareScoreBtn">Share my score</button>
           <button class="share-btn" type="button" id="shareXBtn" aria-label="Share your score on X">𝕏 <span>Share</span></button>
@@ -724,8 +724,8 @@
     function getShareDetails() {
       const quizUrl = new URL('.', window.location.href).href;
       return {
-        title: 'My Home Health Score',
-        text: 'I scored ' + finalScore + '/100 on my Home Health Score — how does yours compare?',
+        title: 'My Home Readiness Checkup',
+        text: 'I scored ' + finalScore + '/100 on my Home Readiness Checkup — how does yours compare?',
         url: quizUrl
       };
     }

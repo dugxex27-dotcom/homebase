@@ -60,7 +60,7 @@ export default function Quiz() {
         border: "none",
         display: "block",
       }}
-      title="Home Health Score Quiz"
+      title="Home Readiness Checkup"
     />
   );
 }

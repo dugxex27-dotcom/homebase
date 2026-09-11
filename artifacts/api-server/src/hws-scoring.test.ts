@@ -4,6 +4,7 @@ import {
   HWS_ALL_SELF_REPORTED_SOFT_CAP,
   HWS_SELF_REPORTED_TASK_POINTS,
   HWS_VERIFIED_TASK_POINTS,
+  getHwsScoreBand,
 } from "./hws-scoring";
 
 const HOUSE_WITHOUT_DOCUMENTATION_BONUS = {
@@ -14,6 +15,18 @@ const HOUSE_WITHOUT_DOCUMENTATION_BONUS = {
 };
 
 describe("calculateHwsScore", () => {
+  it.each([
+    [0, "Critical"],
+    [105, "Critical"],
+    [399, "Critical"],
+    [400, "Progressing"],
+    [600, "Doing Well"],
+    [800, "Excellent"],
+    [1000, "Excellent"],
+  ])("uses the documented score band for %i", (score, band) => {
+    expect(getHwsScoreBand(score)).toBe(band);
+  });
+
   it("scores photo_verified exactly like contractor_verified", () => {
     const contractor = calculateHwsScore(
       [{ verificationTier: "contractor_verified" }],

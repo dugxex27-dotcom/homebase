@@ -829,10 +829,24 @@ export default function Messages() {
               {conversationsLoading ? (
                 <div className="p-4 text-center text-gray-500">Loading...</div>
               ) : conversations.length === 0 ? (
-                <div className="p-8 text-center">
-                  <MessageCircle className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                  <p className="text-gray-500">No conversations yet</p>
-                  <p className="text-sm text-gray-400 mt-1">Start a conversation to get help with your home</p>
+                <div className="text-center py-16 px-4">
+                  <div className="w-16 h-16 bg-[#f0ebfa] rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageCircle className="w-8 h-8 text-[#3c258e]" />
+                  </div>
+                  <h3 className="text-xl font-bold text-[#2c0f5b] mb-2">No conversations yet</h3>
+                  <p className="text-[#4a3670] mb-8 max-w-[200px] mx-auto">
+                    When you message a contractor, or they message you, the conversation will appear here.
+                  </p>
+
+                  {typedUser.role === 'homeowner' && (
+                    <Button
+                      onClick={() => setIsComposeDialogOpen(true)}
+                      className="bg-[#3c258e] text-white hover:opacity-90 w-full sm:w-auto"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      New Message
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">

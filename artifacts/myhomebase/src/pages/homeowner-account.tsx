@@ -249,7 +249,7 @@ export default function HomeownerAccount() {
     }
   };
 
-  // Fetch the user's most recent Home Health Score quiz result
+  // Fetch the user's most recent Home Wellness Score quiz result
   const { data: quizResult } = useQuery<{
     id: string; score: number; tier: string; completedAt: string; createdAt: string;
   } | null>({
@@ -513,7 +513,7 @@ export default function HomeownerAccount() {
 
           {quizResult && (
             <>
-              <p className="dash-section-label">Home Health Score</p>
+              <p className="dash-section-label">Home Wellness Score™</p>
               <Card style={{ backgroundColor: '#ffffff' }}>
                 <CardContent className="pt-5">
                   <div className="flex items-center gap-4">
@@ -544,7 +544,7 @@ export default function HomeownerAccount() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
                         <TrendingUp className="w-4 h-4" style={{ color: '#2c0f5b' }} />
-                        <span className="font-semibold text-gray-900 text-sm">Home Health Score™</span>
+                        <span className="font-semibold text-gray-900 text-sm">Home Wellness Score™</span>
                       </div>
                       <p className="text-sm text-gray-700 font-medium">{quizResult.tier}</p>
                       <p className="text-xs text-gray-500 mt-0.5">
@@ -767,7 +767,7 @@ export default function HomeownerAccount() {
                     </p>
                     <p className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
-                      Home health score & achievements
+                      Home Wellness Score™ & achievements
                     </p>
                   </div>
                 )}
@@ -776,7 +776,7 @@ export default function HomeownerAccount() {
                 {isFreeUser && (
                   <div className="mt-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
                     <p className="text-sm" style={{ color: 'var(--hw-primary)' }}>
-                      Upgrade to unlock maintenance tracking, home health scores, DIY savings tracker, and more!
+                      Upgrade to unlock maintenance tracking, Home Wellness Score™, DIY savings tracker, and more!
                     </p>
                   </div>
                 )}

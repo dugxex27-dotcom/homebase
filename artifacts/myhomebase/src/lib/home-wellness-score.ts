@@ -3,12 +3,12 @@ export interface HomeWellnessScoreStatus {
   label: string;
 }
 
-const SCORE_STATUS_BANDS = [
-  { minimumScore: 750, color: "#2f7d32", label: "Excellent" },
-  { minimumScore: 550, color: "#6da936", label: "Doing Well" },
-  { minimumScore: 350, color: "#a3a51b", label: "Progressing" },
-  { minimumScore: 150, color: "#e87920", label: "Building Momentum" },
-  { minimumScore: 1, color: "#e03e3e", label: "Just Starting Out" },
+/** The documented HWS scale. Keep this ordered highest-to-lowest. */
+export const HOME_WELLNESS_SCORE_BANDS = [
+  { minimumScore: 800, color: "#2f7d32", label: "Excellent" },
+  { minimumScore: 600, color: "#6da936", label: "Doing Well" },
+  { minimumScore: 400, color: "#a3a51b", label: "Progressing" },
+  { minimumScore: 0, color: "#e03e3e", label: "Critical" },
 ] as const;
 
 const GETTING_STARTED_STATUS: HomeWellnessScoreStatus = {
@@ -17,11 +17,8 @@ const GETTING_STARTED_STATUS: HomeWellnessScoreStatus = {
 };
 
 export function getHomeWellnessScoreStatus(score: number): HomeWellnessScoreStatus {
-  if (score <= 0) {
-    return GETTING_STARTED_STATUS;
-  }
-
-  const band = SCORE_STATUS_BANDS.find((candidate) => score >= candidate.minimumScore);
+  const normalizedScore = Math.max(0, Math.min(1000, score));
+  const band = HOME_WELLNESS_SCORE_BANDS.find((candidate) => normalizedScore >= candidate.minimumScore);
 
   return band
     ? { color: band.color, label: band.label }

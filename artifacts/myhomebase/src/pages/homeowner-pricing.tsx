@@ -397,7 +397,7 @@ export default function HomeownerPricing() {
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />
-                  <span className="text-sm">Home health score</span>
+                  <span className="text-sm">Home Wellness Score™</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="h-5 w-5 text-[#3C258E] mt-0.5 flex-shrink-0" />

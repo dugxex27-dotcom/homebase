@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useSearch } from "wouter";
+import { useSearch, Link } from "wouter";
 import ContractorCard from "@/components/contractor-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -715,9 +715,57 @@ export default function Contractors() {
                 ))}
               </div>
             ) : sortedContractors.length === 0 ? (
-              <div className="text-center py-12 rounded-2xl" style={{ background: '#fff', border: '1px solid #ede9f8' }}>
-                <h3 className="text-lg font-semibold mb-2" style={{ color: '#2c0f5b' }}>No contractors found</h3>
-                <p style={{ color: '#4a3670' }}>Try adjusting your filters or search criteria.</p>
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100 shadow-sm mt-2 mb-8 px-4">
+                <div className="w-16 h-16 bg-[#f0ebfa] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-[#3c258e]" />
+                </div>
+                <h3 className="text-xl font-bold text-[#2c0f5b] mb-2">No contractors found</h3>
+                <p className="text-[#4a3670] mb-8 max-w-md mx-auto">
+                  We couldn't find any verified professionals matching your exact criteria in this area.
+                </p>
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 flex-wrap max-w-3xl mx-auto">
+                  <Button
+                    onClick={() => {
+                      setFilters({});
+                      setSelectedDistance('');
+                      setSelectedRating('');
+                      setHasEmergencyServices(false);
+                      setSelectedServices([]);
+                      setSearchQuery('');
+                      setHasAppliedFilters(true);
+                    }}
+                    className="bg-[#3c258e] text-white hover:opacity-90 w-full sm:w-auto"
+                  >
+                    Clear Filters
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  >
+                    Invite Your Contractor
+                  </Button>
+
+                  <Link href="/messages?taskTitle=Contractor%20Matching%20Request&taskDescription=Please%20help%20me%20find%20a%20contractor%20for%20my%20project.">
+                    <Button
+                      variant="outline"
+                      className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
+                    >
+                      Request Matching
+                    </Button>
+                  </Link>
+
+                  <Link href="/maintenance">
+                    <Button
+                      variant="outline"
+                      className="border-[#b6a6f4] text-[#3c258e] hover:bg-[#f0ebfa] w-full sm:w-auto"
+                    >
+                      Log DIY Work
+                    </Button>
+                  </Link>
+                </div>
               </div>
             ) : (
               <>

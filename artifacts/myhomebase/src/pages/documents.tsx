@@ -361,10 +361,23 @@ export default function Documents() {
             {isLoading ? (
               <div className="text-center py-12" style={{ color: '#b6a6f4' }}>Loading documents...</div>
             ) : filteredDocs.length === 0 ? (
-              <div className="text-center py-12">
-                <FolderOpen className="w-12 h-12 mx-auto mb-3" style={{ color: '#b6a6f4' }} />
-                <p className="font-medium" style={{ color: '#4a3670' }}>No documents yet</p>
-                <p className="text-sm mt-1" style={{ color: '#7c6fa0' }}>Upload your first document to get started</p>
+              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200 mt-2 mb-8">
+                <div className="w-16 h-16 bg-[#f0ebfa] rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FolderOpen className="w-8 h-8 text-[#3c258e]" />
+                </div>
+                <h3 className="text-xl font-bold text-[#2c0f5b] mb-2">No documents yet</h3>
+                <p className="text-[#4a3670] mb-8 max-w-sm mx-auto">
+                  Upload your first document to get started. Keep track of home records, inspections, and more.
+                </p>
+                <div className="flex justify-center gap-4">
+                  <Button
+                    className="bg-[#3c258e] text-white hover:opacity-90"
+                    onClick={() => setUploadDialogOpen(true)}
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Document
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="grid gap-3">

@@ -122,6 +122,7 @@ export function useHomeownerSubscription(): SubscriptionStatus {
   const maxHouses = subData?.maxHouses ?? 0;
   const currentHouses = subData?.currentHouses ?? 0;
   const canAddHomes = subData?.canAddHomes ?? false;
+
   const isFreeUser = currentPlan === 'free' && !isInTrial && !hasActiveSubscription;
 
   return {

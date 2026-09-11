@@ -126,19 +126,19 @@ export default function AgentReferral() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
         <div className="space-y-8">
-          {/* Referral Rewards Card */}
+          {/* Client relationship tools */}
           <Card className="shadow rounded-2xl bg-white">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-green-600">
                 <Gift className="w-5 h-5" />
-                Agent Referral Rewards
+                Agent Client Tools
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-sm text-gray-600">Give clients a free forever home record for maintenance, listing prep, and every future move.</div>
               
               {/* Referral Stats */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="text-center p-4 bg-green-50 rounded-lg">
                   <div className="text-3xl font-bold text-green-700">
                     {referralCount}

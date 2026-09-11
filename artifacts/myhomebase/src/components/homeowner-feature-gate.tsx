@@ -388,7 +388,7 @@ export function FreeUserUpgradePrompt() {
       name: 'Base',
       price: '$5',
       homes: '1-2 homes',
-      features: ['Maintenance tracking', 'Home health score', 'DIY savings tracker', 'Service records'],
+      features: ['Maintenance tracking', 'Home Wellness Score™', 'DIY savings tracker', 'Service records'],
       planId: 'base'
     },
     {

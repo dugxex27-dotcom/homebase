@@ -23,6 +23,7 @@ import { MaintenanceVerificationStatus } from "@/components/maintenance-verifica
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import "./home.css";
 import { apiRequest, notifyInvoiceBadgeChanged } from "@/lib/queryClient";
+import { Link } from "wouter";
 import { 
   FileText, 
   Calendar, 
@@ -775,8 +776,8 @@ export default function HomeownerServiceRecords() {
         </div>
 
         <span className="dash-eyebrow">Homeowner</span>
-        <div className="dash-title">Service Records</div>
-        <div className="dash-subtitle">Complete history of maintenance and repairs</div>
+        <div className="dash-title">Record</div>
+        <div className="dash-subtitle">Service history, documents, inspections, and insurance-ready records</div>
 
         <div className="dash-chips">
           <div className="dash-chip">
@@ -798,6 +799,15 @@ export default function HomeownerServiceRecords() {
 
       {/* ── PAGE BODY ──────────────────────────────── */}
       <div className="dash-body">
+        <nav className="mb-5 flex flex-wrap gap-2" aria-label="Home record sections">
+          <span className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">Service history</span>
+          <Link href="/documents" className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground">
+            Documents & inspections
+          </Link>
+          <Link href="/documents?type=insurance" className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground">
+            Insurance
+          </Link>
+        </nav>
         <ActivatingPlanBanner />
         <HomeownerTrialBanner />
 
@@ -1563,7 +1573,7 @@ export default function HomeownerServiceRecords() {
               <div className="py-8 text-center space-y-3">
                 <CheckCircle2 className="w-14 h-14 mx-auto text-green-500" />
                 <p className="text-lg font-semibold text-green-700">Service record created!</p>
-                <p className="text-sm text-muted-foreground">Your home health score has been updated.</p>
+                <p className="text-sm text-muted-foreground">Your Home Wellness Score™ has been updated.</p>
               </div>
             )}
 

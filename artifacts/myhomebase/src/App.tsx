@@ -207,6 +207,7 @@ const AIContractorHelp = lazy(() => import("./pages/ai-contractor-help"));
 const Billing = lazy(() => import("./pages/billing"));
 const Documents = lazy(() => import("./pages/documents"));
 const ResaleReport = lazy(() => import("./pages/resale-report"));
+const AddHome = lazy(() => import("./pages/add-home"));
 
 // Lazy-loaded pages - Contractor
 const ContractorDashboard = lazy(() => import("./pages/contractor-dashboard"));
@@ -513,6 +514,7 @@ function Router() {
             <Route path="/documents" component={Documents} />
             <Route path="/disclosures">{() => { window.location.replace("/documents"); return null; }}</Route>
             <Route path="/resale-report/:houseId" component={ResaleReport} />
+            <Route path="/add-home" component={AddHome} />
           </>
         )}
         

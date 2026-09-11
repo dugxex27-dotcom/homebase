@@ -59,7 +59,7 @@ export default function BottomNav() {
   const isContractorToolsActive = contractorToolsItems.some(t => isActive(t.href));
   const isToolsActive = typedUser?.role === 'contractor' ? isContractorToolsActive : isHomeownerToolsActive;
 
-  const hasFlyout = typedUser?.role === 'homeowner' || typedUser?.role === 'contractor';
+  const hasFlyout = false;
 
   useEffect(() => {
     if (!toolsOpen) return;
@@ -79,23 +79,25 @@ export default function BottomNav() {
   const navItems =
     typedUser?.role === 'homeowner'
       ? [
-          { href: '/',            icon: Home,          label: 'Home',    active: isActive('/'), badge: unclaimedInvoiceCount },
-          { href: '/maintenance', icon: ClipboardList, label: 'Tasks',   active: isActive('/maintenance') },
+          { href: '/', icon: Home, label: 'Home', active: isActive('/'), badge: unclaimedInvoiceCount },
+          { href: '/maintenance', icon: ClipboardList, label: 'Maintain', active: isActive('/maintenance') },
+          { href: '/service-records', icon: FileText, label: 'Record', active: isActive(['/service-records', '/documents', '/disclosures']) },
+          { href: '/contractors', icon: HardHat, label: 'Pros', active: isActive(['/contractors', '/find-contractors', '/proposals', '/messages']) },
+          { href: '/account', icon: Grid2x2, label: 'More', active: isActive(['/account', '/billing', '/achievements', '/homeowner-referral', '/support', '/info']) },
         ]
       : typedUser?.role === 'contractor'
-      ? isTech
-        ? [
-            { href: '/contractor-dashboard', icon: LayoutDashboard, label: 'Dashboard', active: isActive('/contractor-dashboard') },
-          ]
-        : [
-            { href: '/contractor-profile', icon: User, label: 'Profile', active: isActive(['/contractor-profile', '/billing', '/contractor-pricing']) },
-          ]
+      ? [
+          { href: '/contractor-dashboard', icon: LayoutDashboard, label: 'Jobs', active: isActive('/contractor-dashboard') },
+          { href: '/messages', icon: MessageCircle, label: 'Messages', active: isActive('/messages'), badge: unreadCount },
+          ...(!isTech ? [{ href: '/crm', icon: Users, label: 'Clients', active: isActive('/crm') }] : []),
+          { href: '/contractor-profile', icon: User, label: 'Profile', active: isActive(['/contractor-profile', '/billing', '/contractor-pricing', '/support']) },
+        ]
       : typedUser?.role === 'agent'
       ? [
           { href: '/agent-dashboard', icon: LayoutDashboard, label: 'Dashboard', active: isActive(['/agent-dashboard', '/']) },
+          { href: '/agent-handoff', icon: FileSignature, label: 'Handoffs', active: isActive('/agent-handoff') },
           { href: '/agent-referral',  icon: Gift,            label: 'Referrals', active: isActive('/agent-referral') },
-          { href: '/agent-account',   icon: User,            label: 'Profile',   active: isActive(['/agent-account', '/billing']) },
-          { href: '/support?role=agent', icon: HelpCircle,  label: 'Support',   active: isActive('/support') },
+          { href: '/agent-account',   icon: User,            label: 'Account',   active: isActive(['/agent-account', '/billing', '/support']) },
         ]
       : [];
 
@@ -296,8 +298,8 @@ export default function BottomNav() {
             </button>
           )}
 
-          {/* Account — homeowner only, rendered after Tools */}
-          {typedUser?.role === 'homeowner' && (() => {
+          {/* More is already part of the five-item homeowner primary navigation. */}
+          {false && typedUser?.role === 'homeowner' && (() => {
             const accountActive = isActive(['/account', '/billing', '/homeowner-referral']);
             return (
               <Link

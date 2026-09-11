@@ -325,7 +325,7 @@ export async function sendWelcomeEmail(userId: string, userName: string, userRol
         <li>Track your home maintenance history (think CARFAX for your home)</li>
         <li>Get seasonal maintenance reminders</li>
         <li>Find trusted contractors in your area</li>
-        <li>Monitor your home's health score</li>
+        <li>Monitor your home's Home Wellness Score™</li>
       </ul>
     `;
 
@@ -370,7 +370,7 @@ export async function sendTrialExpiringEmail(userId: string, userName: string, d
       <ul>
         <li>Your complete home maintenance history</li>
         <li>Seasonal maintenance reminders</li>
-        <li>Home health score tracking</li>
+        <li>Home Wellness Score™ tracking</li>
         <li>Contractor connections and messaging</li>
       </ul>
       <div style="text-align: center; margin: 30px 0;">

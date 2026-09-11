@@ -55,3 +55,4 @@
 - [Team role continuity policy](team-role-continuity-policy.md) — require an admin/owner, but manager and dispatcher are optional roles with no minimum count
 - [Partial-index time cutoffs](partial-index-time-cutoffs.md) — match cutoff literal type to the timestamp column; timestamptz coercion is not immutable
 - [Agent cash payouts retired](agent-cash-payouts-retired.md) — never create, transfer, message, or expose real-estate-agent referral cash payouts; retain historical ledger data only
+- [Homeowner activation before paywall](homeowner-activation-before-paywall.md) — first home, canonical score, and first task must deliver value before deeper or multi-home upgrade gates
