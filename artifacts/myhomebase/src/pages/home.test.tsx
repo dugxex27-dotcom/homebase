@@ -43,6 +43,7 @@ const flags = vi.hoisted(() => ({
   // When true the house mock returns every profile field filled in, making
   // profileNudgeAllDone === true so the card should not render.
   allInstallYearsDone: false,
+  healthScore: 50,
   contractorProposals: undefined as Array<{ status: string }> | undefined,
   contractorRating: undefined as
     | { averageRating: number; totalReviews: number }
@@ -123,6 +124,10 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
           return { data: undefined, isLoading: false };
 
         const key0 = queryKey[0];
+
+        if (key0 === "/api/houses" && queryKey[2] === "health-scores") {
+          return { data: { "house-1": { score: flags.healthScore } }, isLoading: false };
+        }
 
         if (key0 === "/api/houses" && queryKey.length === 1) {
           // When allInstallYearsDone is true every profileNudgeItem is "done"
@@ -300,6 +305,7 @@ function renderHome() {
 
 afterEach(() => {
   cleanup();
+  localStorage.clear();
   flags.role = "homeowner";
   flags.isPending = false;
   flags.isError = false;
@@ -309,6 +315,7 @@ afterEach(() => {
   flags.savedWaterHeaterYear = null;
   flags.patchOnSuccess = null;
   flags.allInstallYearsDone = false;
+  flags.healthScore = 50;
   flags.mutateSpy.mockClear();
   flags.resetSpy.mockClear();
   flags.setLocationSpy.mockClear();
@@ -1111,6 +1118,26 @@ describe("Profile nudge card — visibility based on completion", () => {
     renderHome();
 
     expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+  });
+
+  it("remembers a low-score acknowledgment and applies it after the score recovers", async () => {
+    flags.healthScore = 20;
+    const user = userEvent.setup();
+    const { unmount } = renderHome();
+
+    await user.click(screen.getByTestId("button-dismiss-profile-nudge"));
+    expect(localStorage.getItem("profile-nudge-dismissed-house-1")).toBe("1");
+    expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
+
+    unmount();
+    flags.healthScore = 20;
+    renderHome();
+    expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+
+    cleanup();
+    flags.healthScore = 50;
+    renderHome();
+    expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
   });
 });
 

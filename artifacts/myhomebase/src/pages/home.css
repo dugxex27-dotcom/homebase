@@ -1366,6 +1366,24 @@
   background: #fee2e2;
   border-color: #fca5a5;
 }
+
+.profile-nudge-acknowledge {
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #991b1b;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile-nudge-acknowledge:hover {
+  background: #fff7f7;
+}
 .dash-profile-progress-row {
   display: block;
   text-decoration: none;
