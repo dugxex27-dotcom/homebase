@@ -48,6 +48,7 @@ import {
   hasContractorPaidFeatureBypass,
   isSubscriptionReactivation,
   isStripeSubscriptionStateAlreadyApplied,
+  refreshTeamMemberRoleSession,
 } from "./routes";
 import {
   handleCreateReviewFlag,
@@ -4027,14 +4028,14 @@ describe("refreshUserSessionRole — patches a concurrently logged-in user's sto
     return { all, set };
   }
 
-  it("updates the stored session's companyRole for the newly promoted user", () => {
+  it("updates the stored session's companyRole for the newly promoted user", async () => {
     const newOwnerId = "user-tech";
     const sessions = {
       "sid-new-owner": { user: { id: newOwnerId, companyRole: "tech", companyId: "company-1" } },
     };
     const store = makeSessionStoreMock(sessions);
 
-    refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" });
+    await refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" });
 
     expect(store.set).toHaveBeenCalledOnce();
     const [sid, updatedSess] = store.set.mock.calls[0];
@@ -4043,7 +4044,7 @@ describe("refreshUserSessionRole — patches a concurrently logged-in user's sto
     expect(updatedSess.user.companyId).toBe("company-1"); // unrelated fields preserved
   });
 
-  it("patches every matching session when the user has multiple active sessions (e.g. two browsers)", () => {
+  it("patches every matching session when the user has multiple active sessions (e.g. two browsers)", async () => {
     const newOwnerId = "user-tech";
     const sessions = {
       "sid-a": { user: { id: newOwnerId, companyRole: "tech" } },
@@ -4052,30 +4053,30 @@ describe("refreshUserSessionRole — patches a concurrently logged-in user's sto
     };
     const store = makeSessionStoreMock(sessions);
 
-    refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" });
+    await refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" });
 
     expect(store.set).toHaveBeenCalledTimes(2);
     const patchedSids = store.set.mock.calls.map((call) => call[0]);
     expect(patchedSids.sort()).toEqual(["sid-a", "sid-b"]);
   });
 
-  it("is a no-op when the promoted user has no active session (not concurrently logged in)", () => {
+  it("is a no-op when the promoted user has no active session (not concurrently logged in)", async () => {
     const sessions = {
       "sid-other": { user: { id: "some-other-user", companyRole: "owner" } },
     };
     const store = makeSessionStoreMock(sessions);
 
-    refreshUserSessionRole(store as any, "user-not-logged-in", { companyRole: "owner" });
+    await refreshUserSessionRole(store as any, "user-not-logged-in", { companyRole: "owner" });
 
     expect(store.set).not.toHaveBeenCalled();
   });
 
-  it("does not throw when the session store has no .all method (e.g. missing/mocked store)", () => {
-    expect(() => refreshUserSessionRole({} as any, "user-tech", { companyRole: "owner" })).not.toThrow();
-    expect(() => refreshUserSessionRole(undefined, "user-tech", { companyRole: "owner" })).not.toThrow();
+  it("does not throw when the session store has no .all method (e.g. missing/mocked store)", async () => {
+    await expect(refreshUserSessionRole({} as any, "user-tech", { companyRole: "owner" })).resolves.toBeUndefined();
+    await expect(refreshUserSessionRole(undefined, "user-tech", { companyRole: "owner" })).resolves.toBeUndefined();
   });
 
-  it("logs a warning but does not throw when the store fails to persist the update", () => {
+  it("rejects when the store fails to persist the update so callers cannot report success early", async () => {
     const newOwnerId = "user-tech";
     const sessions = { "sid-new-owner": { user: { id: newOwnerId, companyRole: "tech" } } };
     const store = {
@@ -4084,7 +4085,9 @@ describe("refreshUserSessionRole — patches a concurrently logged-in user's sto
     };
     const log = { warn: vi.fn(), info: vi.fn() };
 
-    expect(() => refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" }, log)).not.toThrow();
+    await expect(
+      refreshUserSessionRole(store as any, newOwnerId, { companyRole: "owner" }, log),
+    ).rejects.toThrow("store unavailable");
     expect(log.warn).toHaveBeenCalledOnce();
   });
 });
@@ -4127,9 +4130,9 @@ describe("POST /api/contractor/transfer-ownership — new owner's session reflec
 
     // Minimal stand-in for the production route: after a successful transfer,
     // it calls refreshUserSessionRole exactly like the real handler does.
-    app.post("/api/contractor/transfer-ownership", (req: any, res: any) => {
+    app.post("/api/contractor/transfer-ownership", async (req: any, res: any) => {
       const { newOwnerId } = req.body;
-      refreshUserSessionRole(req.sessionStore, newOwnerId, { companyRole: "owner" }, req.log);
+      await refreshUserSessionRole(req.sessionStore, newOwnerId, { companyRole: "owner" }, req.log);
       res.json({ message: "Ownership transferred successfully." });
     });
 
@@ -4179,6 +4182,117 @@ describe("POST /api/contractor/transfer-ownership — new owner's session reflec
       .get("/api/owner-only-tool")
       .query({ sid: "sid-new-owner" })
       .expect(403);
+  });
+});
+
+describe("PATCH /api/contractor/team/:userId — target session reflects role change on next request", () => {
+  const TARGET_ID = "user-target";
+  const COMPANY_ID = "company-1";
+
+  function buildApp(sessionStoreBacking: Record<string, any>) {
+    const app = express();
+    app.use(express.json());
+
+    app.use((req: any, _res: any, next: any) => {
+      req.sessionStore = {
+        all: (cb: (err: any, sessions: Record<string, any> | null) => void) => cb(null, sessionStoreBacking),
+        set: (sid: string, sess: any, cb: (err: any) => void) => {
+          sessionStoreBacking[sid] = sess;
+          cb(null);
+        },
+      };
+      next();
+    });
+
+    app.patch("/api/contractor/team/:userId", async (req: any, res: any) => {
+      await refreshTeamMemberRoleSession(
+        req,
+        req.params.userId,
+        req.body.companyRole,
+      );
+      res.json({ message: "Team member updated" });
+    });
+
+    app.get("/api/admin-only-tool", (req: any, res: any) => {
+      const sess = sessionStoreBacking[req.query.sid as string];
+      if (!sess?.user || !["owner", "admin"].includes(sess.user.companyRole)) {
+        return res.status(403).json({ message: "Forbidden - insufficient company role" });
+      }
+      res.json({ ok: true });
+    });
+
+    return app;
+  }
+
+  it("promotes a logged-in teammate for their very next admin-only request", async () => {
+    const sessions: Record<string, any> = {
+      "sid-target": { user: { id: TARGET_ID, companyId: COMPANY_ID, companyRole: "tech" } },
+    };
+    const app = buildApp(sessions);
+
+    await supertest(app)
+      .patch(`/api/contractor/team/${TARGET_ID}`)
+      .send({ companyRole: "admin" })
+      .expect(200);
+
+    expect(sessions["sid-target"].user.companyRole).toBe("admin");
+    await supertest(app)
+      .get("/api/admin-only-tool")
+      .query({ sid: "sid-target" })
+      .expect(200);
+  });
+
+  it("demotes a logged-in admin and denies their very next admin-only request", async () => {
+    const sessions: Record<string, any> = {
+      "sid-target": { user: { id: TARGET_ID, companyId: COMPANY_ID, companyRole: "admin" } },
+    };
+    const app = buildApp(sessions);
+
+    await supertest(app)
+      .patch(`/api/contractor/team/${TARGET_ID}`)
+      .send({ companyRole: "tech" })
+      .expect(200);
+
+    expect(sessions["sid-target"].user.companyRole).toBe("tech");
+    await supertest(app)
+      .get("/api/admin-only-tool")
+      .query({ sid: "sid-target" })
+      .expect(403);
+  });
+
+  it("waits for an asynchronous session write before completing a demotion", async () => {
+    const sessions: Record<string, any> = {
+      "sid-target": { user: { id: TARGET_ID, companyId: COMPANY_ID, companyRole: "admin" } },
+    };
+    let releaseWrite!: () => void;
+    const writeBlocked = new Promise<void>((resolve) => {
+      releaseWrite = resolve;
+    });
+    const req = {
+      sessionStore: {
+        all: (cb: (err: any, stored: Record<string, any>) => void) => {
+          setTimeout(() => cb(null, sessions), 0);
+        },
+        set: async (sid: string, sess: any, cb: (err: any) => void) => {
+          await writeBlocked;
+          sessions[sid] = sess;
+          cb(null);
+        },
+      },
+    };
+
+    let completed = false;
+    const refresh = refreshTeamMemberRoleSession(req, TARGET_ID, "tech")
+      .then(() => { completed = true; });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(completed).toBe(false);
+    expect(sessions["sid-target"].user.companyRole).toBe("admin");
+
+    releaseWrite();
+    await refresh;
+    expect(completed).toBe(true);
+    expect(sessions["sid-target"].user.companyRole).toBe("tech");
   });
 });
 

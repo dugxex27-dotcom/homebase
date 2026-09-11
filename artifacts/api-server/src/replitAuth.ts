@@ -861,24 +861,32 @@ export const requireResourceOwnership = (resourceType: 'house' | 'maintenanceLog
  * to log out and back in.  Silently no-ops when the store has no `.all`
  * method or when no matching session is found.
  */
-export function refreshUserSessionRole(
+export async function refreshUserSessionRole(
   store: any,
   userId: string,
   updates: Record<string, unknown>,
   log?: { warn: (...args: unknown[]) => void; info?: (...args: unknown[]) => void },
-): void {
+): Promise<void> {
   if (!store || typeof store.all !== 'function') return;
 
-  store.all((err: unknown, sessions: Record<string, any> | null) => {
-    if (err || !sessions) return;
-    for (const [sid, sess] of Object.entries(sessions)) {
-      if (sess?.user?.id !== userId) continue;
-      const updated = { ...sess, user: { ...sess.user, ...updates } };
-      store.set(sid, updated, (setErr: unknown) => {
-        if (setErr && log) {
-          log.warn('[refreshUserSessionRole] Failed to persist session patch', setErr);
-        }
-      });
-    }
+  const sessions = await new Promise<Record<string, any>>((resolve, reject) => {
+    store.all((err: unknown, storedSessions: Record<string, any> | null) => {
+      if (err) return reject(err);
+      resolve(storedSessions ?? {});
+    });
   });
+
+  await Promise.all(Object.entries(sessions).map(async ([sid, sess]) => {
+    if (sess?.user?.id !== userId) return;
+    const updated = { ...sess, user: { ...sess.user, ...updates } };
+    await new Promise<void>((resolve, reject) => {
+      store.set(sid, updated, (setErr: unknown) => {
+        if (setErr) {
+          log?.warn('[refreshUserSessionRole] Failed to persist session patch', setErr);
+          return reject(setErr);
+        }
+        resolve();
+      });
+    });
+  }));
 }

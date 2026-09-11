@@ -1910,6 +1910,19 @@ export function parseUpdateTeamMemberBody(body: unknown) {
   return updateTeamMemberSchema.safeParse(body);
 }
 
+export async function refreshTeamMemberRoleSession(
+  req: any,
+  userId: string,
+  companyRole: string,
+): Promise<void> {
+  await refreshUserSessionRole(
+    req.sessionStore,
+    userId,
+    { companyRole },
+    req.log,
+  );
+}
+
 export async function verifyRequestorRoleFromDb(
   requestorId: string,
   companyId: string | null | undefined,
@@ -25785,7 +25798,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       }
 
       req.session.user = { ...req.session.user, companyRole: 'admin' };
-      refreshUserSessionRole(req.sessionStore, result.targetUser.id, { companyRole: 'owner' }, req.log);
+      await refreshUserSessionRole(req.sessionStore, result.targetUser.id, { companyRole: 'owner' }, req.log);
 
       const [company] = await db.select({ name: companies.name }).from(companies)
         .where(eq(companies.id, companyId)).limit(1);
@@ -25926,6 +25939,14 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(409).json({
           message: "This invitation is no longer pending. Refresh the team list and try again.",
         });
+      }
+
+      if (parsed.data.companyRole !== undefined) {
+        await refreshTeamMemberRoleSession(
+          req,
+          userId,
+          parsed.data.companyRole,
+        );
       }
 
       if (inviteResentTo && inviteTokenForResend && inviteExpiresAtForResend) {
