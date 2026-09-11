@@ -480,6 +480,76 @@ describe("PATCH /api/maintenance-logs/:id — anti-gaming date lock", () => {
     expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
     expect(mockDbUpdate).not.toHaveBeenCalled();
   });
+
+  it("rejects a manually-entered log date more than 12 months in the past", async () => {
+    const app = await buildApp();
+
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: new Date().toISOString().split("T")[0],
+      taskCompletionId: null,
+      description: "HVAC service",
+    });
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockDbSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+
+    const res = await request(app)
+      .patch(`/api/maintenance-logs/${LOG_ID}`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate: "2020-03-10" });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      message: "Maintenance logs cannot be dated more than 12 months in the past.",
+    });
+    expect(mockUpdateMaintenanceLog).not.toHaveBeenCalled();
+  });
+
+  it("allows a manually-entered log date within the last 12 months", async () => {
+    const app = await buildApp();
+    const recentDate = new Date();
+    recentDate.setMonth(recentDate.getMonth() - 6);
+    const serviceDate = recentDate.toISOString().split("T")[0];
+
+    mockGetMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate: new Date().toISOString().split("T")[0],
+      taskCompletionId: null,
+      description: "HVAC service",
+    });
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockDbSelect.mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    mockUpdateMaintenanceLog.mockResolvedValue({
+      id: LOG_ID,
+      homeownerId: OWNER_ID,
+      houseId: HOUSE_ID,
+      serviceDate,
+    });
+
+    const res = await request(app)
+      .patch(`/api/maintenance-logs/${LOG_ID}`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate });
+
+    expect(res.status).toBe(200);
+    expect(mockUpdateMaintenanceLog).toHaveBeenCalledWith(LOG_ID, { serviceDate });
+  });
 });
 
 // ---------------------------------------------------------------------------

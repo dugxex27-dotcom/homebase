@@ -1158,6 +1158,9 @@ describe("PATCH /api/maintenance-logs/:id — serviceDate locked on confirmed in
   it("allows serviceDate edits on a manually-entered log with no invoice link", async () => {
     buildInsertMock();
     const app = await buildApp();
+    const recentDate = new Date();
+    recentDate.setMonth(recentDate.getMonth() - 6);
+    const serviceDate = recentDate.toISOString().split("T")[0];
 
     mockGetUser.mockResolvedValue(USER_FIXTURE);
 
@@ -1170,7 +1173,7 @@ describe("PATCH /api/maintenance-logs/:id — serviceDate locked on confirmed in
       taskCompletionId: null,
     });
 
-    const updatedLog = { id: LOG_ID, serviceDate: "2025-06-01" };
+    const updatedLog = { id: LOG_ID, serviceDate };
     mockUpdateMaintenanceLog.mockResolvedValue(updatedLog);
 
     // db.select: no linked invoiceAnalysis
@@ -1185,7 +1188,7 @@ describe("PATCH /api/maintenance-logs/:id — serviceDate locked on confirmed in
     const res = await request(app)
       .patch(`/api/maintenance-logs/${LOG_ID}`)
       .set("x-test-user", "owner")
-      .send({ serviceDate: "2025-06-01" });
+      .send({ serviceDate });
 
     expect(res.status).toBe(200);
     expect(mockUpdateMaintenanceLog).toHaveBeenCalled();

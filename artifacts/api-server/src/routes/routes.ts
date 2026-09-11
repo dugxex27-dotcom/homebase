@@ -583,6 +583,22 @@ export function isInvoiceOutsideScoringWindow(
   return scoringAbsoluteMonth < currentAbsoluteMonth - rollingWindowMonths;
 }
 
+export const MAINTENANCE_LOG_BACKDATE_ERROR =
+  "Maintenance logs cannot be dated more than 12 months in the past.";
+
+export function isMaintenanceLogOutsideBackdateLimit(
+  serviceDate: string,
+  now = new Date(),
+): boolean {
+  const parsedDate = new Date(`${serviceDate}T12:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) return false;
+
+  const cutoff = new Date(now);
+  cutoff.setHours(12, 0, 0, 0);
+  cutoff.setMonth(cutoff.getMonth() - 12);
+  return parsedDate < cutoff;
+}
+
 export function invoiceScoringLockKey(
   houseId: string,
   normalizedServiceType: string,
@@ -15416,22 +15432,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return sendFutureServiceDateError(res);
         }
 
-        if ((existingLog as any).taskCompletionId) {
+        let isInvoiceConfirmed = Boolean((existingLog as any).taskCompletionId);
+
+        // Fallback: check invoiceAnalyses for a linked taskCompletionId when the
+        // log was created by the invoice-confirm flow (no direct taskCompletionId column).
+        if (!isInvoiceConfirmed) {
+          const linkedAnalyses = await db.select()
+            .from(invoiceAnalyses)
+            .where(eq(invoiceAnalyses.maintenanceLogId, req.params.id))
+            .limit(1);
+          isInvoiceConfirmed = Boolean(linkedAnalyses[0]?.taskCompletionId);
+        }
+
+        if (isInvoiceConfirmed) {
           return res.status(403).json({
             message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
             code: "DATE_LOCKED",
           });
         }
-        // Fallback: check invoiceAnalyses for a linked taskCompletionId when the
-        // log was created by the invoice-confirm flow (no direct taskCompletionId column).
-        const linkedAnalyses = await db.select()
-          .from(invoiceAnalyses)
-          .where(eq(invoiceAnalyses.maintenanceLogId, req.params.id))
-          .limit(1);
-        if (linkedAnalyses[0]?.taskCompletionId) {
-          return res.status(403).json({
-            message: "The service date of a verified record cannot be changed. This record has been counted in your Home Wellness Score™.",
-            code: "DATE_LOCKED",
+
+        if (isMaintenanceLogOutsideBackdateLimit(partialData.serviceDate)) {
+          return res.status(400).json({
+            message: MAINTENANCE_LOG_BACKDATE_ERROR,
           });
         }
       }
