@@ -1,10 +1,10 @@
 import { db } from './db';
-import { users, onboardingProgress, notifications } from '@workspace/db';
 import { eq, and, gt, isNull, lt, isNotNull } from 'drizzle-orm';
 import { sendOnboardingNudgeEmail } from './email-service';
 import { storage } from './storage';
 import { isDemoId } from './storage';
 import { logger } from './lib/logger';
+import { users, onboardingProgress } from '@workspace/db';
 
 const CHECK_INTERVAL_MS = 60 * 60 * 1000; // Check every hour
 
@@ -46,6 +46,7 @@ async function sendOnboardingNudges(): Promise<void> {
           eq(users.isQaAccount, false),
           eq(users.isDemoAccount, false),
           isNotNull(users.email),
+          isNull(users.onboardingNudgeSentAt),
           isNull(onboardingProgress.completedAt),
           gt(onboardingProgress.currentStep, 2),
           lt(users.createdAt, nudgeCutoff),
@@ -65,19 +66,22 @@ async function sendOnboardingNudges(): Promise<void> {
     for (const user of eligible) {
       if (!user.email) continue;
 
-      // Dedup: skip if an onboarding_reminder notification already exists for this user
-      const existing = await db
-        .select({ id: notifications.id })
-        .from(notifications)
+      // Atomically claim this user's one allowed nudge. This database marker
+      // survives server restarts and notification reads/deletes, while the
+      // null predicate prevents concurrent scheduler instances from both sending.
+      const claimedAt = new Date();
+      const claimed = await db
+        .update(users)
+        .set({ onboardingNudgeSentAt: claimedAt })
         .where(
           and(
-            eq(notifications.homeownerId, user.id),
-            eq(notifications.type, 'onboarding_reminder'),
+            eq(users.id, user.id),
+            isNull(users.onboardingNudgeSentAt),
           ),
         )
-        .limit(1);
+        .returning({ id: users.id });
 
-      if (existing.length > 0) {
+      if (claimed.length === 0) {
         continue;
       }
 
@@ -111,6 +115,18 @@ async function sendOnboardingNudges(): Promise<void> {
           { email: user.email },
           '[ONBOARDING-NUDGE-SCHEDULER] Sent onboarding nudge email',
         );
+      } else {
+        // The email service reported no send, so release only this run's claim.
+        // A later scheduler run may retry without overwriting a newer claim.
+        await db
+          .update(users)
+          .set({ onboardingNudgeSentAt: null })
+          .where(
+            and(
+              eq(users.id, user.id),
+              eq(users.onboardingNudgeSentAt, claimedAt),
+            ),
+          );
       }
 
       // Small delay to avoid rate limits

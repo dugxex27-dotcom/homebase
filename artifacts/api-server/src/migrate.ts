@@ -174,6 +174,30 @@ export async function runMigrations() {
     console.warn('[MIGRATE] onboarding_progress table setup warning (non-fatal):', err?.message ?? err);
   }
 
+  // Durable onboarding-nudge dedup marker. Unlike notification rows, this
+  // remains in place when users read or delete their in-app notifications.
+  try {
+    await pool.query(`
+      ALTER TABLE "users"
+        ADD COLUMN IF NOT EXISTS "onboarding_nudge_sent_at" timestamp;
+
+      UPDATE "users" AS u
+      SET "onboarding_nudge_sent_at" = legacy_nudges.first_created_at
+      FROM (
+        SELECT
+          "homeowner_id",
+          COALESCE(MIN("created_at"), now()) AS first_created_at
+        FROM "notifications"
+        WHERE "type" = 'onboarding_reminder'
+        GROUP BY "homeowner_id"
+      ) AS legacy_nudges
+      WHERE u."id" = legacy_nudges."homeowner_id"
+        AND u."onboarding_nudge_sent_at" IS NULL;
+    `);
+  } catch (err: any) {
+    console.warn('[MIGRATE] users onboarding_nudge_sent_at column warning (non-fatal):', err?.message ?? err);
+  }
+
   // Ensure pending_seat_syncs table exists (crash-safe seat-update checkpointing)
   // One row per company; written before the Stripe API call and deleted on success.
   // Any row present at startup means the previous process crashed mid-update.

@@ -258,6 +258,7 @@ export const users = pgTable("users", {
   trialRemindersSent: text("trial_reminders_sent").array().default([]), // Track which trial reminder emails have been sent (e.g., ["7-day", "4-day", "2-day", "1-day"])
   lastReengagementEmailSent: timestamp("last_reengagement_email_sent"), // When the last expired trial re-engagement email was sent
   lastReferralReminderSent: timestamp("last_referral_reminder_sent"), // When the last referral reminder email was sent
+  onboardingNudgeSentAt: timestamp("onboarding_nudge_sent_at"), // Durable, notification-independent onboarding nudge dedup marker
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
   // Stripe event `created` timestamp of the last subscription-status-affecting
