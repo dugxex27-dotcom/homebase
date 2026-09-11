@@ -64,11 +64,15 @@ const EMPTY_QUERY_RESULT = { data: undefined, isLoading: false };
 let capturedOpen = false;
 let capturedFocusField: string | null = null;
 let capturedOnFieldChange: ((v: Record<string, unknown>) => void) | null = null;
+let capturedOnOpenChange: ((open: boolean) => void) | null = null;
+let capturedCurrentProfile: Record<string, unknown> | undefined;
 
 function resetCaptures() {
   capturedOpen = false;
   capturedFocusField = null;
   capturedOnFieldChange = null;
+  capturedOnOpenChange = null;
+  capturedCurrentProfile = undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,13 +86,17 @@ vi.mock("wouter", () => ({
 vi.mock("@/components/household-profile-editor", () => ({
   HouseholdProfileEditor: (props: {
     open: boolean;
+    onOpenChange: (open: boolean) => void;
     focusField?: string | null;
     onFieldChange?: (v: Record<string, unknown>) => void;
+    currentProfile?: Record<string, unknown>;
     [key: string]: unknown;
   }) => {
     capturedOpen = props.open;
+    capturedOnOpenChange = props.onOpenChange;
     capturedFocusField = props.focusField ?? null;
     capturedOnFieldChange = props.onFieldChange ?? null;
+    capturedCurrentProfile = props.currentProfile;
     if (!props.open) return null;
     return <div data-testid="mock-editor" />;
   },
@@ -201,5 +209,29 @@ describe("Profile checklist — editor focus wiring for filled fields", () => {
     });
     expect(capturedOpen).toBe(true);
     expect(capturedFocusField).toBe("input-year-built");
+  });
+});
+
+describe("Profile editor — immediate reopen after saving", () => {
+  it("passes the latest draft values back to the editor before the houses query refetches", () => {
+    renderPage();
+
+    fireEvent.click(screen.getByTestId("button-edit-profile"));
+    expect(capturedCurrentProfile?.squareFootage).toBeNull();
+
+    act(() => {
+      capturedOnFieldChange?.({ squareFootage: 2400 });
+    });
+
+    expect(capturedCurrentProfile?.squareFootage).toBe(2400);
+
+    act(() => {
+      capturedOnOpenChange?.(false);
+    });
+    expect(capturedOpen).toBe(false);
+
+    fireEvent.click(screen.getByTestId("button-edit-profile"));
+    expect(capturedOpen).toBe(true);
+    expect(capturedCurrentProfile?.squareFootage).toBe(2400);
   });
 });

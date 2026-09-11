@@ -260,6 +260,7 @@ export default function HouseholdProfilePage() {
             garageType: house.garageType,
             numberOfStories: house.numberOfStories,
             primaryHeatingFuel: house.primaryHeatingFuel,
+            ...draftProgress,
           }}
         />
       </div>
