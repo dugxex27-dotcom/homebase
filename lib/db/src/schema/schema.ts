@@ -735,9 +735,14 @@ export const notifications = pgTable("notifications", {
   actionUrl: text("action_url"), // nullable, URL to take action on notification
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
+  // Production contains legacy unread duplicates created before atomic deduplication
+  // was introduced. Preserve those historical rows while enforcing uniqueness for
+  // every notification created after this constraint became part of the schema.
   uniqueIndex("UX_notifications_unread_maintenance_task")
     .on(table.homeownerId, table.maintenanceTaskId)
-    .where(sql`${table.isRead} = false AND ${table.maintenanceTaskId} IS NOT NULL`),
+    .where(sql`${table.isRead} = false
+      AND ${table.maintenanceTaskId} IS NOT NULL
+      AND ${table.createdAt} >= TIMESTAMP '2026-09-11 00:00:00'`),
 ]);
 
 // User activity fact table for analytics (tracks user engagement events)

@@ -52,3 +52,4 @@
 - [Large storage patch rebases](storage-patch-rebases.md) — storage.ts repeats many method shapes; compile after rebases because low-context patches can land in the wrong class
 - [Team-seat lifecycle status rules](team-seat-lifecycle-status.md) — billing, capacity, and removal eligibility differ; sync seats on both suspension and reactivation
 - [Team role continuity policy](team-role-continuity-policy.md) — require an admin/owner, but manager and dispatcher are optional roles with no minimum count
+- [Partial-index time cutoffs](partial-index-time-cutoffs.md) — match cutoff literal type to the timestamp column; timestamptz coercion is not immutable
