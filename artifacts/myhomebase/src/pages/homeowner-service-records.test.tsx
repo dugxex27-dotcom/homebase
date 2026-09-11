@@ -137,18 +137,34 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
       }
       return { data: undefined, isLoading: false };
     }),
-    useMutation: vi.fn(() => ({
-      mutate: vi.fn(),
-      mutateAsync: vi.fn().mockResolvedValue({}),
-      isPending: false,
-      isError: false,
-      isSuccess: false,
-      isIdle: true,
-      status: "idle" as const,
-      error: null,
-      data: undefined,
-      reset: vi.fn(),
-    })),
+    useMutation: vi.fn((options: {
+      mutationFn?: (variables: unknown) => Promise<unknown>;
+      onSuccess?: (data: unknown) => void;
+      onError?: (error: Error) => void;
+    }) => {
+      const run = async (variables: unknown) => {
+        try {
+          const data = await options.mutationFn?.(variables);
+          options.onSuccess?.(data);
+          return data;
+        } catch (error) {
+          options.onError?.(error as Error);
+          throw error;
+        }
+      };
+      return {
+        mutate: vi.fn((variables: unknown) => { void run(variables).catch(() => undefined); }),
+        mutateAsync: vi.fn(run),
+        isPending: false,
+        isError: false,
+        isSuccess: false,
+        isIdle: true,
+        status: "idle" as const,
+        error: null,
+        data: undefined,
+        reset: vi.fn(),
+      };
+    }),
     useQueryClient: vi.fn(() => ({
       invalidateQueries: flags.invalidateQueriesSpy,
       getQueryData: vi.fn(),
@@ -305,6 +321,40 @@ describe("Service Records — home area", () => {
     expect(record?.textContent).toContain(
       new Date("2026-09-01T12:00:00.000Z").toLocaleDateString(),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe("Service Records — maintenance log date errors", () => {
+  it("shows the API message inline by the service date for a log over 13 months old", async () => {
+    const apiMessage = "Service date cannot be more than 12 months in the past.";
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/maintenance-logs" && init?.method === "POST") {
+        return {
+          status: 400,
+          ok: false,
+          json: async () => ({ code: "SERVICE_DATE_TOO_OLD", message: apiMessage }),
+        } as Response;
+      }
+      return {
+        status: 200,
+        ok: true,
+        json: async () => ({}),
+      } as Response;
+    });
+
+    renderPage();
+    await userEvent.click(screen.getByTestId("button-add-service-record"));
+
+    const dateInput = screen.getByLabelText("Service Date");
+    await userEvent.clear(dateInput);
+    await userEvent.type(dateInput, "2025-08-01");
+    await userEvent.click(screen.getByTestId("button-submit-service-record"));
+
+    await waitFor(() => expect(screen.getByText(apiMessage)).toBeDefined());
+    expect(dateInput.getAttribute("aria-invalid")).toBe("true");
+    expect(flags.toastSpy).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
   });
 });
 

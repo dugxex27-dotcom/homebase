@@ -92,6 +92,33 @@ const maintenanceLogFormSchema = insertMaintenanceLogSchema.extend({
 type MaintenanceLogFormData = z.infer<typeof maintenanceLogFormSchema>;
 
 type ScoreHistoryFilter = "all" | "scoring" | "historical";
+
+class MaintenanceLogRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+    this.name = "MaintenanceLogRequestError";
+  }
+}
+
+async function maintenanceLogRequestError(response: Response, fallbackMessage: string) {
+  const body = await response.json().catch(() => null) as { message?: unknown; code?: unknown } | null;
+  return new MaintenanceLogRequestError(
+    typeof body?.message === "string" && body.message.trim() ? body.message : fallbackMessage,
+    response.status,
+    typeof body?.code === "string" ? body.code : undefined,
+  );
+}
+
+function isServiceDateError(error: unknown) {
+  if (!(error instanceof MaintenanceLogRequestError) || error.status !== 400) return false;
+  return error.code === "SERVICE_DATE_TOO_OLD"
+    || /service\s*date|serviceDate|12 months|too far in the past/i.test(error.message);
+}
+
 export default function HomeownerServiceRecords() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -325,7 +352,9 @@ export default function HomeownerServiceRecords() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      if (!response.ok) throw new Error('Failed to create maintenance log');
+      if (!response.ok) {
+        throw await maintenanceLogRequestError(response, 'Failed to create maintenance log');
+      }
       return response.json();
     },
     onSuccess: () => {
@@ -337,7 +366,14 @@ export default function HomeownerServiceRecords() {
       setAfterPhotoFiles([]);
       toast({ title: "Success", description: "Maintenance log added successfully" });
     },
-    onError: () => {
+    onError: (error) => {
+      if (isServiceDateError(error)) {
+        maintenanceLogForm.setError("serviceDate", {
+          type: "server",
+          message: error.message,
+        });
+        return;
+      }
       toast({ title: "Error", description: "Failed to add maintenance log", variant: "destructive" });
     },
   });
