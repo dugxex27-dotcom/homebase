@@ -657,17 +657,19 @@ export default function Home() {
       {typedUser?.role === "homeowner" && (
         <div className="bg-white border-b border-gray-200">
           {/* Title Row + CTA */}
-          <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Your Home</h1>
-              <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">
-                {getGreeting()}{firstName ? `, ${firstName}` : ""}
-              </p>
+          <div className="px-4 py-3 md:px-6 md:py-4">
+            <div className="home-dashboard-width flex items-center justify-between">
+              <div>
+                <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Your Home</h1>
+                <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">
+                  {getGreeting()}{firstName ? `, ${firstName}` : ""}
+                </p>
+              </div>
+              <Button className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all" onClick={() => setLocation('/maintenance?action=log')}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Log Work
+              </Button>
             </div>
-            <Button className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all" onClick={() => setLocation('/maintenance?action=log')}>
-              <Plus className="w-4 h-4 mr-1.5" />
-              Log Work
-            </Button>
           </div>
 
           {/* Compact Score Strip (Mobile only) */}
@@ -691,7 +693,7 @@ export default function Home() {
 
       {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && nextUpActions.length > 0 && (
         <section className="border-b border-gray-200 bg-[#F9FAFB] px-4 py-4 md:px-6" aria-labelledby="next-up-heading">
-          <div className="mx-auto max-w-6xl">
+          <div className="home-dashboard-width">
             <div className="mb-2 flex items-center justify-between">
               <h2 id="next-up-heading" className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#65558F]">Next up</h2>
               <Link href="/maintenance" className="hidden text-xs font-bold text-[#3C258E] hover:underline md:inline">
@@ -738,61 +740,65 @@ export default function Home() {
 
       {typedUser?.role === "homeowner" && !isLoadingQuizResult && (
         <div className="dash-body dash-quiz-section">
-          <div className="dash-quiz-card" data-testid="dashboard-quiz-score">
-            <div className="dash-quiz-score" aria-label={quizResult ? `Quiz score ${quizResult.score} out of 100` : undefined}>
-              {quizResult ? quizResult.score : <TrendingUp size={22} aria-hidden="true" />}
-            </div>
-            <div className="dash-quiz-copy">
-              <div className="dash-quiz-title">Home Readiness Checkup</div>
-              <div className="dash-quiz-tier">
-                {quizResult ? quizResult.tier : "See how healthy your home is"}
+          <div className="home-dashboard-width">
+            <div className="dash-quiz-card" data-testid="dashboard-quiz-score">
+              <div className="dash-quiz-score" aria-label={quizResult ? `Quiz score ${quizResult.score} out of 100` : undefined}>
+                {quizResult ? quizResult.score : <TrendingUp size={22} aria-hidden="true" />}
               </div>
+              <div className="dash-quiz-copy">
+                <div className="dash-quiz-title">Home Readiness Checkup</div>
+                <div className="dash-quiz-tier">
+                  {quizResult ? quizResult.tier : "See how healthy your home is"}
+                </div>
+              </div>
+              <Link href="/quiz/" className="dash-quiz-link">
+                {quizResult ? "Retake quiz" : "Take the quiz"}
+                <ChevronRight size={14} aria-hidden="true" />
+              </Link>
             </div>
-            <Link href="/quiz/" className="dash-quiz-link">
-              {quizResult ? "Retake quiz" : "Take the quiz"}
-              <ChevronRight size={14} aria-hidden="true" />
-            </Link>
           </div>
         </div>
       )}
 
       {showOnboardingBanner && (
         <div className="dash-body" style={{ paddingBottom: 0 }}>
-          <div
-            className="dash-light-card"
-            data-testid="onboarding-tour-banner"
-            style={{ borderLeft: "3px solid #7c3aed", marginBottom: 8 }}
-          >
-            <div className="dash-light-card-row">
-              <div className="dash-light-card-icon" style={{ background: "#ede9fe" }}>
-                <Sparkles size={18} style={{ color: "#7c3aed" }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="dash-light-card-title">Finish setting up your home</div>
-                <div className="dash-light-card-sub">
-                  Take a quick tour to see everything MyHomeBase™ can do for you.
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={dismissOnboardingBanner}
-                aria-label="Dismiss onboarding tour reminder"
-                data-testid="button-dismiss-onboarding-banner"
-                style={{ border: 0, background: "transparent", color: "#7B6FA0", cursor: "pointer", padding: 4 }}
-              >
-                <XIcon size={18} />
-              </button>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={restartOnboardingTour}
-              data-testid="button-restart-onboarding-tour"
-              style={{ marginTop: 10, background: "#7c3aed", color: "#fff" }}
+          <div className="home-dashboard-width">
+            <div
+              className="dash-light-card"
+              data-testid="onboarding-tour-banner"
+              style={{ borderLeft: "3px solid #7c3aed", marginBottom: 8 }}
             >
-              Restart guided tour
-              <ChevronRight size={16} className="ml-1" />
-            </Button>
+              <div className="dash-light-card-row">
+                <div className="dash-light-card-icon" style={{ background: "#ede9fe" }}>
+                  <Sparkles size={18} style={{ color: "#7c3aed" }} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="dash-light-card-title">Finish setting up your home</div>
+                  <div className="dash-light-card-sub">
+                    Take a quick tour to see everything MyHomeBase™ can do for you.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={dismissOnboardingBanner}
+                  aria-label="Dismiss onboarding tour reminder"
+                  data-testid="button-dismiss-onboarding-banner"
+                  style={{ border: 0, background: "transparent", color: "#7B6FA0", cursor: "pointer", padding: 4 }}
+                >
+                  <XIcon size={18} />
+                </button>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={restartOnboardingTour}
+                data-testid="button-restart-onboarding-tour"
+                style={{ marginTop: 10, background: "#7c3aed", color: "#fff" }}
+              >
+                Restart guided tour
+                <ChevronRight size={16} className="ml-1" />
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -820,7 +826,7 @@ export default function Home() {
       {/* ── MAIN DASHBOARD BODY ─────────────────────────────── */}
       {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (
         <div className="bg-[#F9FAFB] p-4 md:p-6 lg:p-8 min-h-[calc(100vh-140px)]">
-          <div className="max-w-6xl mx-auto">
+          <div className="home-dashboard-width">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
               {/* Left/Main Column: Next Actions */}

@@ -249,6 +249,12 @@
   padding: 24px 28px;
 }
 
+.home-dashboard-width {
+  width: 100%;
+  max-width: 1400px;
+  margin-inline: auto;
+}
+
 /* ─── QUIZ SCORE TILE ─────────────────────────────────────────── */
 .dash-quiz-section {
   padding-bottom: 0;
