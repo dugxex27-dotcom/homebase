@@ -67,7 +67,7 @@
     "input-otp": "^1.4.2",
     "lucide-react": "catalog:",
     "next-themes": "^0.4.6",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.23",
     "react": "catalog:",
     "react-day-picker": "^9.11.1",
     "react-dom": "catalog:",
@@ -80,7 +80,7 @@
     "tailwindcss": "^3.4.19",
     "vaul": "^1.1.2",
     "vite": "catalog:",
-    "vitest": "^4.1.5",
+    "vitest": "^4.1.11",
     "wouter": "^3.3.5",
     "zod": "catalog:"
   },
@@ -94,7 +94,7 @@
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.10.0",
     "cordova-plugin-purchase": "^13.17.2",
-    "nanoid": "^5.1.9",
+    "nanoid": "^5.1.16",
     "qrcode": "^1.5.4",
     "react-helmet": "^6.1.0"
   }

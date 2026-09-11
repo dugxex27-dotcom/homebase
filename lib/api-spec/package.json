@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "codegen": "orval --config ./orval.config.ts && pnpm -w run typecheck:libs"
+    "codegen": "orval --config ./orval.config.ts && find ../api-client-react/src/generated ../api-zod/src/generated -type f -name '*.ts' -exec perl -0pi -e 's/\\n+\\z/\\n/' {} + && pnpm -w run typecheck:libs"
   },
   "devDependencies": {
-    "orval": "^8.21.0"
+    "orval": "8.22.0"
   }
 }
