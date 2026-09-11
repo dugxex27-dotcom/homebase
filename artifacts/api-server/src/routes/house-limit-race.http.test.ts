@@ -68,6 +68,9 @@ vi.mock("../replitAuth", async (importOriginal) => {
   return {
     ...actual,
     setupAuth: vi.fn().mockResolvedValue(undefined),
+    requireActiveAccountFresh: vi.fn(
+      () => (_req: any, _res: any, next: any) => next(),
+    ),
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
       if (req.session?.user) return next();
       return _res.status(401).json({ message: "Unauthorized" });
@@ -231,6 +234,9 @@ const VALID_HOUSE_BODY = {
   name: "Test House",
   address: "123 Main St, Springfield, IL",
   climateZone: "temperate",
+  countryId: "country-us",
+  regionId: "region-il",
+  climateZoneId: "climate-temperate",
   homeSystems: [],
 };
 
@@ -256,9 +262,28 @@ function houseInsertsFor(captured: any[], address: string) {
  * (only on success) the post-insert fetch-back with `.limit(1)`. */
 function mockHouseSelectSequence(countValue: number, createdRow: any) {
   let call = 0;
-  mockDbSelect.mockImplementation(() => ({
+  mockDbSelect.mockImplementation((projection?: any) => ({
     from: () => ({
       where: () => {
+        if (projection && "code" in projection && "countryId" in projection) {
+          return { limit: () => Promise.resolve([{
+            id: VALID_HOUSE_BODY.climateZoneId,
+            countryId: VALID_HOUSE_BODY.countryId,
+            code: "temperate",
+          }]) };
+        }
+        if (projection && "code" in projection) {
+          return { limit: () => Promise.resolve([{
+            id: VALID_HOUSE_BODY.countryId,
+            code: "US",
+          }]) };
+        }
+        if (projection && "countryId" in projection) {
+          return { limit: () => Promise.resolve([{
+            id: VALID_HOUSE_BODY.regionId,
+            countryId: VALID_HOUSE_BODY.countryId,
+          }]) };
+        }
         call += 1;
         if (call % 2 === 1) {
           return Promise.resolve([{ count: countValue }]);
@@ -373,6 +398,25 @@ describe("POST /api/houses — plan-limit race condition", () => {
     // projection argument passed to select() (`{ count: ... }` vs none) —
     // more robust than call-order parity once requests interleave.
     mockDbSelect.mockImplementation((projection?: any) => {
+      if (projection && "code" in projection && "countryId" in projection) {
+        return { from: () => ({ where: () => ({ limit: () => Promise.resolve([{
+          id: VALID_HOUSE_BODY.climateZoneId,
+          countryId: VALID_HOUSE_BODY.countryId,
+          code: "temperate",
+        }]) }) }) };
+      }
+      if (projection && "code" in projection) {
+        return { from: () => ({ where: () => ({ limit: () => Promise.resolve([{
+          id: VALID_HOUSE_BODY.countryId,
+          code: "US",
+        }]) }) }) };
+      }
+      if (projection && "countryId" in projection) {
+        return { from: () => ({ where: () => ({ limit: () => Promise.resolve([{
+          id: VALID_HOUSE_BODY.regionId,
+          countryId: VALID_HOUSE_BODY.countryId,
+        }]) }) }) };
+      }
       if (projection && typeof projection === "object" && "count" in projection) {
         return { from: () => ({ where: () => Promise.resolve([{ count: insertedCount }]) }) };
       }

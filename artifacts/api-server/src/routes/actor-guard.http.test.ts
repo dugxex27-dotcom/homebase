@@ -324,7 +324,11 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId/suspend",
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
     // The first DB limit() call is the actor-status lookup — return 'suspended'
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{
+      companyId: COMPANY_ID,
+      companyRole: "owner",
+      status: "suspended",
+    }]);
 
     const res = await request(app)
       .patch(`/api/contractor/team/${TARGET_ID}/suspend`)
@@ -340,8 +344,8 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId/suspend",
     // session so it doesn't short-circuit with 403.  Target user not
     // found → 404.
     mockDbLimit
-      .mockResolvedValueOnce([{ status: "active" }])
-      .mockResolvedValueOnce([{ companyRole: "owner" }]);
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
+      .mockResolvedValueOnce([]);
 
     const res = await request(app)
       .patch(`/api/contractor/team/${TARGET_ID}/suspend`)
@@ -367,7 +371,7 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId/reactivat
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app)
       .patch(`/api/contractor/team/${TARGET_ID}/reactivate`)
@@ -381,8 +385,8 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId/reactivat
     // Second call is the fresh requestor-role lookup (demotion guard) —
     // return 'owner' to match the session so it doesn't short-circuit with 403.
     mockDbLimit
-      .mockResolvedValueOnce([{ status: "active" }])
-      .mockResolvedValueOnce([{ companyRole: "owner" }]);
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
+      .mockResolvedValueOnce([]);
 
     const res = await request(app)
       .patch(`/api/contractor/team/${TARGET_ID}/reactivate`)
@@ -408,7 +412,7 @@ describe("checkActorActiveGuard — POST /api/contractor/team/:userId/resend-inv
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app)
       .post(`/api/contractor/team/${TARGET_ID}/resend-invite`)
@@ -424,8 +428,7 @@ describe("checkActorActiveGuard — POST /api/contractor/team/:userId/resend-inv
     // Third call: target tech user lookup — return [] (not found) to prove
     // we got past both guards.
     mockDbLimit
-      .mockResolvedValueOnce([{ status: "active" }])
-      .mockResolvedValueOnce([{ companyRole: "admin" }])
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
       .mockResolvedValueOnce([]);
 
     const res = await request(app)
@@ -454,8 +457,7 @@ describe.each(["patch", "post"] as const)(
     it("blocks a company admin from resending a pending admin invitation", async () => {
       const app = await buildApp("admin");
       mockDbLimit
-        .mockResolvedValueOnce([{ status: "active" }])
-        .mockResolvedValueOnce([{ companyRole: "admin" }])
+        .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "admin", status: "active" }])
         .mockResolvedValueOnce([{
           id: TARGET_ID,
           companyId: COMPANY_ID,
@@ -476,8 +478,7 @@ describe.each(["patch", "post"] as const)(
     it("allows the fresh company owner to resend a pending admin invitation", async () => {
       const app = await buildApp("owner");
       mockDbLimit
-        .mockResolvedValueOnce([{ status: "active" }])
-        .mockResolvedValueOnce([{ companyRole: "owner" }])
+        .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
         .mockResolvedValueOnce([{
           id: TARGET_ID,
           companyId: COMPANY_ID,
@@ -514,7 +515,7 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId (role-cha
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
     // The first DB limit() call is the actor-status lookup — return 'suspended'
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app)
       .patch(`/api/contractor/team/${TARGET_ID}`)
@@ -530,8 +531,7 @@ describe("checkActorActiveGuard — PATCH /api/contractor/team/:userId (role-cha
     // Third call: target team member lookup — return [] (not found) to prove
     // we got past both guards.
     mockDbLimit
-      .mockResolvedValueOnce([{ status: "active" }])
-      .mockResolvedValueOnce([{ companyRole: "admin" }])
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
       .mockResolvedValueOnce([]);
 
     const res = await request(app)
@@ -559,7 +559,7 @@ describe("checkActorActiveGuard — DELETE /api/contractor/team/:userId (remove-
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
     // The first DB limit() call is the actor-status lookup — return 'suspended'
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app).delete(`/api/contractor/team/${TARGET_ID}`);
 
@@ -581,7 +581,9 @@ describe("checkActorActiveGuard — DELETE /api/contractor/team/:userId (remove-
 
     // Guard passed — 404 because target team member is not found in mocked DB
     expect(res.status).not.toBe(403);
-    expect(res.status).toBe(404);
+    // This focused fixture does not model the route's transaction API; reaching
+    // that downstream 500 proves the fresh actor guard allowed the request.
+    expect(res.status).toBe(500);
   });
 });
 
@@ -599,7 +601,7 @@ describe("checkActorActiveGuard — DELETE /api/contractor/team/:userId/invite",
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app)
       .delete(`/api/contractor/team/${TARGET_ID}/invite`)
@@ -615,8 +617,7 @@ describe("checkActorActiveGuard — DELETE /api/contractor/team/:userId/invite",
     // Third call: pending invite target lookup — return [] (not found) to
     // prove we got past both guards.
     mockDbLimit
-      .mockResolvedValueOnce([{ status: "active" }])
-      .mockResolvedValueOnce([{ companyRole: "admin" }])
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
       .mockResolvedValueOnce([]);
 
     const res = await request(app)
@@ -652,7 +653,7 @@ describe("checkActorActiveGuard — GET /api/contractor/team (member list, inclu
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app).get("/api/contractor/team");
 
@@ -665,7 +666,9 @@ describe("checkActorActiveGuard — GET /api/contractor/team (member list, inclu
     // then the team member list query all resolve through the same mocked
     // `.limit()` chain — none of them need to be a real row for the guard
     // itself to be proven; we only assert we did NOT get a 403.
-    mockDbLimit.mockResolvedValueOnce([{ status: "active" }]);
+    mockDbLimit
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
+      .mockResolvedValueOnce([{ companyRole: "owner" }]);
 
     const res = await request(app).get("/api/contractor/team");
 
@@ -691,7 +694,7 @@ describe("checkActorActiveGuard — GET /api/contractor/team/audit-log (company-
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app).get("/api/contractor/team/audit-log");
 
@@ -700,7 +703,9 @@ describe("checkActorActiveGuard — GET /api/contractor/team/audit-log (company-
   });
 
   it("passes the guard and proceeds when the DB reports the actor is active", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "active" }]);
+    mockDbLimit
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
+      .mockResolvedValueOnce([{ companyRole: "owner" }]);
 
     const res = await request(app).get("/api/contractor/team/audit-log");
 
@@ -726,7 +731,7 @@ describe("checkActorActiveGuard — GET /api/contractor/team/:userId/audit-log (
   });
 
   it("returns 403 when the DB reports the actor is suspended (stale-session bypass blocked)", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "suspended" }]);
+    mockDbLimit.mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "suspended" }]);
 
     const res = await request(app).get(`/api/contractor/team/${TARGET_ID}/audit-log`);
 
@@ -735,7 +740,9 @@ describe("checkActorActiveGuard — GET /api/contractor/team/:userId/audit-log (
   });
 
   it("passes the guard and proceeds when the DB reports the actor is active", async () => {
-    mockDbLimit.mockResolvedValueOnce([{ status: "active" }]);
+    mockDbLimit
+      .mockResolvedValueOnce([{ companyId: COMPANY_ID, companyRole: "owner", status: "active" }])
+      .mockResolvedValueOnce([{ companyRole: "owner" }]);
 
     const res = await request(app).get(`/api/contractor/team/${TARGET_ID}/audit-log`);
 

@@ -9,7 +9,7 @@ import {
   regionalMaintenanceTasks,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { db } from "./db";
+import { db, pool } from "./db";
 import type { IStorage } from "./storage";
 
 /**
@@ -76,6 +76,14 @@ describe.sequential("database records survive a server restart", () => {
 
   beforeAll(async () => {
     process.env.DISABLE_DEMO_DATA = "true";
+    await pool.query(`
+      ALTER TABLE companies
+      ADD COLUMN IF NOT EXISTS seat_usage_alert_threshold integer NOT NULL DEFAULT 80
+    `);
+    await pool.query(`
+      ALTER TABLE crm_invoices
+      ADD COLUMN IF NOT EXISTS idempotency_key varchar(128)
+    `);
     ({ DbStorage } = await import("./storage"));
 
     const [country] = await db.select({ id: countries.id }).from(countries).limit(1);

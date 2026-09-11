@@ -1071,6 +1071,7 @@ export default function ContractorCRMPage() {
 
     createInvoiceMutation.mutate({
       ...data,
+      idempotencyKey: crypto.randomUUID(),
       lineItems: invoiceLineItems,
       subtotal: subtotal.toFixed(2),
       taxAmount: taxAmount.toFixed(2),

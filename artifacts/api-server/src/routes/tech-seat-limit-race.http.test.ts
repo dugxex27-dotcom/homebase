@@ -77,6 +77,9 @@ vi.mock("../replitAuth", async (importOriginal) => {
   return {
     ...actual,
     setupAuth: vi.fn().mockResolvedValue(undefined),
+    requireActiveAccountFresh: vi.fn(
+      () => (_req: any, _res: any, next: any) => next(),
+    ),
     isAuthenticated: vi.fn((req: any, _res: any, next: any) => {
       if (req.session?.user) return next();
       return _res.status(401).json({ message: "Unauthorized" });
@@ -305,6 +308,18 @@ function wireDbMocks(state: SeatState, capturedInserts: any[]) {
           return hybrid(Promise.resolve([{ id: "plan-1", includedTechSeats: state.planIncludedTechSeats, additionalSeatPrice: state.additionalSeatPrice }]));
         }
         if (table === users) {
+          if (
+            projection &&
+            "companyId" in projection &&
+            "companyRole" in projection &&
+            "status" in projection
+          ) {
+            return hybrid(Promise.resolve([{
+              companyId: COMPANY_ID,
+              companyRole: state.actorCompanyRole,
+              status: "active",
+            }]));
+          }
           if (
             projection &&
             "status" in projection &&

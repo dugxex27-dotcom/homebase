@@ -947,6 +947,11 @@ export interface IStorage {
     invoice: Omit<InsertCrmInvoice, 'invoiceNumber'>,
     year: number,
   ): Promise<CrmInvoice>;
+  createCrmInvoiceIdempotently(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber' | 'idempotencyKey'>,
+    year: number,
+    idempotencyKey: string,
+  ): Promise<{ invoice: CrmInvoice; created: boolean }>;
 
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
 
@@ -7451,6 +7456,22 @@ export class MemStorage implements IStorage {
     });
   }
 
+  async createCrmInvoiceIdempotently(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber' | 'idempotencyKey'>,
+    year: number,
+    idempotencyKey: string,
+  ): Promise<{ invoice: CrmInvoice; created: boolean }> {
+    const existing = Array.from(this.crmInvoicesMap.values()).find(
+      (row) => row.contractorUserId === invoice.contractorUserId && row.idempotencyKey === idempotencyKey,
+    );
+    if (existing) return { invoice: existing, created: false };
+    const created = await this.createCrmInvoiceWithGeneratedNumber(
+      { ...invoice, idempotencyKey },
+      year,
+    );
+    return { invoice: created, created: true };
+  }
+
   async updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
     const existing = this.crmInvoicesMap.get(id);
     if (!existing) return undefined;
@@ -11787,6 +11808,56 @@ export class DbStorage implements IStorage {
         .values({ ...invoice, invoiceNumber })
         .returning();
       return inserted[0];
+    });
+  }
+
+  async createCrmInvoiceIdempotently(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber' | 'idempotencyKey'>,
+    year: number,
+    idempotencyKey: string,
+  ): Promise<{ invoice: CrmInvoice; created: boolean }> {
+    return db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`crm-invoice-create:${invoice.contractorUserId}:${idempotencyKey}`}, 0))`,
+      );
+      const existing = await tx
+        .select()
+        .from(crmInvoices)
+        .where(and(
+          eq(crmInvoices.contractorUserId, invoice.contractorUserId),
+          eq(crmInvoices.idempotencyKey, idempotencyKey),
+        ))
+        .limit(1);
+      if (existing[0]) return { invoice: existing[0], created: false };
+
+      const scopeKey = invoice.companyId
+        ? `company:${invoice.companyId}`
+        : `contractor:${invoice.contractorUserId}`;
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`crm-invoice-number:${scopeKey}`}, 0))`,
+      );
+      const scopeCondition = invoice.companyId
+        ? or(
+            eq(crmInvoices.companyId, invoice.companyId),
+            eq(crmInvoices.contractorUserId, invoice.contractorUserId),
+          )
+        : eq(crmInvoices.contractorUserId, invoice.contractorUserId);
+      const existingNumbers = await tx
+        .select({ invoiceNumber: crmInvoices.invoiceNumber })
+        .from(crmInvoices)
+        .where(scopeCondition);
+      const prefix = `INV-${year}-`;
+      const highestSequence = existingNumbers.reduce((highest, row) => {
+        if (!row.invoiceNumber.startsWith(prefix)) return highest;
+        const sequence = Number(row.invoiceNumber.slice(prefix.length));
+        return Number.isInteger(sequence) ? Math.max(highest, sequence) : highest;
+      }, 0);
+      const inserted = await tx.insert(crmInvoices).values({
+        ...invoice,
+        idempotencyKey,
+        invoiceNumber: `${prefix}${String(highestSequence + 1).padStart(4, '0')}`,
+      }).returning();
+      return { invoice: inserted[0], created: true };
     });
   }
 

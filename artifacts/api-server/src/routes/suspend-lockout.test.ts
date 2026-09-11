@@ -387,17 +387,19 @@ function makeUpdateChain() {
 
 /**
  * Configure DB mock for the suspend route (PATCH /api/contractor/team/:userId/suspend).
- * The handler makes 3 sequential selects before the update:
- *   1st select → actor status check (in route handler)          → active
- *   2nd select → requestor role check (verifyRequestorRoleFromDb) → owner
- *   3rd select → target user lookup (in route handler)           → tech user
+ * The handler makes 2 sequential selects before the update:
+ *   1st select → combined fresh actor check
+ *   2nd select → target user lookup
  *   update     → success
  */
 function configureDbForSuspend(targetUser = DEFAULT_TARGET_USER) {
   mockDbSelect
-    .mockReturnValueOnce(makeSelectChain([{ status: "active" }]))        // 1: actor status
-    .mockReturnValueOnce(makeSelectChain([{ companyRole: "owner" }]))    // 2: requestor role
-    .mockReturnValueOnce(makeSelectChain([targetUser]));                 // 3: target user
+    .mockReturnValueOnce(makeSelectChain([{
+      status: "active",
+      companyRole: "owner",
+      companyId: COMPANY_ID,
+    }]))
+    .mockReturnValueOnce(makeSelectChain([targetUser]));
   mockDbUpdate.mockReturnValue(makeUpdateChain());
 }
 
@@ -451,17 +453,19 @@ const DEFAULT_PENDING_INVITE_USER = {
  * Configure DB mock for the invite-cancel route
  * (DELETE /api/contractor/team/:userId/invite).
  *
- * The handler makes 3 sequential selects before the update:
- *   1st select → actor status check (in route handler)          → active
- *   2nd select → requestor role check (verifyRequestorRoleFromDb) → owner
- *   3rd select → pending-invite target user lookup (in route handler)
+ * The handler makes 2 sequential selects before the update:
+ *   1st select → combined fresh actor check
+ *   2nd select → pending-invite target user lookup
  *   update     → success
  */
 function configureDbForInviteCancel(targetUser = DEFAULT_PENDING_INVITE_USER) {
   mockDbSelect
-    .mockReturnValueOnce(makeSelectChain([{ status: "active" }]))     // 1: actor status
-    .mockReturnValueOnce(makeSelectChain([{ companyRole: "owner" }])) // 2: requestor role
-    .mockReturnValueOnce(makeSelectChain([targetUser]));               // 3: pending invite target
+    .mockReturnValueOnce(makeSelectChain([{
+      status: "active",
+      companyRole: "owner",
+      companyId: COMPANY_ID,
+    }]))
+    .mockReturnValueOnce(makeSelectChain([targetUser]));
   mockDbUpdate.mockReturnValue(makeUpdateChain());
 }
 

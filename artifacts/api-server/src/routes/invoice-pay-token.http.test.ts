@@ -30,6 +30,7 @@ const {
   mockGetCrmInvoices,
   mockGetCrmInvoiceEvents,
   mockCreateCrmInvoiceWithGeneratedNumber,
+  mockCreateCrmInvoiceIdempotently,
   mockValidatePermanentConnectionCode,
   mockSendNewLinkedInvoiceEmail,
   mockPoolConnect,
@@ -49,6 +50,7 @@ const {
   mockGetCrmInvoices: vi.fn(),
   mockGetCrmInvoiceEvents: vi.fn(),
   mockCreateCrmInvoiceWithGeneratedNumber: vi.fn(),
+  mockCreateCrmInvoiceIdempotently: vi.fn(),
   mockValidatePermanentConnectionCode: vi.fn(),
   mockSendNewLinkedInvoiceEmail: vi.fn().mockResolvedValue(true),
   mockPoolConnect: vi.fn(),
@@ -253,6 +255,7 @@ vi.mock("../storage", async () => {
       getCrmInvoices: mockGetCrmInvoices,
       getCrmInvoiceEvents: mockGetCrmInvoiceEvents,
       createCrmInvoiceWithGeneratedNumber: mockCreateCrmInvoiceWithGeneratedNumber,
+      createCrmInvoiceIdempotently: mockCreateCrmInvoiceIdempotently,
       validatePermanentConnectionCode: mockValidatePermanentConnectionCode,
     }),
   };
@@ -574,6 +577,19 @@ describe("POST /api/crm/invoices — concurrent duplicate submissions", () => {
         return created;
       },
     );
+    const requests = new Map<string, Promise<Record<string, any>>>();
+    mockCreateCrmInvoiceIdempotently.mockReset().mockImplementation(
+      async (invoice: Record<string, any>, year: number, key: string) => {
+        const pending = requests.get(key);
+        if (pending) return { invoice: await pending, created: false };
+        const creation = mockCreateCrmInvoiceWithGeneratedNumber(
+          { ...invoice, idempotencyKey: key },
+          year,
+        );
+        requests.set(key, creation);
+        return { invoice: await creation, created: true };
+      },
+    );
     mockSendNewLinkedInvoiceEmail.mockClear();
 
     let lockTail = Promise.resolve();
@@ -611,6 +627,7 @@ describe("POST /api/crm/invoices — concurrent duplicate submissions", () => {
       amountPaid: "0.00",
       amountDue: "1250.00",
       status: "draft",
+      idempotencyKey: "invoice-submit-001",
     };
 
     const [first, second] = await Promise.all([
@@ -623,5 +640,26 @@ describe("POST /api/crm/invoices — concurrent duplicate submissions", () => {
     expect(crmInvoiceRows).toHaveLength(1);
     expect(mockCreateCrmInvoiceWithGeneratedNumber).toHaveBeenCalledTimes(1);
     expect(mockSendNewLinkedInvoiceEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates two otherwise identical invoices when request keys differ", async () => {
+    const app = await buildApp();
+    const payload = {
+      connectionCode: "HOME-123",
+      clientId: CLIENT_ID,
+      title: "Replace water heater",
+      lineItems: [],
+      subtotal: "1250.00",
+      total: "1250.00",
+      amountDue: "1250.00",
+      status: "draft",
+    };
+    const first = await request(app).post("/api/crm/invoices").set("x-test-user", "contractor")
+      .send({ ...payload, idempotencyKey: "invoice-submit-002" });
+    const second = await request(app).post("/api/crm/invoices").set("x-test-user", "contractor")
+      .send({ ...payload, idempotencyKey: "invoice-submit-003" });
+
+    expect([first.status, second.status]).toEqual([201, 201]);
+    expect(first.body.id).not.toBe(second.body.id);
   });
 });

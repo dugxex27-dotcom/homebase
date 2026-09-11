@@ -97,7 +97,7 @@ import supertest from "supertest";
 import type { Server } from "http";
 import app from "./app";
 import { registerRoutes } from "./routes/routes";
-import { db } from "./db";
+import { db, pool } from "./db";
 import {
   affiliateReferrals,
   subscriptionCycleEvents,
@@ -119,6 +119,16 @@ let server: Server;
 let request: ReturnType<typeof supertest>;
 
 beforeAll(async () => {
+  // Keep this real-DB integration suite compatible with a freshly provisioned
+  // test database whose checked-in migrations have not yet been applied.
+  await pool.query(`
+    ALTER TABLE companies
+    ADD COLUMN IF NOT EXISTS seat_usage_alert_threshold integer NOT NULL DEFAULT 80
+  `);
+  await pool.query(`
+    ALTER TABLE crm_invoices
+    ADD COLUMN IF NOT EXISTS idempotency_key varchar(128)
+  `);
   server = await registerRoutes(app);
   request = supertest(app);
 }, 60_000);
@@ -278,7 +288,10 @@ describe("contractor demo seeder", () => {
     expect(await countFor(crmJobs, eq(crmJobs.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.jobs);
     expect(await countFor(crmQuotes, eq(crmQuotes.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.quotes);
     expect(await countFor(crmInvoices, eq(crmInvoices.contractorUserId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.invoices);
-    expect(await countFor(proposals, eq(proposals.contractorId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.proposals);
+    expect(await countFor(
+      proposals,
+      inArray(proposals.id, ["demo-proposal-1", "demo-proposal-2"]),
+    )).toBe(expectedCounts.proposals);
     expect(await countFor(conversations, eq(conversations.contractorId, DEMO_CONTRACTOR_ID))).toBe(expectedCounts.conversations);
     expect(
       await countFor(

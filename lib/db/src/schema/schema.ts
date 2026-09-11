@@ -2246,6 +2246,7 @@ export const crmInvoices = pgTable("crm_invoices", {
   clientId: varchar("client_id").notNull().references(() => crmClients.id, { onDelete: 'cascade' }),
   jobId: varchar("job_id").references(() => crmJobs.id, { onDelete: 'set null' }),
   quoteId: varchar("quote_id").references(() => crmQuotes.id, { onDelete: 'set null' }),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }),
   invoiceNumber: varchar("invoice_number").notNull(), // e.g., "INV-2024-0001"
   title: text("title").notNull(),
   description: text("description"),
@@ -2298,6 +2299,7 @@ export const crmInvoices = pgTable("crm_invoices", {
   index("IDX_crm_invoices_due_date").on(table.dueDate),
   index("IDX_crm_invoices_homeowner").on(table.homeownerId),
   uniqueIndex("UX_crm_invoices_number").on(table.contractorUserId, table.invoiceNumber),
+  uniqueIndex("UX_crm_invoices_idempotency").on(table.contractorUserId, table.idempotencyKey),
 ]);
 
 export const insertCrmInvoiceSchema = createInsertSchema(crmInvoices).omit({ id: true, createdAt: true, updatedAt: true });

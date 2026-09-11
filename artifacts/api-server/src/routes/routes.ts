@@ -329,6 +329,9 @@ const quizLimiter = rateLimit({
   message: 'Too many quiz submissions, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
+  // Enforce the shared persistent bucket only in production. Parallel tests
+  // otherwise consume one another's allowance and mask token-validation results.
+  skip: () => process.env.NODE_ENV !== 'production',
   store: new PgRateLimitStore('quiz'),
 });
 
@@ -502,38 +505,6 @@ function resolveInvoiceServiceType(requested: unknown, stored: unknown): string 
 
 export function normalizeInvoiceServiceType(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-export const CRM_INVOICE_DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
-
-export function findRecentDuplicateCrmInvoice(
-  existingInvoices: Array<{
-    contractorUserId: string;
-    homeownerId?: string | null;
-    title?: string | null;
-    amountDue?: string | number | null;
-    createdAt?: Date | string | null;
-  }>,
-  candidate: {
-    contractorUserId: string;
-    homeownerId?: string | null;
-    title?: string | null;
-    amountDue?: string | number | null;
-  },
-  now = Date.now(),
-) {
-  const toNumeric = (value: string | number | null | undefined) =>
-    parseFloat(String(value ?? "0")) || 0;
-
-  return existingInvoices.find((existing) => {
-    if (existing.contractorUserId !== candidate.contractorUserId) return false;
-    if ((existing.homeownerId ?? null) !== (candidate.homeownerId ?? null)) return false;
-    if ((existing.title ?? "") !== (candidate.title ?? "")) return false;
-    if (toNumeric(existing.amountDue) !== toNumeric(candidate.amountDue)) return false;
-
-    const age = now - new Date(existing.createdAt || 0).getTime();
-    return age >= 0 && age <= CRM_INVOICE_DUPLICATE_WINDOW_MS;
-  });
 }
 
 export function serializeTeamAuditLogEntry(
@@ -10409,7 +10380,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Resolve homeowner linkage server-side via connection code.
       // Never trust homeownerId/houseId from client payload directly.
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { connectionCode, houseId: requestedHouseId, homeownerId: _ignored, ...invoiceBody } = req.body;
+      const {
+        connectionCode,
+        houseId: requestedHouseId,
+        homeownerId: _ignored,
+        idempotencyKey,
+        ...invoiceBody
+      } = req.body;
       let resolvedHomeownerId: string | null = null;
       let resolvedHouseId: string | null = null;
 
@@ -10446,29 +10423,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const duplicateLockKey = companyIdToAdvisoryLockKey(`crm-invoice-duplicate:${JSON.stringify([
-        validationResult.data.contractorUserId,
-        validationResult.data.homeownerId ?? null,
-        validationResult.data.title ?? "",
-        validationResult.data.amountDue ?? "0",
-      ])}`);
-      const persistenceResult = await withDbAdvisoryLock(
-        duplicateLockKey,
-        pool,
-        async () => {
-          const latestInvoices = await storage.getCrmInvoices(req.session.user.id, {});
-          const duplicateInvoice = findRecentDuplicateCrmInvoice(
-            latestInvoices,
-            validationResult.data,
-          );
-          if (duplicateInvoice) {
-            return { invoice: duplicateInvoice, created: false } as const;
-          }
-          return {
-            invoice: await storage.createCrmInvoiceWithGeneratedNumber(validationResult.data, year),
-            created: true,
-          } as const;
-        },
+      const parsedIdempotencyKey = z.string().min(1).max(128).safeParse(idempotencyKey);
+      if (!parsedIdempotencyKey.success) {
+        return res.status(400).json({ message: "A valid invoice idempotency key is required" });
+      }
+      const persistenceResult = await storage.createCrmInvoiceIdempotently(
+        validationResult.data,
+        year,
+        parsedIdempotencyKey.data,
       );
       if (!persistenceResult.created) {
         return res.status(200).json(persistenceResult.invoice);

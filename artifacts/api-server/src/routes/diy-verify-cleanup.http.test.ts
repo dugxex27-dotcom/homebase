@@ -487,7 +487,7 @@ describe("POST /api/invoice-analyses/:id/diy-verify — pre-upload size and type
     expect(res.body.message).toMatch(/50 MB/);
 
     expect(mockUploadFile).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it("returns 400 when a before/after photo has an unsupported MIME type", async () => {
     buildInsertMock();

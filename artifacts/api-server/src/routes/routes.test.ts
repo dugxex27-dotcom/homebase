@@ -2884,7 +2884,7 @@ describe("leave-company partial-failure scenario", () => {
   it("session-save failure before DB update leaves no DB mutation (step-2 protection)", async () => {
     // Arrange — eligibility check passes
     const checkDb = makeEligibilityDbMock(1);
-    const eligibility = await checkLeaveCompanyEligibility("company-abc", "user-1", "owner", checkDb as any);
+    const eligibility = await checkLeaveCompanyEligibility("company-abc", "user-1", "tech", checkDb as any);
     expect(eligibility.outcome).toBe("eligible");
 
     // The session save now fails; simulate it with a rejected promise
