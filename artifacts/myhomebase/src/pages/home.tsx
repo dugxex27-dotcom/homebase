@@ -496,6 +496,22 @@ export default function Home() {
   // Profile nudge: show inline-edit card when any install year is missing
   const primaryHouse = houses[0] as House | undefined;
   const primaryHouseScore = primaryHouse ? scoresByHouseId[primaryHouse.id]?.score : undefined;
+  const profileFields = primaryHouse
+    ? [
+        primaryHouse.yearBuilt,
+        primaryHouse.squareFootage,
+        primaryHouse.roofInstalledYear,
+        primaryHouse.hvacInstalledYear,
+        primaryHouse.waterHeaterInstalledYear,
+      ]
+    : [];
+  const completedProfileFields = profileFields.filter(
+    (value) => value !== null && value !== undefined,
+  ).length;
+  const profileCompletePct = profileFields.length > 0
+    ? Math.round((completedProfileFields / profileFields.length) * 100)
+    : 0;
+  const isProfileComplete = profileCompletePct === 100;
   const isLowScore = primaryHouseScore !== undefined && primaryHouseScore < 30;
   const profileNudgeMissing = primaryHouse
     ? MECHANICAL_FEATURES.filter(f => !primaryHouse[f.key as keyof House])
@@ -600,6 +616,38 @@ export default function Home() {
                   <Info size={9} className="dash-chip-info-icon" />
                 </div>
               </button>
+              <Link
+                href="/maintenance"
+                className="dash-profile-progress-row dash-chip-full"
+                data-testid="dashboard-profile-progress"
+              >
+                <div className="dash-profile-progress-header">
+                  <span className={`dash-profile-progress-label${isProfileComplete ? " is-complete" : ""}`}>
+                    {isProfileComplete ? (
+                      <>
+                        <CheckCircle2 size={14} aria-hidden="true" />
+                        Complete
+                      </>
+                    ) : (
+                      `Profile ${profileCompletePct}% complete`
+                    )}
+                  </span>
+                  <ChevronRight size={14} className="dash-profile-progress-arrow" aria-hidden="true" />
+                </div>
+                <div
+                  className="dash-profile-progress-track"
+                  role="progressbar"
+                  aria-label="Home profile completion"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={profileCompletePct}
+                >
+                  <div
+                    className={`dash-profile-progress-fill${isProfileComplete ? " is-complete" : ""}`}
+                    style={{ width: `${profileCompletePct}%` }}
+                  />
+                </div>
+              </Link>
             </div>
           )}
 

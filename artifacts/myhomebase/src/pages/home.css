@@ -1410,6 +1410,14 @@
   letter-spacing: 0.03em;
 }
 
+.dash-profile-progress-label.is-complete {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #86efac;
+  font-weight: 700;
+}
+
 .dash-profile-progress-arrow {
   color: rgba(255, 255, 255, 0.45);
   flex-shrink: 0;
@@ -1428,6 +1436,10 @@
   border-radius: 2px;
   transition: width 0.6s ease;
   min-width: 4px;
+}
+
+.dash-profile-progress-fill.is-complete {
+  background: linear-gradient(90deg, #22c55e 0%, #86efac 100%);
 }
 
 .profile-nudge-item--install-year {
