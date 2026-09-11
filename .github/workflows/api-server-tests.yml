@@ -1,0 +1,41 @@
+name: Stripe Webhook Safety Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  stripe-webhook-safety:
+    name: Run Stripe webhook safety suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      NODE_ENV: test
+      SESSION_SECRET: ci-api-server-session-secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Keep this explicit so webhook safety coverage cannot disappear because
+      # the full-suite include/exclude configuration changes.
+      - name: Run Stripe webhook safety tests
+        run: pnpm --filter @workspace/api-server run test:webhook-safety

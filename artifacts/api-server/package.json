@@ -10,6 +10,7 @@
     "backup": "tsx src/backup.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:webhook-safety": "vitest run src/routes/webhook.integration.test.ts --reporter=verbose",
     "test:demo-seeder": "vitest run src/demo-seeder.test.ts --reporter=verbose"
   },
   "dependencies": {
