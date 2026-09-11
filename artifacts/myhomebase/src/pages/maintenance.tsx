@@ -38,6 +38,7 @@ import { formatCostEstimate, formatDIYSavings, type CostEstimate } from "@shared
 import { inferTaskTradeCategory } from "@/lib/contractor-category-match";
 import { HouseLocationFields } from "@/components/house-location-fields";
 import { HOME_SYSTEMS } from "@/lib/home-systems";
+import { AchievementProgressStrip } from "@/components/achievement-progress-strip";
 
 // Google Maps API type declarations
 declare global {
@@ -2068,13 +2069,17 @@ export default function Maintenance() {
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'diy-savings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'health-score'] });
       queryClient.invalidateQueries({ queryKey: ['/api/achievements/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/achievements'] });
 
       // Show achievement notification if any were unlocked
       if (data.newAchievements && data.newAchievements.length > 0) {
-        const achievementNames = data.newAchievements.map((a: any) => a.achievementKey).join(', ');
+        const achievementNames = data.newAchievements
+          .map((achievement: any) => achievement.name || achievement.title || achievement.achievementKey)
+          .filter(Boolean)
+          .join(', ');
         toast({
           title: "Achievement Unlocked!",
-          description: `You've earned ${data.newAchievements.length} new achievement${data.newAchievements.length > 1 ? 's' : ''}!`,
+          description: achievementNames || `You've earned ${data.newAchievements.length} new achievement${data.newAchievements.length > 1 ? 's' : ''}!`,
           duration: 5000,
         });
       }
@@ -3790,6 +3795,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           </Button>
         </div>
       </div>
+
+      {userRole === "homeowner" && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+          <AchievementProgressStrip heading="Maintenance achievements" />
+        </div>
+      )}
 
       {houses.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4" aria-labelledby="maintenance-work-heading">

@@ -39,7 +39,8 @@ import {
   Check,
   CreditCard,
   ChevronUp,
-  TrendingUp
+  TrendingUp,
+  Trophy
 } from "lucide-react";
 import AddressAutocomplete from "@/components/address-autocomplete";
 import { Link } from "wouter";
@@ -510,6 +511,21 @@ export default function HomeownerAccount() {
       <div className="dash-body">
         <div className="space-y-4 max-w-2xl mx-auto">
           <ActivatingPlanBanner />
+
+          <Link
+            href="/achievements"
+            className="flex min-h-16 items-center gap-3 rounded-2xl border border-[#DED8F7] bg-white p-4 shadow-sm transition hover:border-[#3C258E] hover:shadow-md"
+            data-testid="account-achievements-link"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+              <Trophy className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-extrabold text-[#2C0F5B]">Achievements & awards</span>
+              <span className="mt-0.5 block text-sm text-gray-500">See your medals, milestones, and progress</span>
+            </span>
+            <span className="text-sm font-extrabold text-[#3C258E]">View →</span>
+          </Link>
 
           {quizResult && (
             <>

@@ -14,6 +14,7 @@ import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
 import { notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 import { getHomeWellnessScoreStatus } from "@/lib/home-wellness-score";
+import { AchievementProgressStrip } from "@/components/achievement-progress-strip";
 import "./home.css";
 
 // Sample house banner
@@ -757,6 +758,7 @@ export default function Home() {
       {typedUser?.role === "homeowner" && !isLoadingQuizResult && (
         <div className="dash-body dash-quiz-section">
           <div className="home-dashboard-width">
+            <AchievementProgressStrip className="mb-4" heading="Your awards" />
             <div className="dash-quiz-card" data-testid="dashboard-quiz-score">
               <div className="dash-quiz-score" aria-label={quizResult ? `Quiz score ${quizResult.score} out of 100` : undefined}>
                 {quizResult ? quizResult.score : <TrendingUp size={22} aria-hidden="true" />}

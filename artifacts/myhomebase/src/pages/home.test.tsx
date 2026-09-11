@@ -331,6 +331,13 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("Property card details", () => {
+  it("surfaces achievement progress with a link to the full awards page", () => {
+    renderHome();
+
+    expect(screen.getByTestId("achievement-progress-strip")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^View all$/i }).getAttribute("href")).toBe("/achievements");
+  });
+
   it("keeps property content in the main column beside the score rail", () => {
     renderHome();
 
