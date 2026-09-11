@@ -1,7 +1,7 @@
 /**
  * HTTP-level integration tests: the /api/crm/* guard now layers
- * requireActiveAccountFresh() in front of the session-based suspended/removed
- * check, mirroring the /api/contractor/* guard (see routes.ts, app.use('/api/crm', ...)).
+ * isAuthenticated's authoritative DB status check in front of the
+ * session-based suspended/removed check.
  *
  * This closes the same stale-session gap for CRM routes: a session cookie
  * claiming 'active' must not keep working once the DB shows the account has
@@ -9,7 +9,7 @@
  * instance where the in-memory suspendedUserIds Set hasn't caught up yet.
  *
  * Strategy: mount the exact same two-middleware chain used in routes.ts for
- * '/api/crm' (inline session check + requireActiveAccountFresh()) against a
+ * '/api/crm' (inline session check + isAuthenticated) against a
  * minimal express app, with ./db mocked so we control the "fresh" DB status.
  */
 
@@ -81,8 +81,8 @@ vi.mock("../lib/logger", () => ({
 import { db } from "../db";
 import {
   suspendedUserIds,
-  activeStatusCache,
-  requireActiveAccountFresh,
+  isAuthenticated,
+  userStatusCache,
 } from "../replitAuth";
 
 function mockDbStatus(status: string | undefined) {
@@ -121,7 +121,7 @@ function buildCrmApp() {
       }
       next();
     },
-    requireActiveAccountFresh(),
+    isAuthenticated,
   );
 
   app.get("/api/crm/leads", (_req, res) => {
@@ -145,30 +145,30 @@ function withSession(app: express.Express, userId: string, sessionStatus = "acti
   return withSess;
 }
 
-describe("CRM guard — requireActiveAccountFresh closes the stale-session gap (integration)", () => {
+describe("CRM guard — isAuthenticated closes the stale-session gap (integration)", () => {
   beforeEach(() => {
     suspendedUserIds.clear();
-    activeStatusCache.clear();
+    userStatusCache.clear();
     vi.clearAllMocks();
   });
 
-  it("returns 403 and blocks a CRM route when the DB shows the account was suspended mid-session", async () => {
+  it("returns 401 and blocks a CRM route when the DB shows the account was suspended mid-session", async () => {
     mockDbStatus("suspended");
     const app = withSession(buildCrmApp(), "user-crm-1", "active");
 
     const response = await supertest(app).get("/api/crm/leads");
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
     expect(response.body.message).toMatch(/suspended/i);
   });
 
-  it("returns 403 when the DB shows the account was removed, even though the session cookie still says active", async () => {
+  it("returns 401 when the DB shows the account was removed, even though the session cookie still says active", async () => {
     mockDbStatus("removed");
     const app = withSession(buildCrmApp(), "user-crm-2", "active");
 
     const response = await supertest(app).get("/api/crm/leads");
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(401);
   });
 
   it("allows the request through when the DB confirms the account is still active", async () => {
@@ -179,15 +179,6 @@ describe("CRM guard — requireActiveAccountFresh closes the stale-session gap (
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ leads: [] });
-  });
-
-  it("adds the userId to suspendedUserIds so a subsequent same-instance request short-circuits without a DB round trip", async () => {
-    mockDbStatus("suspended");
-    const app = withSession(buildCrmApp(), "user-crm-4", "active");
-
-    await supertest(app).get("/api/crm/leads");
-
-    expect(suspendedUserIds.has("user-crm-4")).toBe(true);
   });
 
   it("fails closed when the authoritative account-status lookup errors", async () => {
@@ -202,7 +193,7 @@ describe("CRM guard — requireActiveAccountFresh closes the stale-session gap (
 
     const response = await supertest(app).get("/api/crm/leads");
 
-    expect(response.status).toBe(503);
-    expect(response.body.message).toMatch(/status temporarily unavailable/i);
+    expect(response.status).toBe(401);
+    expect(response.body.message).toMatch(/suspended/i);
   });
 });

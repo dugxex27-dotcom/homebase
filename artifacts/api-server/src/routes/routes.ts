@@ -4079,7 +4079,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Guard for all /api/crm/* routes:
-  // Block suspended accounts and tech users (CRM is admin/owner only).
+  // Block suspended accounts and tech users (CRM is admin/owner only). Session
+  // users also pass through isAuthenticated's authoritative DB status check so
+  // suspension on another server instance does not leave this instance
+  // trusting stale local session/blocklist state.
   app.use('/api/crm', async (req: any, res: any, next: any) => {
     if (req.session?.isAuthenticated) {
       const u = req.session?.user;
@@ -4089,7 +4092,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (u?.companyRole === 'tech') {
         return res.status(403).json({ message: "Forbidden - tech accounts cannot access this resource" });
       }
-      return next();
+      return isAuthenticated(req, res, next);
     }
     // OAuth path: check suspension for fully OAuth-authenticated users
     const oauthUserId: string | undefined = req.user?.id || req.user?.claims?.sub;
