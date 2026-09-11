@@ -16,6 +16,83 @@ vi.mock("./lib/logger", () => ({
 
 import { MemStorage } from "./storage";
 
+describe("MemStorage CRM invoice history", () => {
+  it("records amount, due date, status, and payment changes chronologically", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-09-11T12:00:00Z"));
+      const storage = new MemStorage();
+      const invoice = await storage.createCrmInvoice({
+        contractorUserId: "contractor-history",
+        clientId: "client-history",
+        invoiceNumber: "INV-2026-0001",
+        title: "HVAC service",
+        subtotal: "100.00",
+        total: "100.00",
+        amountDue: "100.00",
+        lineItems: [],
+      });
+
+      vi.setSystemTime(new Date("2026-09-11T12:01:00Z"));
+      await storage.updateCrmInvoice(invoice.id, { total: "125.00", amountDue: "125.00" });
+      vi.setSystemTime(new Date("2026-09-11T12:02:00Z"));
+      await storage.updateCrmInvoice(invoice.id, { dueDate: new Date("2026-10-01T12:00:00Z") });
+      vi.setSystemTime(new Date("2026-09-11T12:03:00Z"));
+      await storage.updateCrmInvoice(invoice.id, { status: "sent" });
+      vi.setSystemTime(new Date("2026-09-11T12:04:00Z"));
+      await storage.markCrmInvoicePaidIfUnpaid(invoice.id, {
+        amountPaid: "125.00",
+        amountDue: "0.00",
+      });
+
+      const events = await storage.getCrmInvoiceEvents(invoice.id);
+      expect(events.map(({ field }) => field)).toEqual([
+        "Amount",
+        "Due date",
+        "Status",
+        "Status",
+        "Payment recorded",
+      ]);
+      expect(events.map(({ createdAt }) => createdAt.toISOString())).toEqual([
+        "2026-09-11T12:01:00.000Z",
+        "2026-09-11T12:02:00.000Z",
+        "2026-09-11T12:03:00.000Z",
+        "2026-09-11T12:04:00.000Z",
+        "2026-09-11T12:04:00.000Z",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores unchanged values and unrelated fields", async () => {
+    const storage = new MemStorage();
+    const invoice = await storage.createCrmInvoice({
+      contractorUserId: "contractor-history",
+      clientId: "client-history",
+      invoiceNumber: "INV-2026-0002",
+      title: "Plumbing service",
+      description: "Original details",
+      subtotal: "80.00",
+      total: "80.00",
+      amountDue: "80.00",
+      lineItems: [],
+    });
+
+    await storage.updateCrmInvoice(invoice.id, {
+      title: invoice.title,
+      total: invoice.total,
+      dueDate: invoice.dueDate,
+      status: invoice.status,
+      amountPaid: invoice.amountPaid,
+      description: "Updated details",
+      notes: "Internal note",
+    });
+
+    expect(await storage.getCrmInvoiceEvents(invoice.id)).toEqual([]);
+  });
+});
+
 describe("MemStorage.createContractorBoost payment idempotency", () => {
   it("returns one boost when webhook and browser paths create the same payment concurrently", async () => {
     const storage = new MemStorage();

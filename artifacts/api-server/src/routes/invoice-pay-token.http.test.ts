@@ -28,6 +28,7 @@ const {
   mockClaimInvoiceCheckoutSession,
   mockUnlinkInvoiceFromHomeowner,
   mockGetCrmInvoices,
+  mockGetCrmInvoiceEvents,
   mockCreateCrmInvoiceWithGeneratedNumber,
   mockValidatePermanentConnectionCode,
   mockSendNewLinkedInvoiceEmail,
@@ -46,6 +47,7 @@ const {
   mockCheckoutSessionsCreate: vi.fn(),
   mockUnlinkInvoiceFromHomeowner: vi.fn(),
   mockGetCrmInvoices: vi.fn(),
+  mockGetCrmInvoiceEvents: vi.fn(),
   mockCreateCrmInvoiceWithGeneratedNumber: vi.fn(),
   mockValidatePermanentConnectionCode: vi.fn(),
   mockSendNewLinkedInvoiceEmail: vi.fn().mockResolvedValue(true),
@@ -249,6 +251,7 @@ vi.mock("../storage", async () => {
       claimInvoiceCheckoutSession: mockClaimInvoiceCheckoutSession,
       unlinkInvoiceFromHomeowner: mockUnlinkInvoiceFromHomeowner,
       getCrmInvoices: mockGetCrmInvoices,
+      getCrmInvoiceEvents: mockGetCrmInvoiceEvents,
       createCrmInvoiceWithGeneratedNumber: mockCreateCrmInvoiceWithGeneratedNumber,
       validatePermanentConnectionCode: mockValidatePermanentConnectionCode,
     }),
@@ -363,6 +366,7 @@ describe("GET /api/pay/invoice/:id — token-based access control", () => {
     mockGetCrmInvoice.mockResolvedValue(BASE_INVOICE);
     const res = await request(app).get(`/api/pay/invoice/${INVOICE_ID}`);
     expect(res.status).toBe(401);
+    expect(mockGetCrmInvoiceEvents).not.toHaveBeenCalled();
   });
 
   it("returns 401 when token is wrong", async () => {
@@ -372,6 +376,7 @@ describe("GET /api/pay/invoice/:id — token-based access control", () => {
       .get(`/api/pay/invoice/${INVOICE_ID}`)
       .query({ token: "0".repeat(64) }); // wrong raw token
     expect(res.status).toBe(401);
+    expect(mockGetCrmInvoiceEvents).not.toHaveBeenCalled();
   });
 
   it("returns 401 when token is expired", async () => {
@@ -381,6 +386,7 @@ describe("GET /api/pay/invoice/:id — token-based access control", () => {
       .get(`/api/pay/invoice/${INVOICE_ID}`)
       .query({ token: RAW_TOKEN });
     expect(res.status).toBe(401);
+    expect(mockGetCrmInvoiceEvents).not.toHaveBeenCalled();
   });
 
   it("returns 200 when a valid token is supplied (unauthenticated homeowner via email link)", async () => {
@@ -389,11 +395,13 @@ describe("GET /api/pay/invoice/:id — token-based access control", () => {
     mockGetCrmClient.mockResolvedValue({ id: CLIENT_ID, firstName: "Alice", lastName: "Smith", email: "alice@test.com" });
     mockGetUser.mockResolvedValue({ id: CONTRACTOR_ID, firstName: "Bob", lastName: "Builder", email: "bob@test.com" });
     mockGetCompany.mockResolvedValue({ id: "company-001", name: "Bob's Plumbing", businessLogo: null });
+    mockGetCrmInvoiceEvents.mockResolvedValue([{ id: "event-token", field: "Amount" }]);
     const res = await request(app)
       .get(`/api/pay/invoice/${INVOICE_ID}`)
       .query({ token: RAW_TOKEN });
     expect(res.status).toBe(200);
     expect(res.body.id).toBe(INVOICE_ID);
+    expect(res.body.history).toEqual([{ id: "event-token", field: "Amount" }]);
   });
 
   it("returns 200 when the authenticated homeowner accesses without a token", async () => {
@@ -402,10 +410,28 @@ describe("GET /api/pay/invoice/:id — token-based access control", () => {
     mockGetCrmClient.mockResolvedValue({ id: CLIENT_ID, firstName: "Alice", lastName: "Smith", email: "alice@test.com" });
     mockGetUser.mockResolvedValue({ id: CONTRACTOR_ID, firstName: "Bob", lastName: "Builder", email: "bob@test.com" });
     mockGetCompany.mockResolvedValue({ id: "company-001", name: "Bob's Plumbing", businessLogo: null });
+    mockGetCrmInvoiceEvents.mockResolvedValue([{ id: "event-homeowner", field: "Due date" }]);
     const res = await request(app)
       .get(`/api/pay/invoice/${INVOICE_ID}`)
       .set("x-test-user", "homeowner");
     expect(res.status).toBe(200);
+    expect(res.body.history).toEqual([{ id: "event-homeowner", field: "Due date" }]);
+  });
+
+  it("returns history when the issuing contractor accesses without a token", async () => {
+    const app = await buildApp();
+    mockGetCrmInvoice.mockResolvedValue(BASE_INVOICE);
+    mockGetCrmClient.mockResolvedValue({ id: CLIENT_ID, firstName: "Alice", lastName: "Smith" });
+    mockGetUser.mockResolvedValue({ id: CONTRACTOR_ID, firstName: "Bob", lastName: "Builder" });
+    mockGetCompany.mockResolvedValue({ id: "company-001", name: "Bob's Plumbing", businessLogo: null });
+    mockGetCrmInvoiceEvents.mockResolvedValue([{ id: "event-contractor", field: "Status" }]);
+
+    const res = await request(app)
+      .get(`/api/pay/invoice/${INVOICE_ID}`)
+      .set("x-test-user", "contractor");
+
+    expect(res.status).toBe(200);
+    expect(res.body.history).toEqual([{ id: "event-contractor", field: "Status" }]);
   });
 
   it("returns 401 when invoice has no token stored and caller is unauthenticated", async () => {

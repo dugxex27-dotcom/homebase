@@ -11818,18 +11818,28 @@ export class DbStorage implements IStorage {
   }
 
   async markCrmInvoicePaidIfUnpaid(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
-    const now = new Date();
-    const result = await db
-      .update(crmInvoices)
-      .set({
-        ...invoice,
-        status: 'paid',
-        paidAt: invoice.paidAt ?? now,
-        updatedAt: now,
-      })
-      .where(and(eq(crmInvoices.id, id), ne(crmInvoices.status, 'paid')))
-      .returning();
-    return result[0];
+    return db.transaction(async (tx) => {
+      const rows = await tx.select().from(crmInvoices).where(eq(crmInvoices.id, id)).limit(1);
+      const existing = rows[0];
+      if (!existing || existing.status === 'paid') return undefined;
+
+      const now = new Date();
+      const result = await tx
+        .update(crmInvoices)
+        .set({
+          ...invoice,
+          status: 'paid',
+          paidAt: invoice.paidAt ?? now,
+          updatedAt: now,
+        })
+        .where(and(eq(crmInvoices.id, id), ne(crmInvoices.status, 'paid')))
+        .returning();
+      const updated = result[0];
+      if (!updated) return undefined;
+      const changes = invoiceAuditChanges(existing, updated);
+      if (changes.length) await tx.insert(crmInvoiceEvents).values(changes);
+      return updated;
+    });
   }
 
   async deleteCrmInvoice(id: string): Promise<boolean> {
