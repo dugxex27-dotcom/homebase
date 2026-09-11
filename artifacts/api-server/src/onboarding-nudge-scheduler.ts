@@ -1,6 +1,6 @@
 import { db } from './db';
 import { users, onboardingProgress, notifications } from '@workspace/db';
-import { eq, and, isNull, lt, isNotNull } from 'drizzle-orm';
+import { eq, and, gt, isNull, lt, isNotNull } from 'drizzle-orm';
 import { sendOnboardingNudgeEmail } from './email-service';
 import { storage } from './storage';
 import { isDemoId } from './storage';
@@ -27,8 +27,8 @@ async function sendOnboardingNudges(): Promise<void> {
   try {
     const nudgeCutoff = new Date(now.getTime() - NUDGE_AFTER_DAYS * 24 * 60 * 60 * 1000);
 
-    // Find homeowners who have an onboarding_progress row with completedAt IS NULL
-    // and whose account was created more than N days ago
+    // Find homeowners who advanced beyond the initial onboarding step, have not
+    // completed onboarding, and whose account was created more than N days ago.
     const incompleteUsers = await db
       .select({
         id: users.id,
@@ -47,6 +47,7 @@ async function sendOnboardingNudges(): Promise<void> {
           eq(users.isDemoAccount, false),
           isNotNull(users.email),
           isNull(onboardingProgress.completedAt),
+          gt(onboardingProgress.currentStep, 2),
           lt(users.createdAt, nudgeCutoff),
         ),
       );
