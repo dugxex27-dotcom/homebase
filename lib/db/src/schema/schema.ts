@@ -732,18 +732,18 @@ export const notifications = pgTable("notifications", {
   scheduledFor: text("scheduled_for").notNull(), // ISO datetime string when notification should be sent
   sentAt: text("sent_at"), // nullable, ISO datetime string when notification was actually sent
   isRead: boolean("is_read").default(false).notNull(),
+  deduplicationEnforced: boolean("deduplication_enforced"),
   priority: text("priority").default("medium").notNull(), // "high", "medium", "low"
   actionUrl: text("action_url"), // nullable, URL to take action on notification
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
-  // Production contains legacy unread duplicates created before atomic deduplication
-  // was introduced. Preserve those historical rows while enforcing uniqueness for
-  // every notification created after this constraint became part of the schema.
+  // Existing production rows remain NULL when this column is introduced, preserving
+  // historical duplicates. New maintenance notifications opt into atomic deduplication.
   uniqueIndex("UX_notifications_unread_maintenance_task")
     .on(table.homeownerId, table.maintenanceTaskId)
     .where(sql`${table.isRead} = false
       AND ${table.maintenanceTaskId} IS NOT NULL
-      AND ${table.createdAt} >= TIMESTAMP '2026-09-11 00:00:00'`),
+      AND ${table.deduplicationEnforced} = true`),
 ]);
 
 // User activity fact table for analytics (tracks user engagement events)

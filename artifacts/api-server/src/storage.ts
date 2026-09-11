@@ -2616,6 +2616,7 @@ export class MemStorage implements IStorage {
           message,
           scheduledFor: now.toISOString(),
           isRead: false,
+          deduplicationEnforced: true,
           sentAt: null,
           priority,
           actionUrl: "/maintenance",
