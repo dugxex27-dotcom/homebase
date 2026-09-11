@@ -134,6 +134,13 @@
       "when": 1788940800003,
       "tag": "20260909-company-active-admin-guard",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789084800000,
+      "tag": "20260911-task-completion-service-year-uniqueness",
+      "breakpoints": true
     }
   ]
 }

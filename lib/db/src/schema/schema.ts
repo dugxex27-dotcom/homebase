@@ -1050,6 +1050,7 @@ export const taskCompletions = pgTable("task_completions", {
   taskId: text("task_id"), // references maintenanceTasks or customMaintenanceTasks
   taskType: text("task_type").notNull(), // "maintenance" or "custom"
   taskTitle: text("task_title").notNull(), // denormalized for quick access
+  serviceType: text("service_type"), // normalized invoice service type; null for non-invoice completions
   taskCategory: text("task_category"), // category for seasonal tracking
   completedAt: timestamp("completed_at").notNull().defaultNow(),
   month: integer("month").notNull(), // 1-12, month when task was completed
@@ -1071,6 +1072,9 @@ export const taskCompletions = pgTable("task_completions", {
   index("IDX_task_completions_homeowner").on(table.homeownerId),
   index("IDX_task_completions_date").on(table.year, table.month),
   index("IDX_task_completions_verification_tier").on(table.verificationTier),
+  uniqueIndex("UX_task_completions_house_service_year")
+    .on(table.houseId, table.serviceType, table.year)
+    .where(sql`${table.serviceType} IS NOT NULL`),
 ]);
 
 // Immutable admin decisions for maintenance evidence that automated review
