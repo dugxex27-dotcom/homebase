@@ -314,10 +314,12 @@ function selectResult(rows: unknown[]) {
   const result: any = Promise.resolve(rows);
   result.limit = vi.fn().mockReturnValue(result);
   result.orderBy = vi.fn().mockReturnValue(result);
+  const where = vi.fn().mockReturnValue(result);
   return {
     from: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue(result),
+      where,
     }),
+    where,
   };
 }
 
@@ -331,13 +333,17 @@ function queueInvoiceConfirmQueries(
   // 4) human-review helper analysis read (.limit)
   // 5) human-review helper linked-analysis lookup
   // 6) human-review helper decision lookup (.orderBy().limit())
+  const preliminaryRead = selectResult([analysis]);
+  const lockedRead = selectResult([analysis]);
+  const duplicateRead = selectResult(duplicateLogs);
   mockDbSelect
-    .mockReturnValueOnce(selectResult([analysis]))
-    .mockReturnValueOnce(selectResult([analysis]))
-    .mockReturnValueOnce(selectResult(duplicateLogs))
+    .mockReturnValueOnce(preliminaryRead)
+    .mockReturnValueOnce(lockedRead)
+    .mockReturnValueOnce(duplicateRead)
     .mockReturnValueOnce(selectResult([analysis]))
     .mockReturnValueOnce(selectResult([analysis]))
     .mockReturnValueOnce(selectResult([]));
+  return { duplicateWhere: duplicateRead.where };
 }
 
 /**
@@ -365,6 +371,13 @@ function findMaintenanceLogInsert(mockInsertValues: ReturnType<typeof vi.fn>) {
       && !("month" in vals),
   );
   return call ? (call[0] as Record<string, unknown>) : undefined;
+}
+
+function collectSqlPrimitiveValues(value: unknown, seen = new WeakSet<object>()): unknown[] {
+  if (value === null || typeof value !== "object") return [value];
+  if (seen.has(value)) return [];
+  seen.add(value);
+  return Object.values(value).flatMap((child) => collectSqlPrimitiveValues(child, seen));
 }
 
 async function buildApp() {
@@ -1703,6 +1716,139 @@ describe("PATCH /api/invoice-analyses/:id/confirm — duplicate-analysis protect
     expect(tcInsert).toBeDefined();
     expect(tcInsert!.year).toBe(2019);
     expect(tcInsert!.month).toBe(11);
+  });
+
+  it("does NOT deduplicate Dec 31 against Jan 1 of the next calendar year", async () => {
+    const analysisId = "analysis-2020-year-end";
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+
+    const yearEndAnalysis = recentAnalysisFixture(analysisId, {
+      serviceDate: "2020-12-31",
+      serviceType: "maintenance",
+    });
+
+    // A matching 2021-01-01 log is outside the route's 2020 calendar-year query,
+    // so the database returns no duplicate candidate.
+    const { duplicateWhere } = queueInvoiceConfirmQueries(yearEndAnalysis);
+
+    const mockUpdateSet = vi.fn()
+      .mockReturnValueOnce({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: analysisId, status: "confirmed" }]),
+        }),
+      })
+      .mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${analysisId}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.duplicateScoring).toBe(false);
+    const duplicatePredicateValues = collectSqlPrimitiveValues(duplicateWhere.mock.calls[0][0]);
+    expect(duplicatePredicateValues).toContain("2020-01-01");
+    expect(duplicatePredicateValues).toContain("2020-12-31");
+    expect(duplicatePredicateValues).not.toContain("2021-01-01");
+    expect(findTaskCompletionInsert(mockInsertValues)).toMatchObject({
+      year: 2020,
+      month: 12,
+    });
+  });
+
+  it("keeps case-insensitive service types separated across calendar years", async () => {
+    const analysisId = "analysis-mixed-case-2020";
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+
+    const mixedCaseAnalysis = recentAnalysisFixture(analysisId, {
+      serviceDate: "2020-06-15",
+      serviceType: "Maintenance",
+    });
+
+    // An existing "MAINTENANCE" log from 2021 must not enter the 2020 candidate
+    // set, even though both values normalize to the same service type.
+    const { duplicateWhere } = queueInvoiceConfirmQueries(mixedCaseAnalysis);
+
+    const mockUpdateSet = vi.fn()
+      .mockReturnValueOnce({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: analysisId, status: "confirmed" }]),
+        }),
+      })
+      .mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${analysisId}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.duplicateScoring).toBe(false);
+    const duplicatePredicateValues = collectSqlPrimitiveValues(duplicateWhere.mock.calls[0][0]);
+    expect(duplicatePredicateValues).toContain("2020-01-01");
+    expect(duplicatePredicateValues).toContain("2020-12-31");
+    expect(duplicatePredicateValues).not.toContain("2021-01-01");
+    expect(findTaskCompletionInsert(mockInsertValues)).toMatchObject({
+      serviceType: "maintenance",
+      year: 2020,
+    });
+  });
+
+  it("uses today's year-window when the analysis serviceDate is null", async () => {
+    const analysisId = "analysis-null-service-date";
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+    const today = new Date();
+    const todayString = today.toISOString().split("T")[0];
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+
+    const nullDateAnalysis = recentAnalysisFixture(analysisId, {
+      serviceDate: null,
+      serviceType: "maintenance",
+    });
+
+    queueInvoiceConfirmQueries(nullDateAnalysis, [{
+      id: "log-current-year",
+      serviceType: "MAINTENANCE",
+      serviceDate: todayString,
+      taskCompletionId: TC_ID,
+    }]);
+
+    const mockUpdateSet = vi.fn().mockReturnValueOnce({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: analysisId, status: "confirmed" }]),
+      }),
+    });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${analysisId}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(res.status).toBe(200);
+    expect(res.body.duplicateScoring).toBe(true);
+    expect(findMaintenanceLogInsert(mockInsertValues)).toMatchObject({
+      serviceDate: todayString,
+      serviceType: "maintenance",
+    });
+    expect(findTaskCompletionInsert(mockInsertValues)).toBeUndefined();
   });
 });
 
