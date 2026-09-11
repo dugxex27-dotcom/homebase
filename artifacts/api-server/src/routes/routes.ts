@@ -24689,7 +24689,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const [analysis] = await tx.select().from(invoiceAnalyses).where(eq(invoiceAnalyses.id, id));
       if (!analysis) return res.status(404).json({ message: "Analysis not found" });
       if (analysis.homeownerId !== req.session.user.id) return res.status(403).json({ message: "Access denied" });
-      if (analysis.status !== "pending") return res.status(409).json({ message: "Analysis already processed" });
+      if (analysis.status !== "pending") return res.status(400).json({ message: "Analysis already processed" });
 
       // DIY analyses must be verified before confirmation — require diyVerified flag
       // AND persisted before+after photos to prevent flag-only bypass

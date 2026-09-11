@@ -774,6 +774,62 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
     expect(Math.abs(completedAt.getTime() - now.getTime())).toBeLessThan(5000);
   });
 
+  it("rejects a second confirmation of the same DIY analysis without inserting another taskCompletion", async () => {
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+
+    queueInvoiceConfirmQueries(DIY_ANALYSIS_FIXTURE);
+
+    const confirmedAnalysis = { ...DIY_ANALYSIS_FIXTURE, status: "confirmed" };
+    mockDbSelect
+      .mockReturnValueOnce(selectResult([confirmedAnalysis]))
+      .mockReturnValueOnce(selectResult([confirmedAnalysis]));
+
+    const mockUpdateSet = vi.fn()
+      .mockReturnValueOnce({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ id: ANALYSIS_ID, status: "confirmed" }]),
+        }),
+      })
+      .mockReturnValueOnce({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+    mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
+
+    const firstResponse = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(firstResponse.status).toBe(200);
+    expect(findTaskCompletionInsert(mockInsertValues)).toBeDefined();
+    const taskCompletionInsertCountAfterFirstConfirm = mockInsertValues.mock.calls.filter(
+      ([values]: [Record<string, unknown>]) =>
+        values !== null
+        && typeof values === "object"
+        && "year" in values
+        && "month" in values,
+    ).length;
+
+    const secondResponse = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({});
+
+    expect(secondResponse.status).toBe(400);
+    expect(secondResponse.body).toEqual({ message: "Analysis already processed" });
+    expect(mockInsertValues.mock.calls.filter(
+      ([values]: [Record<string, unknown>]) =>
+        values !== null
+        && typeof values === "object"
+        && "year" in values
+        && "month" in values,
+    )).toHaveLength(taskCompletionInsertCountAfterFirstConfirm);
+  });
+
   it("ignores a body serviceDate on a DIY confirm request (same anti-inflation guarantee)", async () => {
     const { mockInsertValues } = buildInsertMock();
 
