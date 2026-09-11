@@ -523,7 +523,63 @@ describe("syncSeatSubscriptionItem", () => {
 
     expect(stripeMock.subscriptionItems.create).toHaveBeenCalledWith(
       { subscription: SUB_ID, price: SEAT_PRICE_ID, quantity: 2 },
-      { idempotencyKey: "evt_123-seats-company-abc" },
+      { idempotencyKey: "evt_123-seats-company-abc-create" },
+    );
+  });
+
+  it("reuses operation-specific idempotency keys when update and delete webhooks retry", async () => {
+    const existingItem = { id: EXISTING_ITEM_ID, price: { id: SEAT_PRICE_ID } };
+    const updateStripeMock = makeSubItemsStripeMock(existingItem);
+    const deleteStripeMock = makeSubItemsStripeMock(existingItem);
+
+    await syncSeatSubscriptionItem(
+      updateStripeMock,
+      SUB_ID,
+      3,
+      SEAT_PRICE_ID,
+      "evt_retry-seats-company",
+    );
+    await syncSeatSubscriptionItem(
+      deleteStripeMock,
+      SUB_ID,
+      0,
+      SEAT_PRICE_ID,
+      "evt_retry-seats-company",
+    );
+    await syncSeatSubscriptionItem(
+      updateStripeMock,
+      SUB_ID,
+      3,
+      SEAT_PRICE_ID,
+      "evt_retry-seats-company",
+    );
+    await syncSeatSubscriptionItem(
+      deleteStripeMock,
+      SUB_ID,
+      0,
+      SEAT_PRICE_ID,
+      "evt_retry-seats-company",
+    );
+
+    expect(updateStripeMock.subscriptionItems.update).toHaveBeenCalledTimes(2);
+    expect(updateStripeMock.subscriptionItems.update).toHaveBeenNthCalledWith(
+      1,
+      EXISTING_ITEM_ID,
+      { quantity: 3 },
+      { idempotencyKey: "evt_retry-seats-company-update" },
+    );
+    expect(updateStripeMock.subscriptionItems.update.mock.calls[0][2]).toEqual(
+      updateStripeMock.subscriptionItems.update.mock.calls[1][2],
+    );
+    expect(deleteStripeMock.subscriptionItems.del).toHaveBeenCalledTimes(2);
+    expect(deleteStripeMock.subscriptionItems.del).toHaveBeenNthCalledWith(
+      1,
+      EXISTING_ITEM_ID,
+      undefined,
+      { idempotencyKey: "evt_retry-seats-company-delete" },
+    );
+    expect(deleteStripeMock.subscriptionItems.del.mock.calls[0][2]).toEqual(
+      deleteStripeMock.subscriptionItems.del.mock.calls[1][2],
     );
   });
 
@@ -618,6 +674,36 @@ describe("resolveSeatPriceId", () => {
     expect(stripeMock.prices.create).toHaveBeenCalledWith(
       expect.objectContaining({ product: "prod_new", lookup_key: TECH_SEAT_PRICE_LOOKUP_KEY }),
     );
+  });
+
+  it("reuses event-derived keys for Product and Price creation after a webhook retry", async () => {
+    const stripeMock = {
+      prices: {
+        list: vi.fn().mockResolvedValue({ data: [] }),
+        create: vi.fn().mockResolvedValue({ id: "price_new" }),
+      },
+      products: { create: vi.fn().mockResolvedValue({ id: "prod_new" }) },
+    };
+    const eventKey = "evt_retry-seats-company";
+
+    await resolveSeatPriceId(stripeMock, eventKey);
+    resetSeatPriceCache();
+    await resolveSeatPriceId(stripeMock, eventKey);
+
+    expect(stripeMock.products.create).toHaveBeenCalledTimes(2);
+    expect(stripeMock.products.create.mock.calls[0][1]).toEqual(
+      stripeMock.products.create.mock.calls[1][1],
+    );
+    expect(stripeMock.products.create.mock.calls[0][1]).toEqual({
+      idempotencyKey: `${eventKey}-product-create`,
+    });
+    expect(stripeMock.prices.create).toHaveBeenCalledTimes(2);
+    expect(stripeMock.prices.create.mock.calls[0][1]).toEqual(
+      stripeMock.prices.create.mock.calls[1][1],
+    );
+    expect(stripeMock.prices.create.mock.calls[0][1]).toEqual({
+      idempotencyKey: `${eventKey}-price-create`,
+    });
   });
 
   it("caches the resolved Price ID across calls without re-querying Stripe", async () => {
@@ -1836,7 +1922,14 @@ describe("syncSeatQuantityForSubscription — webhook path: quantity-based Strip
 
     expect(renewalResult).toBe(2);
     expect(update).toHaveBeenCalledOnce();
-    expect(update).toHaveBeenCalledWith("si_seat_001", { quantity: 2 });
+    expect(update).toHaveBeenCalledWith(
+      "si_seat_001",
+      { quantity: 2 },
+      {
+        idempotencyKey:
+          "evt_first_renewal-seats-company-reactivation-renewal-update",
+      },
+    );
     expect(create).not.toHaveBeenCalled();
     expect(del).not.toHaveBeenCalled();
   });

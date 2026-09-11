@@ -1276,7 +1276,10 @@ let cachedSeatPriceId: string | null = null;
  * doesn't exist yet. Result is cached in-process for the life of the server
  * (cleared only by resetSeatPriceCache, used in tests).
  */
-export async function resolveSeatPriceId(stripeClient: any): Promise<string> {
+export async function resolveSeatPriceId(
+  stripeClient: any,
+  idempotencyKey?: string,
+): Promise<string> {
   if (cachedSeatPriceId) return cachedSeatPriceId;
 
   const existing = await stripeClient.prices.list({
@@ -1291,10 +1294,19 @@ export async function resolveSeatPriceId(stripeClient: any): Promise<string> {
       : existingPrice.product?.id;
     if (productId && stripeClient.products?.update) {
       try {
-        await stripeClient.products.update(productId, {
-          name: 'Additional Team Seat',
-          description: 'Per-person charge for accepted contractor team members beyond the 3 people included with a Contractor subscription.',
-        });
+        const productUpdate = {
+            name: 'Additional Team Seat',
+            description: 'Per-person charge for accepted contractor team members beyond the 3 people included with a Contractor subscription.',
+        };
+        if (idempotencyKey) {
+          await stripeClient.products.update(
+            productId,
+            productUpdate,
+            { idempotencyKey: `${idempotencyKey}-product-update` },
+          );
+        } else {
+          await stripeClient.products.update(productId, productUpdate);
+        }
       } catch (error) {
         console.warn('[SEAT_BILLING] Could not refresh existing Stripe team-seat product copy:', error);
       }
@@ -1303,17 +1315,29 @@ export async function resolveSeatPriceId(stripeClient: any): Promise<string> {
     return cachedSeatPriceId as string;
   }
 
-  const product = await stripeClient.products.create({
+  const productParams = {
     name: 'Additional Team Seat',
     description: 'Per-person charge for accepted contractor team members beyond the 3 people included with a Contractor subscription.',
-  });
-  const price = await stripeClient.prices.create({
+  };
+  const product = idempotencyKey
+    ? await stripeClient.products.create(
+        productParams,
+        { idempotencyKey: `${idempotencyKey}-product-create` },
+      )
+    : await stripeClient.products.create(productParams);
+  const priceParams = {
     product: product.id,
     currency: 'usd',
     unit_amount: TECH_SEAT_MONTHLY_PRICE_CENTS,
     recurring: { interval: 'month' },
     lookup_key: TECH_SEAT_PRICE_LOOKUP_KEY,
-  });
+  };
+  const price = idempotencyKey
+    ? await stripeClient.prices.create(
+        priceParams,
+        { idempotencyKey: `${idempotencyKey}-price-create` },
+      )
+    : await stripeClient.prices.create(priceParams);
   cachedSeatPriceId = price.id;
   return cachedSeatPriceId as string;
 }
@@ -1348,17 +1372,33 @@ export async function syncSeatSubscriptionItem(
 
   if (billedSeats <= 0) {
     if (existingItem) {
-      await stripeClient.subscriptionItems.del(existingItem.id);
+      if (idempotencyKey) {
+        await stripeClient.subscriptionItems.del(
+          existingItem.id,
+          undefined,
+          { idempotencyKey: `${idempotencyKey}-delete` },
+        );
+      } else {
+        await stripeClient.subscriptionItems.del(existingItem.id);
+      }
     }
     return;
   }
 
   if (existingItem) {
-    await stripeClient.subscriptionItems.update(existingItem.id, { quantity: billedSeats });
+    if (idempotencyKey) {
+      await stripeClient.subscriptionItems.update(
+        existingItem.id,
+        { quantity: billedSeats },
+        { idempotencyKey: `${idempotencyKey}-update` },
+      );
+    } else {
+      await stripeClient.subscriptionItems.update(existingItem.id, { quantity: billedSeats });
+    }
   } else {
     await stripeClient.subscriptionItems.create(
       { subscription: subscriptionId, price: seatPriceId, quantity: billedSeats },
-      idempotencyKey ? { idempotencyKey } : undefined,
+      idempotencyKey ? { idempotencyKey: `${idempotencyKey}-create` } : undefined,
     );
   }
 }
@@ -1752,7 +1792,10 @@ export async function syncSeatQuantityForSubscription(
     // Write checkpoint before calling Stripe so a crash here is recoverable.
     await storageInstance?.upsertPendingSeatSync(companyId);
 
-    const seatPriceId = await resolveSeatPriceId(stripeClient);
+    const seatPriceId = await resolveSeatPriceId(
+      stripeClient,
+      eventId ? `${eventId}-seats-${companyId}` : undefined,
+    );
     await syncSeatSubscriptionItem(
       stripeClient,
       subscription.id,
