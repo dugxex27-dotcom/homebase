@@ -120,7 +120,6 @@ const readMaintenanceCoachPlan = (houseId: string, month: number): MaintenanceCo
 };
 
 
-
 // Form schema for maintenance log creation/editing
 const maintenanceLogFormSchema = insertMaintenanceLogSchema.extend({
   homeownerId: z.string().min(1, "Homeowner ID is required"),
@@ -177,7 +176,6 @@ type HouseFormData = z.infer<typeof houseFormSchema>;
 type CustomTaskFormData = z.infer<typeof customTaskFormSchema>;
 
 
-
 const SERVICE_TYPES = [
   { value: "maintenance", label: "Routine Maintenance" },
   { value: "repair", label: "Repair" },
@@ -213,7 +211,6 @@ const HOME_AREAS = [
   { value: "well", label: "Well/Water System" },
   { value: "other", label: "Other" }
 ];
-
 
 
 const MONTHS = [
@@ -1667,6 +1664,7 @@ export default function Maintenance() {
   const [aiAnalysis, setAiAnalysis] = useState<InvoiceAnalysis | null>(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiConfirming, setAiConfirming] = useState(false);
+  const [aiOutsideScoringWindow, setAiOutsideScoringWindow] = useState(false);
   const [aiEditDescription, setAiEditDescription] = useState("");
   const [aiEditDate, setAiEditDate] = useState("");
   const [aiEditAmount, setAiEditAmount] = useState("");
@@ -1742,8 +1740,6 @@ export default function Maintenance() {
       setSelectedZone(selectedHouse.climateZone.toLowerCase().replace(/ /g, '-'));
     }
   }, [selectedHouseId, houses]);
-
-
 
 
   // Maintenance log queries and mutations (only for homeowners)
@@ -1930,9 +1926,6 @@ export default function Maintenance() {
 
     return null;
   };
-
-
-
 
 
   // File upload state for service records
@@ -2900,7 +2893,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   };
 
 
-
   // Maintenance log helper functions
   const handleEditMaintenanceLog = (log: MaintenanceLog) => {
     setEditingMaintenanceLog(log);
@@ -2925,9 +2917,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setAfterPhotoFiles([]);
     setIsMaintenanceLogDialogOpen(true);
   };
-
-
-
 
 
   // AI Invoice Scan helpers for maintenance page
@@ -3054,12 +3043,19 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         serviceType: aiEditServiceType,
       });
       const data = await res.json();
+      const outsideScoringWindow = data.outsideScoringWindow === true;
+      setAiOutsideScoringWindow(outsideScoringWindow);
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
       if (data.newAchievements?.length > 0) {
         toast({ title: "Achievement Unlocked!", description: data.newAchievements[0]?.title || "New achievement earned!" });
       }
-      toast({ title: "Record created", description: "Service record added and Home Wellness Score™ updated." });
+      toast({
+        title: "Record created",
+        description: outsideScoringWindow
+          ? "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score."
+          : "Service record added and Home Wellness Score™ updated.",
+      });
       setAiStep("done");
       setTimeout(() => setAiInvoiceOpen(false), 1500);
     } catch {
@@ -3315,8 +3311,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       createHomeSystemMutation.mutate(data);
     }
   };
-
-
 
 
   const getServiceTypeLabel = (type: string) => {
@@ -5254,7 +5248,11 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <div className="text-center py-8">
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4" style={{ color: '#22c55e' }} />
                 <h3 className="text-lg font-semibold" style={{ color: 'var(--purple-deep)' }}>Record Added!</h3>
-                <p className="text-sm text-muted-foreground">Your service record and Home Wellness Score™ have been updated.</p>
+                <p className="text-sm text-muted-foreground">
+                  {aiOutsideScoringWindow
+                    ? "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score."
+                    : "Your service record and Home Wellness Score™ have been updated."}
+                </p>
               </div>
             )}
           </DialogContent>

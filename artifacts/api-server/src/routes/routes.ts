@@ -552,6 +552,17 @@ function resolveInvoiceScoringDate(
   return { serviceDate, date, year };
 }
 
+export function isInvoiceOutsideScoringWindow(
+  scoringDate: { date: Date },
+  now = new Date(),
+  rollingWindowMonths = 12,
+): boolean {
+  const scoringAbsoluteMonth =
+    scoringDate.date.getFullYear() * 12 + (scoringDate.date.getMonth() + 1);
+  const currentAbsoluteMonth = now.getFullYear() * 12 + (now.getMonth() + 1);
+  return scoringAbsoluteMonth < currentAbsoluteMonth - rollingWindowMonths;
+}
+
 export function invoiceScoringLockKey(
   houseId: string,
   normalizedServiceType: string,
@@ -24573,6 +24584,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         analysis: typeof invoiceAnalyses.$inferSelect;
         maintenanceLog: typeof maintenanceLogs.$inferSelect;
         duplicateScoring: boolean;
+        outsideScoringWindow: boolean;
       } | null = null;
       await db.transaction(async (tx) => {
       const [preliminaryAnalysis] = await tx
@@ -24780,6 +24792,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           analysis: updatedDup,
           maintenanceLog: log,
           duplicateScoring: true,
+          outsideScoringWindow: isInvoiceOutsideScoringWindow(scoringDate),
         };
         return;
       }
@@ -24827,6 +24840,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         analysis: updated,
         maintenanceLog: linkedLog,
         duplicateScoring: false,
+        outsideScoringWindow: isInvoiceOutsideScoringWindow(scoringDate),
       };
       });
       if (res.headersSent) return;
@@ -24850,6 +24864,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           analysis: typeof invoiceAnalyses.$inferSelect;
           maintenanceLog: typeof maintenanceLogs.$inferSelect;
           duplicateScoring: boolean;
+          outsideScoringWindow: boolean;
         }),
         newAchievements,
       });

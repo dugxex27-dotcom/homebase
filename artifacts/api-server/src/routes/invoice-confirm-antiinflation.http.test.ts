@@ -443,6 +443,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
       .send({ serviceDate: "2020-03-15" });
 
     expect(res.status).toBe(200);
+    expect(res.body.outsideScoringWindow).toBe(true);
 
     // Locate the taskCompletions insert among all db.insert() calls.
     const insertedValues = findTaskCompletionInsert(mockInsertValues);
@@ -540,6 +541,7 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
       .send({});
 
     expect(res.status).toBe(200);
+    expect(res.body.outsideScoringWindow).toBe(true);
 
     const insertedValues = findTaskCompletionInsert(mockInsertValues);
     expect(insertedValues).toMatchObject({

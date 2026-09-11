@@ -9,8 +9,8 @@
  * external dependencies are mocked so these tests run without a server.
  */
 
-import { vi, describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup, act } from "@testing-library/react";
+import { vi, describe, it, expect, afterEach, beforeEach } from "vitest";
+import { render, screen, cleanup, act, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { fireEvent } from "@testing-library/react";
 
@@ -21,6 +21,7 @@ import { fireEvent } from "@testing-library/react";
 const flags = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   invalidateQueriesSpy: vi.fn(),
+  apiRequestSpy: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -208,10 +209,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("@/lib/queryClient", () => ({
-  apiRequest: vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({}),
-  }),
+  apiRequest: flags.apiRequestSpy,
   getQueryFn: vi.fn(),
   queryClient: {
     invalidateQueries: vi.fn(),
@@ -255,10 +253,18 @@ async function switchToDiyMode() {
 // Tests
 // ---------------------------------------------------------------------------
 
+beforeEach(() => {
+  flags.apiRequestSpy.mockResolvedValue({
+    ok: true,
+    json: async () => ({}),
+  });
+});
+
 afterEach(() => {
   cleanup();
   flags.toastSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
+  flags.apiRequestSpy.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -460,5 +466,51 @@ describe("Maintenance Page — AI invoice upload: 200 success path", () => {
         (args[0] as { variant?: string })?.variant === "destructive",
     );
     expect(destructiveCalls).toHaveLength(0);
+  });
+});
+
+describe("Maintenance Page — old invoice confirmation notice", () => {
+  it("explains that an old saved record does not affect the current score", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      json: async () => ({
+        id: "ana-old-001",
+        status: "pending",
+        completionMethod: "contractor",
+        serviceDescription: "Old roof repair",
+        serviceDate: "2020-03-15",
+        totalAmount: "350.00",
+        contractorName: "Jane",
+        contractorCompany: "Jane Roofing",
+        homeArea: "roof",
+        serviceType: "repair",
+        diyVerified: false,
+        houseId: "house-1",
+        homeownerId: "user-001",
+      }),
+    } as Response);
+    flags.apiRequestSpy.mockResolvedValue({
+      ok: true,
+      json: async () => ({ outsideScoringWindow: true, newAchievements: [] }),
+    });
+
+    await renderAndWaitForHouse();
+    await openAiDialog();
+    const fileInput = screen.getByTestId("input-ai-invoice-file") as HTMLInputElement;
+    await userEvent.upload(
+      fileInput,
+      new File(["invoice"], "old-invoice.jpg", { type: "image/jpeg" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /analyze with ai/i }));
+    await userEvent.click(screen.getByRole("button", { name: /confirm & add record/i }));
+
+    const notice = "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score.";
+    await waitFor(() => expect(screen.getByText(notice)).toBeDefined());
+    expect(screen.queryByText("Your service record and health score have been updated.")).toBeNull();
+    expect(flags.toastSpy).toHaveBeenCalledWith({
+      title: "Record created",
+      description: notice,
+    });
   });
 });

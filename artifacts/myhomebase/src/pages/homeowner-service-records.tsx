@@ -150,6 +150,7 @@ export default function HomeownerServiceRecords() {
   const [aiAnalysis, setAiAnalysis] = useState<InvoiceAnalysis | null>(null);
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
   const [aiConfirming, setAiConfirming] = useState(false);
+  const [aiOutsideScoringWindow, setAiOutsideScoringWindow] = useState(false);
   // Editable review form
   const [aiEditDescription, setAiEditDescription] = useState("");
   const [aiEditDate, setAiEditDate] = useState("");
@@ -568,12 +569,19 @@ export default function HomeownerServiceRecords() {
         serviceType: aiEditServiceType,
       });
       const data = await res.json();
+      const outsideScoringWindow = data.outsideScoringWindow === true;
+      setAiOutsideScoringWindow(outsideScoringWindow);
       queryClient.invalidateQueries({ queryKey: ["/api/maintenance-logs"] });
       queryClient.invalidateQueries({ queryKey: ["/api/invoice-analyses"] });
       if (data.newAchievements?.length > 0) {
         toast({ title: "Achievement Unlocked!", description: data.newAchievements[0]?.title || "New achievement earned!" });
       }
-      toast({ title: "Record created", description: "Service record added and health score updated." });
+      toast({
+        title: "Record created",
+        description: outsideScoringWindow
+          ? "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score."
+          : "Service record added and health score updated.",
+      });
       setAiStep("done");
       setTimeout(() => setAiInvoiceOpen(false), 1500);
     } catch (err) {
@@ -1555,7 +1563,11 @@ export default function HomeownerServiceRecords() {
               <div className="py-8 text-center space-y-3">
                 <CheckCircle2 className="w-14 h-14 mx-auto text-green-500" />
                 <p className="text-lg font-semibold text-green-700">Service record created!</p>
-                <p className="text-sm text-muted-foreground">Your Home Wellness Score™ has been updated.</p>
+                <p className="text-sm text-muted-foreground">
+                  {aiOutsideScoringWindow
+                    ? "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score."
+                    : "Your Home Wellness Score™ has been updated."}
+                </p>
               </div>
             )}
 

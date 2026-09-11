@@ -21,6 +21,7 @@ const flags = vi.hoisted(() => ({
   invalidateQueriesSpy: vi.fn(),
   setQueryDataSpy: vi.fn(),
   notifyInvoiceBadgeChangedSpy: vi.fn(),
+  apiRequestSpy: vi.fn(),
   invoiceAnalyses: [] as Array<Record<string, unknown>>,
   maintenanceLogs: [] as Array<Record<string, unknown>>,
 }));
@@ -157,10 +158,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 });
 
 vi.mock("@/lib/queryClient", () => ({
-  apiRequest: vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({}),
-  }),
+  apiRequest: flags.apiRequestSpy,
   getQueryFn: vi.fn(),
   notifyInvoiceBadgeChanged: flags.notifyInvoiceBadgeChangedSpy,
   queryClient: {
@@ -194,6 +192,10 @@ async function openAiDialog() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  flags.apiRequestSpy.mockResolvedValue({
+    ok: true,
+    json: async () => ({}),
+  });
   global.fetch = vi.fn().mockResolvedValue({
     status: 200,
     ok: true,
@@ -209,6 +211,7 @@ afterEach(() => {
   flags.invalidateQueriesSpy.mockClear();
   flags.setQueryDataSpy.mockClear();
   flags.notifyInvoiceBadgeChangedSpy.mockClear();
+  flags.apiRequestSpy.mockReset();
   vi.restoreAllMocks();
 });
 
@@ -489,5 +492,43 @@ describe("Service Records — AI invoice upload: 200 success path", () => {
         (args[0] as { variant?: string })?.variant === "destructive",
     );
     expect(destructiveCalls).toHaveLength(0);
+  });
+});
+
+describe("Service Records — old invoice confirmation notice", () => {
+  it("explains that an old saved record does not affect the current score", async () => {
+    flags.invoiceAnalyses = [{
+      id: "analysis-old",
+      homeownerId: "user-001",
+      houseId: "house-1",
+      status: "pending",
+      completionMethod: "contractor",
+      invoiceUrls: [],
+      receiptUrls: [],
+      serviceDescription: "Old roof repair",
+      serviceDate: "2020-03-15",
+      totalAmount: "250.00",
+      homeArea: "roof",
+      serviceType: "repair",
+      aiConfidence: "high",
+      diyVerified: false,
+      createdAt: "2020-03-16T00:00:00.000Z",
+    }];
+    flags.apiRequestSpy.mockResolvedValue({
+      ok: true,
+      json: async () => ({ outsideScoringWindow: true, newAchievements: [] }),
+    });
+
+    renderPage();
+    await userEvent.click(screen.getByTestId("button-toggle-invoice-history"));
+    await userEvent.click(screen.getByTestId("button-rereview-invoice-analysis-old"));
+    await userEvent.click(screen.getByTestId("button-ai-confirm"));
+
+    const notice = "This record was saved to your history, but it's older than 12 months so it won't affect your current Home Wellness Score.";
+    await waitFor(() => expect(screen.getByText(notice)).toBeDefined());
+    expect(flags.toastSpy).toHaveBeenCalledWith({
+      title: "Record created",
+      description: notice,
+    });
   });
 });
