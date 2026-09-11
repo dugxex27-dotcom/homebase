@@ -13,6 +13,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
+      "@assets": path.resolve(import.meta.dirname, "..", "..", "attached_assets"),
       "@shared/schema": path.resolve(import.meta.dirname, "..", "..", "lib", "db", "src", "schema", "index.ts"),
       "@shared": path.resolve(import.meta.dirname, "..", "api-server", "src", "shared"),
     },

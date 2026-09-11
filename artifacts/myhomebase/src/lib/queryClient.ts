@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/auth-events";
 
 // In native Capacitor builds, VITE_API_BASE_URL is set to the production API root
 // (e.g. https://gotohomebase.com) so relative /api/* paths resolve correctly.
@@ -44,6 +45,9 @@ async function throwIfResNotOk(res: Response) {
       // cache or redirecting here creates an infinite reload loop.
       if (!isPublic) {
         console.warn('[queryClient] Clearing cache and redirecting to signin');
+        // Give mounted features a synchronous chance to persist safe local state
+        // before the redirect tears down the application.
+        window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
         queryClient.clear();
         // Use VITE_BASE so the redirect works in both dev (/myhomebase) and prod (/)
         window.location.href = `${VITE_BASE}/signin`;

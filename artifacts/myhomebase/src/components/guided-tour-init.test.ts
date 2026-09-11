@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { computeTourInit } from "./guided-tour-init";
+import {
+  computeTourInit,
+  HOMEOWNER_TOUR_STATE_KEY,
+  persistInactiveHomeownerTour,
+} from "./guided-tour-init";
 import type { InitUser, WizardProgress } from "./guided-tour-init";
 
 const homeowner: InitUser = { role: "homeowner", id: "user-123" };
@@ -115,6 +119,30 @@ describe("complete → server stamp → reload (empty localStorage) → stays in
 });
 
 describe("mutation fails path — optimistic localStorage prevents re-show", () => {
+  it("writes inactive before an expired-session completion request can fail with 401", async () => {
+    const values = new Map<string, string>();
+    const storage = {
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    const unauthorized = Object.assign(new Error("Unauthorized"), { status: 401 });
+    const completeOnServer = async () => {
+      expect(values.get(HOMEOWNER_TOUR_STATE_KEY)).toBe(
+        JSON.stringify({ phase: "inactive", stepIndex: 0 }),
+      );
+      throw unauthorized;
+    };
+
+    persistInactiveHomeownerTour(storage);
+    await expect(completeOnServer()).rejects.toMatchObject({ status: 401 });
+
+    const result = computeTourInit(
+      homeowner,
+      pendingProgress,
+      () => values.get(HOMEOWNER_TOUR_STATE_KEY) ?? null,
+    );
+    expect(result.kind).toBe("already-complete");
+  });
+
   it("does not reshow if the onboarding mutation failed but inactive was written to localStorage", () => {
     // Simulate: goNext() wrote inactive to localStorage, then both mutations threw.
     // Server still has completedAt === null. On next init (same browser, localStorage intact)

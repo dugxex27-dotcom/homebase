@@ -3,6 +3,28 @@ export interface TourState {
   stepIndex: number;
 }
 
+export const HOMEOWNER_TOUR_STATE_KEY = "mhb_guided_tour";
+export const INACTIVE_HOMEOWNER_TOUR_STATE: TourState = {
+  phase: "inactive",
+  stepIndex: 0,
+};
+
+export interface TourStateStorage {
+  setItem(key: string, value: string): void;
+}
+
+/**
+ * Persist the optimistic completion sentinel synchronously. Completion handlers
+ * call this before starting the API mutation or navigating, so an expired
+ * session cannot leave an in-progress tour behind in this browser.
+ */
+export function persistInactiveHomeownerTour(storage: TourStateStorage): void {
+  storage.setItem(
+    HOMEOWNER_TOUR_STATE_KEY,
+    JSON.stringify(INACTIVE_HOMEOWNER_TOUR_STATE),
+  );
+}
+
 export interface InitUser {
   role: string;
   id?: string;

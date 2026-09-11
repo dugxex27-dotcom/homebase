@@ -8,9 +8,15 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
+import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/auth-events";
+import {
+  HOMEOWNER_TOUR_STATE_KEY,
+  INACTIVE_HOMEOWNER_TOUR_STATE,
+  persistInactiveHomeownerTour,
+} from "./guided-tour-init";
 import logoPath from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 
-const TOUR_STATE_KEY = "mhb_guided_tour";
+const TOUR_STATE_KEY = HOMEOWNER_TOUR_STATE_KEY;
 
 interface TourState {
   phase: "welcome" | "tour" | "inactive";
@@ -361,7 +367,7 @@ export function TourResumeBanner({ onContinue, onDismiss }: { onContinue: () => 
 
 // Main guided tour component — mount in App.tsx
 export function GuidedTour() {
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const typedUser = user as User | undefined;
   const [location, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -436,6 +442,43 @@ export function GuidedTour() {
   }, [typedUser, wizardProgress, setTourState]);
 
   const currentStep = tourState.phase === "tour" ? STEPS[tourState.stepIndex] : null;
+  const tourStateRef = useRef(tourState);
+  const hadActiveHomeownerSessionRef = useRef(false);
+  useEffect(() => { tourStateRef.current = tourState; }, [tourState]);
+
+  useEffect(() => {
+    const suppressTourBeforeSessionRedirect = () => {
+      const phase = tourStateRef.current.phase;
+      if (phase !== "welcome" && phase !== "tour") return;
+
+      // The 401 handler dispatches this event synchronously before redirecting.
+      // Persist directly so this guarantee does not depend on a React render.
+      persistInactiveHomeownerTour(localStorage);
+      setTourState(INACTIVE_HOMEOWNER_TOUR_STATE);
+    };
+
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, suppressTourBeforeSessionRedirect);
+    return () => {
+      window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, suppressTourBeforeSessionRedirect);
+    };
+  }, [setTourState]);
+
+  useEffect(() => {
+    if (typedUser?.role === "homeowner" && !typedUser.id?.startsWith("demo-")) {
+      hadActiveHomeownerSessionRef.current = true;
+      return;
+    }
+    if (
+      hasInitialized &&
+      hadActiveHomeownerSessionRef.current &&
+      !isAuthLoading &&
+      !typedUser &&
+      (tourStateRef.current.phase === "welcome" || tourStateRef.current.phase === "tour")
+    ) {
+      persistInactiveHomeownerTour(localStorage);
+      setTourState(INACTIVE_HOMEOWNER_TOUR_STATE);
+    }
+  }, [typedUser, isAuthLoading, hasInitialized, setTourState]);
 
   // Stable ref to current step so closures inside timers always read the latest value
   const currentStepRef = useRef(currentStep);
@@ -524,16 +567,19 @@ export function GuidedTour() {
       setTargetRect(null);
       setTourState({ phase: "tour", stepIndex: nextIndex });
     } else {
-      // Tour complete — keep "inactive" state in localStorage so it never reappears
-      setTourState({ phase: "inactive", stepIndex: 0 });
+      // Persist before the request and redirect. If the session expired and the
+      // request returns 401, initialization still honors this local sentinel.
+      persistInactiveHomeownerTour(localStorage);
+      setTourState(INACTIVE_HOMEOWNER_TOUR_STATE);
       completeMutation.mutate();
       setLocation("/");
     }
   }, [tourState.stepIndex, setTourState, completeMutation, setLocation]);
 
   const skipTour = useCallback(() => {
-    // Keep "inactive" state in localStorage so tour never reappears, even if API call fails
-    setTourState({ phase: "inactive", stepIndex: 0 });
+    // Persist before the request for the same expired-session guarantee as completion.
+    persistInactiveHomeownerTour(localStorage);
+    setTourState(INACTIVE_HOMEOWNER_TOUR_STATE);
     completeMutation.mutate();
   }, [setTourState, completeMutation]);
 
