@@ -764,7 +764,7 @@ export default function Landing() {
                 {[
                   { icon: '🏡', title: 'Home Wellness Score™ for Listings', desc: 'Attach a verified Home Wellness Score to every listing. Buyers see it as transparency. Sellers see it as value.' },
                   { icon: '📤', title: 'Handoff Reports', desc: 'Generate a comprehensive handoff report at closing — every maintenance record, every upgrade, verified and ready for the buyer.' },
-                  { icon: '🤝', title: 'Referral Earnings', desc: "Refer homeowners to MyHomeBase™ and earn recurring monthly revenue for as long as they're subscribed." },
+                  { icon: '🤝', title: 'Stay Top of Mind', desc: "Give homeowners a useful closing gift and stay connected through maintenance, listing prep, and every future move." },
                   { icon: '⭐', title: 'Differentiate Your Services', desc: "Stand out in a crowded market. Offering a documented home history is a competitive advantage most agents don't have." },
                 ].map(f => (
                   <div key={f.title} className="mhb-role-modal-feature">

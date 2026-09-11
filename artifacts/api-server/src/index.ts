@@ -33,8 +33,6 @@ import { referralAccrualScheduler } from "./referral-accrual-scheduler";
 import { stripeDedupCleanupScheduler } from "./stripe-dedup-cleanup-scheduler";
 import { stripeIncompleteEventRecoveryScheduler } from "./stripe-incomplete-event-recovery-scheduler";
 import { quizSpikeScheduler } from "./quiz-spike-scheduler";
-import { affiliatePayoutEscalationScheduler } from "./affiliate-payout-escalation-scheduler";
-import { affiliatePayoutEmailScheduler } from "./affiliate-payout-email-scheduler";
 import { initLeaderLease, releaseLeaderLease } from "./lib/scheduler-leader";
 
 const allSchedulers = [
@@ -54,8 +52,6 @@ const allSchedulers = [
   stripeDedupCleanupScheduler,
   stripeIncompleteEventRecoveryScheduler,
   quizSpikeScheduler,
-  affiliatePayoutEscalationScheduler,
-  affiliatePayoutEmailScheduler,
 ];
 
 // ---------------------------------------------------------------------------

@@ -2533,7 +2533,7 @@ describe("Suspend lockout — messaging routes (conversations, messages)", () =>
 });
 
 // ---------------------------------------------------------------------------
-// Suspended-agent lockout on financial and analytics routes
+// Suspended-agent lockout on referral and analytics routes
 // ---------------------------------------------------------------------------
 
 describe("Suspend lockout — agent payouts, referrals, and analytics", () => {
@@ -2558,8 +2558,6 @@ describe("Suspend lockout — agent payouts, referrals, and analytics", () => {
   });
 
   it.each([
-    ["/api/agent/payouts", "payout history"],
-    ["/api/agent/payouts/export", "payout history export"],
     ["/api/agent/referrals", "referral data"],
     ["/api/agent/analytics", "analytics"],
   ])("blocks a suspended agent from accessing %s (%s)", async (path) => {
@@ -2574,8 +2572,6 @@ describe("Suspend lockout — agent payouts, referrals, and analytics", () => {
   });
 
   it.each([
-    "/api/agent/payouts",
-    "/api/agent/payouts/export",
     "/api/agent/referrals",
     "/api/agent/analytics",
   ])("allows a non-suspended agent past the suspension gate on %s", async (path) => {

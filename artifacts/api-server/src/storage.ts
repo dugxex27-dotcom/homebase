@@ -6725,9 +6725,7 @@ export class MemStorage implements IStorage {
   }
 
   async createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout> {
-    const created = { ...payout, id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date() } as AffiliatePayout;
-    this.affiliatePayoutsMap.set(created.id, created);
-    return created;
+    throw new Error("Affiliate payouts are permanently disabled");
   }
 
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {
@@ -12421,8 +12419,7 @@ export class DbStorage implements IStorage {
   }
 
   async createAffiliatePayout(payout: InsertAffiliatePayout): Promise<AffiliatePayout> {
-    const [created] = await db.insert(affiliatePayouts).values(payout).returning();
-    return created;
+    throw new Error("Affiliate payouts are permanently disabled");
   }
 
   async updateAffiliatePayout(id: string, payout: Partial<InsertAffiliatePayout>): Promise<AffiliatePayout | undefined> {

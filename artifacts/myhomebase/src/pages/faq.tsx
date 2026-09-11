@@ -158,9 +158,9 @@ export default function FAQ() {
                       <ul className="list-disc pl-6 space-y-2">
                         <li>Sign up as a Real Estate Agent to get your unique referral code</li>
                         <li>Share your code with homeowners and contractors you work with</li>
-                        <li>Earn $15 for each referral who becomes a paid subscriber for 4+ months</li>
-                        <li>Payouts are processed automatically through Stripe Connect</li>
-                        <li>Track all your referrals and earnings in your dashboard</li>
+                        <li>Give clients a free forever home record as a thoughtful closing gift</li>
+                        <li>Use co-branded reports for listing prep and ongoing client loyalty</li>
+                        <li>Track your referral links and client relationships in your dashboard</li>
                       </ul>
                     </AccordionContent>
                   </AccordionItem>
@@ -184,7 +184,7 @@ export default function FAQ() {
                       </ul>
                       <p className="font-medium mt-3">Real Estate Agents:</p>
                       <ul className="list-disc pl-6 space-y-1">
-                        <li>No cap - earn unlimited $15 payouts through Stripe Connect</li>
+                        <li>Free forever access with tools that support every client relationship</li>
                       </ul>
                     </AccordionContent>
                   </AccordionItem>
@@ -198,12 +198,12 @@ export default function FAQ() {
                     </AccordionContent>
                   </AccordionItem>
 
-                  <AccordionItem value="referral-payout">
+                  <AccordionItem value="referral-program">
                     <AccordionTrigger className="text-left">
-                      When do I receive my referral rewards?
+                      How does the agent referral program support my business?
                     </AccordionTrigger>
                     <AccordionContent className="text-gray-600">
-                      For homeowners and contractors, you receive $1 off per month for each active paid subscriber who used your referral code. Credits are applied automatically to your billing cycle. For real estate agents, you earn a $15 payout after your referral has maintained a paid subscription for 4 consecutive months, processed through Stripe Connect to your connected bank account.
+                      Homeowners and contractors receive $1 off per month for each active paid subscriber who used their referral code; credits are applied automatically to their billing cycle. Agents can share a free forever home record as a closing gift, use co-branded reports for listing prep, and track client relationships.
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>

@@ -2273,6 +2273,21 @@ class TransferOwnershipTargetNotFoundError extends Error {}
 // ----------------------------------------------------------------------------
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Cash affiliate payouts are permanently retired.  Keep the historical
+  // tables/records readable for data integrity, but expose no payout or payout
+  // preference APIs and let callers receive a normal not-found response.
+  app.use((req: any, res: any, next: any) => {
+    const path = req.path || req.originalUrl?.split("?")[0] || "";
+    if (
+      path === "/api/agent/payouts" ||
+      path.startsWith("/api/agent/payouts/") ||
+      path === "/api/agent/notifications/preferences" ||
+      path.startsWith("/api/admin/affiliate-payouts/")
+    ) {
+      return res.status(404).json({ message: "Affiliate payouts are no longer available" });
+    }
+    next();
+  });
   logger.info('REGISTER ROUTES CALLED - NEW CODE VERSION 2025-11-02-21:28');
   await warmLoadWebhookDedupCache();
 
@@ -3291,7 +3306,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `subscription status: ${subscriptionState.status}`
           );
 
-          // Check if this user was referred by an agent and update consecutive months
+           // Agent cash affiliate payouts are permanently disabled.  Keep the
+           // historical referral data intact, but do not accrue months,
+           // create payout rows, issue transfers, or advance payout status.
+           // (The homeowner/contractor referral-credit path below remains active.)
+           /*
           try {
             const affiliateReferral = await storage.getAffiliateReferralByUserId(user.id);
             if (affiliateReferral && affiliateReferral.status !== 'paid' && affiliateReferral.status !== 'voided') {
@@ -3450,9 +3469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.error('[AFFILIATE] Error processing affiliate referral:', affiliateError.message);
             // Don't fail the webhook for affiliate errors
           }
+           */
 
-          // Handle user-to-user referral credits — homeowners and contractors only
-          // Real estate agents use the separate cash-payout affiliate model (handled above)
+          // Handle user-to-user referral credits — homeowners and contractors only.
+          // Real-estate-agent cash payouts are retired.
           try {
             if (user.referredBy && user.role !== 'agent') {
               const referrer = await storage.getUserByReferralCode(user.referredBy);

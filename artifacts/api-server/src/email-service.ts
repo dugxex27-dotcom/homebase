@@ -165,64 +165,6 @@ export async function sendEmail(data: EmailData): Promise<boolean> {
   return delivered;
 }
 
-export interface AffiliatePayoutProcessedEmailData {
-  agentId: string;
-  referredUserId: string;
-  referredUserRole: string;
-  amount: string;
-  transferId: string;
-}
-
-export interface AffiliatePayoutEscalationEmailData {
-  payoutId: string;
-  agentId: string;
-  amount: string;
-  failedAt: Date;
-  errorMessage?: string | null;
-}
-
-export async function sendAffiliatePayoutFailureAdminAlert(
-  data: AffiliatePayoutEscalationEmailData,
-): Promise<boolean> {
-  const ageHours = Math.max(48, Math.floor((Date.now() - data.failedAt.getTime()) / (60 * 60 * 1000)));
-  const amount = `$${Number(data.amount).toFixed(2)}`;
-  const failedAt = data.failedAt.toLocaleString('en-US', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-    timeZone: 'UTC',
-  }) + ' UTC';
-  const errorDetail = data.errorMessage
-    ? `<p style="margin: 0;"><strong>Last error:</strong> ${escapeHtml(data.errorMessage)}</p>`
-    : '';
-
-  const html = wrapEmailContent(
-    getEmailHeader('Affiliate payout still failed'),
-    `
-      <p>An affiliate payout has remained in failed status for more than 48 hours and needs admin attention.</p>
-      <div style="background: white; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
-        <p style="margin: 0 0 8px;"><strong>Payout ID:</strong> ${escapeHtml(data.payoutId)}</p>
-        <p style="margin: 0 0 8px;"><strong>Agent ID:</strong> ${escapeHtml(data.agentId)}</p>
-        <p style="margin: 0 0 8px;"><strong>Amount:</strong> ${escapeHtml(amount)}</p>
-        <p style="margin: 0 0 8px;"><strong>Failed since:</strong> ${escapeHtml(failedAt)} (${ageHours}+ hours)</p>
-        ${errorDetail}
-      </div>
-      <p>Please review and retry or resolve this payout in the admin dashboard.</p>
-    `,
-  );
-
-  const text = `Affiliate payout ${data.payoutId} for agent ${data.agentId} (${amount}) has remained failed for ${ageHours}+ hours since ${failedAt}. Last error: ${data.errorMessage || 'Not recorded'}. Please review it in the admin dashboard.`;
-
-  return sendEmail({
-    to: defaultAlertEmail,
-    subject: `Escalation: affiliate payout ${data.payoutId} has been failed for 48+ hours`,
-    text,
-    html,
-    deduplication: {
-      key: `affiliate-payout-failure-escalation:${data.payoutId}`,
-      windowMs: 7 * 24 * 60 * 60 * 1000,
-    },
-  });
-}
 export interface TeamMemberAccountChange {
   field: 'Name' | 'Role';
   oldValue: string;
@@ -507,7 +449,7 @@ export async function sendAgentSignupNotification(
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://gotohomebase.com/admin" style="background: #6B46C1; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Admin Dashboard</a>
       </div>
-      <p style="color: #666; font-size: 14px;">Please verify this agent before they can earn affiliate commissions.</p>
+      <p style="color: #666; font-size: 14px;">Please verify this agent before their professional profile is published.</p>
     `
   );
 
@@ -2023,46 +1965,6 @@ export async function sendCheckoutFailureEmail(
   });
 }
 
-export async function sendAgentPayoutPaidEmail(
-  agentId: string,
-  amount: string,
-  referredUserName: string,
-): Promise<boolean> {
-  const agent = await storage.getUser(agentId);
-  if (!agent?.email) return false;
-
-  const agentName = agent.firstName || 'there';
-  const safeAgentName = escapeHtml(agentName);
-  const safeAmount = escapeHtml(amount);
-  const safeReferredUserName = escapeHtml(referredUserName);
-  const dashboardUrl = 'https://gotohomebase.com/agent-dashboard';
-
-  const html = wrapEmailContent(
-    getEmailHeader('Your referral payout was deposited'),
-    `
-      <p>Hi ${safeAgentName},</p>
-      <p>Your <strong>$${safeAmount}</strong> referral payout for <strong>${safeReferredUserName}</strong> has been deposited.</p>
-      <div style="text-align: center; margin: 30px 0;">
-        <a href="${dashboardUrl}" style="background: #09694A; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">View your agent dashboard</a>
-      </div>
-      <p>- The HomeBase Team</p>
-    `,
-  );
-
-  const text = `Hi ${agentName}, your $${amount} referral payout for ${referredUserName} has been deposited. View your agent dashboard: ${dashboardUrl}`;
-
-  return sendEmail({
-    to: agent.email,
-    subject: `Your $${amount} HomeBase referral payout was deposited`,
-    text,
-    html,
-    deduplication: {
-      key: `agent-payout:${agentId}:${amount}:${referredUserName}`,
-      windowMs: 24 * 60 * 60 * 1000,
-    },
-  });
-}
-
 export const emailService = {
   sendEmail,
   sendWelcomeEmail,
@@ -2083,73 +1985,11 @@ export const emailService = {
   sendNewLinkedInvoiceEmail,
   sendInvoiceUpdatedEmail,
   sendInvoicePaymentConfirmationEmail,
-  sendAffiliatePayoutProcessedEmail,
-  sendAffiliatePayoutFailureAdminAlert,
   sendTechInviteEmail,
   sendDemoSeedingFailureAlert,
-  sendAgentPayoutPaidEmail,
   getEmailHeader,
   wrapEmailContent,
 };
-
-export async function sendAffiliatePayoutProcessedEmail(
-  data: AffiliatePayoutProcessedEmailData,
-): Promise<boolean> {
-  const preferences = await db.select()
-    .from(notificationPreferences)
-    .where(and(
-      eq(notificationPreferences.userId, data.agentId),
-      eq(notificationPreferences.notificationType, 'affiliate_payout'),
-    ))
-    .limit(1);
-
-  const preference = preferences[0];
-  if (!preference?.isEnabled || !preference.channels.includes('email')) {
-    return false;
-  }
-
-  const [agent, referredUser] = await Promise.all([
-    storage.getUser(data.agentId),
-    storage.getUser(data.referredUserId),
-  ]);
-  if (!agent?.email) return false;
-
-  const agentName = escapeHtml(agent.firstName || 'there');
-  const referralName = referredUser
-    ? escapeHtml(`${referredUser.firstName || ''} ${referredUser.lastName || ''}`.trim() || 'Your referral')
-    : 'Your referral';
-  const referralRole = data.referredUserRole === 'contractor' ? 'Contractor' : 'Homeowner';
-  const amount = `$${Number(data.amount).toFixed(2)}`;
-
-  const html = wrapEmailContent(
-    getEmailHeader('Your referral payout was processed'),
-    `
-      <p>Hi ${agentName},</p>
-      <p>Your referral payout has been processed and transferred to your connected payout account.</p>
-      <div style="background: white; border: 1px solid #d1fae5; border-radius: 8px; padding: 20px; margin: 20px 0;">
-        <p style="margin: 0 0 12px;"><strong>Amount:</strong> <span style="color: #047857; font-size: 20px; font-weight: bold;">${amount}</span></p>
-        <p style="margin: 0 0 8px;"><strong>Referral:</strong> ${referralName}</p>
-        <p style="margin: 0 0 8px;"><strong>Referral type:</strong> ${referralRole}</p>
-        <p style="margin: 0;"><strong>Transfer confirmation:</strong> ${escapeHtml(data.transferId)}</p>
-      </div>
-      <p>No action is needed. You can view this payout in your agent dashboard.</p>
-      <p style="font-size: 12px; color: #666;">You can turn payout emails on or off in your agent account settings.</p>
-    `,
-  );
-
-  const text = `Hi ${agent.firstName || 'there'}, your ${amount} referral payout for ${referredUser ? `${referredUser.firstName || ''} ${referredUser.lastName || ''}`.trim() || 'your referral' : 'your referral'} (${referralRole}) was processed and transferred. Transfer confirmation: ${data.transferId}.`;
-
-  return sendEmail({
-    to: agent.email,
-    subject: `Your ${amount} referral payout was processed`,
-    text,
-    html,
-    deduplication: {
-      key: `affiliate-payout:${data.transferId}`,
-      windowMs: 24 * 60 * 60 * 1000,
-    },
-  });
-}
 
 const configuredAlertEmail = process.env.ALERT_EMAIL?.trim();
 

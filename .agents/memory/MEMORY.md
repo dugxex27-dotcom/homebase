@@ -53,4 +53,4 @@
 - [Team-seat lifecycle status rules](team-seat-lifecycle-status.md) — billing, capacity, and removal eligibility differ; sync seats on both suspension and reactivation
 - [Team role continuity policy](team-role-continuity-policy.md) — require an admin/owner, but manager and dispatcher are optional roles with no minimum count
 - [Partial-index time cutoffs](partial-index-time-cutoffs.md) — match cutoff literal type to the timestamp column; timestamptz coercion is not immutable
-- [Payout email outbox migration](payout-email-outbox-migration.md) — default old payouts to not-applicable; only a new paid transition may enqueue confirmation delivery
+- [Agent cash payouts retired](agent-cash-payouts-retired.md) — never create, transfer, message, or expose real-estate-agent referral cash payouts; retain historical ledger data only

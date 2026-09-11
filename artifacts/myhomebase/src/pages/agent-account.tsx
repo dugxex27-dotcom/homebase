@@ -12,7 +12,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, apiFileUpload, queryClient } from "@/lib/queryClient";
 import { CheckCircle, Clock, XCircle, Upload, AlertCircle, FileCheck, User, Camera, Mail } from "lucide-react";
@@ -76,9 +75,6 @@ export default function AgentAccount() {
     queryKey: ["/api/agent/profile"],
   });
 
-  const { data: notificationPreferences } = useQuery<{ payoutEmail: boolean }>({
-    queryKey: ["/api/agent/notifications/preferences"],
-  });
 
   const form = useForm<VerificationFormData>({
     resolver: zodResolver(verificationFormSchema),
@@ -189,28 +185,6 @@ export default function AgentAccount() {
     },
   });
 
-  const updateNotificationPreferencesMutation = useMutation({
-    mutationFn: async (payoutEmail: boolean) => {
-      const response = await apiRequest("/api/agent/notifications/preferences", "PATCH", { payoutEmail });
-      return response.json() as Promise<{ payoutEmail: boolean }>;
-    },
-    onSuccess: (preferences) => {
-      queryClient.setQueryData(["/api/agent/notifications/preferences"], preferences);
-      toast({
-        title: "Notification preference updated",
-        description: preferences.payoutEmail
-          ? "We'll email you when a referral payout is processed."
-          : "Payout processing emails are turned off.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update failed",
-        description: error.message || "Failed to update notification preference.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -387,7 +361,7 @@ export default function AgentAccount() {
       <div className="dash-header" style={{ background: '#09694A' }}>
         <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Account Settings</div>
-        <div className="dash-subtitle">Verify your license to start earning referral commissions</div>
+        <div className="dash-subtitle">Keep your professional profile ready for every client relationship</div>
       </div>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
@@ -546,32 +520,6 @@ export default function AgentAccount() {
           </CardContent>
         </Card>
 
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-gray-900 dark:text-white">Email Notifications</CardTitle>
-            <CardDescription className="text-gray-600 dark:text-gray-400">
-              Choose which payout updates you receive by email
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">Referral payout processed</div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Get a confirmation with the amount and referral details when your transfer is processed.
-                </p>
-              </div>
-              <Switch
-                checked={notificationPreferences?.payoutEmail ?? false}
-                onCheckedChange={(checked) => updateNotificationPreferencesMutation.mutate(checked)}
-                disabled={updateNotificationPreferencesMutation.isPending}
-                aria-label="Email me when a referral payout is processed"
-                data-testid="switch-agent-payout-email"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Status Banner */}
         <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
           <CardHeader>
@@ -589,7 +537,7 @@ export default function AgentAccount() {
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 <AlertTitle className="text-green-800">Verified!</AlertTitle>
                 <AlertDescription className="text-green-700">
-                  Your real estate license has been verified. You can now earn referral commissions.
+                  Your real estate license has been verified. Your professional profile is ready to share with clients.
                 </AlertDescription>
               </Alert>
             )}
@@ -619,7 +567,7 @@ export default function AgentAccount() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Verification Required</AlertTitle>
                 <AlertDescription>
-                  You must verify your real estate license before you can earn referral commissions. Please fill out the form below.
+                  Verify your real estate license to unlock your professional agent profile. Please fill out the form below.
                 </AlertDescription>
               </Alert>
             )}
@@ -789,9 +737,8 @@ export default function AgentAccount() {
                   <DialogDescription>
                     This will permanently cancel your MyHomeBase™ agent account. You will lose access to:
                     <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>Your referral code and earnings</li>
+                      <li>Your referral code and client relationships</li>
                       <li>All referral tracking and statistics</li>
-                      <li>Pending commission payouts</li>
                       <li>Your verification status</li>
                     </ul>
                     <p className="mt-3 font-semibold text-red-600">

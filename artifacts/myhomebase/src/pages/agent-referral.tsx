@@ -31,9 +31,6 @@ export default function AgentReferral() {
   const referralLink = (referralData as any)?.referralLink || '';
   const referralCount = (referralData as any)?.referralCount || 0;
   
-  // Calculate potential earnings: $15 per referral after 4 months
-  const estimatedEarnings = referralCount * 15;
-  
   const shareMessage = `Join me on MyHomeBase™ — the must-have app for homeowners! Use my referral code ${referralCode} when you sign up. It's the best way to track home maintenance, documents, and more. Sign up here: ${referralLink}`;
 
   const copyToClipboard = (text: string) => {
@@ -124,7 +121,7 @@ export default function AgentReferral() {
       <div className="dash-header" style={{ background: '#09694A' }}>
         <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
         <div className="dash-title">Referral Program</div>
-        <div className="dash-subtitle">Share MyHomeBase™ and earn commissions</div>
+        <div className="dash-subtitle">Share a thoughtful closing gift and stay connected with clients</div>
       </div>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
@@ -138,7 +135,7 @@ export default function AgentReferral() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-gray-600">Share MyHomeBase™ with your clients and earn $15 commission per referral after 4 months of active subscription</div>
+              <div className="text-sm text-gray-600">Give clients a free forever home record for maintenance, listing prep, and every future move.</div>
               
               {/* Referral Stats */}
               <div className="grid grid-cols-2 gap-4">
@@ -147,12 +144,6 @@ export default function AgentReferral() {
                     {referralCount}
                   </div>
                   <div className="text-sm text-green-600 mt-1">Clients Referred</div>
-                </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-3xl font-bold text-green-700">
-                    ${estimatedEarnings}
-                  </div>
-                  <div className="text-sm text-green-600 mt-1">Potential Earnings</div>
                 </div>
               </div>
               
@@ -259,14 +250,14 @@ export default function AgentReferral() {
                   </Button>
                 </div>
                 <p className="text-sm text-gray-600 mt-1">
-                  Share with your clients. They get the full MyHomeBase™ experience while you earn commissions!
+                  Share with your clients. They get a free forever home record and you stay connected through every chapter.
                 </p>
               </div>
 
               {/* Info Text */}
               <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
                 <p className="text-sm text-green-800">
-                  <strong>💰 Commission Details:</strong> You'll earn a <strong>$15 commission</strong> for each referred client after they maintain an active subscription for 4 consecutive months. Track your referrals and earnings on your Agent Dashboard.
+                  <strong>Relationship value:</strong> Help clients prepare their home, share co-branded reports, and stay connected long after closing.
                 </p>
               </div>
             </CardContent>
@@ -355,7 +346,7 @@ export default function AgentReferral() {
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                 <p className="text-sm text-green-800">
-                  <strong>Tip:</strong> Share these graphics with your homeowner clients. When they sign up using your code, you'll earn $15 commission after 4 months!
+                  <strong>Tip:</strong> Share these graphics as a helpful closing gift for your homeowner clients.
                 </p>
               </div>
             </CardContent>
@@ -444,7 +435,7 @@ export default function AgentReferral() {
 
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mt-4">
                 <p className="text-sm text-green-800">
-                  <strong>Tip:</strong> Share these graphics with fellow real estate agents. When they sign up using your code, you'll earn $15 commission after 4 months!
+                  <strong>Tip:</strong> Share these graphics with fellow agents who want a better way to support clients before and after closing.
                 </p>
               </div>
             </CardContent>
