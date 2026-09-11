@@ -2934,6 +2934,79 @@ describe("DELETE /api/contractor/team/:userId — stale-session demotion guard (
   });
 });
 
+describe.each([
+  {
+    label: "POST /api/contractor/invite-tech",
+    method: "post" as const,
+    path: "/api/contractor/invite-tech",
+  },
+  {
+    label: "GET /api/contractor/team",
+    method: "get" as const,
+    path: "/api/contractor/team",
+  },
+  {
+    label: "GET /api/contractor/team/:userId/audit-log",
+    method: "get" as const,
+    path: "/api/contractor/team/target-001/audit-log",
+  },
+])("$label — stale-session demotion guard (integration)", ({ method, path }) => {
+  const REQUESTOR_ID = "req-001";
+  const COMPANY_ID = "company-001";
+
+  function buildApp(dbActor: { companyId: string; role: string } | null) {
+    const app = express();
+    app.use(express.json());
+    app.use((req: any, _res: any, next: any) => {
+      req.session = {
+        isAuthenticated: true,
+        user: {
+          id: REQUESTOR_ID,
+          companyId: COMPANY_ID,
+          companyRole: "admin",
+          status: "active",
+        },
+      };
+      next();
+    });
+
+    const handler = async (req: any, res: any) => {
+      const requestor = req.session.user;
+      const demotionError = await verifyRequestorRoleFromDb(
+        requestor.id,
+        requestor.companyId,
+        async (_requestorId, companyId) =>
+          dbActor?.companyId === companyId ? dbActor.role : null,
+      );
+      if (demotionError) {
+        return res.status(demotionError.status).json({ message: demotionError.message });
+      }
+      res.status(200).json({ allowed: true });
+    };
+
+    app[method](path.replace("target-001", ":userId"), handler);
+    return app;
+  }
+
+  it("returns 403 when session claims admin but DB shows the requestor is now tech", async () => {
+    const response = await supertest(buildApp({ companyId: COMPANY_ID, role: "tech" }))[method](path).expect(403);
+    expect(response.body.message).toMatch(/role has been updated/i);
+  });
+
+  it("returns 403 when the requestor is no longer in the company", async () => {
+    await supertest(buildApp(null))[method](path).expect(403);
+  });
+
+  it("returns 403 when the requestor is now an admin in a different company", async () => {
+    await supertest(buildApp({ companyId: "company-002", role: "admin" }))[method](path).expect(403);
+  });
+
+  it.each(["admin", "owner"])("proceeds when DB confirms the requestor is %s", async (dbRole) => {
+    const response = await supertest(buildApp({ companyId: COMPANY_ID, role: dbRole }))[method](path).expect(200);
+    expect(response.body.allowed).toBe(true);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // PATCH /api/contractor/team/:userId/suspend — stale-session demotion guard
 //   (integration-level: actual HTTP request via supertest)

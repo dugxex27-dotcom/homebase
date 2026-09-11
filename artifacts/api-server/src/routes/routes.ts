@@ -25012,6 +25012,12 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         return res.status(freshActorResult.error.status).json({ message: freshActorResult.error.message });
       }
       const { companyId, companyRole: requesterRole } = freshActorResult.actor;
+      const demotionErrorInvite = await verifyRequestorRoleFromDb(
+        adminUser.id,
+        companyId,
+        async () => requesterRole,
+      );
+      if (demotionErrorInvite) return res.status(demotionErrorInvite.status).json({ message: demotionErrorInvite.message });
 
       const bodySchema = z.object({
         email: z.string().email("Valid email is required"),
@@ -25287,9 +25293,23 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       const adminUser = req.session.user;
 
       // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusTeam] = await db.select({ status: users.status }).from(users).where(eq(users.id, adminUser.id)).limit(1);
+      const [actorStatusTeam] = await db.select({
+        status: users.status,
+      }).from(users).where(eq(users.id, adminUser.id)).limit(1);
       const actorGuardErrTeam = checkActorActiveGuard(actorStatusTeam?.status);
       if (actorGuardErrTeam) return res.status(actorGuardErrTeam.status).json({ message: actorGuardErrTeam.message });
+      const demotionErrorTeam = await verifyRequestorRoleFromDb(
+        adminUser.id,
+        adminUser.companyId,
+        async (requestorId, companyId) => {
+          const [actor] = await db.select({ companyRole: users.companyRole })
+            .from(users)
+            .where(and(eq(users.id, requestorId), eq(users.companyId, companyId)))
+            .limit(1);
+          return actor?.companyRole ?? null;
+        },
+      );
+      if (demotionErrorTeam) return res.status(demotionErrorTeam.status).json({ message: demotionErrorTeam.message });
 
       if (!adminUser.companyId) {
         return res.status(400).json({ message: "You must belong to a company" });
@@ -26066,9 +26086,23 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       ].filter((condition): condition is NonNullable<typeof condition> => condition !== undefined);
 
       // Fresh DB actor-status check — prevents stale-session bypass
-      const [actorStatusMemberAudit] = await db.select({ status: users.status }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
+      const [actorStatusMemberAudit] = await db.select({
+        status: users.status,
+      }).from(users).where(eq(users.id, sessionUser.id)).limit(1);
       const actorGuardErrMemberAudit = checkActorActiveGuard(actorStatusMemberAudit?.status);
       if (actorGuardErrMemberAudit) return res.status(actorGuardErrMemberAudit.status).json({ message: actorGuardErrMemberAudit.message });
+      const demotionErrorMemberAudit = await verifyRequestorRoleFromDb(
+        sessionUser.id,
+        sessionUser.companyId,
+        async (requestorId, companyId) => {
+          const [actor] = await db.select({ companyRole: users.companyRole })
+            .from(users)
+            .where(and(eq(users.id, requestorId), eq(users.companyId, companyId)))
+            .limit(1);
+          return actor?.companyRole ?? null;
+        },
+      );
+      if (demotionErrorMemberAudit) return res.status(demotionErrorMemberAudit.status).json({ message: demotionErrorMemberAudit.message });
 
       if (!sessionUser.companyId) return res.status(400).json({ message: "You must belong to a company" });
 
