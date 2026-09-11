@@ -66,6 +66,22 @@ let capturedFocusField: string | null = null;
 let capturedOnFieldChange: ((v: Record<string, unknown>) => void) | null = null;
 let capturedOnOpenChange: ((open: boolean) => void) | null = null;
 let capturedCurrentProfile: Record<string, unknown> | undefined;
+const setQueryDataMock = vi.fn();
+const saveProfileMock = vi.fn().mockResolvedValue({});
+
+function installQueryCacheUpdater() {
+  setQueryDataMock.mockImplementation((
+    _queryKey: readonly unknown[],
+    updater: (houses: typeof MOCK_HOUSES | undefined) => typeof MOCK_HOUSES | undefined,
+  ) => {
+    const updatedHouses = updater(MOCK_HOUSES);
+    if (updatedHouses) {
+      MOCK_HOUSES.splice(0, MOCK_HOUSES.length, ...updatedHouses);
+    }
+  });
+}
+
+installQueryCacheUpdater();
 
 function resetCaptures() {
   capturedOpen = false;
@@ -73,6 +89,11 @@ function resetCaptures() {
   capturedOnFieldChange = null;
   capturedOnOpenChange = null;
   capturedCurrentProfile = undefined;
+  setQueryDataMock.mockReset();
+  installQueryCacheUpdater();
+  saveProfileMock.mockClear();
+  MOCK_HOUSE.squareFootage = null;
+  MOCK_HOUSES.splice(0, MOCK_HOUSES.length, MOCK_HOUSE);
 }
 
 // ---------------------------------------------------------------------------
@@ -98,7 +119,28 @@ vi.mock("@/components/household-profile-editor", () => ({
     capturedOnFieldChange = props.onFieldChange ?? null;
     capturedCurrentProfile = props.currentProfile;
     if (!props.open) return null;
-    return <div data-testid="mock-editor" />;
+    return (
+      <div data-testid="mock-editor">
+        <button
+          data-testid="mock-save-profile"
+          onClick={async () => {
+            const updatedValues = { squareFootage: 2400 };
+            await saveProfileMock(updatedValues);
+            setQueryDataMock(
+              ["/api/houses"],
+              (cachedHouses: typeof MOCK_HOUSES | undefined) => cachedHouses?.map(
+                (cachedHouse) => cachedHouse.id === "house-abc"
+                  ? { ...cachedHouse, ...updatedValues }
+                  : cachedHouse,
+              ),
+            );
+            props.onOpenChange(false);
+          }}
+        >
+          Save profile
+        </button>
+      </div>
+    );
   },
 }));
 
@@ -126,7 +168,7 @@ vi.mock("@tanstack/react-query", () => ({
   })),
   useQueryClient: vi.fn(() => ({
     invalidateQueries: vi.fn(),
-    setQueryData: vi.fn(),
+    setQueryData: setQueryDataMock,
     getQueryData: vi.fn(),
   })),
 }));
@@ -259,21 +301,21 @@ describe("Profile editor — immediate reopen after saving", () => {
     MOCK_HOUSE.homeSystems.length = 0;
   });
 
-  it("passes the latest draft values back to the editor before the houses query refetches", () => {
+  it("passes a successfully saved value back to the editor before the houses query refetches", async () => {
     renderPage();
 
     fireEvent.click(screen.getByTestId("button-edit-profile"));
     expect(capturedCurrentProfile?.squareFootage).toBeNull();
 
-    act(() => {
-      capturedOnFieldChange?.({ squareFootage: 2400 });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("mock-save-profile"));
     });
-
-    expect(capturedCurrentProfile?.squareFootage).toBe(2400);
-
-    act(() => {
-      capturedOnOpenChange?.(false);
-    });
+    expect(saveProfileMock).toHaveBeenCalledWith({ squareFootage: 2400 });
+    expect(setQueryDataMock).toHaveBeenCalledWith(
+      ["/api/houses"],
+      expect.any(Function),
+    );
+    expect(MOCK_HOUSES[0].squareFootage).toBe(2400);
     expect(capturedOpen).toBe(false);
 
     fireEvent.click(screen.getByTestId("button-edit-profile"));
