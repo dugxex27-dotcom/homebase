@@ -26,6 +26,7 @@ interface AdminStats {
   agentCount: number;
   topSearches: Array<{ searchTerm: string; count: number }>;
   signupsByZip: Array<{ zipCode: string; count: number }>;
+  staleStripePendingEvents: Array<{ eventId: string; processedAt: string }>;
 }
 
 interface SearchAnalytic {
@@ -260,6 +261,31 @@ The MyHomeBase™ Team`);
     },
   });
 
+  const clearStripeEventMutation = useMutation({
+    mutationFn: async (event: { eventId: string; processedAt: string }) => {
+      const response = await apiRequest(
+        `/api/admin/stripe-webhook-events/${encodeURIComponent(event.eventId)}/pending`,
+        "DELETE",
+        { processedAt: event.processedAt },
+      );
+      return response.json();
+    },
+    onSuccess: (_result, event) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({
+        title: "Webhook event cleared",
+        description: `${event.eventId} can now be reprocessed when Stripe retries it.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Could not clear webhook event",
+        description: error.message.replace(/^\d+:\s*/, "") || "Please refresh and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const retryPayoutMutation = useMutation({
     mutationFn: async (payoutId: string) => {
       const response = await apiRequest(`/api/admin/affiliate-payouts/${payoutId}/retry`, "POST", {});
@@ -480,6 +506,57 @@ The MyHomeBase™ Team`);
             </CardContent>
           </Card>
         </div>
+
+        <Card className="mb-8" data-testid="card-stripe-webhook-idempotency">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-orange-600" />
+              Stripe Webhook Idempotency
+            </CardTitle>
+            <CardDescription>
+              Stale pending events can be cleared so a later Stripe retry can process them again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {statsLoading ? (
+              <Skeleton className="h-16 w-full" />
+            ) : !stats?.staleStripePendingEvents?.length ? (
+              <p className="text-sm text-muted-foreground" data-testid="text-no-stale-stripe-events">
+                No stale pending Stripe webhook events.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {stats.staleStripePendingEvents.map((event) => (
+                  <div
+                    key={event.eventId}
+                    className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                    data-testid={`row-stale-stripe-event-${event.eventId}`}
+                  >
+                    <div className="min-w-0">
+                      <p className="break-all font-mono text-sm">{event.eventId}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Pending since {format(new Date(event.processedAt), "PPp")}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => clearStripeEventMutation.mutate(event)}
+                      disabled={clearStripeEventMutation.isPending}
+                      data-testid={`button-clear-stripe-event-${event.eventId}`}
+                    >
+                      {clearStripeEventMutation.isPending &&
+                      clearStripeEventMutation.variables?.eventId === event.eventId ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Clear pending event
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Bulk Email Section */}
         <Card className="mb-8" data-testid="card-bulk-email">

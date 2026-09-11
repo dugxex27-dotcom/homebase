@@ -7374,6 +7374,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/admin/stripe-webhook-events/:eventId/pending', requireAdmin, async (req: any, res: any) => {
+    const eventId = Array.isArray(req.params.eventId) ? req.params.eventId[0] : req.params.eventId;
+    if (typeof eventId !== 'string' || !eventId.trim()) {
+      res.status(400).json({ message: 'A Stripe event ID is required' });
+      return;
+    }
+    const body = z.object({ processedAt: z.coerce.date() }).safeParse(req.body);
+    if (!body.success) {
+      res.status(400).json({ message: 'The event claim timestamp is required' });
+      return;
+    }
+
+    try {
+      const staleCutoff = Date.now() - STRIPE_WEBHOOK_STALE_PENDING_OLDER_THAN_MINUTES * 60 * 1000;
+      if (body.data.processedAt.getTime() >= staleCutoff) {
+        res.status(409).json({ message: 'This event is no longer stale and was not cleared' });
+        return;
+      }
+
+      const deleted = await storage.deleteStripeEventPending(eventId, body.data.processedAt);
+      if (!deleted) {
+        res.status(409).json({ message: 'This event changed and was not cleared. Refresh to see its current status.' });
+        return;
+      }
+      await auditLogger.logAdminAction({
+        userId: req.session.user.id,
+        userEmail: req.session.user.email || '',
+        eventType: AuditEventTypes.ADMIN_SETTINGS_CHANGE,
+        action: 'Cleared stale Stripe webhook event',
+        details: { stripeEventId: eventId, processedAt: body.data.processedAt.toISOString() },
+        req,
+      });
+
+      res.json({ success: true, eventId });
+    } catch (error) {
+      req.log?.error({ err: error, stripeEventId: eventId }, 'Failed to clear stale Stripe webhook event');
+      res.status(500).json({ message: 'Failed to clear stale Stripe webhook event' });
+    }
+  });
+
   app.get('/api/admin/search-analytics', requireAdmin, async (req: any, res: any) => {
     try {
       const { zipCode, limit } = req.query;

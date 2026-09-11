@@ -672,6 +672,7 @@ export interface IStorage {
     agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
+    staleStripePendingEvents: Array<{ eventId: string; processedAt: Date }>;
   }>;
 
   getActiveUsersSeries(days: number): Promise<Array<{ date: string; count: number }>>;
@@ -1055,7 +1056,7 @@ export interface IStorage {
 
   markStripeEventCommitted(eventId: string, expectedProcessedAt?: Date): Promise<boolean>;
 
-  deleteStripeEventPending(eventId: string): Promise<void>;
+  deleteStripeEventPending(eventId: string, expectedProcessedAt?: Date): Promise<boolean>;
 
   getRecentStripeProcessedEventIds(): Promise<Map<string, number>>;
 
@@ -6172,6 +6173,7 @@ export class MemStorage implements IStorage {
     agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
+    staleStripePendingEvents: Array<{ eventId: string; processedAt: Date }>;
   }> {
     const allUsers = Array.from(this.users.values());
     
@@ -6212,6 +6214,7 @@ export class MemStorage implements IStorage {
       agentCount,
       topSearches,
       signupsByZip,
+      staleStripePendingEvents: [],
     };
   }
 
@@ -7678,7 +7681,7 @@ export class MemStorage implements IStorage {
 
   async markStripeEventCommitted(_eventId: string, _expectedProcessedAt?: Date): Promise<boolean> { return true; }
 
-  async deleteStripeEventPending(_eventId: string): Promise<void> {}
+  async deleteStripeEventPending(_eventId: string, _expectedProcessedAt?: Date): Promise<boolean> { return true; }
 
   async getRecentStripeProcessedEventIds(): Promise<Map<string, number>> { return new Map(); }
 
@@ -10883,6 +10886,7 @@ export class DbStorage implements IStorage {
     agentCount: number;
     topSearches: Array<{ searchTerm: string; count: number }>;
     signupsByZip: Array<{ zipCode: string; count: number }>;
+    staleStripePendingEvents: Array<{ eventId: string; processedAt: Date }>;
   }> {
     try {
       // Query actual database for user counts - include ALL users, not just non-cancelled
@@ -10935,6 +10939,8 @@ export class DbStorage implements IStorage {
         console.log("[getAdminStats] search_analytics table not available, continuing with empty searches");
       }
       
+      const staleStripePendingEvents = await this.getIncompleteStripeProcessedEvents(15);
+
       return {
         totalUsers,
         homeownerCount,
@@ -10942,6 +10948,7 @@ export class DbStorage implements IStorage {
         agentCount,
         topSearches,
         signupsByZip,
+        staleStripePendingEvents,
       };
     } catch (e) {
       console.error("[getAdminStats] Error fetching user stats:", e);
@@ -10953,6 +10960,7 @@ export class DbStorage implements IStorage {
         agentCount: 0,
         topSearches: [],
         signupsByZip: [],
+        staleStripePendingEvents: [],
       };
     }
   }
@@ -11177,12 +11185,18 @@ export class DbStorage implements IStorage {
     return committed.length > 0;
   }
 
-  async deleteStripeEventPending(eventId: string): Promise<void> {
-    await db.delete(stripeProcessedEvents)
-      .where(and(
-        eq(stripeProcessedEvents.stripeEventId, eventId),
-        eq(stripeProcessedEvents.status, 'pending')
-      ));
+  async deleteStripeEventPending(eventId: string, expectedProcessedAt?: Date): Promise<boolean> {
+    const conditions = [
+      eq(stripeProcessedEvents.stripeEventId, eventId),
+      eq(stripeProcessedEvents.status, 'pending'),
+    ];
+    if (expectedProcessedAt) {
+      conditions.push(eq(stripeProcessedEvents.processedAt, expectedProcessedAt));
+    }
+    const deleted = await db.delete(stripeProcessedEvents)
+      .where(and(...conditions))
+      .returning({ stripeEventId: stripeProcessedEvents.stripeEventId });
+    return deleted.length > 0;
   }
 
   async getRecentStripeProcessedEventIds(): Promise<Map<string, number>> {
