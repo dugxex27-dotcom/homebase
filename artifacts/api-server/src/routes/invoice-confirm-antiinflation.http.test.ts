@@ -681,7 +681,15 @@ describe("PATCH /api/invoice-analyses/:id/confirm — anti-inflation date enforc
     const res = await request(app)
       .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
       .set("x-test-user", "owner")
-      .send({});
+      .send({
+        serviceDescription: DIY_ANALYSIS_FIXTURE.serviceDescription,
+        serviceDate: DIY_ANALYSIS_FIXTURE.serviceDate,
+        totalAmount: 80,
+        contractorName: null,
+        contractorCompany: null,
+        homeArea: DIY_ANALYSIS_FIXTURE.homeArea,
+        serviceType: DIY_ANALYSIS_FIXTURE.serviceType,
+      });
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({
@@ -830,8 +838,30 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
     )).toHaveLength(taskCompletionInsertCountAfterFirstConfirm);
   });
 
-  it("ignores a body serviceDate on a DIY confirm request (same anti-inflation guarantee)", async () => {
-    const { mockInsertValues } = buildInsertMock();
+  it("rejects changing serviceDescription after DIY verification passes", async () => {
+    buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockDbSelect
+      .mockReturnValueOnce(selectResult([DIY_ANALYSIS_FIXTURE]))
+      .mockReturnValueOnce(selectResult([DIY_ANALYSIS_FIXTURE]));
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({ serviceDescription: "Replaced the entire plumbing system" });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({
+      code: "DIY_DETAILS_LOCKED",
+      fields: ["serviceDescription"],
+    });
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects changing serviceDate after DIY verification passes", async () => {
+    buildInsertMock();
 
     const app = await buildApp();
 
@@ -839,6 +869,40 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
     mockCheckAchievements.mockResolvedValue([]);
 
     queueInvoiceConfirmQueries(DIY_ANALYSIS_FIXTURE);
+
+    // Attacker tries to slip a recent serviceDate through the confirm body
+    const recentDate = new Date();
+    recentDate.setMonth(recentDate.getMonth() - 1);
+    const recentDateStr = recentDate.toISOString().split("T")[0];
+
+    const res = await request(app)
+      .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
+      .set("x-test-user", "owner")
+      .send({ serviceDate: recentDateStr });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({
+      code: "DIY_DETAILS_LOCKED",
+      fields: ["serviceDate"],
+    });
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+  });
+
+  it("allows receipt-free DIY records to fill details that verification did not capture", async () => {
+    const { mockInsertValues } = buildInsertMock();
+    const app = await buildApp();
+
+    mockGetUser.mockResolvedValue(USER_FIXTURE);
+    mockCheckAchievements.mockResolvedValue([]);
+    const receiptFreeAnalysis = {
+      ...DIY_ANALYSIS_FIXTURE,
+      serviceDescription: null,
+      serviceDate: null,
+      totalAmount: null,
+      homeArea: null,
+      serviceType: null,
+    };
+    queueInvoiceConfirmQueries(receiptFreeAnalysis);
 
     const mockUpdateSet = vi.fn()
       .mockReturnValueOnce({
@@ -851,26 +915,23 @@ describe("PATCH /api/invoice-analyses/:id/confirm — DIY completion path", () =
       });
     mockDbUpdate.mockReturnValue({ set: mockUpdateSet });
 
-    // Attacker tries to slip a recent serviceDate through the confirm body
-    const recentDate = new Date();
-    recentDate.setMonth(recentDate.getMonth() - 1);
-    const recentDateStr = recentDate.toISOString().split("T")[0];
-
     const res = await request(app)
       .patch(`/api/invoice-analyses/${ANALYSIS_ID}/confirm`)
       .set("x-test-user", "owner")
-      .send({ serviceDate: recentDateStr });
+      .send({
+        serviceDescription: "Replaced kitchen faucet myself",
+        serviceDate: "2020-06-20",
+        totalAmount: 80,
+        homeArea: "plumbing",
+        serviceType: "repair",
+      });
 
     expect(res.status).toBe(200);
-
-    const insertedValues = findTaskCompletionInsert(mockInsertValues);
-    expect(insertedValues).toBeDefined();
-
-    // Must still use analysis.serviceDate = 2020-06-20, ignoring the body date.
-    // Year 2020 is sufficient proof: the attack date is recent (2026), so if year
-    // is 2020 the server demonstrably used the stored analysis date, not req.body.
-    expect(insertedValues!.year).toBe(2020);
-    expect(insertedValues!.month).toBe(6);
+    expect(findTaskCompletionInsert(mockInsertValues)).toMatchObject({
+      completionMethod: "diy",
+      year: 2020,
+      month: 6,
+    });
   });
 
   it("rejects a DIY confirm when diyVerified is false", async () => {

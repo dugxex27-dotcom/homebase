@@ -496,6 +496,46 @@ function findClientSuppliedVerificationFields(body: unknown): string[] {
   );
 }
 
+const DIY_VERIFIED_LOCKED_FIELDS = [
+  "serviceDescription",
+  "serviceDate",
+  "totalAmount",
+  "contractorName",
+  "contractorCompany",
+  "homeArea",
+  "serviceType",
+] as const;
+
+function findChangedVerifiedDiyFields(
+  body: unknown,
+  analysis: Record<string, any>,
+): string[] {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return [];
+  const request = body as Record<string, unknown>;
+
+  return DIY_VERIFIED_LOCKED_FIELDS.filter((field) => {
+    if (!Object.prototype.hasOwnProperty.call(request, field)) return false;
+
+    const requested = request[field];
+    const stored = analysis[field];
+    // Receipt-free or partially extracted DIY analyses can have missing details.
+    // Verification locks facts that were present when it ran, but confirmation
+    // remains the one opportunity to fill a fact the analysis never captured.
+    if (stored === null || stored === undefined || stored === "") return false;
+
+    if (field === "totalAmount") {
+      if (requested === null || requested === "") return true;
+      const requestedNumber = Number(requested);
+      const storedNumber = Number(stored);
+      return !Number.isFinite(requestedNumber)
+        || !Number.isFinite(storedNumber)
+        || requestedNumber !== storedNumber;
+    }
+
+    return (requested ?? null) !== (stored ?? null);
+  });
+}
+
 function resolveInvoiceServiceType(requested: unknown, stored: unknown): string {
   const requestedValue = typeof requested === "string" ? requested.trim() : "";
   if (requestedValue) return requestedValue;
@@ -24691,13 +24731,19 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
         .from(invoiceAnalyses)
         .where(eq(invoiceAnalyses.id, id));
       if (!preliminaryAnalysis) return res.status(404).json({ message: "Analysis not found" });
+      const verifiedDiyWithStoredServiceType = preliminaryAnalysis.completionMethod === "diy"
+        && preliminaryAnalysis.diyVerified
+        && !!preliminaryAnalysis.serviceType;
+      const verifiedDiyWithStoredServiceDate = preliminaryAnalysis.completionMethod === "diy"
+        && preliminaryAnalysis.diyVerified
+        && !!preliminaryAnalysis.serviceDate;
       const preliminaryServiceType = resolveInvoiceServiceType(
-        req.body?.serviceType,
+        verifiedDiyWithStoredServiceType ? undefined : req.body?.serviceType,
         preliminaryAnalysis.serviceType,
       );
       const preliminaryScoringDate = resolveInvoiceScoringDate(
         preliminaryAnalysis.serviceDate,
-        req.body?.serviceDate,
+        verifiedDiyWithStoredServiceDate ? undefined : req.body?.serviceDate,
       );
       if (!preliminaryScoringDate) {
         return res.status(400).json({ message: "serviceDate must be a valid YYYY-MM-DD date" });
@@ -24741,6 +24787,15 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
           return res.status(400).json({
             message: "DIY work must be verified before confirming. Please upload before AND after photos in the verification step.",
             code: "DIY_VERIFICATION_REQUIRED",
+          });
+        }
+
+        const changedFields = findChangedVerifiedDiyFields(req.body, analysis);
+        if (changedFields.length > 0) {
+          return res.status(409).json({
+            message: "Verified DIY service details cannot be changed. Start a new verification to use different details.",
+            code: "DIY_DETAILS_LOCKED",
+            fields: changedFields,
           });
         }
       }

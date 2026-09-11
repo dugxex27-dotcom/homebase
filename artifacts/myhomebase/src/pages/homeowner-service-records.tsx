@@ -1487,6 +1487,14 @@ export default function HomeownerServiceRecords() {
 
             {aiStep === "review" && aiAnalysis && (
               <div className="space-y-4">
+                {aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && (
+                  <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                    <p className="text-xs text-green-800">
+                      Details captured during DIY verification are locked. You can still fill any details the receipt analysis left blank.
+                    </p>
+                  </div>
+                )}
                 {/* Confidence badge */}
                 <div className="flex items-center gap-2">
                   {aiAnalysis.aiConfidence === "high" ? (
@@ -1517,6 +1525,7 @@ export default function HomeownerServiceRecords() {
                     <Textarea
                       value={aiEditDescription}
                       onChange={(e) => setAiEditDescription(e.target.value)}
+                      disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceDescription}
                       placeholder="What was done?"
                       className="min-h-[60px]"
                       data-testid="input-ai-description"
@@ -1526,18 +1535,18 @@ export default function HomeownerServiceRecords() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium mb-1">Service Date</label>
-                      <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} data-testid="input-ai-date" />
+                      <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceDate} data-testid="input-ai-date" />
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Total Amount ($)</label>
-                      <Input type="number" step="0.01" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} data-testid="input-ai-amount" />
+                      <Input type="number" step="0.01" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.totalAmount} data-testid="input-ai-amount" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-sm font-medium mb-1">Service Type</label>
-                      <Select value={aiEditServiceType} onValueChange={setAiEditServiceType}>
+                      <Select value={aiEditServiceType} onValueChange={setAiEditServiceType} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceType}>
                         <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
                           <SelectValue />
                         </SelectTrigger>
@@ -1548,7 +1557,7 @@ export default function HomeownerServiceRecords() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Home Area</label>
-                      <Select value={aiEditHomeArea} onValueChange={setAiEditHomeArea}>
+                      <Select value={aiEditHomeArea} onValueChange={setAiEditHomeArea} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.homeArea}>
                         <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
                           <SelectValue />
                         </SelectTrigger>

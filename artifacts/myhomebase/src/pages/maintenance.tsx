@@ -5139,6 +5139,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
             {aiStep === "review" && aiAnalysis && (
               <div className="space-y-4">
+                {aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && (
+                  <div className="flex items-start gap-2 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-700" />
+                    <p className="text-xs text-green-800">
+                      Details captured during DIY verification are locked. You can still fill any details the receipt analysis left blank.
+                    </p>
+                  </div>
+                )}
                 <div className="p-3 rounded-lg border" style={{ backgroundColor: 'var(--purple-tint)', borderColor: 'var(--purple-light)' }}>
                   <div className="flex items-center gap-1 mb-1">
                     {aiAnalysis.aiConfidence === "high" ? (
@@ -5154,36 +5162,36 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 <div className="space-y-3">
                   <div>
                     <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Description</label>
-                    <Input value={aiEditDescription} onChange={(e) => setAiEditDescription(e.target.value)} />
+                    <Input value={aiEditDescription} onChange={(e) => setAiEditDescription(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceDescription} />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Date</label>
-                      <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} />
+                      <Input type="date" value={aiEditDate} onChange={(e) => setAiEditDate(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceDate} />
                     </div>
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Amount ($)</label>
-                      <Input type="number" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} />
+                      <Input type="number" placeholder="0.00" value={aiEditAmount} onChange={(e) => setAiEditAmount(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.totalAmount} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Contractor Name</label>
-                      <Input value={aiEditContractorName} onChange={(e) => setAiEditContractorName(e.target.value)} />
+                      <Input value={aiEditContractorName} onChange={(e) => setAiEditContractorName(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.contractorName} />
                     </div>
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Company</label>
-                      <Input value={aiEditContractorCompany} onChange={(e) => setAiEditContractorCompany(e.target.value)} />
+                      <Input value={aiEditContractorCompany} onChange={(e) => setAiEditContractorCompany(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.contractorCompany} />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Home Area</label>
-                      <Input value={aiEditHomeArea} onChange={(e) => setAiEditHomeArea(e.target.value)} />
+                      <Input value={aiEditHomeArea} onChange={(e) => setAiEditHomeArea(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.homeArea} />
                     </div>
                     <div>
                       <label className="text-xs font-medium" style={{ color: 'var(--purple-deep)' }}>Service Type</label>
-                      <Input value={aiEditServiceType} onChange={(e) => setAiEditServiceType(e.target.value)} />
+                      <Input value={aiEditServiceType} onChange={(e) => setAiEditServiceType(e.target.value)} disabled={aiAnalysis.completionMethod === "diy" && aiAnalysis.diyVerified && !!aiAnalysis.serviceType} />
                     </div>
                   </div>
                 </div>
