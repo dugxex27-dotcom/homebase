@@ -862,6 +862,16 @@ export default function HomeownerServiceRecords() {
                               {analysis.createdAt ? new Date(analysis.createdAt).toLocaleDateString() : 'Date unavailable'}
                               {analysis.totalAmount ? ` · $${Number(analysis.totalAmount).toFixed(2)}` : ''}
                             </div>
+                            {analysis.homeArea && (
+                              <div
+                                className="flex items-center gap-1 text-xs mt-1"
+                                style={{ color: '#3C258E' }}
+                                data-testid={`text-invoice-home-area-${analysis.id}`}
+                              >
+                                <MapPin size={12} />
+                                {getHomeAreaLabel(analysis.homeArea)}
+                              </div>
+                            )}
                           </div>
                           <Badge variant="outline" style={statusStyle} data-testid={`status-invoice-analysis-${analysis.id}`}>
                             {status[0].toUpperCase() + status.slice(1)}

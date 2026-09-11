@@ -263,6 +263,9 @@ describe("Service Records — invoice scan history", () => {
     expect(screen.getByTestId("status-invoice-analysis-analysis-confirmed").textContent).toBe("Confirmed");
     expect(screen.getByTestId("status-invoice-analysis-analysis-rejected").textContent).toBe("Rejected");
     expect(screen.getByTestId("img-invoice-thumbnail-analysis-pending").getAttribute("src")).toBe("/public/invoices/pending.jpg");
+    expect(screen.getByTestId("text-invoice-home-area-analysis-pending").textContent).toContain("HVAC System");
+    expect(screen.queryByTestId("text-invoice-home-area-analysis-confirmed")).toBeNull();
+    expect(screen.queryByTestId("text-invoice-home-area-analysis-rejected")).toBeNull();
     expect(screen.queryByTestId("button-rereview-invoice-analysis-confirmed")).toBeNull();
     expect(screen.queryByTestId("button-rereview-invoice-analysis-rejected")).toBeNull();
 
