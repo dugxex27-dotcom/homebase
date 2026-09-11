@@ -87,8 +87,6 @@ export default function Home() {
   const { isPaidSubscriber, subscriptionStatus, isLoading: subLoading } = useHomeownerSubscription();
   const queryClient = useQueryClient();
   const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(false);
-  const [profileNudgeDismissedThisSession, setProfileNudgeDismissedThisSession] = useState(false);
-  const [profileNudgeDismissedFromStorage, setProfileNudgeDismissedFromStorage] = useState(false);
 
   useEffect(() => {
     if (!typedUser?.id) return;
@@ -449,6 +447,8 @@ export default function Home() {
   const [hwsModalOpen, setHwsModalOpen] = useState(false);
   const [tasksModalOpen, setTasksModalOpen] = useState(false);
   const [systemsModalOpen, setSystemsModalOpen] = useState(false);
+  const [nudgeDismissedFromStorage, setNudgeDismissedFromStorage] = useState(false);
+  const [nudgeDismissedThisSession, setNudgeDismissedThisSession] = useState(false);
 
   // Lock body scroll when any stat chip modal is open
   useEffect(() => {
@@ -516,16 +516,15 @@ export default function Home() {
   const profileNudgeMissing = primaryHouse
     ? MECHANICAL_FEATURES.filter(f => !primaryHouse[f.key as keyof House])
     : [];
-  const profileNudgeDismissed = isLowScore
-    ? profileNudgeDismissedThisSession
-    : profileNudgeDismissedThisSession || profileNudgeDismissedFromStorage;
-  const showProfileNudge = profileNudgeMissing.length > 0 && !profileNudgeDismissed;
+  const nudgeDismissed = isLowScore
+    ? nudgeDismissedThisSession
+    : nudgeDismissedFromStorage || nudgeDismissedThisSession;
+  const showProfileNudge = profileNudgeMissing.length > 0 && !nudgeDismissed;
   const nudgeYearNum = parseInt(nudgeYear, 10);
   const nudgeYearValid = nudgeYear !== "" && !isNaN(nudgeYearNum) && nudgeYearNum >= 1900 && nudgeYearNum <= new Date().getFullYear();
 
   useEffect(() => {
-    setProfileNudgeDismissedThisSession(false);
-    setProfileNudgeDismissedFromStorage(
+    setNudgeDismissedFromStorage(
       primaryHouse
         ? localStorage.getItem(`profile-nudge-dismissed-${primaryHouse.id}`) === "1"
         : false,
@@ -533,13 +532,11 @@ export default function Home() {
   }, [primaryHouse?.id]);
 
   const handleDismissProfileNudge = () => {
-    if (primaryHouse) {
-      // Keep this acknowledgment while the score is low. It is deliberately ignored
-      // until the score recovers, then permanently hides the normal nudge.
+    if (primaryHouse && primaryHouseScore !== undefined && !isLowScore) {
       localStorage.setItem(`profile-nudge-dismissed-${primaryHouse.id}`, "1");
-      setProfileNudgeDismissedFromStorage(true);
+      setNudgeDismissedFromStorage(true);
     }
-    setProfileNudgeDismissedThisSession(true);
+    setNudgeDismissedThisSession(true);
   };
 
   const handleNudgeSave = (field: string) => {
@@ -935,35 +932,25 @@ export default function Home() {
 
             {/* Profile nudge card — inline install-year entry */}
             {showProfileNudge && (
-              <div
-                className={`dash-light-card${isLowScore ? " profile-nudge-card--low-score" : ""}`}
-                data-testid="profile-nudge-card"
-                style={{ marginBottom: 8 }}
-              >
+              <div className="dash-light-card" data-testid="profile-nudge-card" style={{ marginBottom: 8 }}>
                 <div className="dash-light-card-row">
                   <div className="dash-light-card-icon">
                     <Wrench size={18} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="dash-light-card-title">
-                      {isLowScore ? "Your score is critically low" : "Complete your home profile"}
-                    </div>
-                    <div className="dash-light-card-sub">
-                      {isLowScore
-                        ? `Score ${primaryHouseScore} · add install years to raise it`
-                        : "Add install years to raise your HWS™ score"}
-                    </div>
+                    <div className="dash-light-card-title">Complete your home profile</div>
+                    <div className="dash-light-card-sub">Add install years to raise your HWS™ score</div>
                   </div>
-                  {!isLowScore && (
-                    <button
-                      className="profile-nudge-dismiss"
-                      onClick={handleDismissProfileNudge}
-                      aria-label="Dismiss profile nudge"
-                      data-testid="button-dismiss-profile-nudge"
-                    >
-                      <XIcon size={14} />
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    aria-label={isLowScore ? "Hide for this visit" : "Dismiss profile nudge"}
+                    data-testid="button-dismiss-profile-nudge"
+                    onClick={handleDismissProfileNudge}
+                    title={isLowScore ? "This will reappear on your next visit until your score improves" : undefined}
+                    style={{ background: "none", border: 0, cursor: "pointer", padding: 4 }}
+                  >
+                    <XIcon size={16} />
+                  </button>
                 </div>
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {profileNudgeMissing.map(f => (
@@ -1035,15 +1022,6 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                {isLowScore && (
-                  <button
-                    className="profile-nudge-acknowledge"
-                    onClick={handleDismissProfileNudge}
-                    data-testid="button-dismiss-profile-nudge"
-                  >
-                    I understand — remind me when my score improves
-                  </button>
-                )}
               </div>
             )}
 

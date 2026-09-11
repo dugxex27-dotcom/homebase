@@ -43,7 +43,7 @@ const flags = vi.hoisted(() => ({
   // When true the house mock returns every profile field filled in, making
   // profileNudgeAllDone === true so the card should not render.
   allInstallYearsDone: false,
-  healthScore: 50,
+  healthScore: 55 as number | undefined,
   contractorProposals: undefined as Array<{ status: string }> | undefined,
   contractorRating: undefined as
     | { averageRating: number; totalReviews: number }
@@ -125,10 +125,6 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
 
         const key0 = queryKey[0];
 
-        if (key0 === "/api/houses" && queryKey[2] === "health-scores") {
-          return { data: { "house-1": { score: flags.healthScore } }, isLoading: false };
-        }
-
         if (key0 === "/api/houses" && queryKey.length === 1) {
           // When allInstallYearsDone is true every profileNudgeItem is "done"
           // so the card should not render. Otherwise the default house is missing
@@ -174,7 +170,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
         }
 
         if (queryKey.length === 3 && queryKey[2] === "health-scores") {
-          return { data: { "house-1": { score: 55 } }, isLoading: false };
+          return { data: { "house-1": { score: flags.healthScore } }, isLoading: false };
         }
 
         if (queryKey.length === 3 && queryKey[2] === "maintenance-tasks") {
@@ -305,7 +301,6 @@ function renderHome() {
 
 afterEach(() => {
   cleanup();
-  localStorage.clear();
   flags.role = "homeowner";
   flags.isPending = false;
   flags.isError = false;
@@ -315,7 +310,7 @@ afterEach(() => {
   flags.savedWaterHeaterYear = null;
   flags.patchOnSuccess = null;
   flags.allInstallYearsDone = false;
-  flags.healthScore = 50;
+  flags.healthScore = 55;
   flags.mutateSpy.mockClear();
   flags.resetSpy.mockClear();
   flags.setLocationSpy.mockClear();
@@ -326,6 +321,7 @@ afterEach(() => {
   flags.onboardingProgress = undefined;
   flags.unreadNotifications = [];
   sessionStorage.removeItem("mhb_onboarding_banner_dismissed:user-001");
+  localStorage.clear();
 });
 
 // ---------------------------------------------------------------------------
@@ -1120,23 +1116,59 @@ describe("Profile nudge card — visibility based on completion", () => {
     expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
   });
 
-  it("remembers a low-score acknowledgment and applies it after the score recovers", async () => {
-    flags.healthScore = 20;
+  it("does not persist a low-score dismissal and shows again on the next visit", async () => {
+    flags.healthScore = 29;
     const user = userEvent.setup();
-    const { unmount } = renderHome();
+    const firstVisit = renderHome();
 
     await user.click(screen.getByTestId("button-dismiss-profile-nudge"));
-    expect(localStorage.getItem("profile-nudge-dismissed-house-1")).toBe("1");
+
     expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
+    expect(localStorage.getItem("profile-nudge-dismissed-house-1")).toBeNull();
 
-    unmount();
-    flags.healthScore = 20;
+    firstVisit.unmount();
     renderHome();
+
     expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+  });
 
-    cleanup();
-    flags.healthScore = 50;
+  it("does not persist a dismissal while the score is unresolved and shows for a low score on return", async () => {
+    flags.healthScore = undefined;
+    const user = userEvent.setup();
+    const firstVisit = renderHome();
+
+    await user.click(screen.getByTestId("button-dismiss-profile-nudge"));
+
+    expect(localStorage.getItem("profile-nudge-dismissed-house-1")).toBeNull();
+
+    firstVisit.unmount();
+    flags.healthScore = 29;
     renderHome();
+
+    expect(screen.getByTestId("profile-nudge-card")).toBeDefined();
+  });
+
+  it("persists a normal-score dismissal across visits", async () => {
+    flags.healthScore = 30;
+    const user = userEvent.setup();
+    const firstVisit = renderHome();
+
+    await user.click(screen.getByTestId("button-dismiss-profile-nudge"));
+
+    expect(localStorage.getItem("profile-nudge-dismissed-house-1")).toBe("1");
+
+    firstVisit.unmount();
+    renderHome();
+
+    expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
+  });
+
+  it("stays hidden for an all-done profile even when the score is low", () => {
+    flags.healthScore = 29;
+    flags.allInstallYearsDone = true;
+
+    renderHome();
+
     expect(screen.queryByTestId("profile-nudge-card")).toBeNull();
   });
 });
