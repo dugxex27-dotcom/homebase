@@ -812,6 +812,27 @@ describe("isAuthenticated — blocks suspended OAuth users before token refresh"
     expect(next).not.toHaveBeenCalled();
   });
 
+  it("does not refresh a token when the DB shows the OAuth user was suspended on another process", async () => {
+    const userId = "oauth-suspended-on-another-process";
+    expect(suspendedUserIds.has(userId)).toBe(false);
+    mockDbSelectResult([{ status: "suspended" }]);
+
+    const req = makeExpiredOAuthReq(userId);
+    const res = makeRes();
+    const next = vi.fn();
+
+    await isAuthenticated(req, res, next);
+
+    expect(db.select).toHaveBeenCalledTimes(1);
+    expect(suspendedUserIds.has(userId)).toBe(true);
+    expect(client.refreshTokenGrant).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining("suspended") })
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it("still refreshes the token and calls next() for a non-suspended user with an expired token", async () => {
     const userId = "oauth-active-with-refresh-token";
     mockDbSelectResult([{ status: "active" }]);

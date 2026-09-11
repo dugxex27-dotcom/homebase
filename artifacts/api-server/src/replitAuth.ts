@@ -495,36 +495,11 @@ export async function seedSuspendedUserIds(
 /**
  * Check whether a user (identified by id, usually an OAuth sub claim) is
  * suspended or removed. Consults the in-memory blocklist first, then falls
- * back to a TTL-bound DB re-check via userStatusCache.
+ * back to the same TTL-bound DB re-check used by requireNotSuspended.
  */
 export async function isOAuthUserSuspended(userId: string): Promise<boolean> {
   if (suspendedUserIds.has(userId)) return true;
-
-  const now = Date.now();
-  const cached = userStatusCache.get(userId);
-  if (cached && cached.expiresAt > now && isBlockedAccessStatus(cached.status)) {
-    return true;
-  }
-
-  try {
-    const { db: dbInst } = await import('./db');
-    const { users: usersTable } = await import('@workspace/db');
-    const { eq: eqFn } = await import('drizzle-orm');
-    const rows = await dbInst
-      .select({ status: usersTable.status, accountStatus: usersTable.accountStatus })
-      .from(usersTable)
-      .where(eqFn(usersTable.id, userId))
-      .limit(1);
-    const status = resolveAccessStatus(rows[0]?.status, rows[0]?.accountStatus);
-    const isSuspended = isBlockedAccessStatus(status);
-    if (isSuspended) {
-      userStatusCache.set(userId, { status, expiresAt: now + SUSPENSION_RECHECK_TTL_MS });
-      suspendedUserIds.add(userId);
-    }
-    return isSuspended;
-  } catch {
-    return true;
-  }
+  return recheckSuspensionFromDb(userId);
 }
 
 async function getUserStatusCached(userId: string): Promise<string | null> {
