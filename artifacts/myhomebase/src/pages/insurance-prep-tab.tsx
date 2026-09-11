@@ -23,6 +23,10 @@ import {
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { House, InsuranceEmailLog } from "@shared/schema";
+import {
+  cacheGeneratedInsurancePackage,
+  insurancePackageQueryKey,
+} from "@/components/insurance-package-count";
 
 const CLAIM_AREAS = [
   { value: "Roof", label: "Roof / Roofing" },
@@ -173,7 +177,8 @@ export function InsurancePrepTab({ houses }: Props) {
       setMemoExpanded(true);
       setView("result");
       setViewingPastId(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/houses", selectedHouseId, "insurance-claim-packages"] });
+      cacheGeneratedInsurancePackage(queryClient, selectedHouseId, data);
+      queryClient.invalidateQueries({ queryKey: insurancePackageQueryKey(selectedHouseId) });
     },
   });
 
