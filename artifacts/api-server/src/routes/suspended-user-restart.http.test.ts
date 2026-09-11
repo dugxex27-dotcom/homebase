@@ -49,6 +49,14 @@ vi.mock("../replitAuth", async (importOriginal) => {
       });
       app.set("sessionParser", sess);
       app.use(sess);
+      app.use(async (req: any, _res: any, next: any) => {
+        const googleUserId = req.get("x-test-google-user-id");
+        if (googleUserId) {
+          const { storage } = await import("../storage");
+          req._testGoogleUser = await storage.getUser(googleUserId);
+        }
+        next();
+      });
     },
     getSession: () =>
       session({
@@ -63,6 +71,27 @@ vi.mock("../replitAuth", async (importOriginal) => {
 // Mocks for unrelated heavy/external dependencies
 // ---------------------------------------------------------------------------
 
+vi.mock("passport", () => ({
+  default: {
+    use: vi.fn(),
+    serializeUser: vi.fn(),
+    deserializeUser: vi.fn(),
+    authenticate: vi.fn(() => (req: any, res: any, next: any) => {
+      if (!req._testGoogleUser) {
+        return res.redirect("/signin");
+      }
+      req.user = req._testGoogleUser;
+      next();
+    }),
+  },
+}));
+
+vi.mock("passport-google-oauth20", () => ({
+  Strategy: class MockGoogleStrategy {
+    constructor(_options: any, _verify: any) {}
+  },
+}));
+
 vi.mock("stripe", () => {
   function MockStripe(this: any) {
     this.webhooks = { constructEvent: vi.fn() };
@@ -70,10 +99,6 @@ vi.mock("stripe", () => {
   }
   return { default: MockStripe };
 });
-
-vi.mock("../googleAuth", () => ({
-  setupGoogleAuth: vi.fn(),
-}));
 
 vi.mock("ws", async (importOriginal) => {
   const actual = await importOriginal<typeof import("ws")>();
@@ -145,7 +170,9 @@ import { storage } from "../storage";
 import { db } from "../db";
 import { users } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { evictStatusCache } from "../replitAuth";
+import {
+  evictStatusCache,
+} from "../replitAuth";
 
 let server: Server;
 let request: ReturnType<typeof supertest>;
@@ -215,6 +242,55 @@ describe("suspended user is locked out immediately after a simulated server rest
 
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/suspended/i);
+  });
+
+  afterAll(async () => {
+    if (userId) {
+      await db.delete(users).where(eq(users.id, userId));
+    }
+  });
+});
+
+describe("suspended Google user is locked out immediately after a simulated server restart", () => {
+  let userId: string;
+
+  it("rejects the Google-created session once the DB suspension is visible to a cold cache", async () => {
+    const user = await storage.createUserWithPassword({
+      email: `google-restart-gap-${randomUUID()}@example.test`,
+      passwordHash: await bcrypt.hash("unused-oauth-password", 10),
+      firstName: "Google",
+      lastName: "Restart",
+      role: "homeowner",
+      zipCode: "78701",
+    });
+    userId = user.id;
+
+    const googleAgent = supertest.agent(app);
+    const callbackRes = await googleAgent
+      .get("/auth/google/callback")
+      .set("x-test-google-user-id", userId);
+    expect(callbackRes.status).toBe(302);
+    expect(callbackRes.headers.location).toBe("/dashboard");
+
+    const activeRes = await googleAgent
+      .post("/api/objects/upload")
+      .send({ fileType: "proposal" })
+      .set("Content-Type", "application/json");
+    expect(activeRes.status).toBe(200);
+
+    await db.update(users).set({ status: "suspended" }).where(eq(users.id, userId));
+
+    // The Google callback stores the same session shape as email/password
+    // login. A restarted process has no general status-cache entry for it.
+    evictStatusCache(userId);
+
+    const suspendedRes = await googleAgent
+      .post("/api/objects/upload")
+      .send({ fileType: "proposal" })
+      .set("Content-Type", "application/json");
+
+    expect(suspendedRes.status).toBe(401);
+    expect(suspendedRes.body.message).toMatch(/suspended/i);
   });
 
   afterAll(async () => {
