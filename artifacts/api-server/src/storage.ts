@@ -943,6 +943,10 @@ export interface IStorage {
   getCrmInvoice(id: string): Promise<CrmInvoice | undefined>;
 
   createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice>;
+  createCrmInvoiceWithGeneratedNumber(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber'>,
+    year: number,
+  ): Promise<CrmInvoice>;
 
   updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined>;
 
@@ -7426,6 +7430,27 @@ export class MemStorage implements IStorage {
     return newInvoice;
   }
 
+  async createCrmInvoiceWithGeneratedNumber(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber'>,
+    year: number,
+  ): Promise<CrmInvoice> {
+    const prefix = `INV-${year}-`;
+    const companyInvoices = Array.from(this.crmInvoicesMap.values()).filter((existing) =>
+      invoice.companyId
+        ? existing.companyId === invoice.companyId || existing.contractorUserId === invoice.contractorUserId
+        : existing.contractorUserId === invoice.contractorUserId,
+    );
+    const highestSequence = companyInvoices.reduce((highest, existing) => {
+      if (!existing.invoiceNumber.startsWith(prefix)) return highest;
+      const sequence = Number(existing.invoiceNumber.slice(prefix.length));
+      return Number.isInteger(sequence) ? Math.max(highest, sequence) : highest;
+    }, 0);
+    return this.createCrmInvoice({
+      ...invoice,
+      invoiceNumber: `${prefix}${String(highestSequence + 1).padStart(4, '0')}`,
+    });
+  }
+
   async updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {
     const existing = this.crmInvoicesMap.get(id);
     if (!existing) return undefined;
@@ -11726,6 +11751,43 @@ export class DbStorage implements IStorage {
   async createCrmInvoice(invoice: InsertCrmInvoice): Promise<CrmInvoice> {
     const result = await db.insert(crmInvoices).values(invoice).returning();
     return result[0];
+  }
+
+  async createCrmInvoiceWithGeneratedNumber(
+    invoice: Omit<InsertCrmInvoice, 'invoiceNumber'>,
+    year: number,
+  ): Promise<CrmInvoice> {
+    return db.transaction(async (tx) => {
+      const scopeKey = invoice.companyId
+        ? `company:${invoice.companyId}`
+        : `contractor:${invoice.contractorUserId}`;
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtextextended(${`crm-invoice-number:${scopeKey}`}, 0))`,
+      );
+
+      const scopeCondition = invoice.companyId
+        ? or(
+            eq(crmInvoices.companyId, invoice.companyId),
+            eq(crmInvoices.contractorUserId, invoice.contractorUserId),
+          )
+        : eq(crmInvoices.contractorUserId, invoice.contractorUserId);
+      const existingNumbers = await tx
+        .select({ invoiceNumber: crmInvoices.invoiceNumber })
+        .from(crmInvoices)
+        .where(scopeCondition);
+      const prefix = `INV-${year}-`;
+      const highestSequence = existingNumbers.reduce((highest, existing) => {
+        if (!existing.invoiceNumber.startsWith(prefix)) return highest;
+        const sequence = Number(existing.invoiceNumber.slice(prefix.length));
+        return Number.isInteger(sequence) ? Math.max(highest, sequence) : highest;
+      }, 0);
+      const invoiceNumber = `${prefix}${String(highestSequence + 1).padStart(4, '0')}`;
+      const inserted = await tx
+        .insert(crmInvoices)
+        .values({ ...invoice, invoiceNumber })
+        .returning();
+      return inserted[0];
+    });
   }
 
   async updateCrmInvoice(id: string, invoice: Partial<InsertCrmInvoice>): Promise<CrmInvoice | undefined> {

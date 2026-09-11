@@ -10372,11 +10372,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Auto-generate invoice number
       const year = new Date().getFullYear();
-      const existingInvoices = await storage.getCrmInvoices(req.session.user.id, {});
-      const invoiceCount = existingInvoices.length + 1;
-      const invoiceNumber = `INV-${year}-${invoiceCount.toString().padStart(4, '0')}`;
 
       // Resolve homeowner linkage server-side via connection code.
       // Never trust homeownerId/houseId from client payload directly.
@@ -10403,11 +10399,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const validationResult = insertCrmInvoiceSchema.safeParse({
+      const validationResult = insertCrmInvoiceSchema.omit({ invoiceNumber: true }).safeParse({
         ...invoiceBody,
         contractorUserId: req.session.user.id,
         companyId: req.session.user.companyId || null,
-        invoiceNumber,
         homeownerId: resolvedHomeownerId,
         houseId: resolvedHouseId,
       });
@@ -10419,7 +10414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const invoice = await storage.createCrmInvoice(validationResult.data);
+      const invoice = await storage.createCrmInvoiceWithGeneratedNumber(validationResult.data, year);
 
       if (resolvedHomeownerId) {
           const contractorUser = req.session.user;
