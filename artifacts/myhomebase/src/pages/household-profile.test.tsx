@@ -235,3 +235,23 @@ describe("Profile editor — immediate reopen after saving", () => {
     expect(capturedCurrentProfile?.squareFootage).toBe(2400);
   });
 });
+
+describe("Property Details — Home Systems", () => {
+  it("shows Not specified when no home systems are selected", () => {
+    renderPage();
+
+    const label = screen.getByText("Home Systems");
+    expect(label.nextElementSibling).toHaveTextContent("Not specified");
+  });
+
+  it("lists every selected home system", () => {
+    MOCK_HOUSE.homeSystems.push("central_air", "sump_pump");
+
+    renderPage();
+
+    const label = screen.getByText("Home Systems");
+    expect(label.nextElementSibling).toHaveTextContent("Central Air, Sump Pump");
+
+    MOCK_HOUSE.homeSystems.length = 0;
+  });
+});

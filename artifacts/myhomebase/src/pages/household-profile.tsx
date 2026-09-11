@@ -215,6 +215,38 @@ export default function HouseholdProfilePage() {
           </CardContent>
         </Card>
 
+        {/* Current Profile Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Home className="h-5 w-5" />
+              Property Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <ProfileField label="Home Type" value={house.homeType} />
+              <ProfileField label="Square Footage" value={house.squareFootage} unit="sq ft" />
+              <ProfileField label="Year Built" value={house.yearBuilt} />
+              <ProfileField label="Number of Stories" value={house.numberOfStories} />
+              <ProfileField label="Foundation" value={house.foundationType} />
+              <ProfileField label="Garage" value={house.garageType} />
+              <ProfileField label="Roof Type" value={house.roofType} />
+              <ProfileField label="Roof Installed" value={house.roofInstalledYear} />
+              <ProfileField label="HVAC Type" value={house.hvacType} />
+              <ProfileField label="HVAC Installed" value={house.hvacInstalledYear} />
+              <ProfileField label="Heating Fuel" value={house.primaryHeatingFuel} />
+              <ProfileField label="Plumbing Type" value={house.plumbingType} />
+              <ProfileField label="Water Heater Type" value={house.waterHeaterType} />
+              <ProfileField label="Water Heater Installed" value={house.waterHeaterInstalledYear} />
+            </div>
+            <ProfileField
+              label="Home Systems"
+              value={Array.isArray(house.homeSystems) ? house.homeSystems : null}
+            />
+          </CardContent>
+        </Card>
+
         {/* Maintenance Schedule */}
         {hasCompleteProfile ? (
           <div>
@@ -264,6 +296,41 @@ export default function HouseholdProfilePage() {
           }}
         />
       </div>
+    </div>
+  );
+}
+
+interface ProfileFieldProps {
+  label: string;
+  value?: string | number | string[] | null;
+  unit?: string;
+}
+
+function ProfileField({ label, value, unit }: ProfileFieldProps) {
+  if (value == null || value === "" || (Array.isArray(value) && value.length === 0)) {
+    return (
+      <div>
+        <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+        <dd className="mt-1 text-sm text-muted-foreground italic">Not specified</dd>
+      </div>
+    );
+  }
+
+  const formatValue = (item: string | number) => (
+    typeof item === "string"
+      ? item.split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
+      : item
+  );
+  const displayValue = Array.isArray(value)
+    ? value.map(formatValue).join(", ")
+    : formatValue(value);
+
+  return (
+    <div>
+      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 text-sm font-semibold">
+        {displayValue}{unit ? ` ${unit}` : ""}
+      </dd>
     </div>
   );
 }
