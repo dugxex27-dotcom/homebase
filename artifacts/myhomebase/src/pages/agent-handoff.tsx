@@ -1,20 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Plus, FileUp, Send, ChevronLeft, Loader2, Home, CheckCircle,
-  FileText, Trash2, Edit2, Copy, ExternalLink, Package
+  FileText, Trash2, Edit2, Copy, ExternalLink, Package, ChevronRight
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import "./home.css";
 
 interface HandoffPackage {
   id: string;
@@ -52,23 +45,47 @@ interface PackageDetail extends HandoffPackage {
 
 function statusBadge(status: string) {
   switch (status) {
-    case "draft": return <Badge variant="secondary">Draft</Badge>;
-    case "sent": return <Badge className="bg-blue-100 text-blue-800 border-blue-200">Sent</Badge>;
-    case "claimed": return <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle className="w-3 h-3 mr-1 inline" />Claimed</Badge>;
-    default: return <Badge variant="outline">{status}</Badge>;
+    case "draft": return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">Draft</span>;
+    case "sent": return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">Sent</span>;
+    case "claimed": return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#F0FAF4] text-[#09694A] border border-[#D4EBDE]"><CheckCircle className="w-3 h-3 mr-1" />Claimed</span>;
+    default: return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800">{status}</span>;
   }
 }
 
 export default function AgentHandoff() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
-  const [view, setView] = useState<"list" | "create" | "detail">("list");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchParams = new URLSearchParams(window.location.search);
+  const initialView = searchParams.get("new") === "true" ? "create" : searchParams.get("id") ? "detail" : "list";
+  const initialId = searchParams.get("id");
+
+  const [view, setView] = useState<"list" | "create" | "detail">(initialView);
+  const [selectedId, setSelectedId] = useState<string | null>(initialId);
   const [form, setForm] = useState({ propertyAddress: "", buyerName: "", buyerEmail: "", notes: "" });
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [editingData, setEditingData] = useState<ExtractedData | null>(null);
   const [editMode, setEditMode] = useState(false);
+
+  // Sync state if URL changes (like browser back button)
+  useEffect(() => {
+    const handlePopState = () => {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get("new") === "true") {
+        setView("create");
+        setSelectedId(null);
+      } else if (sp.get("id")) {
+        setSelectedId(sp.get("id"));
+        setView("detail");
+      } else {
+        setView("list");
+        setSelectedId(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const { data: packages = [], isLoading } = useQuery<HandoffPackage[]>({
     queryKey: ["/api/agent/handoff-packages"],
@@ -94,6 +111,7 @@ export default function AgentHandoff() {
       queryClient.invalidateQueries({ queryKey: ["/api/agent/handoff-packages"] });
       setSelectedId(pkg.id);
       setView("detail");
+      window.history.pushState({}, '', `/agent-handoff?id=${pkg.id}`);
       toast({ title: "Package created", description: "Now upload closing documents to extract home data." });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
@@ -172,6 +190,7 @@ export default function AgentHandoff() {
     setEditMode(false);
     setEditingData(null);
     setView("detail");
+    window.history.pushState({}, '', `/agent-handoff?id=${id}`);
   }
 
   function startEdit() {
@@ -203,434 +222,518 @@ export default function AgentHandoff() {
     : null;
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#09694A' }}>
-        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
-        <div className="dash-title">Home Handoffs</div>
-        <div className="dash-subtitle">
-          {view === "list" ? "Create packages to hand off home data to new buyers" :
-           view === "create" ? "Create a new handoff package" :
-           "Package detail"}
-        </div>
-        {view !== "list" && (
-          <button
-            onClick={() => { setView("list"); setSelectedId(null); }}
-            style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 9, padding: '5px 10px', fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', marginTop: 8, alignSelf: 'flex-start' }}
-          >← Back</button>
-        )}
-      </div>
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4 sm:py-6 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                {view !== "list" && (
+                  <button
+                    onClick={() => { setView("list"); setSelectedId(null); window.history.pushState({}, '', '/agent-handoff'); }}
+                    className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:w-8 sm:h-8 sm:min-h-0 sm:min-w-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors mr-1 sm:mr-2"
+                  >
+                    <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
+                  </button>
+                )}
+                <span className="text-[10px] font-bold text-[#09694A] uppercase tracking-wider">Real Estate Agent</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                {view === "list" ? "Home Handoffs" : view === "create" ? "New Package" : detail?.propertyAddress || "Package Detail"}
+              </h1>
+            </div>
 
-        {/* Header */}
-        <div className="mb-6 flex items-center gap-4">
-          <div>
-            <p className="text-gray-500 mt-1">
-              {view === "list" ? "" :
-               view === "create" ? "Fill in the details below" :
-               "Package detail"}
-            </p>
+            {view === "list" && (
+              <button
+                className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm w-full sm:w-auto"
+                onClick={() => { setForm({ propertyAddress: "", buyerName: "", buyerEmail: "", notes: "" }); setView("create"); window.history.pushState({}, '', '/agent-handoff?new=true'); }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Handoff
+              </button>
+            )}
           </div>
-          {view === "list" && (
-            <Button className="ml-auto bg-white text-emerald-700 hover:bg-emerald-50" onClick={() => { setForm({ propertyAddress: "", buyerName: "", buyerEmail: "", notes: "" }); setView("create"); }}>
-              <Plus className="w-4 h-4 mr-2" /> New Handoff
-            </Button>
-          )}
         </div>
+      </div>
+
+      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
 
         {/* LIST VIEW */}
         {view === "list" && (
           <div className="space-y-4">
             {isLoading && (
-              <Card className="shadow rounded-2xl bg-white"><CardContent className="py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-emerald-600" /></CardContent></Card>
+              <div className="animate-pulse bg-white rounded-2xl border border-gray-200 h-32"></div>
             )}
             {!isLoading && packages.length === 0 && (
-              <Card className="bg-white shadow rounded-2xl">
-                <CardContent className="py-16 text-center">
-                  <Package className="w-12 h-12 mx-auto mb-4 text-emerald-300" />
-                  <p className="text-gray-500 font-medium mb-2">No handoff packages yet</p>
-                  <p className="text-gray-400 text-sm mb-6">Create a package to send pre-filled home data to a buyer</p>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setView("create")}>
-                    <Plus className="w-4 h-4 mr-2" /> Create First Package
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 sm:p-12 text-center shadow-sm">
+                  <Package className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-base font-semibold text-gray-900">No handoff packages yet</h3>
+                  <p className="text-sm text-gray-500 mt-1 mb-6 max-w-md mx-auto">Create a package to send pre-filled home data to a buyer.</p>
+                  <button
+                    className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm"
+                    onClick={() => { setView("create"); window.history.pushState({}, '', '/agent-handoff?new=true'); }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Package
+                  </button>
+              </div>
             )}
-            {packages.map(pkg => (
-              <Card key={pkg.id} className="bg-white shadow hover:shadow-md transition-shadow cursor-pointer rounded-2xl" onClick={() => openDetail(pkg.id)}>
-                <CardContent className="p-5 flex items-center justify-between gap-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <Home className="w-5 h-5 text-emerald-600" />
+            {!isLoading && packages.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+                {/* Desktop View */}
+                <div className="hidden sm:block">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50/50 border-b border-gray-100 text-[11px] uppercase tracking-wider text-gray-500 font-bold">
+                      <tr>
+                        <th className="px-6 py-4">Property</th>
+                        <th className="px-6 py-4">Client</th>
+                        <th className="px-6 py-4">Status</th>
+                        <th className="px-6 py-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {packages.map(pkg => (
+                        <tr key={pkg.id} className="hover:bg-gray-50/50 transition-colors group cursor-pointer" onClick={() => openDetail(pkg.id)}>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-[#F0FAF4] flex items-center justify-center flex-shrink-0">
+                                <Home className="w-4 h-4 text-[#09694A]" />
+                              </div>
+                              <div className="font-semibold text-gray-900">{pkg.propertyAddress}</div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="text-gray-900 font-medium">{pkg.buyerName}</div>
+                            <div className="text-gray-500 text-xs mt-0.5">{pkg.buyerEmail}</div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {statusBadge(pkg.status)}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-lg text-xs font-semibold text-[#09694A] bg-[#F0FAF4] group-hover:bg-[#D4EBDE] transition-colors">
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View */}
+                <div className="sm:hidden divide-y divide-gray-100">
+                  {packages.map(pkg => (
+                    <div key={pkg.id} className="p-4 flex items-center gap-4 hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer group" onClick={() => openDetail(pkg.id)}>
+                      <div className="w-12 h-12 rounded-xl bg-[#F0FAF4] flex items-center justify-center flex-shrink-0">
+                        <Home className="w-6 h-6 text-[#09694A]" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-gray-900 truncate">{pkg.propertyAddress}</h3>
+                        <p className="text-xs text-gray-500 truncate mt-0.5">{pkg.buyerName}</p>
+                        <div className="mt-2">{statusBadge(pkg.status)}</div>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-400 flex-shrink-0" />
                     </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{pkg.propertyAddress}</p>
-                      <p className="text-sm text-gray-600">{pkg.buyerName} · {pkg.buyerEmail}</p>
-                      <p className="text-xs text-gray-400 mt-1">{new Date(pkg.createdAt).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {statusBadge(pkg.status)}
-                    <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
         {/* CREATE VIEW */}
         {view === "create" && (
-          <Card className="bg-white shadow rounded-2xl">
-            <CardHeader>
-              <CardTitle>New Handoff Package</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-5 sm:p-8 max-w-2xl mx-auto sm:mx-0">
+            <h2 className="text-lg font-bold text-gray-900 mb-6 hidden sm:block">Create Handoff Package</h2>
+            <div className="space-y-5">
               <div>
-                <Label>Property Address</Label>
-                <Input placeholder="123 Main St, Springfield, IL 62701" value={form.propertyAddress} onChange={e => setForm(f => ({ ...f, propertyAddress: e.target.value }))} />
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Property Address</label>
+                <input
+                  type="text"
+                  className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all text-sm outline-none"
+                  placeholder="123 Main St, Springfield, IL"
+                  value={form.propertyAddress}
+                  onChange={e => setForm(f => ({ ...f, propertyAddress: e.target.value }))}
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <Label>Buyer Name</Label>
-                  <Input placeholder="Jane Smith" value={form.buyerName} onChange={e => setForm(f => ({ ...f, buyerName: e.target.value }))} />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Buyer Name</label>
+                  <input
+                    type="text"
+                    className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all text-sm outline-none"
+                    placeholder="Jane Smith"
+                    value={form.buyerName}
+                    onChange={e => setForm(f => ({ ...f, buyerName: e.target.value }))}
+                  />
                 </div>
                 <div>
-                  <Label>Buyer Email</Label>
-                  <Input type="email" placeholder="jane@example.com" value={form.buyerEmail} onChange={e => setForm(f => ({ ...f, buyerEmail: e.target.value }))} />
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Buyer Email</label>
+                  <input
+                    type="email"
+                    className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all text-sm outline-none"
+                    placeholder="jane@example.com"
+                    value={form.buyerEmail}
+                    onChange={e => setForm(f => ({ ...f, buyerEmail: e.target.value }))}
+                  />
                 </div>
               </div>
               <div>
-                <Label>Notes (optional)</Label>
-                <Textarea placeholder="Any notes for the buyer..." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3} />
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Notes (optional)</label>
+                <textarea
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all text-sm outline-none resize-none"
+                  placeholder="Any notes for the buyer..."
+                  value={form.notes}
+                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                  rows={3}
+                />
               </div>
-              <div className="flex gap-3 pt-2">
-                <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !form.propertyAddress || !form.buyerName || !form.buyerEmail}>
+              <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
+                <button
+                  className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+                  onClick={() => createMutation.mutate()}
+                  disabled={createMutation.isPending || !form.propertyAddress || !form.buyerName || !form.buyerEmail}
+                >
                   {createMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                   Create Package
-                </Button>
-                <Button variant="outline" onClick={() => setView("list")}>Cancel</Button>
+                </button>
+                <button
+                  className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors w-full sm:w-auto"
+                  onClick={() => { setView("list"); window.history.pushState({}, '', '/agent-handoff'); }}
+                >
+                  Cancel
+                </button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
 
         {/* DETAIL VIEW */}
         {view === "detail" && detail && (
-          <div className="space-y-6">
+          <div className="space-y-6 max-w-4xl">
             {/* Package header */}
-            <Card className="bg-white shadow rounded-2xl">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4 flex-wrap">
-                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                      <h2 className="text-xl font-bold text-gray-900">{detail.propertyAddress}</h2>
-                      {statusBadge(detail.status)}
-                    </div>
-                    <p className="text-gray-600">Buyer: <strong>{detail.buyerName}</strong> ({detail.buyerEmail})</p>
-                    {detail.notes && <p className="text-sm text-gray-500 mt-1">{detail.notes}</p>}
-                    {detail.sentAt && <p className="text-xs text-gray-400 mt-1">Sent {new Date(detail.sentAt).toLocaleDateString()}</p>}
-                    {detail.claimedAt && <p className="text-xs text-green-600 mt-1">Claimed {new Date(detail.claimedAt).toLocaleDateString()}</p>}
+            <div className="bg-white shadow-sm border border-gray-200 rounded-2xl p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-xl font-bold text-gray-900 tracking-tight">{detail.propertyAddress}</h2>
+                    {statusBadge(detail.status)}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {claimUrl && (
-                      <Button variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(claimUrl); toast({ title: "Copied", description: "Claim link copied to clipboard" }); }}>
-                        <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy Link
-                      </Button>
-                    )}
-                    {claimUrl && (
-                      <a href={claimUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="outline" size="sm"><ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Preview</Button>
-                      </a>
-                    )}
-                    {detail.status !== "claimed" && (
-                      <Button className="bg-emerald-600 hover:bg-emerald-700" size="sm" onClick={() => sendMutation.mutate(detail.id)} disabled={sendMutation.isPending}>
-                        {sendMutation.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
-                        {detail.status === "sent" ? "Resend to Buyer" : "Send to Buyer"}
-                      </Button>
-                    )}
+                  <p className="text-sm text-gray-600">Buyer: <span className="font-semibold text-gray-900">{detail.buyerName}</span> ({detail.buyerEmail})</p>
+                  {detail.notes && <p className="text-sm text-gray-500 mt-3 bg-gray-50 p-3 rounded-xl border border-gray-100">{detail.notes}</p>}
+                  <div className="flex flex-wrap items-center gap-4 mt-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                    {detail.sentAt && <span>Sent {new Date(detail.sentAt).toLocaleDateString()}</span>}
+                    {detail.claimedAt && <span className="text-[#09694A]">Claimed {new Date(detail.claimedAt).toLocaleDateString()}</span>}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                  {claimUrl && (
+                    <button
+                      className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors flex-1 sm:flex-none"
+                      onClick={() => { navigator.clipboard.writeText(claimUrl); toast({ title: "Copied", description: "Claim link copied to clipboard" }); }}
+                    >
+                      <Copy className="w-4 h-4 mr-2" /> Copy Link
+                    </button>
+                  )}
+                  {claimUrl && (
+                    <a href={claimUrl} target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none">
+                      <span className="w-full inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">
+                        <ExternalLink className="w-4 h-4 mr-2" /> Preview
+                      </span>
+                    </a>
+                  )}
+                  {detail.status !== "claimed" && (
+                    <button
+                      className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm w-full sm:w-auto"
+                      onClick={() => sendMutation.mutate(detail.id)}
+                      disabled={sendMutation.isPending}
+                    >
+                      {sendMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      {detail.status === "sent" ? "Resend to Buyer" : "Send to Buyer"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* Document Upload */}
             {detail.status !== "claimed" && (
-              <Card className="bg-white shadow rounded-2xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2"><FileText className="w-4 h-4 text-emerald-600" /> Upload Documents</CardTitle>
-                  <p className="text-sm text-gray-500">Upload closing documents, inspection reports, or disclosure forms. AI will automatically extract home system and appliance data.</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="border-2 border-dashed border-emerald-200 rounded-xl p-8 text-center bg-emerald-50/40">
+              <div className="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+                <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#09694A]" /> Upload Documents
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Upload closing documents, inspection reports, or disclosure forms. AI will automatically extract home system and appliance data.</p>
+                </div>
+                <div className="p-5 sm:p-6">
+                  <div className="border-2 border-dashed border-[#A7D7B8] rounded-2xl p-8 sm:p-10 text-center bg-[#F0FAF4]/40 hover:bg-[#F0FAF4] transition-colors relative group">
                     {uploadingDoc ? (
                       <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-                        <p className="text-emerald-700 font-medium">Processing document with AI...</p>
-                        <p className="text-sm text-gray-500">Extracting home systems and appliances</p>
+                        <Loader2 className="w-8 h-8 animate-spin text-[#09694A]" />
+                        <p className="text-[#09694A] font-semibold text-sm">Processing document with AI...</p>
+                        <p className="text-xs text-[#079669]">Extracting home systems and appliances</p>
                       </div>
                     ) : (
                       <>
-                        <FileUp className="w-10 h-10 mx-auto mb-3 text-emerald-400" />
-                        <p className="font-medium text-gray-700 mb-1">Drop a file or click to browse</p>
-                        <p className="text-sm text-gray-400 mb-4">PDF, JPG, PNG, WebP — up to 10MB</p>
-                        <label>
+                        <FileUp className="w-12 h-12 mx-auto mb-3 text-[#079669] group-hover:scale-110 transition-transform" />
+                        <p className="font-bold text-gray-900 mb-1">Drop a file or click to browse</p>
+                        <p className="text-xs font-medium text-gray-500 mb-6">PDF, JPG, PNG, WebP — up to 10MB</p>
+                        <label className="cursor-pointer">
                           <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.tiff" className="hidden" onChange={handleUpload} />
-                          <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
-                            <span><FileUp className="w-4 h-4 mr-2" /> Choose File</span>
-                          </Button>
+                          <span className="inline-flex items-center justify-center min-h-[44px] px-8 rounded-xl bg-[#09694A] text-white text-sm font-semibold shadow-sm hover:bg-[#079669] transition-colors">
+                            <FileUp className="w-4 h-4 mr-2" /> Choose File
+                          </span>
                         </label>
                       </>
                     )}
                   </div>
 
                   {detail.documents.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-sm font-medium text-gray-700">Uploaded Documents</p>
+                    <div className="mt-6 space-y-3">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Uploaded Documents</p>
                       {detail.documents.map(doc => (
-                        <div key={doc.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <span className="text-sm text-gray-700 flex-1 truncate">{doc.fileName}</span>
-                          <span className="text-xs text-gray-400">{new Date(doc.createdAt).toLocaleDateString()}</span>
+                        <div key={doc.id} className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-100 rounded-xl">
+                          <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                            <FileText className="w-5 h-5 text-gray-400" />
+                          </div>
+                          <span className="text-sm font-semibold text-gray-700 flex-1 truncate">{doc.fileName}</span>
+                          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{new Date(doc.createdAt).toLocaleDateString()}</span>
                         </div>
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Extracted Data */}
-            <Card className="bg-white shadow rounded-2xl">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2"><Home className="w-4 h-4 text-emerald-600" /> Extracted Home Data</CardTitle>
-                  {detail.status !== "claimed" && !editMode && (
-                    <Button variant="outline" size="sm" onClick={startEdit}><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>
-                  )}
-                  {editMode && (
-                    <div className="flex gap-2">
-                      <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={saveEdit} disabled={updateDataMutation.isPending}>
-                        {updateDataMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => { setEditMode(false); setEditingData(null); }}>Cancel</Button>
-                    </div>
-                  )}
+            <div className="bg-white shadow-sm border border-gray-200 rounded-2xl overflow-hidden">
+              <div className="px-5 sm:px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                    <Home className="w-4 h-4 text-[#09694A]" /> Extracted Home Data
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">Information extracted from documents and available for the buyer.</p>
                 </div>
-              </CardHeader>
-              <CardContent>
+                {detail.status !== "claimed" && !editMode && (
+                  <button
+                    className="inline-flex items-center justify-center min-h-[44px] sm:min-h-[44px] px-5 sm:px-4 rounded-xl sm:rounded-lg bg-white border border-gray-200 text-gray-700 text-sm sm:text-xs font-semibold hover:bg-gray-50 transition-colors shadow-sm w-full sm:w-auto"
+                    onClick={startEdit}
+                  >
+                    <Edit2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 mr-2 sm:mr-1.5" /> Edit Data
+                  </button>
+                )}
+                {editMode && (
+                  <div className="flex gap-3 w-full sm:w-auto">
+                    <button
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center min-h-[44px] sm:min-h-[44px] px-5 sm:px-4 rounded-xl sm:rounded-lg bg-white border border-gray-200 text-gray-700 text-sm sm:text-xs font-semibold hover:bg-gray-50 transition-colors"
+                      onClick={() => { setEditMode(false); setEditingData(null); }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="flex-1 sm:flex-none inline-flex items-center justify-center min-h-[44px] sm:min-h-[44px] px-6 sm:px-5 rounded-xl sm:rounded-lg bg-[#09694A] text-white text-sm sm:text-xs font-semibold hover:bg-[#079669] transition-colors shadow-sm"
+                      onClick={saveEdit}
+                      disabled={updateDataMutation.isPending}
+                    >
+                      {updateDataMutation.isPending ? <Loader2 className="w-4 h-4 sm:w-3.5 sm:h-3.5 mr-2 sm:mr-1.5 animate-spin" /> : <CheckCircle className="w-4 h-4 sm:w-3.5 sm:h-3.5 mr-2 sm:mr-1.5" />}
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="p-5 sm:p-6">
                 {!detail.extractedData && !editMode ? (
-                  <div className="text-center py-10 text-gray-400">
-                    <Home className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">No data extracted yet</p>
-                    <p className="text-sm">Upload documents above to auto-populate home information</p>
+                  <div className="text-center py-12 bg-gray-50 border border-gray-200 rounded-2xl border-dashed">
+                    <Home className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p className="font-bold text-gray-900">No data extracted yet</p>
+                    <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">Upload documents above to auto-populate home information, or click Edit Data to enter it manually.</p>
                   </div>
                 ) : editMode && editingData ? (
-                  <div className="space-y-6">
+                  <div className="space-y-10">
+                    {/* SYSTEMS */}
                     <div>
-                      <h3 className="font-semibold text-gray-800 mb-3">Home Systems ({editingData.systems.length})</h3>
-                      <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        Home Systems
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px]">{editingData.systems.length}</span>
+                      </h4>
+                      <div className="space-y-4">
                         {editingData.systems.map((sys, idx) => (
-                          <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-1 grid grid-cols-2 gap-2">
-                              <Input placeholder="System name" value={sys.name} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], name: e.target.value }; setEditingData({ ...editingData, systems: s }); }} />
-                              <Input placeholder="Brand" value={sys.brand || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], brand: e.target.value || null }; setEditingData({ ...editingData, systems: s }); }} />
-                              <Input placeholder="Model" value={sys.model || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], model: e.target.value || null }; setEditingData({ ...editingData, systems: s }); }} />
-                              <Input placeholder="Year installed" type="number" value={sys.yearInstalled || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], yearInstalled: e.target.value ? parseInt(e.target.value) : null }; setEditingData({ ...editingData, systems: s }); }} />
+                          <div key={idx} className="p-5 bg-white border border-gray-200 rounded-2xl relative group shadow-sm">
+                            <button
+                              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white border border-gray-200 text-red-500 flex items-center justify-center shadow-sm hover:bg-red-50 hover:text-red-600 transition-colors z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                              onClick={() => removeSystem(idx)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">System Name</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="e.g. HVAC" value={sys.name} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], name: e.target.value }; setEditingData({ ...editingData, systems: s }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Brand</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="e.g. Carrier" value={sys.brand || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], brand: e.target.value || null }; setEditingData({ ...editingData, systems: s }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Model</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="Model number" value={sys.model || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], model: e.target.value || null }; setEditingData({ ...editingData, systems: s }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Year</label>
+                                <input type="number" className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="YYYY" value={sys.yearInstalled || ""} onChange={e => { const s = [...editingData.systems]; s[idx] = { ...s[idx], yearInstalled: e.target.value ? parseInt(e.target.value) : null }; setEditingData({ ...editingData, systems: s }); }} />
+                              </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 mt-1" onClick={() => removeSystem(idx)}><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         ))}
-                        <Button variant="outline" size="sm" onClick={() => setEditingData({ ...editingData, systems: [...editingData.systems, { name: "", brand: null, model: null, yearInstalled: null, notes: null }] })}>
-                          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add System
-                        </Button>
+                        <button
+                          className="w-full inline-flex items-center justify-center min-h-[44px] rounded-xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors bg-white shadow-sm"
+                          onClick={() => setEditingData({ ...editingData, systems: [...editingData.systems, { name: "", brand: null, model: null, yearInstalled: null, notes: null }] })}
+                        >
+                          <Plus className="w-4 h-4 mr-2" /> Add System
+                        </button>
                       </div>
                     </div>
+
+                    {/* APPLIANCES */}
                     <div>
-                      <h3 className="font-semibold text-gray-800 mb-3">Appliances ({editingData.appliances.length})</h3>
-                      <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        Appliances
+                        <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-md text-[10px]">{editingData.appliances.length}</span>
+                      </h4>
+                      <div className="space-y-4">
                         {editingData.appliances.map((app, idx) => (
-                          <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-1 grid grid-cols-2 gap-2">
-                              <Input placeholder="Appliance name" value={app.name} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], name: e.target.value }; setEditingData({ ...editingData, appliances: a }); }} />
-                              <Input placeholder="Make / Brand" value={app.make || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], make: e.target.value || null }; setEditingData({ ...editingData, appliances: a }); }} />
-                              <Input placeholder="Model" value={app.model || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], model: e.target.value || null }; setEditingData({ ...editingData, appliances: a }); }} />
-                              <Input placeholder="Year installed" type="number" value={app.yearInstalled || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], yearInstalled: e.target.value ? parseInt(e.target.value) : null }; setEditingData({ ...editingData, appliances: a }); }} />
+                          <div key={idx} className="p-5 bg-white border border-gray-200 rounded-2xl relative group shadow-sm">
+                            <button
+                              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white border border-gray-200 text-red-500 flex items-center justify-center shadow-sm hover:bg-red-50 hover:text-red-600 transition-colors z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                              onClick={() => removeAppliance(idx)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Appliance Name</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="e.g. Refrigerator" value={app.name} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], name: e.target.value }; setEditingData({ ...editingData, appliances: a }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Make/Brand</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="e.g. Samsung" value={app.make || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], make: e.target.value || null }; setEditingData({ ...editingData, appliances: a }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Model</label>
+                                <input className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="Model number" value={app.model || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], model: e.target.value || null }; setEditingData({ ...editingData, appliances: a }); }} />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Year</label>
+                                <input type="number" className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all" placeholder="YYYY" value={app.yearInstalled || ""} onChange={e => { const a = [...editingData.appliances]; a[idx] = { ...a[idx], yearInstalled: e.target.value ? parseInt(e.target.value) : null }; setEditingData({ ...editingData, appliances: a }); }} />
+                              </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 mt-1" onClick={() => removeAppliance(idx)}><Trash2 className="w-4 h-4" /></Button>
                           </div>
                         ))}
-                        <Button variant="outline" size="sm" onClick={() => setEditingData({ ...editingData, appliances: [...editingData.appliances, { name: "", make: null, model: null, yearInstalled: null, serialNumber: null, warrantyExpiration: null, notes: null }] })}>
-                          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Appliance
-                        </Button>
+                        <button
+                          className="w-full inline-flex items-center justify-center min-h-[44px] rounded-xl border border-dashed border-gray-300 text-gray-600 text-sm font-semibold hover:bg-gray-50 hover:border-gray-400 transition-colors bg-white shadow-sm"
+                          onClick={() => setEditingData({ ...editingData, appliances: [...editingData.appliances, { name: "", make: null, model: null, yearInstalled: null, serialNumber: null, warrantyExpiration: null, notes: null }] })}
+                        >
+                          <Plus className="w-4 h-4 mr-2" /> Add Appliance
+                        </button>
                       </div>
                     </div>
+
+                    {/* PROPERTY DETAILS */}
                     <div>
-                      <h3 className="font-semibold text-gray-800 mb-3">Property Details</h3>
-                      <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Year Built</Label>
-                          <Input type="number" placeholder="e.g. 1998" value={editingData.propertyDetails.yearBuilt ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, yearBuilt: e.target.value ? parseInt(e.target.value) : null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Square Footage</Label>
-                          <Input type="number" placeholder="e.g. 2400" value={editingData.propertyDetails.squareFootage ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, squareFootage: e.target.value ? parseInt(e.target.value) : null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Roof Type</Label>
-                          <Input placeholder="e.g. Asphalt shingle" value={editingData.propertyDetails.roofType ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, roofType: e.target.value || null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Roof Age (years)</Label>
-                          <Input type="number" placeholder="e.g. 5" value={editingData.propertyDetails.roofAge ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, roofAge: e.target.value ? parseInt(e.target.value) : null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Foundation Type</Label>
-                          <Input placeholder="e.g. Poured concrete" value={editingData.propertyDetails.foundationType ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, foundationType: e.target.value || null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Electrical Panel (amps)</Label>
-                          <Input type="number" placeholder="e.g. 200" value={editingData.propertyDetails.electricalPanelAmps ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, electricalPanelAmps: e.target.value ? parseInt(e.target.value) : null } })} />
-                        </div>
-                        <div>
-                          <Label className="text-xs text-gray-500 mb-1 block">Heating Fuel</Label>
-                          <Input placeholder="e.g. Natural gas" value={editingData.propertyDetails.heatingFuel ?? ""} onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, heatingFuel: e.target.value || null } })} />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 mb-3">Warranties ({editingData.warranties.length})</h3>
-                      <div className="space-y-3">
-                        {editingData.warranties.map((w, idx) => (
-                          <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                            <div className="flex-1 grid grid-cols-2 gap-2">
-                              <Input placeholder="Item (e.g. Roof)" value={w.item} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], item: e.target.value }; setEditingData({ ...editingData, warranties: ws }); }} />
-                              <Input placeholder="Expiration date" value={w.expiration ?? ""} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], expiration: e.target.value || null }; setEditingData({ ...editingData, warranties: ws }); }} />
-                              <Input className="col-span-2" placeholder="Notes" value={w.notes ?? ""} onChange={e => { const ws = [...editingData.warranties]; ws[idx] = { ...ws[idx], notes: e.target.value || null }; setEditingData({ ...editingData, warranties: ws }); }} />
-                            </div>
-                            <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700 mt-1" onClick={() => setEditingData({ ...editingData, warranties: editingData.warranties.filter((_, i) => i !== idx) })}><Trash2 className="w-4 h-4" /></Button>
+                      <h4 className="text-[11px] font-bold text-gray-900 uppercase tracking-wider mb-4">Property Details</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 p-6 bg-white shadow-sm border border-gray-200 rounded-2xl">
+                        {[
+                          { label: "Year Built", type: "number", placeholder: "e.g. 1998", val: editingData.propertyDetails.yearBuilt, key: "yearBuilt" },
+                          { label: "Square Footage", type: "number", placeholder: "e.g. 2400", val: editingData.propertyDetails.squareFootage, key: "squareFootage" },
+                          { label: "Roof Type", type: "text", placeholder: "e.g. Asphalt shingle", val: editingData.propertyDetails.roofType, key: "roofType" },
+                          { label: "Roof Age (years)", type: "number", placeholder: "e.g. 5", val: editingData.propertyDetails.roofAge, key: "roofAge" },
+                          { label: "Foundation Type", type: "text", placeholder: "e.g. Poured concrete", val: editingData.propertyDetails.foundationType, key: "foundationType" },
+                          { label: "Electrical Panel (amps)", type: "number", placeholder: "e.g. 200", val: editingData.propertyDetails.electricalPanelAmps, key: "electricalPanelAmps" },
+                          { label: "Heating Fuel", type: "text", placeholder: "e.g. Natural gas", val: editingData.propertyDetails.heatingFuel, key: "heatingFuel" },
+                        ].map((f, i) => (
+                          <div key={i}>
+                            <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{f.label}</label>
+                            <input
+                              type={f.type}
+                              className="w-full min-h-[44px] px-4 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white text-sm outline-none focus:border-[#09694A] focus:ring-2 focus:ring-[#09694A] focus:border-transparent transition-all"
+                              placeholder={f.placeholder}
+                              value={f.val ?? ""}
+                              onChange={e => setEditingData({ ...editingData, propertyDetails: { ...editingData.propertyDetails, [f.key]: f.type === "number" ? (e.target.value ? parseInt(e.target.value) : null) : (e.target.value || null) } })}
+                            />
                           </div>
                         ))}
-                        <Button variant="outline" size="sm" onClick={() => setEditingData({ ...editingData, warranties: [...editingData.warranties, { item: "", expiration: null, notes: null }] })}>
-                          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Warranty
-                        </Button>
                       </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-800 mb-2">General Notes</h3>
-                      <Textarea
-                        placeholder="Any additional notes about this property..."
-                        value={editingData.generalNotes ?? ""}
-                        onChange={e => setEditingData({ ...editingData, generalNotes: e.target.value || null })}
-                        rows={3}
-                      />
-                    </div>
+
                   </div>
-                ) : detail.extractedData ? (
-                  <ExtractedDataView data={detail.extractedData} />
-                ) : null}
-              </CardContent>
-            </Card>
+                ) : (
+                  <div className="space-y-8">
+                    {/* Read-only Data View */}
+                    {detail.extractedData && (
+                      <>
+                        {detail.extractedData.systems && detail.extractedData.systems.length > 0 && (
+                          <div>
+                            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Systems</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {detail.extractedData.systems.map((s, i) => (
+                                <div key={i} className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                                  <div className="font-bold text-gray-900 mb-2">{s.name}</div>
+                                  <div className="text-xs text-gray-600 space-y-1">
+                                    {s.brand && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Brand:</span> {s.brand}</div>}
+                                    {s.model && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Model:</span> {s.model}</div>}
+                                    {s.yearInstalled && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Year:</span> {s.yearInstalled}</div>}
+                                    {!s.brand && !s.model && !s.yearInstalled && <div className="italic text-gray-400">No details extracted</div>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {detail.extractedData.appliances && detail.extractedData.appliances.length > 0 && (
+                          <div>
+                            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Appliances</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                              {detail.extractedData.appliances.map((a, i) => (
+                                <div key={i} className="p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                                  <div className="font-bold text-gray-900 mb-2">{a.name}</div>
+                                  <div className="text-xs text-gray-600 space-y-1">
+                                    {a.make && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Make:</span> {a.make}</div>}
+                                    {a.model && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Model:</span> {a.model}</div>}
+                                    {a.yearInstalled && <div><span className="font-semibold text-gray-400 uppercase tracking-wider text-[10px] mr-1">Year:</span> {a.yearInstalled}</div>}
+                                    {!a.make && !a.model && !a.yearInstalled && <div className="italic text-gray-400">No details extracted</div>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {detail.extractedData.propertyDetails && Object.keys(detail.extractedData.propertyDetails).length > 0 && (
+                          <div>
+                            <h4 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Property Details</h4>
+                            <div className="p-5 bg-gray-50 border border-gray-100 rounded-xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                              {Object.entries(detail.extractedData.propertyDetails).map(([k, v]) => v && (
+                                <div key={k}>
+                                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{k.replace(/([A-Z])/g, ' $1').trim()}</div>
+                                  <div className="text-sm font-semibold text-gray-900">{v}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </main>
-    </div>
-  );
-}
-
-function ExtractedDataView({ data }: { data: ExtractedData }) {
-  const { systems = [], appliances = [], propertyDetails = {}, warranties = [], generalNotes } = data;
-
-  return (
-    <div className="space-y-6">
-      {Object.keys(propertyDetails).some(k => Boolean((propertyDetails as Record<string, unknown>)[k])) && (
-        <div>
-          <h3 className="font-semibold text-gray-800 mb-3 text-sm uppercase tracking-wide text-gray-500">Property Details</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {propertyDetails.yearBuilt && <InfoChip label="Year Built" value={String(propertyDetails.yearBuilt)} />}
-            {propertyDetails.squareFootage && <InfoChip label="Sq Ft" value={String(propertyDetails.squareFootage)} />}
-            {propertyDetails.roofType && <InfoChip label="Roof" value={propertyDetails.roofType} />}
-            {propertyDetails.roofAge && <InfoChip label="Roof Age" value={`${propertyDetails.roofAge} yrs`} />}
-            {propertyDetails.foundationType && <InfoChip label="Foundation" value={propertyDetails.foundationType} />}
-            {propertyDetails.electricalPanelAmps && <InfoChip label="Electrical" value={`${propertyDetails.electricalPanelAmps}A`} />}
-            {propertyDetails.heatingFuel && <InfoChip label="Heat Fuel" value={propertyDetails.heatingFuel} />}
-          </div>
-        </div>
-      )}
-
-      {systems.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-3">Home Systems ({systems.length})</h3>
-          <div className="space-y-2">
-            {systems.map((sys, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{sys.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {[sys.brand, sys.model].filter(Boolean).join(" · ")}
-                    {sys.yearInstalled ? ` · Installed ${sys.yearInstalled}` : ""}
-                  </p>
-                  {sys.notes && <p className="text-xs text-gray-400 mt-0.5">{sys.notes}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {appliances.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-3">Appliances ({appliances.length})</h3>
-          <div className="space-y-2">
-            {appliances.map((app, i) => (
-              <div key={i} className="flex items-start gap-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{app.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {[app.make, app.model].filter(Boolean).join(" · ")}
-                    {app.yearInstalled ? ` · ${app.yearInstalled}` : ""}
-                  </p>
-                  {app.warrantyExpiration && <p className="text-xs text-emerald-600 mt-0.5">Warranty: {app.warrantyExpiration}</p>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {warranties.length > 0 && (
-        <div>
-          <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-3">Warranties ({warranties.length})</h3>
-          <div className="space-y-2">
-            {warranties.map((w, i) => (
-              <div key={i} className="p-3 rounded-lg bg-green-50 border border-green-100">
-                <p className="font-medium text-gray-900">{w.item}</p>
-                {w.expiration && <p className="text-sm text-gray-500">Expires: {w.expiration}</p>}
-                {w.notes && <p className="text-xs text-gray-400 mt-0.5">{w.notes}</p>}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {generalNotes && (
-        <div>
-          <h3 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-2">Notes</h3>
-          <p className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3">{generalNotes}</p>
-        </div>
-      )}
-
-      {systems.length === 0 && appliances.length === 0 && warranties.length === 0 && !generalNotes && (
-        <p className="text-center text-gray-400 py-6">No data extracted yet. Upload documents to populate this section.</p>
-      )}
-    </div>
-  );
-}
-
-function InfoChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-      <p className="text-xs text-gray-400">{label}</p>
-      <p className="text-sm font-medium text-gray-800">{value}</p>
     </div>
   );
 }

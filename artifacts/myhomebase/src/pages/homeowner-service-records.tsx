@@ -24,11 +24,11 @@ import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350
 import "./home.css";
 import { apiRequest, notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { 
-  FileText, 
-  Calendar, 
-  MapPin, 
-  User, 
+import {
+  FileText,
+  Calendar,
+  MapPin,
+  User,
   DollarSign,
   Clock,
   Edit,
@@ -116,7 +116,7 @@ export default function HomeownerServiceRecords() {
       });
     });
   }, [homeownerId, queryClient]);
-  
+
   const { isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
 
   if (isFreeUser && !subscriptionLoading) {
@@ -251,8 +251,8 @@ export default function HomeownerServiceRecords() {
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
     queryKey: ['/api/maintenance-logs', { homeownerId, houseId: serviceRecordsHouseFilter === 'all' ? undefined : serviceRecordsHouseFilter }],
     queryFn: async () => {
-      const url = serviceRecordsHouseFilter === 'all' 
-        ? '/api/maintenance-logs' 
+      const url = serviceRecordsHouseFilter === 'all'
+        ? '/api/maintenance-logs'
         : `/api/maintenance-logs?houseId=${serviceRecordsHouseFilter}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch maintenance logs');
@@ -632,10 +632,10 @@ export default function HomeownerServiceRecords() {
       setAfterPhotoFiles([]);
     } catch (error) {
       console.error('Error uploading files:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to upload files. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsUploadingFiles(false);
@@ -707,12 +707,12 @@ export default function HomeownerServiceRecords() {
       log.notes || '',
       log.createdAt ? new Date(log.createdAt).toLocaleDateString() : ''
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
-    
+
     return csvContent;
   };
 
@@ -748,66 +748,48 @@ export default function HomeownerServiceRecords() {
   const recordsThisYear = maintenanceLogs?.filter(l => new Date(l.serviceDate).getFullYear() === new Date().getFullYear()).length || 0;
 
   return (
-    <div className="min-h-screen" style={{ background: "#ffffff" }}>
+    <div className="min-h-screen bg-[#F9FAFB]">
 
       {/* ── PAGE HEADER ────────────────────────────── */}
-      <div className="dash-header">
-        <div className="dash-header-top">
-          <div className="dash-header-actions">
-            <button
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Records</h1>
+            <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">Service history, documents, and insurance records</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
               onClick={openAiInvoiceDialog}
+              variant="outline"
+              size="sm"
+              className="h-9 px-3 rounded-full text-xs font-semibold shadow-sm border-gray-300 hidden sm:flex"
               data-testid="button-ai-scan-invoice"
-              className="dash-icon-btn"
-              style={{ width: "auto", padding: "0 10px", gap: 5, fontSize: 11, fontWeight: 700 }}
             >
-              <Scan size={13} />
+              <Scan className="w-4 h-4 mr-1.5" />
               AI Scan
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleAddNewMaintenanceLog}
+              size="sm"
+              className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-xs font-semibold shadow-sm"
               data-testid="button-add-service-record"
-              className="dash-icon-btn"
-              style={{ width: "auto", padding: "0 10px", gap: 4, fontSize: 11, fontWeight: 700 }}
             >
-              <Plus size={13} />
-              Add
-            </button>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Log Service
+            </Button>
           </div>
         </div>
 
-        <span className="dash-eyebrow">Homeowner</span>
-        <div className="dash-title">Record</div>
-        <div className="dash-subtitle">Service history, documents, inspections, and insurance-ready records</div>
-
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className="dash-chip-num">{totalRecords}</div>
-            <div className="dash-chip-label">Total records</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">
-              ${totalSpent >= 1000 ? `${(totalSpent / 1000).toFixed(1)}k` : Math.round(totalSpent)}
-            </div>
-            <div className="dash-chip-label">Total spent</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">{recordsThisYear}</div>
-            <div className="dash-chip-label">This year</div>
-          </div>
+        <div className="px-4 md:px-6 flex gap-6 overflow-x-auto hide-scrollbar border-t border-gray-100 mt-2">
+          <Link href="/service-records" className="border-b-2 border-[#3C258E] text-[#3C258E] font-semibold py-3 text-sm whitespace-nowrap">Service History</Link>
+          <Link href="/documents" className="border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium py-3 text-sm whitespace-nowrap">Files</Link>
+          <Link href="/documents?tab=insurance" className="border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium py-3 text-sm whitespace-nowrap">Insurance</Link>
+          <Link href="/documents?tab=disclosures" className="border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium py-3 text-sm whitespace-nowrap">Disclosures</Link>
         </div>
       </div>
 
       {/* ── PAGE BODY ──────────────────────────────── */}
       <div className="dash-body">
-        <nav className="mb-5 flex flex-wrap gap-2" aria-label="Home record sections">
-          <span className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-white">Service history</span>
-          <Link href="/documents" className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground">
-            Documents & inspections
-          </Link>
-          <Link href="/documents?type=insurance" className="rounded-full border border-border bg-white px-4 py-2 text-sm font-semibold text-foreground">
-            Insurance
-          </Link>
-        </nav>
         <ActivatingPlanBanner />
         <HomeownerTrialBanner />
 
@@ -941,7 +923,7 @@ export default function HomeownerServiceRecords() {
                 </SelectContent>
               </Select>
             )}
-            
+
             {/* Home Area Filter */}
             <Select value={homeAreaFilter} onValueChange={setHomeAreaFilter}>
               <SelectTrigger className="w-full sm:w-64" style={{ backgroundColor: '#ffffff', borderColor: 'rgba(83,74,183,0.15)' }} data-testid="select-home-area-filter-logs">
@@ -955,13 +937,13 @@ export default function HomeownerServiceRecords() {
               </SelectContent>
             </Select>
           </div>
-      
+
           {/* Download Buttons */}
           {maintenanceLogs && maintenanceLogs.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => {
-                  const sortedByDate = [...maintenanceLogs].sort((a, b) => 
+                  const sortedByDate = [...maintenanceLogs].sort((a, b) =>
                     new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()
                   );
                   const csv = generateServiceRecordsCSV(sortedByDate, 'date');
@@ -1090,18 +1072,18 @@ export default function HomeownerServiceRecords() {
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => handleEditMaintenanceLog(log)}
                         style={{ color: '#3C258E' }}
                         data-testid={`button-edit-record-${log.id}`}
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
+                      <Button
+                        size="sm"
+                        variant="ghost"
                         onClick={() => deleteMaintenanceLogMutation.mutate(log.id)}
                         disabled={deleteMaintenanceLogMutation.isPending}
                         data-testid={`button-delete-record-${log.id}`}
@@ -1110,7 +1092,7 @@ export default function HomeownerServiceRecords() {
                       </Button>
                     </div>
                   </div>
-                  
+
                   {(log.cost || log.contractorName || log.contractorCompany || log.nextServiceDue) && (
                     <div className="flex flex-wrap gap-4" style={{ fontSize: 12, color: '#6b7280', marginBottom: log.notes ? 12 : 0 }}>
                       {log.cost && (
@@ -1139,13 +1121,13 @@ export default function HomeownerServiceRecords() {
                       )}
                     </div>
                   )}
-                  
+
                   {log.notes && (
                     <div style={{ background: '#F8F7FF', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#6b7280', marginTop: 10 }}>
                       {log.notes}
                     </div>
                   )}
-                  
+
                   {/* Attachments Display */}
                   {((log.receiptUrls?.length ?? 0) > 0 || (log.beforePhotoUrls?.length ?? 0) > 0 || (log.afterPhotoUrls?.length ?? 0) > 0) && (
                     <div className="mt-4 space-y-3">
@@ -1201,10 +1183,10 @@ export default function HomeownerServiceRecords() {
                       )}
                     </div>
                   )}
-                  
+
                   {log.createdAt && (
                     <div style={{ marginTop: 10, fontSize: 10, color: '#B6A6F4', borderTop: '1px solid #EEEDFE', paddingTop: 8 }}>
-                      Record added on {new Date(log.createdAt).toLocaleDateString('en-US', { 
+                      Record added on {new Date(log.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </div>
@@ -1234,7 +1216,7 @@ export default function HomeownerServiceRecords() {
                           data-testid="button-toggle-older-records"
                         >
                           {showAllRecords ? 'Hide' : 'Show'} {olderRecords.length} Older Record{olderRecords.length !== 1 ? 's' : ''}
-                          <ChevronDown 
+                          <ChevronDown
                             className={`transition-transform ${showAllRecords ? 'rotate-180' : ''}`}
                             style={{ width: 14, height: 14 }}
                           />
@@ -1626,7 +1608,7 @@ export default function HomeownerServiceRecords() {
                 {editingMaintenanceLog ? 'Edit Service Record' : 'Add New Service Record'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <Form {...maintenanceLogForm}>
               <form onSubmit={maintenanceLogForm.handleSubmit(onSubmitMaintenanceLog)} className="space-y-4">
                 {houses.length > 1 && (
@@ -1744,9 +1726,9 @@ export default function HomeownerServiceRecords() {
                       <FormItem>
                         <FormLabel>Cost</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="text" 
-                            placeholder="Service cost" 
+                          <Input
+                            type="text"
+                            placeholder="Service cost"
                             {...field}
                             value={field.value || ""}
                             onChange={e => {
@@ -1829,7 +1811,7 @@ export default function HomeownerServiceRecords() {
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <textarea 
+                        <textarea
                           className="flex min-h-[80px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           style={{ backgroundColor: 'white', color: '#000000' }}
                           placeholder="Any additional notes about the service..."
@@ -1845,7 +1827,7 @@ export default function HomeownerServiceRecords() {
                 {/* File Upload Section */}
                 <div className="space-y-4 pt-4 border-t" style={{ borderColor: '#b6a6f4' }}>
                   <h3 className="text-lg font-semibold">Attachments</h3>
-                  
+
                   {/* Receipt Upload */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
@@ -1965,8 +1947,8 @@ export default function HomeownerServiceRecords() {
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={() => setIsMaintenanceLogDialogOpen(false)}
                     style={{ backgroundColor: 'white', color: '#2c0f5b' }}
                     className="hover:opacity-90"
@@ -1974,8 +1956,8 @@ export default function HomeownerServiceRecords() {
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending || isUploadingFiles}
                     style={{ backgroundColor: '#b6a6f4', color: 'white' }}
                     className="hover:opacity-90"

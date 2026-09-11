@@ -1,29 +1,33 @@
 /* ─── DASHBOARD HEADER ─────────────────────────────────────────── */
 .dash-header {
-  background: linear-gradient(135deg, var(--theme-gradient-start) 0%, var(--theme-gradient-end) 100%);
-  padding: 24px 28px 0;
+  background: #ffffff;
+  padding: 16px 24px;
   flex-shrink: 0;
   position: relative;
-  overflow: hidden;
+  border-bottom: 1px solid var(--theme-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.dash-header::before {
-  content: '';
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(182,166,244,0.15) 0%, transparent 70%);
-  pointer-events: none;
+@media (min-width: 768px) {
+  .dash-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+  }
+}
+
+.dash-header-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .dash-header-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
 .dash-logo {
@@ -40,46 +44,45 @@
 .dash-icon-btn {
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--theme-fill);
   border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  border: none;
-  color: #ffffff;
+  border: 1px solid var(--theme-border);
+  color: var(--theme-primary);
   transition: background 0.15s;
   text-decoration: none;
 }
 
 .dash-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--theme-border);
 }
 
 .dash-eyebrow {
   display: block;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--purple-light, #B6A6F4);
-  letter-spacing: 2.5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--theme-muted);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 4px;
 }
 
 .dash-title {
   font-size: 24px;
-  font-weight: 700;
-  color: #ffffff;
-  letter-spacing: -0.3px;
+  font-weight: 800;
+  color: var(--theme-primary);
+  letter-spacing: -0.5px;
   line-height: 1.15;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .dash-subtitle {
   font-size: 13px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 18px;
+  font-weight: 500;
+  color: var(--gray-600);
 }
 
 /* ─── STAT CARD (HWS + Tasks/Systems) ──────────────────────────── */

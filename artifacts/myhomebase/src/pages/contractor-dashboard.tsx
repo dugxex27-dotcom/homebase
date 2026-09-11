@@ -25,12 +25,12 @@ import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { BoostRenewalCheckoutModal } from "@/components/BoostRenewalCheckoutModal";
 import { TechDashboard } from "./tech-dashboard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { 
-  Gift, 
-  FileText, 
-  Calendar, 
-  DollarSign, 
-  Users, 
+import {
+  Gift,
+  FileText,
+  Calendar,
+  DollarSign,
+  Users,
   Briefcase,
   MessageSquare,
   CheckCircle,
@@ -1314,7 +1314,7 @@ export default function ContractorDashboard() {
   const remainingTeamSeats = maxTeamSeats > 0
     ? Math.max(0, maxTeamSeats - reservedTeamCount)
     : null;
-  
+
   const form = useForm<ProposalFormData>({
     resolver: zodResolver(proposalFormSchema),
     defaultValues: {
@@ -1345,7 +1345,7 @@ export default function ContractorDashboard() {
     queryKey: ['/api/user/referral-code'],
     enabled: !!typedUser,
   });
-  
+
   const { data: proposals = [], isLoading: isLoadingProposals } = useQuery<Proposal[]>({
     queryKey: ["/api/proposals", typedUser?.id],
     queryFn: async () => {
@@ -1419,8 +1419,8 @@ export default function ContractorDashboard() {
       if (!typedUser?.id) {
         throw new Error("Contractor ID is required");
       }
-      const materialsArray = data.materials 
-        ? data.materials.split(',').map(item => item.trim()).filter(item => item.length > 0) 
+      const materialsArray = data.materials
+        ? data.materials.split(',').map(item => item.trim()).filter(item => item.length > 0)
         : [];
       const payload = {
         contractorId: typedUser.id,
@@ -1491,9 +1491,9 @@ export default function ContractorDashboard() {
   if (companyRole === 'tech') {
     return <TechDashboard user={{ firstName: typedUser?.firstName, email: typedUser?.email, status: techStatus }} />;
   }
-  
+
   const referralCount = (referralData as any)?.referralCount || 0;
-  
+
   const subscriptionCost = 20;
   const referralsNeeded = subscriptionCost;
   const referralsRemaining = Math.max(0, referralsNeeded - referralCount);
@@ -1508,7 +1508,7 @@ export default function ContractorDashboard() {
   const recentNewLeadCount = countRecentNewLeads(contractorLeads, now);
   const upcomingAppointments = getAppointmentsInNextSevenDays(appointments, now);
   const nextAppointment = upcomingAppointments[0];
-  
+
   if (!typedUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -1520,9 +1520,9 @@ export default function ContractorDashboard() {
   }
 
   const firstName = typedUser.firstName || typedUser.email?.split('@')[0] || 'Contractor';
-  
+
   return (
-    <div>
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col pb-[80px] lg:pb-0">
       {renewalBoostId && (() => {
         const renewalBoost = myBoosts.find((boost) => boost.id === renewalBoostId);
         return renewalBoost ? (
@@ -1534,152 +1534,65 @@ export default function ContractorDashboard() {
         ) : null;
       })()}
 
-      {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: 'linear-gradient(135deg, #0C3460 0%, #1560A2 100%)' }}>
-        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>CONTRACTOR</span>
-        <div className="dash-title" data-testid="text-welcome-message">Welcome back, {firstName}</div>
-
-        {/* Jobs / Overview tab header */}
-        {activeTab === 'overview' && (
-          <>
-            <div className="dash-subtitle">Manage your work and grow your client base</div>
-            <div className="dash-chips" data-tour-id="contractor-stats">
-              <div className="dash-chip">
-                <div className={`dash-chip-num${totalEarnings > 0 ? ' good' : ''}`} data-testid="text-all-time-earnings">${totalEarnings.toLocaleString()}</div>
-                <div className="dash-chip-label">All-Time Earnings</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${acceptedProposals.length > 0 ? ' good' : ''}`} data-testid="text-active-projects">
-                  {isLoadingProposals ? '–' : acceptedProposals.length}
-                </div>
-                <div className="dash-chip-label">Active Projects</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${contractorRating && contractorRating.totalReviews > 0 ? ' good' : ''}`} data-testid="text-reviews">
-                  {isLoadingContractorRating || isContractorRatingError
-                    ? '–'
-                    : contractorRating && contractorRating.totalReviews > 0
-                      ? contractorRating.averageRating.toFixed(1)
-                      : '0'}
-                </div>
-                <div className="dash-chip-label">Reviews</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${recentNewLeadCount > 0 ? ' good' : ''}`} data-testid="text-new-leads">
-                  {isLoadingContractorLeads || isContractorLeadsError ? '–' : recentNewLeadCount}
-                </div>
-                <div className="dash-chip-label">New Leads</div>
-              </div>
+      {/* ── COMPACT COCKPIT HEADER ── */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-md bg-[#1560A2] text-white flex items-center justify-center font-bold text-sm shadow-sm">
+              {firstName.charAt(0).toUpperCase()}
             </div>
-          </>
-        )}
-
-        {/* Team tab header */}
-        {activeTab === 'team' && (
-          <>
-            <div className="dash-subtitle">Manage your team across every role</div>
-            <div className="dash-chips">
-              <div className="dash-chip">
-                <div className={`dash-chip-num${reservedTeamCount > 0 ? ' good' : ''}`}>
-                  {isLoadingTeam ? '–' : reservedTeamCount}
-                </div>
-                <div className="dash-chip-label">Team Seats</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${acceptedTeamCount !== null && acceptedTeamCount > 0 ? ' good' : ''}`}>
-                  {isLoadingTeam ? '–' : (acceptedTeamCount ?? 0)}
-                </div>
-                <div className="dash-chip-label">Accepted</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${pendingTeamCount > 0 ? ' warn' : ''}`}>
-                  {isLoadingTeam ? '–' : pendingTeamCount}
-                </div>
-                <div className="dash-chip-label">Pending</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${availableTeamCapacity !== null && availableTeamCapacity <= 5 ? ' warn' : ' good'}`}>
-                  {isLoadingTeam ? '–' : (availableTeamCapacity ?? '–')}
-                </div>
-                <div className="dash-chip-label">Capacity Left</div>
-              </div>
+            <div>
+              <h1 className="text-sm font-bold text-slate-900 leading-tight" data-testid="text-welcome-message">Dashboard</h1>
+              <p className="text-[11px] text-slate-500 font-medium">Welcome back, {firstName}</p>
             </div>
-          </>
-        )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsCreateDialogOpen(true)}
+              data-testid="button-create-proposal"
+              className="bg-[#1560A2] hover:bg-[#0C3460] text-white h-8 text-xs px-3 rounded-md font-bold flex items-center transition-colors shadow-sm"
+            >
+              <Plus size={14} className="mr-1.5" />
+              New Job
+            </button>
+          </div>
+        </div>
 
-        {/* Invoices tab header */}
-        {activeTab === 'invoices' && (
-          <>
-            <div className="dash-subtitle">Review and manage technician invoices</div>
-            <div className="dash-chips">
-              <div className="dash-chip">
-                <div className={`dash-chip-num${adminInvoices.length > 0 ? ' good' : ''}`}>{adminInvoices.length}</div>
-                <div className="dash-chip-label">Invoices</div>
-              </div>
-              <div className="dash-chip">
-                <div className={`dash-chip-num${adminInvoices.length > 0 ? ' good' : ''}`}>
-                  ${adminInvoices.reduce((s, i) => s + parseFloat(i.amount || '0'), 0).toLocaleString()}
-                </div>
-                <div className="dash-chip-label">Total Value</div>
-              </div>
-            </div>
-          </>
+        {/* ── Company admin tab navigation ── */}
+        {isAdminRole && (
+          <div className="max-w-6xl mx-auto px-4 flex items-center gap-6 overflow-x-auto no-scrollbar">
+            {(['overview', 'team', 'invoices'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`py-3 text-[13px] font-bold whitespace-nowrap border-b-2 transition-colors flex items-center gap-1.5 ${
+                  activeTab === tab
+                    ? 'border-[#1560A2] text-[#1560A2]'
+                    : 'border-transparent text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {tab === 'team' ? `Team (${teamData?.reservedTeamCount ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Jobs & Overview'}
+                {tab === 'team' && recentAuditEventCount > 0 && (
+                  <span className="min-w-[16px] h-4 px-1 rounded-full bg-[#dc2626] text-white text-[9px] font-bold flex items-center justify-center">
+                    {recentAuditEventCount > 9 ? '9+' : recentAuditEventCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         )}
-      </div>
+      </header>
 
       <ActivatingPlanBanner />
       {isInTrial && <ContractorTrialBanner />}
       <ContractorNoPlanBanner />
 
-      {/* ── Company admin tab navigation ── */}
-      {isAdminRole && (
-        <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 16px' }}>
-          {(['overview', 'team', 'invoices'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '10px 18px',
-                fontSize: 13,
-                fontWeight: activeTab === tab ? 700 : 500,
-                color: activeTab === tab ? '#1560A2' : '#64748b',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeTab === tab ? '2px solid #1560A2' : '2px solid transparent',
-                cursor: 'pointer',
-                textTransform: 'capitalize',
-              }}
-            >
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {tab === 'team' ? `Team (${teamData?.reservedTeamCount ?? 0})` : tab === 'invoices' ? `Tech Invoices (${adminInvoices.length})` : 'Overview'}
-                {tab === 'team' && recentAuditEventCount > 0 && (
-                  <span
-                    aria-label={`${recentAuditEventCount} team actions in the last 7 days`}
-                    style={{
-                      minWidth: 18,
-                      height: 18,
-                      padding: '0 5px',
-                      borderRadius: 999,
-                      background: '#dc2626',
-                      color: '#fff',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      lineHeight: '18px',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {recentAuditEventCount > 9 ? '9+' : recentAuditEventCount}
-                  </span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* ── Dashboard Content Container ── */}
+      <div className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
 
-      {/* ── Team tab ── */}
+      {/* ── TEAM TAB ── */}
       {isAdminRole && activeTab === 'team' && (
-        <div className="dash-body">
+        <div className="flex flex-col gap-6">
           {isTeamNearlyFull && !teamCapacityBannerDismissed && (
             <div
               role="alert"
@@ -2806,10 +2719,10 @@ export default function ContractorDashboard() {
         </div>
       )}
 
-      {/* ── Invoices tab ── */}
+      {/* ── INVOICES TAB ── */}
       {isAdminRole && activeTab === 'invoices' && (
-        <div className="dash-body">
-          <span className="dash-section-label">Tech Invoices</span>
+        <div className="flex flex-col gap-6">
+          <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wide px-1">Tech Invoices</h2>
           <div className="dash-light-card" style={{ marginBottom: 12 }}>
             <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
               <div style={{ minWidth: 110 }}>
@@ -2939,201 +2852,193 @@ export default function ContractorDashboard() {
         </div>
       )}
 
-      {/* ── Overview tab (always rendered, hidden when another tab is active) ── */}
-      <div className="dash-body" style={{ display: isAdminRole && activeTab !== 'overview' ? 'none' : undefined }}>
+      {/* ── OVERVIEW TAB ── */}
+      <div style={{ display: isAdminRole && activeTab !== 'overview' ? 'none' : undefined }}>
+        <div className="flex flex-col lg:flex-row gap-6">
 
-        {isAdminRole && teamData && (
-          <>
-            <span className="dash-section-label">Team Capacity</span>
-            <div className="dash-light-card" data-testid="card-team-capacity" style={isTeamNearlyFull ? { border: '1px solid #f59e0b', background: '#fffbeb' } : undefined}>
-              <div className="dash-light-card-row">
-                <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Users size={18} /></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="dash-light-card-title">{reservedTeamCount} of {teamData.teamSeatLimit} seats used</div>
-                  <div className="dash-light-card-sub">
-                    {isTeamAtCapacity
-                      ? 'All team seats are in use'
-                      : isTeamNearlyFull
-                        ? `Usage has reached your ${seatUsageAlertThreshold}% alert threshold`
-                        : `${availableTeamCapacity} seats available`}
+          {/* Main Column */}
+          <div className="flex-1 flex flex-col gap-6">
+
+            {/* Top Stats Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
+                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Total Earnings</div>
+                 <div className={`text-xl lg:text-2xl font-black ${totalEarnings > 0 ? 'text-[#09694a]' : 'text-slate-900'}`} data-testid="text-all-time-earnings">
+                   ${totalEarnings.toLocaleString()}
+                 </div>
+               </div>
+               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
+                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Active Projects</div>
+                 <div className={`text-xl lg:text-2xl font-black ${acceptedProposals.length > 0 ? 'text-[#1560A2]' : 'text-slate-900'}`} data-testid="text-active-projects">
+                   {isLoadingProposals ? '–' : acceptedProposals.length}
+                 </div>
+               </div>
+               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
+                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Reviews</div>
+                 <div className="text-xl lg:text-2xl font-black text-slate-900" data-testid="text-reviews">
+                   {isLoadingContractorRating || isContractorRatingError ? '–' : contractorRating && contractorRating.totalReviews > 0 ? contractorRating.averageRating.toFixed(1) : '0'}
+                 </div>
+               </div>
+               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
+                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">New Leads</div>
+                 <div className={`text-xl lg:text-2xl font-black ${recentNewLeadCount > 0 ? 'text-[#1560A2]' : 'text-slate-900'}`} data-testid="text-new-leads">
+                   {isLoadingContractorLeads || isContractorLeadsError ? '–' : recentNewLeadCount}
+                 </div>
+               </div>
+            </div>
+
+            {/* Team Capacity Alert */}
+            {isAdminRole && teamData && isTeamNearlyFull && !teamCapacityBannerDismissed && (
+              <div
+                role="alert"
+                data-testid="banner-team-capacity"
+                className="flex items-start gap-3 p-4 rounded-xl border border-amber-500 bg-amber-50 text-amber-900 shadow-sm relative"
+              >
+                <AlertTriangle size={20} className="shrink-0 mt-0.5" />
+                <div className="flex-1 pr-6">
+                  <div className="text-sm font-bold">
+                    {isTeamAtCapacity ? 'All team seats are in use' : 'Your team is nearly at capacity'}
+                  </div>
+                  <div className="text-xs leading-relaxed mt-1 opacity-90">
+                    {isTeamAtCapacity ? (
+                      <>
+                        Upgrade your plan for more capacity, or remove a member or pending invitation before adding someone new.{' '}
+                        <Link href="/contractor-pricing" className="font-bold underline" data-testid="link-upgrade-team-capacity">
+                          Upgrade plan
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        Team seat usage is at {Math.round(seatUsagePercent)}%, reaching your company's {seatUsageAlertThreshold}% alert threshold.
+                      </>
+                    )}
                   </div>
                 </div>
-                <button type="button" className="dash-light-card-btn" onClick={() => setActiveTab('team')} style={{ background: '#EAF4FD', color: '#1560A2' }}>
-                  Manage →
+                <button
+                  type="button"
+                  onClick={() => setTeamCapacityBannerDismissed(true)}
+                  className="absolute top-3 right-3 p-1 rounded-md hover:bg-amber-100 transition-colors"
+                >
+                  <X size={16} />
                 </button>
               </div>
+            )}
+
+            {/* Active Jobs & Proposals */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Jobs & Proposals</h2>
+               </div>
+               <div className="p-1">
+                  <Proposals contractorId={typedUser.id} />
+               </div>
             </div>
-          </>
-        )}
 
-        {/* AI Business Coach */}
-        <Link href="/ai-contractor-help" className="ai-coach-card" data-tour-id="contractor-ai-coach" style={{ background: 'linear-gradient(135deg, #0C3460, #1560A2)' }}>
-          <div className="ai-coach-icon"><Sparkles size={18} /></div>
-          <div className="ai-coach-copy">
-            <div className="ai-coach-eyebrow" style={{ color: '#AFD6F9' }}>AI Business Coach</div>
-            <div className="ai-coach-title">Grow your contractor business</div>
-            <div className="ai-coach-sub">Personalized tips for your trade</div>
           </div>
-          <button className="ai-coach-btn" onClick={e => e.preventDefault()}>Ask AI →</button>
-        </Link>
 
-        {/* Quick Actions */}
-        <span className="dash-section-label">Quick Actions</span>
+          {/* Right Column: Actions & Tools */}
+          <div className="w-full lg:w-80 flex flex-col gap-6 shrink-0">
 
-        <button
-          className="action-row"
-          data-tour-id="contractor-quick-actions"
-          style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'white', fontFamily: 'inherit' }}
-          onClick={() => setIsCreateDialogOpen(true)}
-          data-testid="button-create-proposal"
-        >
-          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Plus size={18} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="action-title">Create Proposal</div>
-            <div className="action-sub">Send a new proposal to a client</div>
-          </div>
-          <span className="action-cta" style={{ color: '#1560A2' }}>Create →</span>
-        </button>
-
-        <Link href="/crm" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-open-crm">
-          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Briefcase size={18} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="action-title">Open CRM</div>
-            <div className="action-sub">Manage clients and leads</div>
-          </div>
-          <span className="action-cta" style={{ color: '#1560A2' }}>Open →</span>
-        </Link>
-
-        <Link href="/messages" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-message-client">
-          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><MessageSquare size={18} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="action-title">Message Client</div>
-            <div className="action-sub">Chat with homeowners</div>
-          </div>
-          <span className="action-cta" style={{ color: '#1560A2' }}>Go →</span>
-        </Link>
-
-        <Link href="/calendar" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-schedule-visit">
-          <div className="action-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}><Calendar size={18} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="action-title">Schedule Visit</div>
-            <div className="action-sub">
-              {nextAppointment
-                ? `Next: ${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-                : 'No upcoming appointments'}
-            </div>
-          </div>
-          <span className="action-cta" style={{ color: '#1560A2' }}>View →</span>
-        </Link>
-
-        <Link href="/service-records" className="action-row" style={{ textDecoration: 'none' }} data-testid="button-mark-complete">
-          <div className="action-icon" style={{ background: '#F0FAF4', color: '#079669' }}><CheckCircle size={18} /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="action-title">Mark Job Complete</div>
-            <div className="action-sub">Log finished work to service records</div>
-          </div>
-          <span className="action-cta" style={{ color: '#079669' }}>Log →</span>
-        </Link>
-
-        {/* Homeowner Connection */}
-        <span className="dash-section-label" style={{ marginTop: 8 }}>Homeowner Connection</span>
-        <div className="dash-light-card" data-tour-id="contractor-connection">
-          <ContractorCodeEntry />
-        </div>
-
-        {/* Visibility Boosts */}
-        {(myBoosts.length > 0 || isLoadingBoosts) && (
-          <>
-            <span className="dash-section-label" style={{ marginTop: 8 }}>Visibility Boosts</span>
-            <div className="dash-light-card" style={{ marginBottom: 10 }}>
-              {isLoadingBoosts ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: 13 }}>
-                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading boosts…
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {myBoosts.map((boost, idx) => {
-                    const isExpired = boost.status === 'expired' || boost.status === 'cancelled' || !boost.isActive || new Date(boost.endDate) < new Date();
-                    const endDateObj = new Date(boost.endDate);
-                    const renewalWindowEnd = new Date();
-                    renewalWindowEnd.setDate(renewalWindowEnd.getDate() + BOOST_RENEWAL_WINDOW_DAYS);
-                    const canRenew = boost.status !== 'cancelled' && endDateObj <= renewalWindowEnd;
-                    const endLabel = format(endDateObj, 'MMM d, yyyy');
-                    return (
-                      <div
-                        key={boost.id}
-                        data-testid={`boost-item-${boost.status}`}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 10,
-                          padding: idx > 0 ? '10px 0 0' : '0',
-                          borderTop: idx > 0 ? '1px solid #f1f5f9' : 'none',
-                        }}
-                      >
-                        <div style={{
-                          width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: isExpired ? '#f1f5f9' : '#FFF7E6',
-                          color: isExpired ? '#94a3b8' : '#D97706',
-                        }}>
-                          <Zap size={16} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {boost.serviceCategory}
-                          </div>
-                          <div style={{ fontSize: 11, color: isExpired ? '#dc2626' : '#64748b', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
-                            {isExpired
-                              ? <><AlertCircle size={10} /> Boost available · expired {endLabel}</>
-                              : <><Clock size={10} /> Active until {endLabel}</>
-                            }
-                          </div>
-                        </div>
-                        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {canRenew && (
-                            <button
-                              data-testid={`button-renew-boost-${boost.id}`}
-                              onClick={() => setRenewalBoostId(boost.id)}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 4,
-                                padding: '5px 12px', borderRadius: 6, border: 'none',
-                                background: '#1560A2', color: '#fff',
-                                fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                              }}
-                            >
-                              <RefreshCw size={11} />
-                              {isExpired ? 'Buy boost' : 'Renew'}
-                            </button>
-                          )}
-                          {!isExpired && (
-                            <>
-                              <span style={{
-                                fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
-                                padding: '3px 8px', borderRadius: 5,
-                                background: '#FFF7E6', color: '#D97706',
-                              }}>Active</span>
-                              <button
-                                data-testid={`button-cancel-boost-${boost.id}`}
-                                onClick={() => setPendingCancelBoost(boost)}
-                                disabled={cancelBoostMutation.isPending}
-                                style={{
-                                  padding: '5px 9px', borderRadius: 6,
-                                  border: '1px solid #fecaca', background: '#fff',
-                                  color: '#dc2626', fontSize: 12, fontWeight: 600,
-                                  cursor: cancelBoostMutation.isPending ? 'not-allowed' : 'pointer',
-                                  opacity: cancelBoostMutation.isPending ? 0.7 : 1,
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          )}
-                        </div>
+            {/* Command Center */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-tour-id="contractor-quick-actions">
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                 <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Command Center</h2>
+              </div>
+              <div className="flex flex-col p-2 gap-1">
+                <Link href="/crm" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer" data-testid="button-open-crm">
+                   <div className="w-10 h-10 rounded-lg bg-[#EAF4FD] text-[#1560A2] flex items-center justify-center transition-transform"><Briefcase size={18} /></div>
+                   <div className="flex-1 min-w-0"><div className="text-[13px] font-bold text-slate-900 leading-tight">CRM</div><div className="text-[11px] text-slate-500 truncate">Manage clients & leads</div></div>
+                </Link>
+                <Link href="/messages" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer" data-testid="button-message-client">
+                   <div className="w-10 h-10 rounded-lg bg-[#EAF4FD] text-[#1560A2] flex items-center justify-center transition-transform"><MessageSquare size={18} /></div>
+                   <div className="flex-1 min-w-0"><div className="text-[13px] font-bold text-slate-900 leading-tight">Messages</div><div className="text-[11px] text-slate-500 truncate">Chat with homeowners</div></div>
+                </Link>
+                <Link href="/calendar" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer" data-testid="button-schedule-visit">
+                   <div className="w-10 h-10 rounded-lg bg-[#EAF4FD] text-[#1560A2] flex items-center justify-center transition-transform"><Calendar size={18} /></div>
+                   <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-bold text-slate-900 leading-tight">Schedule</div>
+                      <div className="text-[11px] text-slate-500 truncate">
+                        {nextAppointment
+                          ? `Next: ${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                          : 'View calendar'}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                   </div>
+                </Link>
+                <Link href="/service-records" className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 transition-colors group cursor-pointer" data-testid="button-mark-complete">
+                   <div className="w-10 h-10 rounded-lg bg-[#F0FAF4] text-[#079669] flex items-center justify-center transition-transform"><CheckCircle size={18} /></div>
+                   <div className="flex-1 min-w-0"><div className="text-[13px] font-bold text-slate-900 leading-tight">Mark Complete</div><div className="text-[11px] text-slate-500 truncate">Log finished work</div></div>
+                </Link>
+              </div>
             </div>
+
+            {/* AI Coach */}
+            <Link href="/ai-contractor-help" className="relative overflow-hidden rounded-xl bg-[#0C3460] p-5 shadow-sm block group cursor-pointer" data-tour-id="contractor-ai-coach">
+               <div className="absolute inset-0 bg-gradient-to-br from-[#1560A2] to-[#0C3460] opacity-90 transition-opacity group-hover:opacity-100"></div>
+               <div className="relative z-10 flex items-start gap-4">
+                 <div className="mt-0.5"><Sparkles size={22} className="text-[#AFD6F9]" /></div>
+                 <div>
+                   <div className="text-[10px] font-bold text-[#AFD6F9] uppercase tracking-wider mb-1">AI Business Coach</div>
+                   <div className="text-[13px] font-bold text-white leading-snug mb-1">Grow your business</div>
+                   <div className="text-[11px] text-blue-100 font-medium opacity-90">Get personalized advice</div>
+                 </div>
+               </div>
+            </Link>
+
+            {/* Homeowner Connection */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm" data-tour-id="contractor-connection">
+               <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Connection</div>
+               <ContractorCodeEntry />
+            </div>
+
+            {/* Visibility Boosts */}
+            {(myBoosts.length > 0 || isLoadingBoosts) && (
+              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3">Visibility Boosts</div>
+                {isLoadingBoosts ? (
+                  <div className="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                    <Loader2 size={14} className="animate-spin" /> Loading boosts…
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {myBoosts.map((boost, idx) => {
+                      const isExpired = boost.status === 'expired' || boost.status === 'cancelled' || !boost.isActive || new Date(boost.endDate) < new Date();
+                      const endDateObj = new Date(boost.endDate);
+                      const renewalWindowEnd = new Date();
+                      renewalWindowEnd.setDate(renewalWindowEnd.getDate() + BOOST_RENEWAL_WINDOW_DAYS);
+                      const canRenew = boost.status !== 'cancelled' && endDateObj <= renewalWindowEnd;
+
+                      return (
+                        <div key={boost.id} className={`flex items-start gap-3 ${idx > 0 ? 'pt-4 border-t border-slate-100' : ''}`} data-testid={`boost-item-${boost.status}`}>
+                          <div className={`w-8 h-8 rounded-lg shrink-0 flex items-center justify-center ${isExpired ? 'bg-slate-100 text-slate-400' : 'bg-amber-50 text-amber-600'}`}>
+                            <Zap size={14} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-slate-900 truncate">{boost.serviceCategory}</div>
+                            <div className="text-[10px] flex items-center gap-1 mt-0.5 text-slate-500">
+                              {isExpired ? <AlertCircle size={10} className="text-red-500" /> : <Clock size={10} />}
+                              <span>{isExpired ? 'Expired' : 'Active until'} {format(endDateObj, 'MMM d')}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-2">
+                              {canRenew && (
+                                <button onClick={() => setRenewalBoostId(boost.id)} className="bg-[#1560A2] hover:bg-[#0C3460] text-white text-[10px] font-bold px-2 py-1 rounded transition-colors" data-testid={`button-renew-boost-${boost.id}`}>
+                                  {isExpired ? 'Buy boost' : 'Renew'}
+                                </button>
+                              )}
+                              {!isExpired && (
+                                <button onClick={() => setPendingCancelBoost(boost)} disabled={cancelBoostMutation.isPending} className="border border-red-200 text-red-600 hover:bg-red-50 text-[10px] font-bold px-2 py-1 rounded transition-colors disabled:opacity-50" data-testid={`button-cancel-boost-${boost.id}`}>
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             <ConfirmDialog
               open={!!pendingCancelBoost}
               onOpenChange={(open) => { if (!open) setPendingCancelBoost(null); }}
@@ -3146,148 +3051,34 @@ export default function ContractorDashboard() {
                 if (pendingCancelBoost) cancelBoostMutation.mutate(pendingCancelBoost.id);
               }}
             />
-          </>
-        )}
 
-        {/* Referral Program */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Referral Program</span>
-        <div className="dash-light-card" data-tour-id="contractor-referral">
-          <div className="dash-light-card-row">
-            <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
-              <Gift size={18} />
+            {/* Referral Program */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm" data-tour-id="contractor-referral">
+               <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                     <div className="w-6 h-6 rounded-md bg-[#F0FAF4] text-[#09694A] flex items-center justify-center shrink-0"><Gift size={12} /></div>
+                     <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Referrals</h2>
+                  </div>
+                  <Link href="/contractor-referral" className="text-[11px] font-bold text-[#09694A] hover:underline">Share →</Link>
+               </div>
+
+               <div className="text-xs font-bold text-slate-900 mt-2 leading-snug">
+                 {referralsRemaining === 0 ? "You've earned a free subscription!" : `Just ${referralsRemaining} referral${referralsRemaining !== 1 ? 's' : ''} to go`}
+               </div>
+               <div className="text-[11px] text-slate-500 mb-3">Get your subscription free</div>
+
+               <div className="flex justify-between text-[10px] font-bold text-slate-400 mb-1.5">
+                 <span>{referralCount} referred</span>
+                 <span>{referralsNeeded} needed</span>
+               </div>
+               <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                 <div className="bg-[#079669] h-full rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }} />
+               </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="dash-light-card-title" data-testid="text-referrals-remaining">
-                {referralsRemaining === 0 ? "You've earned a free subscription!" : `Just ${referralsRemaining} referral${referralsRemaining !== 1 ? 's' : ''} to go`}
-              </div>
-              <div className="dash-light-card-sub">Get your subscription FREE</div>
-            </div>
-            <Link href="/contractor-referral">
-              <span className="dash-light-card-btn" style={{ background: '#F0FAF4', color: '#09694A' }}>Share →</span>
-            </Link>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--gray-400)', marginBottom: 6 }}>
-              <span>{referralCount} referrals</span>
-              <span>{referralsNeeded} needed</span>
-            </div>
-            <div style={{ width: '100%', background: 'var(--gray-200)', borderRadius: 6, height: 6, overflow: 'hidden' }}>
-              <div style={{ width: `${progressPercentage}%`, height: 6, borderRadius: 6, background: '#079669', transition: 'width 0.5s' }} data-testid="progress-referrals" />
-            </div>
+
           </div>
         </div>
-
-        {/* Proposals */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Proposals</span>
-        <div className="dash-light-card" data-tour-id="contractor-proposals" style={{ marginBottom: 10 }}>
-          <div className="dash-light-card-row">
-            <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
-              <FileText size={18} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="dash-light-card-title">
-                {proposals.length === 0 ? 'No proposals yet' : `${pendingProposals.length} pending · ${acceptedProposals.length} accepted`}
-              </div>
-              <div className="dash-light-card-sub">
-                {proposals.length === 0 ? 'Create your first proposal to get started' : `Earnings: $${totalEarnings.toLocaleString()}`}
-              </div>
-            </div>
-            <button
-              className="dash-light-card-btn"
-              style={{ background: '#EAF4FD', color: '#1560A2' }}
-              onClick={() => setIsCreateDialogOpen(true)}
-              data-testid="button-new-proposal"
-            >New →</button>
-          </div>
-          {proposals.length > 0 && (
-            <div style={{ marginTop: 12, borderTop: '1px solid var(--gray-200)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {proposals.slice(0, 3).map(proposal => (
-                <div key={proposal.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{proposal.title}</div>
-                    <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 1 }}>${parseFloat(proposal.estimatedCost || '0').toLocaleString()}</div>
-                  </div>
-                  <span style={{
-                    flexShrink: 0, fontSize: 10, fontWeight: 600, borderRadius: 5, padding: '2px 8px',
-                    background: proposal.status === 'accepted' ? '#F0FAF4' : proposal.status === 'sent' ? '#EAF4FD' : proposal.status === 'rejected' ? '#FEE2E2' : '#F3F4F6',
-                    color: proposal.status === 'accepted' ? '#09694A' : proposal.status === 'sent' ? '#1560A2' : proposal.status === 'rejected' ? '#DC2626' : '#6B7280',
-                    textTransform: 'uppercase',
-                  }}>{proposal.status}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Calendar */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Calendar</span>
-        <div className="dash-light-card" data-tour-id="contractor-calendar" style={{ marginBottom: 10 }}>
-          <div className="dash-light-card-row">
-            <div className="dash-light-card-icon" style={{ background: '#EAF4FD', color: '#1560A2' }}>
-              <Calendar size={18} />
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="dash-light-card-title">
-                {nextAppointment
-                  ? `${new Date(nextAppointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${new Date(nextAppointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
-                  : 'No appointments in the next 7 days'}
-              </div>
-              <div className="dash-light-card-sub">{upcomingAppointments.length} upcoming in the next 7 days</div>
-            </div>
-            <Link href="/calendar">
-              <span className="dash-light-card-btn" style={{ background: '#EAF4FD', color: '#1560A2' }} data-testid="button-view-calendar">View →</span>
-            </Link>
-          </div>
-          {upcomingAppointments.length > 0 && (
-            <div style={{ marginTop: 12, borderTop: '1px solid var(--gray-200)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {upcomingAppointments.slice(0, 2).map(appointment => (
-                <div key={appointment.id} style={{ background: 'var(--gray-100)', borderRadius: 8, padding: '8px 12px' }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{appointment.serviceType || 'Service appointment'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: 2 }}>
-                    {new Date(appointment.scheduledDateTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {new Date(appointment.scheduledDateTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} · {appointment.estimatedDuration || 2} hrs
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Accepted proposals are the available proxy for active work. */}
-        <span className="dash-section-label" style={{ marginTop: 4 }}>Accepted Proposals</span>
-        {acceptedProposals.length > 0 ? (
-          acceptedProposals.slice(0, 3).map(job => {
-            const isScheduled = hasScheduledAppointmentForProposal(job, appointments, now);
-
-            return (
-              <div key={job.id} className="dash-light-card" style={{ marginBottom: 10 }}>
-                <div className="dash-light-card-row">
-                  <div className="dash-light-card-icon" style={{ background: '#F0FAF4', color: '#09694A' }}>
-                    <CheckCircle size={18} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="dash-light-card-title">{job.title}</div>
-                    <div className="dash-light-card-sub">{job.estimatedDuration || 'TBD'} · ${parseFloat(job.estimatedCost || '0').toLocaleString()}</div>
-                  </div>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#079669', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                    <CheckCircle size={12} /> {isScheduled ? 'Scheduled' : 'Accepted'}
-                  </span>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="dash-light-card" style={{ textAlign: 'center', padding: '24px 14px', marginBottom: 10 }}>
-            <Briefcase size={28} style={{ color: 'var(--gray-400)', margin: '0 auto 8px', display: 'block' }} />
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-600)' }}>No active jobs yet</div>
-            <div style={{ fontSize: 12, color: 'var(--gray-400)', marginTop: 4 }}>Create and send proposals to get started</div>
-          </div>
-        )}
-
-        {/* Full Proposals Section */}
-        <div style={{ marginBottom: 16 }}>
-          <Proposals contractorId={typedUser.id} />
-        </div>
-
+      </div>
       </div>
 
       {/* Create Proposal Dialog */}
@@ -3343,7 +3134,7 @@ export default function ContractorDashboard() {
                           ) : (
                             contactedHomeowners.map((homeowner) => (
                               <SelectItem key={homeowner.id} value={homeowner.id}>
-                                {homeowner.firstName || homeowner.lastName 
+                                {homeowner.firstName || homeowner.lastName
                                   ? `${homeowner.firstName || ''} ${homeowner.lastName || ''}`.trim()
                                   : homeowner.email || 'Unknown Customer'}
                               </SelectItem>

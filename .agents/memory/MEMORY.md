@@ -56,3 +56,4 @@
 - [Partial-index time cutoffs](partial-index-time-cutoffs.md) — match cutoff literal type to the timestamp column; timestamptz coercion is not immutable
 - [Agent cash payouts retired](agent-cash-payouts-retired.md) — never create, transfer, message, or expose real-estate-agent referral cash payouts; retain historical ledger data only
 - [Homeowner activation before paywall](homeowner-activation-before-paywall.md) — first home, canonical score, and first task must deliver value before deeper or multi-home upgrade gates
+- [Work-first responsive page grammar](work-first-responsive-page-grammar.md) — authenticated role pages use compact headers, stable primary nav, and first-viewport work queues

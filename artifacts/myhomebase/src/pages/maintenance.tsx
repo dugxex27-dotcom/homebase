@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import HomeHealthScore from "@/components/home-health-score";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +27,7 @@ import { HomeownerFeatureGate, HomeownerTrialBanner, FreeUserUpgradePrompt } fro
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
 import { MaintenanceVerificationStatus } from "@/components/maintenance-verification-status";
-import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight, Camera, FileUp } from "lucide-react";
+import { Calendar, Clock, Wrench, DollarSign, MapPin, RotateCcw, ChevronDown, ChevronUp, Settings, Plus, Edit, Trash2, Home, FileText, Building2, User, Building, Phone, MessageSquare, AlertTriangle, Thermometer, Cloud, Monitor, Book, ExternalLink, Upload, Trophy, Mail, Handshake, Globe, TrendingDown, TrendingUp, PiggyBank, Truck, CheckCircle2, Circle, Download, X, Search, Loader2, Scan, AlertCircle, Sparkles, RefreshCw, ChevronRight, Camera, FileUp } from "lucide-react";
 import { AppointmentScheduler } from "@/components/appointment-scheduler";
 import { CustomMaintenanceTasks } from "@/components/custom-maintenance-tasks";
 import HouseMap from "@/components/house-map";
@@ -224,13 +224,13 @@ const MONTHS = [
 const MECHANICAL_FEATURES: Array<{
   key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear";
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   lifespan: [number, number];
   category: string;
 }> = [
-  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25], category: "roofing" },
-  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20], category: "hvac" },
-  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12], category: "plumbing" },
+  { key: "roofInstalledYear", label: "Roof", icon: <Home size={18} />, lifespan: [20, 25], category: "roofing" },
+  { key: "hvacInstalledYear", label: "HVAC", icon: <Thermometer size={18} />, lifespan: [15, 20], category: "hvac" },
+  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: <Cloud size={18} />, lifespan: [8, 12], category: "plumbing" },
 ];
 
 function getMechanicalAgeInfo(house: House) {
@@ -251,47 +251,47 @@ function getMechanicalAgeInfo(house: House) {
 // Climate zone mapping based on US regions
 const getClimateZoneFromCoordinates = (lat: number, lng: number): string => {
   // Pacific Northwest: Washington, Oregon, Northern California
-  if ((lat >= 42 && lat <= 49 && lng >= -124.5 && lng <= -116.5) || 
+  if ((lat >= 42 && lat <= 49 && lng >= -124.5 && lng <= -116.5) ||
       (lat >= 39 && lat <= 42 && lng >= -124.5 && lng <= -120)) {
     return "pacific-northwest";
   }
-  
+
   // California (excluding northern part already covered)
   if (lat >= 32.5 && lat <= 42 && lng >= -124.5 && lng <= -114) {
     return "california";
   }
-  
+
   // Southwest: Arizona, Nevada, Utah, New Mexico, parts of Colorado
   if ((lat >= 31 && lat <= 42 && lng >= -114 && lng <= -102) ||
       (lat >= 36.5 && lat <= 41 && lng >= -109 && lng <= -102)) {
     return "southwest";
   }
-  
+
   // Mountain West: Montana, Idaho, Wyoming, Colorado (northern parts)
   if (lat >= 41 && lat <= 49 && lng >= -116.5 && lng <= -102) {
     return "mountain-west";
   }
-  
+
   // Great Plains: North Dakota, South Dakota, Nebraska, Kansas, Oklahoma, parts of Texas
   if (lat >= 25.8 && lat <= 49 && lng >= -102 && lng <= -94) {
     return "great-plains";
   }
-  
+
   // Midwest: Minnesota, Wisconsin, Iowa, Missouri, Illinois, Indiana, Ohio, Michigan
   if (lat >= 36.5 && lat <= 49 && lng >= -94 && lng <= -80.5) {
     return "midwest";
   }
-  
+
   // Southeast: Florida, Georgia, Alabama, Mississippi, Louisiana, Arkansas, Tennessee, Kentucky, South Carolina, North Carolina, Virginia, West Virginia
   if (lat >= 24.5 && lat <= 39.5 && lng >= -94 && lng <= -75.5) {
     return "southeast";
   }
-  
+
   // Northeast: Maine, New Hampshire, Vermont, Massachusetts, Rhode Island, Connecticut, New York, New Jersey, Pennsylvania, Delaware, Maryland
   if (lat >= 38.5 && lat <= 47.5 && lng >= -80.5 && lng <= -66.5) {
     return "northeast";
   }
-  
+
   // Default fallback based on latitude
   if (lat >= 47) return "pacific-northwest";
   if (lat >= 42) return "northeast";
@@ -368,13 +368,13 @@ const getAddressSuggestions = async (input: string): Promise<AddressSuggestion[]
         });
       });
     }
-    
+
     // Fallback: Use Nominatim for suggestions
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(input)}&limit=5&countrycodes=us&addressdetails=1`
     );
     const data = await response.json();
-    
+
     return data.map((item: any) => ({
       description: item.display_name,
       place_id: item.place_id.toString(),
@@ -397,7 +397,7 @@ const geocodeAddress = async (address: string): Promise<{ lat: number; lng: numb
       `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1&countrycodes=us`
     );
     const data = await response.json();
-    
+
     if (data && data.length > 0) {
       return {
         lat: parseFloat(data[0].lat),
@@ -478,15 +478,15 @@ interface SystemRecommendation {
 
 function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendation[] {
   if (!system.installationYear) return [];
-  
+
   const currentYear = new Date().getFullYear();
   const age = currentYear - system.installationYear;
   const systemLabel = Object.values(HOME_SYSTEMS)
     .flat()
     .find(s => s.value === system.systemType)?.label || system.systemType;
-  
+
   const recommendations: SystemRecommendation[] = [];
-  
+
   // Heating Systems - Furnaces (gas, oil, electric)
   if (system.systemType.includes('furnace')) {
     if (age >= 15) {
@@ -515,7 +515,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Heat Pumps
   else if (system.systemType === 'heat-pump') {
     if (age >= 12) {
@@ -536,7 +536,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Boilers
   else if (system.systemType === 'boiler') {
     if (age >= 20) {
@@ -557,7 +557,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Radiant Floor Heating
   else if (system.systemType === 'radiant-floor') {
     if (age >= 25) {
@@ -570,7 +570,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Wood Stove/Fireplace
   else if (system.systemType === 'wood-stove') {
     recommendations.push({
@@ -581,7 +581,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$150 - $350'
     });
   }
-  
+
   // Cooling Systems - Central AC
   else if (system.systemType === 'central-ac') {
     if (age >= 12) {
@@ -602,7 +602,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Window AC Units
   else if (system.systemType === 'window-ac') {
     if (age >= 10) {
@@ -615,7 +615,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Mini-Split Systems
   else if (system.systemType === 'mini-split') {
     if (age >= 15) {
@@ -636,7 +636,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Evaporative Cooler
   else if (system.systemType === 'evaporative') {
     if (age >= 15) {
@@ -656,12 +656,12 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$100 - $200'
     });
   }
-  
+
   // Water Systems - Water Heaters
   else if (system.systemType.includes('water-heater') || system.systemType.includes('tankless')) {
     const isTankless = system.systemType.includes('tankless');
     const typicalLifespan = isTankless ? 20 : 10;
-    
+
     if (age >= typicalLifespan) {
       recommendations.push({
         title: `${systemLabel} Replacement Needed`,
@@ -680,7 +680,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Solar Water Heating
   else if (system.systemType === 'solar-water') {
     if (age >= 15) {
@@ -693,7 +693,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Well Water System
   else if (system.systemType === 'well-water') {
     if (age >= 20) {
@@ -714,7 +714,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       });
     }
   }
-  
+
   // Water Softener
   else if (system.systemType === 'water-softener') {
     if (age >= 15) {
@@ -734,7 +734,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$50 - $100'
     });
   }
-  
+
   // Special Features - Solar Panels
   else if (system.systemType === 'solar-panels') {
     if (age >= 20) {
@@ -754,7 +754,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$150 - $300'
     });
   }
-  
+
   // Swimming Pool
   else if (system.systemType === 'pool') {
     if (age >= 8) {
@@ -774,7 +774,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$100 - $200 monthly for service'
     });
   }
-  
+
   // Hot Tub/Spa
   else if (system.systemType === 'spa') {
     if (age >= 10) {
@@ -794,7 +794,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$50 - $100 monthly'
     });
   }
-  
+
   // Backup Generator
   else if (system.systemType === 'generator') {
     if (age >= 15) {
@@ -814,7 +814,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$200 - $400'
     });
   }
-  
+
   // Septic System
   else if (system.systemType === 'septic') {
     if (age >= 25) {
@@ -834,7 +834,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$300 - $600'
     });
   }
-  
+
   // Sump Pump
   else if (system.systemType === 'sump-pump') {
     if (age >= 7) {
@@ -854,7 +854,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$0'
     });
   }
-  
+
   // Security System
   else if (system.systemType === 'security-system') {
     if (age >= 10) {
@@ -874,7 +874,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$50 - $150'
     });
   }
-  
+
   // Irrigation/Sprinkler System
   else if (system.systemType === 'sprinkler-system') {
     if (age >= 15) {
@@ -894,7 +894,7 @@ function generateAgeBasedRecommendations(system: HomeSystem): SystemRecommendati
       estimatedCost: '$100 - $300'
     });
   }
-  
+
   // ── Roof & Exterior ──────────────────────────────────────────────────────
   else if (system.systemType === 'Asphalt Shingle Roof' || system.systemType === 'roof-asphalt') {
     if (age >= 20) {
@@ -1144,7 +1144,7 @@ function TaskDetailDialog({
               <X className="w-5 h-5" />
             </Button>
           </div>
-          
+
           <div className="p-6 space-y-6">
             <div className="prose max-w-none">
               <p className="text-gray-700 text-base sm:text-lg leading-relaxed">
@@ -1215,7 +1215,7 @@ function TaskDetailDialog({
                     </Button>
                   </div>
                 )}
-                
+
                 <a
                   href={`/contractors?category=${encodeURIComponent(task.category)}&service=${encodeURIComponent(task.title)}&houseId=${selectedHouseId}&maxDistance=20`}
                   className="block w-full text-center py-3 px-4 bg-[#E6F1FB] text-[#1560A2] font-medium rounded-lg hover:bg-[#D5E9F8] transition-colors"
@@ -1307,7 +1307,7 @@ function TaskDetailDialog({
                     {(() => {
                       const currentOverride = getTaskOverride(task.title, taskOverrides || [], task.id, task.legacyTitles);
                       const taskId = task.id;
-                      
+
                       return (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
@@ -1514,7 +1514,7 @@ function TaskCard({
   };
 
   return (
-    <Card 
+    <Card
       className={`transition-all border-0 shadow-sm hover:shadow-md cursor-pointer ${completed ? 'bg-[#F0FAF4]' : 'bg-white'}`}
       data-testid={`card-task-${task.id}`}
       onClick={onOpenDialog}
@@ -1536,32 +1536,38 @@ function TaskCard({
           {task.actionSummary || displayDescription}
         </p>
 
-        {completed && (
+        {completed ? (
           <MaintenanceVerificationStatus
             verificationTier={verificationLog?.verificationTier}
             aiVerificationStatus={verificationLog?.aiVerificationStatus}
             verificationReasonCodes={verificationLog?.verificationReasonCodes}
             className="mb-3"
           />
-        )}
-        
-        <div className="flex items-center justify-between text-sm text-gray-500">
-          <div className="flex items-center gap-4">
-            {task.costEstimate && (
-              <span className="flex items-center gap-1">
-                <DollarSign className="w-4 h-4 text-[#079669]" />
-                {formatDIYSavings(task.costEstimate)}
-              </span>
-            )}
-            {task.estimatedTime && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-4 h-4 text-yellow-500" />
-                {task.estimatedTime}
-              </span>
-            )}
+        ) : (
+          <div className="flex items-center justify-between mt-3 border-t border-gray-100 pt-3">
+            <span className="text-sm font-bold text-[#3C258E] flex items-center gap-1">
+              <TrendingUp className="w-4 h-4" />
+              Score impact after verification
+            </span>
+            <Button size="sm" className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white rounded-full px-4 h-8 text-xs font-semibold shadow-sm" onClick={(e) => { e.stopPropagation(); onOpenDialog(); }}>
+              Log Work
+            </Button>
           </div>
-          <span className="text-[#1560A2] font-medium text-sm">View Details →</span>
-        </div>
+        )}
+
+        {completed && (
+          <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex items-center gap-4">
+              {task.costEstimate && (
+                <span className="flex items-center gap-1">
+                  <DollarSign className="w-4 h-4 text-[#079669]" />
+                  {formatDIYSavings(task.costEstimate)}
+                </span>
+              )}
+            </div>
+            <span className="text-[#1560A2] font-medium text-sm">View Details →</span>
+          </div>
+        )}
       </div>
     </Card>
   );
@@ -1569,6 +1575,8 @@ function TaskCard({
 
 export default function Maintenance() {
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const openedLogFromQueryRef = useRef(false);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedZone, setSelectedZone] = useState<string>("pacific-northwest");
   const [selectedHouseId, setSelectedHouseId] = useState<string>("");
@@ -1580,7 +1588,7 @@ export default function Maintenance() {
   const [editingMaintenanceLog, setEditingMaintenanceLog] = useState<MaintenanceLog | null>(null);
   const [isHouseDialogOpen, setIsHouseDialogOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
-  
+
   // Home systems dialog state
   const [isHomeSystemDialogOpen, setIsHomeSystemDialogOpen] = useState(false);
   const [editingHomeSystem, setEditingHomeSystem] = useState<HomeSystem | null>(null);
@@ -1625,7 +1633,7 @@ export default function Maintenance() {
   const queryClient = useQueryClient();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { needsUpgrade, isInTrial, trialDaysRemaining, isFreeUser, isLoading: subscriptionLoading } = useHomeownerSubscription();
-  
+
   // Task override states
   const [showCustomizeTask, setShowCustomizeTask] = useState<string | null>(null);
 
@@ -1642,7 +1650,7 @@ export default function Maintenance() {
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   // Model lookup
   const [modelLookupLoading, setModelLookupLoading] = useState(false);
-  
+
   // Service logs filter state
   const [homeAreaFilter, setHomeAreaFilter] = useState<string>("all");
   const [serviceRecordsHouseFilter, setServiceRecordsHouseFilter] = useState<string>("all");
@@ -1703,7 +1711,7 @@ export default function Maintenance() {
   const [cxInvoiceFile, setCxInvoiceFile] = useState<File | null>(null);
   const [cxCompletePending, setCxCompletePending] = useState(false);
 
-  // Use authenticated user's ID  
+  // Use authenticated user's ID
   const homeownerId = (user as any)?.id;
   const userRole = (user as any)?.role;
   const isContractor = userRole === 'contractor';
@@ -1742,8 +1750,8 @@ export default function Maintenance() {
   const { data: maintenanceLogs, isLoading: maintenanceLogsLoading } = useQuery<MaintenanceLog[]>({
     queryKey: ['/api/maintenance-logs', { homeownerId, houseId: serviceRecordsHouseFilter === 'all' ? undefined : serviceRecordsHouseFilter }],
     queryFn: async () => {
-      const url = serviceRecordsHouseFilter === 'all' 
-        ? '/api/maintenance-logs' 
+      const url = serviceRecordsHouseFilter === 'all'
+        ? '/api/maintenance-logs'
         : `/api/maintenance-logs?houseId=${serviceRecordsHouseFilter}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch maintenance logs');
@@ -1882,14 +1890,14 @@ export default function Maintenance() {
   // Function to find previous contractors for similar maintenance tasks
   const findPreviousContractor = (taskCategory: string, taskTitle: string) => {
     if (!maintenanceLogs || maintenanceLogs.length === 0) return null;
-    
+
     // Look for maintenance logs with similar service types or home areas
     const similarServices = maintenanceLogs.filter(log => {
       const serviceType = log.serviceType?.toLowerCase() || '';
       const homeArea = log.homeArea?.toLowerCase() || '';
       const category = taskCategory.toLowerCase();
       const title = taskTitle.toLowerCase();
-      
+
       return (
         serviceType.includes(category) ||
         homeArea.includes(category) ||
@@ -1902,13 +1910,13 @@ export default function Maintenance() {
         (category === 'landscaping' && serviceType.includes('landscaping'))
       );
     });
-    
+
     // Find the most recent contractor
     if (similarServices.length > 0) {
-      const mostRecent = similarServices.sort((a, b) => 
+      const mostRecent = similarServices.sort((a, b) =>
         new Date(b.serviceDate).getTime() - new Date(a.serviceDate).getTime()
       )[0];
-      
+
       if (mostRecent.contractorName || mostRecent.contractorCompany) {
         return {
           contractorName: mostRecent.contractorName,
@@ -1919,7 +1927,7 @@ export default function Maintenance() {
         };
       }
     }
-    
+
     return null;
   };
 
@@ -2021,10 +2029,10 @@ export default function Maintenance() {
 
   // Complete task with DIY or contractor method
   const completeTaskMutation = useMutation({
-    mutationFn: async (data: { 
-      houseId: string; 
+    mutationFn: async (data: {
+      houseId: string;
       taskId?: string;
-      taskTitle: string; 
+      taskTitle: string;
       completionMethod: 'diy' | 'contractor';
       homeArea?: string;
       costEstimate?: {
@@ -2061,17 +2069,17 @@ export default function Maintenance() {
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'diy-savings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/houses', variables.houseId, 'health-score'] });
       queryClient.invalidateQueries({ queryKey: ['/api/achievements/user'] });
-      
+
       // Show achievement notification if any were unlocked
       if (data.newAchievements && data.newAchievements.length > 0) {
         const achievementNames = data.newAchievements.map((a: any) => a.achievementKey).join(', ');
-        toast({ 
-          title: "🎉 Achievement Unlocked!", 
+        toast({
+          title: "🎉 Achievement Unlocked!",
           description: `You've earned ${data.newAchievements.length} new achievement${data.newAchievements.length > 1 ? 's' : ''}!`,
           duration: 5000,
         });
       }
-      
+
       toast({ title: "Success", description: "Task marked as complete!" });
     },
     onError: () => {
@@ -2220,7 +2228,7 @@ export default function Maintenance() {
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['/api/task-completions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/achievements'] });
-      
+
       // Show achievement notifications
       if (data.newAchievements && data.newAchievements.length > 0) {
         data.newAchievements.forEach((achievement) => {
@@ -2588,7 +2596,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   const toggleTaskCompletion = (taskId: string) => {
     const currentYear = new Date().getFullYear();
     const taskKey = getTaskKey(taskId, selectedMonth, currentYear);
-    
+
     setCompletedTasks(prev => ({
       ...prev,
       [taskKey]: !prev[taskKey]
@@ -2597,31 +2605,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   // Check if task is completed
   const isTaskCompleted = (taskId: string) => {
-    // First check local state
     const currentYear = new Date().getFullYear();
     const taskKey = getTaskKey(taskId, selectedMonth, currentYear);
     if (completedTasks[taskKey]) return true;
-    
-    // Also check maintenance logs for task completions
-    if (maintenanceLogs) {
-      // Extract task title from taskId (remove month/year suffix)
-      const task = filteredTasks.find(t => t.id === taskId);
-      if (task) {
-        // Check if there's a maintenance log for this task in the current month
-        const hasLog = maintenanceLogs.some(log => {
-          const logDate = new Date(log.serviceDate);
-          const logMonth = logDate.getMonth() + 1;
-          const logYear = logDate.getFullYear();
-          return log.serviceType === task.title && 
-                 logMonth === selectedMonth && 
-                 logYear === currentYear &&
-                 (log.completionMethod === 'diy' || log.completionMethod === 'contractor');
-        });
-        if (hasLog) return true;
-      }
-    }
-    
-    return false;
+    return taskCompletionRows.some((completion) =>
+      completion.taskId === taskId
+      && completion.month === selectedMonth
+      && completion.year === currentYear
+    );
   };
 
   // Match the persisted evidence record to the currently displayed task.
@@ -2653,14 +2644,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   const resetMonthTasks = () => {
     const currentYear = new Date().getFullYear();
     const updatedTasks = { ...completedTasks };
-    
+
     // Remove all completed tasks for current month/year
     Object.keys(updatedTasks).forEach(key => {
       if (key.includes(`-${selectedMonth}-${currentYear}`)) {
         delete updatedTasks[key];
       }
     });
-    
+
     setCompletedTasks(updatedTasks);
   };
 
@@ -2675,13 +2666,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       return;
     }
 
-    const newSystems = homeSystems.includes(system) 
+    const newSystems = homeSystems.includes(system)
       ? homeSystems.filter(s => s !== system)
       : [...homeSystems, system];
-    
+
     // Update local state immediately for UI responsiveness
     setHomeSystems(newSystems);
-    
+
     // Save to database
     updateHouseMutation.mutate({
       id: selectedHouseId,
@@ -2759,7 +2750,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   // Get existing system data for a specific system type
   const getSystemData = (systemType: string) => {
-    return homeSystemsData?.find(system => 
+    return homeSystemsData?.find(system =>
       system.systemType === systemType && system.houseId === selectedHouseId
     );
   };
@@ -2783,10 +2774,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
   const handleDeleteHouse = (house: House) => {
     if (houses.length <= 1) {
-      toast({ 
-        title: "Cannot Delete", 
-        description: "You must have at least one house.", 
-        variant: "destructive" 
+      toast({
+        title: "Cannot Delete",
+        description: "You must have at least one house.",
+        variant: "destructive"
       });
       return;
     }
@@ -2831,7 +2822,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   // Auto-detect climate zone from address with debounce
   const handleAddressChange = (address: string, onChange: (value: string) => void) => {
     onChange(address);
-    
+
     // Clear existing timers
     if (addressDebounceTimer) {
       clearTimeout(addressDebounceTimer);
@@ -2839,7 +2830,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     if (suggestionDebounceTimer) {
       clearTimeout(suggestionDebounceTimer);
     }
-    
+
     // Get suggestions (debounce for 300ms)
     if (address.length > 3) {
       const suggestionTimer = setTimeout(() => {
@@ -2849,7 +2840,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     } else {
       setShowAddressSuggestions(false);
     }
-    
+
     // Set new timer for geocoding (debounce for 1 second)
     if (address.length > 10) {
       const timer = setTimeout(async () => {
@@ -2869,7 +2860,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           setIsGeocodingAddress(false);
         }
       }, 1000); // 1 second debounce
-      
+
       setAddressDebounceTimer(timer);
     }
   };
@@ -2879,7 +2870,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     onChange(suggestion.description);
     setShowAddressSuggestions(false);
     setAddressSuggestions([]);
-    
+
     // Trigger climate zone detection immediately for selected address
     setTimeout(async () => {
       setIsGeocodingAddress(true);
@@ -3102,6 +3093,14 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     setIsMaintenanceLogDialogOpen(true);
   };
 
+  useEffect(() => {
+    const action = new URLSearchParams(search).get("action");
+    if (action !== "log" || !selectedHouseId || openedLogFromQueryRef.current) return;
+    openedLogFromQueryRef.current = true;
+    handleAddNewMaintenanceLog();
+    setLocation("/maintenance", { replace: true });
+  }, [search, selectedHouseId]);
+
   const handleDiyCompletion = (task: MaintenanceTask) => {
     setPendingDiyTask(task);
     setDiyHomeArea("");
@@ -3299,10 +3298,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       setAfterPhotoFiles([]);
     } catch (error) {
       console.error('Error uploading files:', error);
-      toast({ 
-        title: "Error", 
-        description: "Failed to upload files. Please try again.", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "Failed to upload files. Please try again.",
+        variant: "destructive"
       });
     } finally {
       setIsUploadingFiles(false);
@@ -3340,12 +3339,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       log.notes || '',
       log.createdAt ? new Date(log.createdAt).toLocaleDateString() : ''
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
-    
+
     return csvContent;
   };
 
@@ -3459,16 +3458,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   // Generate maintenance tasks based on month and location using US_MAINTENANCE_DATA
   const getMaintenanceTasksForMonth = (month: number): MaintenanceTask[] => {
     const tasks: MaintenanceTask[] = [];
-    
+
     // Get the region data based on selected climate zone
     const regionName = getRegionFromClimateZone(selectedZone);
     const regionData = US_MAINTENANCE_DATA[regionName];
-    
+
     if (!regionData) {
       console.error(`No data found for region: ${regionName}`);
       return tasks;
     }
-    
+
     const monthData = getDueMaintenanceTasks(
       regionName,
       new Date(new Date().getFullYear(), month - 1, 1),
@@ -3478,12 +3477,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
       console.error(`No data found for month: ${month} in region: ${regionName}`);
       return tasks;
     }
-    
+
     const allClimateZones = ["pacific-northwest", "northeast", "southeast", "midwest", "southwest", "mountain-west", "california", "great-plains"];
-    
+
     // Enrich seasonal tasks with cost estimates
     const enrichedSeasonalTasks = enrichTasksWithCosts(monthData.seasonal, regionName);
-    
+
     // Convert seasonal tasks to MaintenanceTask objects
     enrichedSeasonalTasks.forEach((taskItem, index) => {
       tasks.push({
@@ -3508,10 +3507,10 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         legacyTitles: taskItem.legacyTitles,
       });
     });
-    
+
     // Enrich weather-specific tasks with cost estimates
     const enrichedWeatherTasks = enrichTasksWithCosts(monthData.weatherSpecific, regionName);
-    
+
     // Convert weather-specific tasks to MaintenanceTask objects
     enrichedWeatherTasks.forEach((taskItem, index) => {
       tasks.push({
@@ -3538,21 +3537,21 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     });
 
     // Tasks are now loaded from US_MAINTENANCE_DATA above
-    
+
     return tasks;
   };
 
   // Convert custom tasks to MaintenanceTask format based on their frequency
   const convertCustomTasksToMaintenanceTasks = (customTasks: CustomMaintenanceTask[], currentMonth: number): MaintenanceTask[] => {
     const convertedTasks: MaintenanceTask[] = [];
-    
+
     customTasks.forEach(customTask => {
       // Skip inactive tasks
       if (!customTask.isActive) return;
-      
+
       // Determine if this task should appear in the current month
       let shouldAppear = false;
-      
+
       switch (customTask.frequencyType) {
         case 'monthly':
           // Monthly tasks appear every month
@@ -3581,7 +3580,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         default:
           shouldAppear = false;
       }
-      
+
       if (shouldAppear) {
         // Build cost estimate from custom task data if available
         let costEstimate: CostEstimate | undefined;
@@ -3594,7 +3593,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             currency: 'USD',
           };
         }
-        
+
         convertedTasks.push({
           id: `custom-${customTask.id}`,
           title: customTask.title,
@@ -3611,30 +3610,47 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         });
       }
     });
-    
+
     return convertedTasks;
   };
 
-  const maintenanceTasks = getMaintenanceTasksForMonth(selectedMonth);
-  
-  // Convert and merge custom tasks with regular maintenance tasks
-  const customTasksForMonth = convertCustomTasksToMaintenanceTasks(customMaintenanceTasks, selectedMonth);
-  const allTasks = [...maintenanceTasks, ...customTasksForMonth];
+  const currentMonthNum = new Date().getMonth() + 1;
+  const [taskFilter, setTaskFilter] = useState<'due' | 'overdue' | 'done'>('due');
 
-  const filteredTasks = allTasks.filter(task => {
-    // Filter by climate zone
-    if (!task.climateZones.includes(selectedZone)) {
-      return false;
-    }
-    
-    // Filter by home systems - if task has system requirements, user must have at least one
-    if (task.systemRequirements && task.systemRequirements.length > 0) {
-      return task.systemRequirements.some(requirement => homeSystems.includes(requirement));
-    }
-    
-    // If no system requirements, show the task
-    return true;
-  });
+  // Instead of only one month, generate all tasks for the year
+  const allYearTasks = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const standard = getMaintenanceTasksForMonth(month);
+    const custom = convertCustomTasksToMaintenanceTasks(customMaintenanceTasks, month);
+    return [...standard, ...custom].filter(task => {
+      if (!task.climateZones.includes(selectedZone)) return false;
+      if (task.systemRequirements && task.systemRequirements.length > 0) {
+        return task.systemRequirements.some(req => homeSystems.includes(req));
+      }
+      return true;
+    });
+  }).flat();
+
+  // Deduplicate by task ID + month to be safe
+  const uniqueTasks = Array.from(new Map(allYearTasks.map(t => [`${t.id}-${t.month}`, t])).values());
+
+  const overdueTasks = uniqueTasks.filter(t => t.month < currentMonthNum && !isTaskCompleted(t.id));
+  const dueTasks = uniqueTasks.filter(t => t.month === currentMonthNum && !isTaskCompleted(t.id));
+  const doneTasks = uniqueTasks.filter(t => isTaskCompleted(t.id));
+
+  // Determine what to render
+  const filteredTasks = taskFilter === 'overdue' ? overdueTasks : taskFilter === 'done' ? doneTasks : dueTasks;
+  const workGroups = taskFilter === 'due'
+    ? [
+        { label: 'Today', tasks: dueTasks.filter(task => task.priority === 'high') },
+        { label: 'This week', tasks: dueTasks.filter(task => task.priority === 'medium') },
+        { label: 'Later', tasks: dueTasks.filter(task => task.priority !== 'high' && task.priority !== 'medium') },
+      ]
+    : [{
+        label: taskFilter === 'overdue' ? 'Overdue' : 'Done',
+        tasks: filteredTasks,
+      }];
+
 
   // Generate maintenance notifications for current month tasks
   const generateMaintenanceNotificationsMutation = useMutation({
@@ -3694,8 +3710,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     },
   });
 
-  const completedCount = filteredTasks.filter(task => isTaskCompleted(task.id)).length;
-  const totalTasks = filteredTasks.length;
+  const completedCount = doneTasks.length;
+  const totalTasks = dueTasks.length + doneTasks.length;
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -3756,28 +3772,117 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+    <div className="min-h-screen bg-[#F9FAFB]">
 
       {/* ── PAGE HEADER ───────────────────────────── */}
-      <div className="dash-header">
-        <span className="dash-eyebrow">Homeowner</span>
-        <div className="dash-title">Your Tasks</div>
-        <div className="dash-subtitle">{MONTHS[selectedMonth - 1]} maintenance schedule for your home</div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${totalTasks > 0 && completedCount < totalTasks ? ' alert' : ''}`}>{totalTasks}</div>
-            <div className="dash-chip-label">Tasks this month · selected property</div>
+      <div className="bg-white border-b border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Maintenance</h1>
+            <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">Keep your home healthy</p>
           </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${completedCount > 0 ? ' good' : ''}`}>{completedCount}</div>
-            <div className="dash-chip-label">Completed</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">{(houses as any[]).length}</div>
-            <div className="dash-chip-label">Properties</div>
-          </div>
+          <Button
+            className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all"
+            onClick={() => handleAddNewMaintenanceLog()}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Log Work
+          </Button>
         </div>
       </div>
+
+      {houses.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4" aria-labelledby="maintenance-work-heading">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex flex-col gap-3 border-b border-gray-100 pb-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 id="maintenance-work-heading" className="text-lg font-extrabold text-gray-950">Your maintenance work</h2>
+                  <p className="mt-1 text-sm text-gray-500">Prioritized for the selected home.</p>
+                </div>
+                <div className="flex gap-2 overflow-x-auto" aria-label="Filter maintenance work">
+                  {([
+                    ['due', 'Due', dueTasks.length],
+                    ['overdue', 'Overdue', overdueTasks.length],
+                    ['done', 'Done', doneTasks.length],
+                  ] as const).map(([value, label, count]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setTaskFilter(value)}
+                      className={`min-h-11 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors ${
+                        taskFilter === value
+                          ? 'bg-[#3C258E] text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      aria-pressed={taskFilter === value}
+                    >
+                      {label} <span aria-hidden="true">·</span> {count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-5" data-tour-id="task-list">
+                {workGroups.map(group => group.tasks.length > 0 && (
+                  <div key={group.label}>
+                    <div className="mb-2 flex items-center justify-between">
+                      <h3 className="text-xs font-extrabold uppercase tracking-[0.12em] text-gray-500">{group.label}</h3>
+                      <span className="text-xs font-semibold text-gray-400">{group.tasks.length}</span>
+                    </div>
+                    <div className="grid gap-3 xl:grid-cols-2">
+                      {group.tasks.slice(0, 4).map((task, taskIdx) => {
+                        const completed = isTaskCompleted(task.id);
+                        const taskOverride = getTaskOverride(task.title, taskOverrides, task.id, task.legacyTitles);
+                        return (
+                          <div key={`${task.id}-${task.month}`} {...(taskIdx === 0 ? { 'data-tour-id': 'task-complete' } : {})}>
+                            <TaskCard
+                              task={task}
+                              completed={completed}
+                              displayDescription={taskOverride?.customDescription || task.description}
+                              generateTaskId={generateTaskId}
+                              verificationLog={completed ? getTaskVerificationLog(task) : undefined}
+                              onOpenDialog={() => {
+                                setSelectedTask(task);
+                                setIsTaskDetailDialogOpen(true);
+                              }}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+                {filteredTasks.length === 0 && (
+                  <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center">
+                    <CheckCircle2 className="mx-auto h-8 w-8 text-[#3C258E]" />
+                    <h3 className="mt-3 font-bold text-gray-900">
+                      {taskFilter === 'done' ? 'No completed work yet' : 'No work in this view'}
+                    </h3>
+                    <p className="mt-1 text-sm text-gray-500">Choose another filter or log completed work.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <aside className="rounded-2xl border border-[#DED8F7] bg-[#F7F5FF] p-4 shadow-sm">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#65558F]">Score context</p>
+              {selectedHouseId && (
+                <div className="mt-3">
+                  <HomeHealthScore
+                    houseId={selectedHouseId}
+                    houseName={houses.find((house: House) => house.id === selectedHouseId)?.name}
+                    compact
+                  />
+                </div>
+              )}
+              <p className="mt-3 text-xs leading-5 text-[#65558F]">
+                Completed work affects your Home Wellness Score™ only after it is recorded and verified.
+              </p>
+            </aside>
+          </div>
+        </section>
+      )}
 
       {/* Trial Banner for Homeowners */}
       {userRole === 'homeowner' && (
@@ -3793,9 +3898,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             <div className="max-w-7xl mx-auto">
               <div className={`grid gap-4 ${houses.length === 1 ? 'grid-cols-1 max-w-md mx-auto' : houses.length === 2 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
                 {houses.map((house: House) => (
-                  <HomeHealthScore 
-                    key={house.id} 
-                    houseId={house.id} 
+                  <HomeHealthScore
+                    key={house.id}
+                    houseId={house.id}
                     houseName={house.name}
                     compact={true}
                   />
@@ -3856,7 +3961,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           padding: '8px 10px',
                         }}
                       >
-                        <span style={{ fontSize: 20 }}>{item.icon}</span>
+                        <span className="flex items-center justify-center text-[#92400e]" style={item.tone === 'alert' ? { color: '#991b1b' } : {}}>{item.icon}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 13, color: item.tone === 'alert' ? '#991b1b' : '#92400e' }}>
                             {item.label}
@@ -3885,7 +3990,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
         <div className="mb-6">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Setup & Maintain Your Home</h2>
           <p className="text-gray-600 max-w-xl mb-4 text-center mx-auto">Add your property, document systems and features, log appliances, and record maintenance — everything that keeps your home healthy and up to date.</p>
-          
+
           {/* Contractor No Properties Onboarding */}
           {userRole === 'contractor' && houses.length === 0 && (
             <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--purple-light)' }}>
@@ -3918,7 +4023,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </div>
                 </div>
                 <div className="text-center pt-4">
-                  <Button 
+                  <Button
                     onClick={handleAddNewHouse}
                     size="lg"
                     className="px-8 py-3 text-lg font-semibold"
@@ -3969,7 +4074,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </div>
                 <div className="text-center pt-4 space-y-4">
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                    <Button 
+                    <Button
                       onClick={handleAddNewHouse}
                       size="lg"
                       className="px-8 py-3 text-lg font-semibold"
@@ -3979,7 +4084,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <Plus className="w-5 h-5 mr-2" />
                       Add My Property
                     </Button>
-                    <Button 
+                    <Button
                       onClick={() => window.location.href = '/contractors'}
                       size="lg"
                       className="px-8 py-3 text-lg font-semibold"
@@ -4014,9 +4119,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px]">
                       {houses.map((house: House) => (
-                        <SelectItem 
-                          key={house.id} 
-                          value={house.id} 
+                        <SelectItem
+                          key={house.id}
+                          value={house.id}
                           className="cursor-pointer py-3"
                         >
                           <div className="flex flex-col">
@@ -4030,7 +4135,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="flex flex-col gap-3 w-full max-w-md">
                   {/* Contractor constraint message */}
                   {userRole === 'contractor' && houses.length >= 1 && (
@@ -4041,9 +4146,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <div className="flex flex-col gap-3 w-full">
                     {/* Only show Add House button for homeowners or contractors with no houses */}
                     {userRole === 'homeowner' && (
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
+                      <Button
+                        variant="outline"
+                        size="lg"
                         onClick={handleAddNewHouse}
                         className="whitespace-nowrap text-base w-full" style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                         data-tour-id="add-home"
@@ -4053,9 +4158,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </Button>
                     )}
                     {selectedHouseId && houses.length > 0 && (
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
+                      <Button
+                        variant="outline"
+                        size="lg"
                         onClick={() => {
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleEditHouse(selectedHouse);
@@ -4067,9 +4172,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </Button>
                     )}
                     {selectedHouseId && houses.length > 1 && (
-                      <Button 
-                        variant="outline" 
-                        size="lg" 
+                      <Button
+                        variant="outline"
+                        size="lg"
                         onClick={() => {
                           const selectedHouse = houses.find((h: House) => h.id === selectedHouseId);
                           if (selectedHouse) handleDeleteHouse(selectedHouse);
@@ -4081,7 +4186,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       </Button>
                     )}
                   </div>
-                  
+
                   {selectedHouseId && houses.length > 0 && (
                     <div className="text-base mt-2" style={{ color: 'var(--purple-deep)' }}>
                       <div className="flex items-center justify-center gap-2">
@@ -4105,19 +4210,19 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="text-sm" style={{ color: 'var(--purple-deep)' }}>
                   <Building className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
-                  {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} • 
+                  {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} •
                   <Calendar className="inline w-4 h-4 ml-2 mr-1" style={{ color: 'var(--purple-deep)' }} />
                   {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
                 </div>
-                
+
                 {totalTasks > 0 && (
                   <div className="flex items-center gap-3">
                     <div className="text-sm font-medium text-[#2c0f5b]" style={{ color: 'var(--purple-deep)' }}>
                       Progress: {completedCount}/{totalTasks} completed
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={resetMonthTasks}
                       className="text-xs" style={{ backgroundColor: 'var(--purple-deep)', color: 'white', borderColor: 'var(--purple-deep)' }}
                     >
@@ -4126,7 +4231,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     </Button>
                   </div>
                 )}
-                
+
                 <div className="flex gap-2 ml-auto flex-wrap">
                   {selectedHouseId && userRole === 'homeowner' && (
                     <Button
@@ -4141,37 +4246,41 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       AI Scan Invoice
                     </Button>
                   )}
-                  <AppointmentScheduler 
+                  <AppointmentScheduler
                     homeownerId={(user as any)?.id}
                     houseId={selectedHouseId}
-                    triggerButtonText="Schedule Visit" 
+                    triggerButtonText="Schedule Visit"
                     triggerButtonVariant="outline"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Filters */}
+            {/* Task Filters */}
+            <div className="hidden">
+              <button
+                className={`px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${taskFilter === 'due' ? 'bg-[#3C258E] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                onClick={() => setTaskFilter('due')}
+              >
+                Due This Month ({dueTasks.length})
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${taskFilter === 'overdue' ? 'bg-[#3C258E] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                onClick={() => setTaskFilter('overdue')}
+              >
+                Overdue ({overdueTasks.length})
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap transition-colors ${taskFilter === 'done' ? 'bg-[#3C258E] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                onClick={() => setTaskFilter('done')}
+              >
+                Completed ({doneTasks.length})
+              </button>
+            </div>
+
             <div className="space-y-6 mb-8">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--purple-deep)' }}>
-                    <Calendar className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
-                    Month
-                  </label>
-                  <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
-                    <SelectTrigger style={{ backgroundColor: '#ffffff' }}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MONTHS.map((month, index) => (
-                        <SelectItem key={index + 1} value={(index + 1).toString()}>
-                          {month}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Climate Zone and Context */}
+              <div className="flex flex-col md:flex-row gap-4 hidden">
                 <div className="flex-1">
                   <label className="block text-sm font-medium mb-2" style={{ color: 'var(--purple-deep)' }}>
                     <MapPin className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
@@ -4243,9 +4352,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                                         {systemData.installationYear || 'Unknown'}
                                       </span>
                                     )}
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                       className="h-6 w-6 p-0 text-xs"
                                       style={{ color: 'var(--purple-deep)' }}
                                       onClick={() => systemData ? handleEditHomeSystem(systemData) : handleAddHomeSystem(system.label)}
@@ -4284,7 +4393,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             {selectedHouseId && homeSystemsData && homeSystemsData.length > 0 && (() => {
               const allRecommendations = homeSystemsData
                 .filter(system => system.houseId === selectedHouseId && homeSystems.includes(system.systemType))
-                .flatMap(system => 
+                .flatMap(system =>
                   generateAgeBasedRecommendations(system).map(rec => ({
                     ...rec,
                     system: system,
@@ -4293,9 +4402,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       .find(s => s.value === system.systemType)?.label || system.systemType
                   }))
                 );
-              
+
               if (allRecommendations.length === 0) return null;
-              
+
               return (
                 <div className="mb-8">
                   <div className="flex items-center gap-3 mb-4">
@@ -4311,7 +4420,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   </div>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     {allRecommendations.map((rec, index) => (
-                      <Card 
+                      <Card
                         key={index}
                         className={`border-2 ${
                           rec.urgency === 'critical' ? 'border-red-500 bg-red-50 dark:bg-red-900/10' :
@@ -4324,7 +4433,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Badge 
+                                <Badge
                                   variant={rec.urgency === 'critical' ? 'destructive' : 'secondary'}
                                   className="text-xs"
                                 >
@@ -4348,7 +4457,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           <p className="text-sm text-gray-700 dark:text-gray-300">
                             {rec.description}
                           </p>
-                          
+
                           {rec.estimatedCost && (
                             <div className="flex items-center gap-2 text-sm">
                               <DollarSign className="w-4 h-4 text-green-600 dark:text-green-400" />
@@ -4357,7 +4466,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               </span>
                             </div>
                           )}
-                          
+
                           {rec.system.brand && (
                             <div className="text-xs text-muted-foreground pt-2 border-t">
                               {rec.system.brand} {rec.system.model && `- ${rec.system.model}`}
@@ -4536,12 +4645,12 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
             )}
 
             {/* Tasks Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-tour-id="task-list">
+            <div className="hidden">
               {filteredTasks.map((task, taskIdx) => {
                 const completed = isTaskCompleted(task.id);
                 const taskOverride = getTaskOverride(task.title, taskOverrides, task.id, task.legacyTitles);
                 const displayDescription = taskOverride?.customDescription || task.description;
-                
+
                 return (
                   <div
                     key={task.id}
@@ -4873,8 +4982,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
 
         {/* Custom Maintenance Tasks Section */}
         <div className="mt-12" data-custom-tasks-section>
-          <CustomMaintenanceTasks 
-            homeownerId={homeownerId} 
+          <CustomMaintenanceTasks
+            homeownerId={homeownerId}
             houseId={selectedHouseId}
           />
         </div>
@@ -5159,7 +5268,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {editingMaintenanceLog ? 'Edit Service Record' : 'Add New Service Record'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <Form {...maintenanceLogForm}>
               <form onSubmit={maintenanceLogForm.handleSubmit(onSubmitMaintenanceLog)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -5250,9 +5359,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Cost</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="text" 
-                            placeholder="Service cost" 
+                          <Input
+                            type="text"
+                            placeholder="Service cost"
                             {...field}
                             value={field.value || ""}
                             onChange={e => {
@@ -5335,7 +5444,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <textarea 
+                        <textarea
                           className="flex min-h-[80px] w-full rounded-md border border-input px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           style={{ backgroundColor: 'white', color: '#000000' }}
                           placeholder="Any additional notes about the service..."
@@ -5351,7 +5460,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {/* File Upload Section */}
                 <div className="space-y-4 pt-4 border-t" style={{ borderColor: 'var(--purple-light)' }}>
                   <h3 className="text-lg font-semibold">Attachments</h3>
-                  
+
                   {/* Receipt Upload */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
@@ -5471,8 +5580,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 </div>
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
+                  <Button
+                    type="button"
                     onClick={() => setIsMaintenanceLogDialogOpen(false)}
                     style={{ backgroundColor: 'white', color: 'var(--purple-deep)' }}
                     className="hover:opacity-90"
@@ -5480,8 +5589,8 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createMaintenanceLogMutation.isPending || updateMaintenanceLogMutation.isPending || isUploadingFiles}
                     style={{ backgroundColor: 'var(--purple-light)', color: 'white' }}
                     className="hover:opacity-90"
@@ -5525,9 +5634,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormLabel>Street Address</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <Input 
-                            placeholder="Start typing your address..." 
-                            {...field} 
+                          <Input
+                            placeholder="Start typing your address..."
+                            {...field}
                             onChange={(e) => handleAddressChange(e.target.value, field.onChange)}
                             onFocus={() => {
                               if (addressSuggestions.length > 0) {
@@ -5539,7 +5648,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                               setTimeout(() => setShowAddressSuggestions(false), 200);
                             }}
                           />
-                          
+
                           {/* Address Suggestions Dropdown */}
                           {showAddressSuggestions && addressSuggestions.length > 0 && (
                             <div className="absolute z-50 w-full mt-1 bg-background border border-input rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -5591,15 +5700,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsHouseDialogOpen(false)}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createHouseMutation.isPending || updateHouseMutation.isPending}
                     style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
@@ -5649,7 +5758,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
               </label>
             </div>
-            
+
             <Form {...homeSystemForm}>
               <form onSubmit={homeSystemForm.handleSubmit(onSubmitHomeSystem)} className="space-y-4">
                 <FormField
@@ -5659,9 +5768,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel>Year Installed</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g., 2020" 
+                        <Input
+                          type="number"
+                          placeholder="e.g., 2020"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -5679,9 +5788,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel>Last Service Year (Optional)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g., 2023" 
+                        <Input
+                          type="number"
+                          placeholder="e.g., 2023"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
@@ -5751,15 +5860,15 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsHomeSystemDialogOpen(false)}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createHomeSystemMutation.isPending || updateHomeSystemMutation.isPending}
                     style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
@@ -5779,7 +5888,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         setDeleteSystemConfirmOpen(true);
                       }}
                       disabled={deleteHomeSystemMutation.isPending}
-                     
+
                     >
                       {deleteHomeSystemMutation.isPending ? "Deleting..." : "Delete"}
                     </Button>
@@ -5798,7 +5907,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {editingAppliance ? 'Edit Appliance' : 'Add New Appliance'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <Form {...applianceForm}>
               <form onSubmit={applianceForm.handleSubmit((data) => {
                 if (editingAppliance) {
@@ -5852,9 +5961,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                           <span className="ml-1 text-xs font-normal opacity-70">(auto-filled from type)</span>
                         </FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., Kitchen Dishwasher, Main Water Heater" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g., Kitchen Dishwasher, Main Water Heater"
+                            {...field}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
                         </FormControl>
@@ -5870,9 +5979,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Location</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., Kitchen, Basement, Garage" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g., Kitchen, Basement, Garage"
+                            {...field}
                             value={field.value || ""}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
@@ -5988,9 +6097,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Serial Number (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="e.g., ABC123456789" 
-                            {...field} 
+                          <Input
+                            placeholder="e.g., ABC123456789"
+                            {...field}
                             value={field.value || ""}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
@@ -6007,9 +6116,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Purchase Date (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="date"
-                            {...field} 
+                            {...field}
                             value={field.value || ""}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
@@ -6026,9 +6135,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Install Date (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="date"
-                            {...field} 
+                            {...field}
                             value={field.value || ""}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
@@ -6045,9 +6154,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                       <FormItem>
                         <FormLabel>Warranty Expiration (Optional)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="date"
-                            {...field} 
+                            {...field}
                             value={field.value || ""}
                             style={{ backgroundColor: '#ffffff', color: '#000000' }}
                           />
@@ -6065,9 +6174,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel>Notes (Optional)</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Additional details, condition, issues, etc." 
-                          {...field} 
+                        <Input
+                          placeholder="Additional details, condition, issues, etc."
+                          {...field}
                           value={field.value || ""}
                           style={{ backgroundColor: '#ffffff', color: '#000000' }}
                         />
@@ -6078,16 +6187,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsApplianceDialogOpen(false)}
                     style={{ color: 'var(--purple-deep)', borderColor: 'white', backgroundColor: 'white' }}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createApplianceMutation.isPending || updateApplianceMutation.isPending}
                     style={{ backgroundColor: 'var(--purple-deep)', color: 'white' }}
                     className="hover:opacity-90"
@@ -6125,7 +6234,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 {editingApplianceManual ? 'Edit Manual' : 'Add Manual'}
               </DialogTitle>
             </DialogHeader>
-            
+
             <Form {...applianceManualForm}>
               <form onSubmit={applianceManualForm.handleSubmit((data) => {
                 if (editingApplianceManual) {
@@ -6141,9 +6250,9 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                     <FormItem>
                       <FormLabel>Manual Title</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="e.g., Owner's Manual, Installation Guide" 
-                          {...field} 
+                        <Input
+                          placeholder="e.g., Owner's Manual, Installation Guide"
+                          {...field}
                           style={{ backgroundColor: '#ffffff' }}
                         />
                       </FormControl>
@@ -6208,13 +6317,13 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                         {applianceManualForm.watch('source') === 'upload' ? 'File Path' : 'URL'}
                       </FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           placeholder={
-                            applianceManualForm.watch('source') === 'upload' 
-                              ? "File will be uploaded..." 
+                            applianceManualForm.watch('source') === 'upload'
+                              ? "File will be uploaded..."
                               : "https://example.com/manual.pdf"
                           }
-                          {...field} 
+                          {...field}
                           style={{ backgroundColor: '#ffffff' }}
                         />
                       </FormControl>
@@ -6224,16 +6333,16 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                 />
 
                 <div className="flex justify-end space-x-2 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => setIsApplianceManualDialogOpen(false)}
                     style={{ color: 'white', borderColor: 'white' }}
                   >
                     Cancel
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createApplianceManualMutation.isPending || updateApplianceManualMutation.isPending}
                     style={{ backgroundColor: 'white', color: 'var(--purple-deep)' }}
                     className="hover:opacity-90"

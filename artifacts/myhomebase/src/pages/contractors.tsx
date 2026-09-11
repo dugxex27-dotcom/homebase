@@ -19,12 +19,12 @@ export default function Contractors() {
   const [filters, setFilters] = useState<any>({});
   const [sortBy, setSortBy] = useState('best-match');
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Authentication
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const homeownerId = (user as any)?.id;
   const userRole = (user as any)?.role;
-  
+
   // Local state for form controls
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [selectedRating, setSelectedRating] = useState<string>('');
@@ -33,7 +33,7 @@ export default function Contractors() {
   const [servicesDropdownOpen, setServicesDropdownOpen] = useState<boolean>(false);
   const [selectedHouseId, setSelectedHouseId] = useState<string>('');
   const servicesDropdownRef = useRef<HTMLDivElement>(null);
-  
+
   // Country detection for distance units
   const [userCountry, setUserCountry] = useState<string>('US');
 
@@ -154,7 +154,7 @@ export default function Contractors() {
       'insulation': ['Insulation Services', 'Handyman Services'],
       'tree': ['Tree Service & Trimming', 'Handyman Services']
     };
-    
+
     const lowerCategory = category.toLowerCase();
     return categoryMap[lowerCategory] || [category, 'Handyman Services'];
   };
@@ -162,7 +162,7 @@ export default function Contractors() {
   // Parse URL parameters on initial load only
   useEffect(() => {
     if (hasInitializedFromUrl.current) return;
-    
+
     const params = new URLSearchParams(urlSearch);
     const searchQuery = params.get('q') || '';
     const searchLocation = params.get('location') || '';
@@ -170,12 +170,12 @@ export default function Contractors() {
     const service = params.get('service') || '';
     const houseId = params.get('houseId') || '';
     const maxDistance = params.get('maxDistance') || '';
-    
+
     // Build filters from URL params
     const urlFilters: any = {};
     if (searchQuery) urlFilters.searchQuery = searchQuery;
     if (searchLocation) urlFilters.searchLocation = searchLocation;
-    
+
     // Map category to actual service names
     let servicesToFilter: string[] = [];
     if (category) {
@@ -190,7 +190,7 @@ export default function Contractors() {
     if (servicesToFilter.length > 0) {
       urlFilters.services = Array.from(new Set(servicesToFilter)); // Remove duplicates
     }
-    
+
     if (maxDistance) {
       const parsedDistance = parseInt(maxDistance);
       if (!isNaN(parsedDistance) && parsedDistance > 0) {
@@ -198,16 +198,16 @@ export default function Contractors() {
       }
     }
     if (houseId) urlFilters.houseId = houseId;
-    
+
     if (Object.keys(urlFilters).length > 0) {
       // Set filters and enable search when URL params exist
       setFilters(urlFilters);
       setHasAppliedFilters(true);
       hasInitializedFromUrl.current = true;
-      
+
       // Pre-fill the search query field
       if (searchQuery) setSearchQuery(searchQuery);
-      
+
       // Pre-select the house and distance in UI
       if (houseId) setSelectedHouseId(houseId);
       if (maxDistance) setSelectedDistance(maxDistance);
@@ -221,13 +221,13 @@ export default function Contractors() {
   // Separate effect to handle house matching from URL location parameter
   useEffect(() => {
     if (!hasInitializedFromUrl.current) return;
-    
+
     const params = new URLSearchParams(urlSearch);
     const searchLocation = params.get('location') || '';
-    
+
     // If location parameter exists and houses are loaded, try to find matching house
     if (searchLocation && houses.length > 0 && !selectedHouseId) {
-      const matchingHouse = houses.find((house: House) => 
+      const matchingHouse = houses.find((house: House) =>
         house.address.toLowerCase().includes(searchLocation.toLowerCase()) ||
         searchLocation.toLowerCase().includes(house.address.toLowerCase())
       );
@@ -282,7 +282,7 @@ export default function Contractors() {
   }, [filters, hasAppliedFilters]);
 
   const { data: contractors, isLoading, error } = useQuery<(Contractor & { isBoosted?: boolean })[]>({
-    queryKey: filters.searchQuery || filters.searchLocation 
+    queryKey: filters.searchQuery || filters.searchLocation
       ? ['/api/contractors/search', filters]
       : ['/api/contractors', filters],
     enabled: hasAppliedFilters, // Only fetch when user has explicitly applied filters
@@ -292,7 +292,7 @@ export default function Contractors() {
     refetchOnMount: true,
     queryFn: async () => {
       const params = new URLSearchParams();
-      
+
       // Always include filter parameters
       if (filters.services) params.set('services', filters.services.join(','));
       if (filters.minRating) params.set('minRating', filters.minRating.toString());
@@ -300,12 +300,12 @@ export default function Contractors() {
       if (filters.hasEmergencyServices) params.set('hasEmergencyServices', 'true');
       if (filters.maxDistance) params.set('maxDistance', filters.maxDistance.toString());
       if (filters.houseId) params.set('houseId', filters.houseId);
-      
+
       if (filters.searchQuery || filters.searchLocation) {
         // Add search parameters
         if (filters.searchQuery) params.set('q', filters.searchQuery);
         if (filters.searchLocation) params.set('location', filters.searchLocation);
-        
+
         const response = await fetch(`/api/contractors/search?${params}`);
         if (!response.ok) throw new Error('Failed to search contractors');
         return response.json();
@@ -357,32 +357,27 @@ export default function Contractors() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+    <div className="min-h-screen bg-[#F9FAFB]">
 
       {/* ── PAGE HEADER ─────────────────────────── */}
-      <div className="dash-header">
-        <span className="dash-eyebrow">Homeowner</span>
-        <div className="dash-title">Find Contractors</div>
-        <div className="dash-subtitle">Connect with verified professionals for your home</div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${sortedContractors.length > 0 ? ' good' : ''}`}>{sortedContractors.length}</div>
-            <div className="dash-chip-label">Results</div>
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Pros</h1>
+            <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">Find verified contractors for your home</p>
           </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">{services.length}</div>
-            <div className="dash-chip-label">Service Types</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">{(houses as any[]).length}</div>
-            <div className="dash-chip-label">Properties</div>
-          </div>
+          <Button
+            className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            Invite Pro
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-6 sm:py-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
         {/* Contractor Connection Code */}
-        <p className="dash-section-label">Contractor Access</p>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Contractor Access</p>
         <div className="mb-6 sm:mb-8">
           <HomeownerConnectionCodes />
         </div>
@@ -390,9 +385,9 @@ export default function Contractors() {
         {/* Filters Card */}
         <div className="mb-6 sm:mb-8">
           {/* Horizontal Filters */}
-          <div className="rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8" style={{ background: '#fff', border: '1px solid #ede9f8', boxShadow: '0 2px 12px rgba(44,15,91,0.06)' }} data-tour-id="find-contractors">
+          <div className="rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 bg-white border border-gray-200 shadow-sm" data-tour-id="find-contractors">
             <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6" style={{ color: '#2c0f5b' }}>Find Your Perfect Contractor</h3>
-            
+
             {/* House Selection Banner - Only show for authenticated homeowners with houses */}
             {isAuthenticated && userRole === 'homeowner' && houses.length > 0 && selectedHouseId && (
               <div className="col-span-full mb-4 p-3 sm:p-4 rounded-lg" style={{ backgroundColor: '#f0ebfa', border: '2px solid #b6a6f4' }}>
@@ -409,16 +404,16 @@ export default function Contractors() {
                       </p>
                     </div>
                   </div>
-                  <Select 
-                    value={selectedHouseId} 
+                  <Select
+                    value={selectedHouseId}
                     onValueChange={(value) => {
                       setSelectedHouseId(value);
                       // Update location filter when home changes
                       const selectedHouse = houses.find((h: House) => h.id === value);
                       if (selectedHouse) {
-                        setFilters((prev: any) => ({ 
-                          ...prev, 
-                          searchLocation: selectedHouse.address 
+                        setFilters((prev: any) => ({
+                          ...prev,
+                          searchLocation: selectedHouse.address
                         }));
                       }
                     }}
@@ -448,7 +443,7 @@ export default function Contractors() {
               <div className="flex flex-col h-full">
                 <label className="text-sm font-medium text-foreground mb-3 block whitespace-nowrap">Distance ({getDistanceUnit(userCountry)})</label>
                 <div>
-                  <select 
+                  <select
                     className="w-full h-[42px] px-3 py-2 border rounded-md"
                     style={{ color: '#2c0f5b', backgroundColor: '#ffffff', borderColor: '#b6a6f4' }}
                     value={selectedDistance}
@@ -474,7 +469,7 @@ export default function Contractors() {
               <div className="flex flex-col h-full">
                 <label className="text-sm font-medium text-foreground mb-3 block">Minimum Rating</label>
                 <div>
-                  <select 
+                  <select
                     className="w-full h-[42px] px-3 py-2 border rounded-md"
                     style={{ color: '#2c0f5b', backgroundColor: '#ffffff', borderColor: '#b6a6f4' }}
                     value={selectedRating}
@@ -512,7 +507,7 @@ export default function Contractors() {
                   </span>
                   <ChevronDown className={`h-4 w-4 transition-transform ${servicesDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
-                
+
                 {servicesDropdownOpen && (
                   <div className="absolute z-50 w-full mt-6 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-80 overflow-y-auto">
                     <div className="p-2">
@@ -559,8 +554,8 @@ export default function Contractors() {
                 <label className="text-sm font-medium text-foreground mb-3 block">Emergency Services</label>
                 <div>
                   <div className="h-[42px] flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       id="emergency-services"
                       className="rounded"
                       checked={hasEmergencyServices}
@@ -582,30 +577,30 @@ export default function Contractors() {
                   Filters
                 </label>
                 <div>
-                  <button 
+                  <button
                     className="w-full h-[42px] px-4 rounded-md text-white font-medium hover:opacity-90"
                     style={{ backgroundColor: '#3c258e' }}
                     onClick={() => {
                       const newFilters: any = {};
-                      
+
                       if (selectedDistance) {
                         // Convert display distance to storage format (always store in miles)
                         const storageDistance = convertDistanceForStorage(parseFloat(selectedDistance), userCountry);
                         newFilters.maxDistance = storageDistance;
                       }
-                      
+
                       if (selectedRating) {
                         newFilters.minRating = parseFloat(selectedRating);
                       }
-                      
+
                       if (hasEmergencyServices) {
                         newFilters.hasEmergencyServices = true;
                       }
-                      
+
                       if (selectedServices.length > 0) {
                         newFilters.services = selectedServices;
                       }
-                      
+
                       handleFiltersChange(newFilters);
                       setHasAppliedFilters(true); // Enable contractor search
                       setServicesDropdownOpen(false);
@@ -631,7 +626,7 @@ export default function Contractors() {
                 {contractorsUsedAtHouse.length} {contractorsUsedAtHouse.length === 1 ? 'contractor' : 'contractors'} you've worked with at this property
               </p>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {contractorsUsedAtHouse.map((contractor) => (
                 <div key={contractor.id} className="relative">

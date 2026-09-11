@@ -233,7 +233,7 @@ export function ContractorCodeEntry() {
   };
 
   return (
-    <Card style={{ backgroundColor: '#f2f2f2' }}>
+    <Card className="min-w-0 overflow-hidden" style={{ backgroundColor: '#f2f2f2' }}>
       <CardHeader>
         <CardTitle style={{ color: '#1560a2' }}>Enter Homeowner Connection Code</CardTitle>
         <CardDescription style={{ color: '#000000' }}>
@@ -243,13 +243,13 @@ export function ContractorCodeEntry() {
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label style={{ color: '#1560a2' }}>Connection Code</Label>
-          <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Enter 8-character code"
               maxLength={8}
-              className="font-mono text-lg placeholder:text-white placeholder:opacity-70"
+              className="w-full min-w-0 font-mono text-base placeholder:text-white placeholder:opacity-70"
               data-testid="input-connection-code"
               style={{ backgroundColor: '#1560a2', color: 'white', borderColor: '#1560a2' }}
             />

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info, CheckCircle2, Clock } from "lucide-react";
+import { Users, Calendar, Search, Star, TrendingUp, Gift, Sparkles, FileText, AlertTriangle, ClipboardList, Bell, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, Globe, MapPin, X as XIcon, Wrench, DollarSign, Info, CheckCircle2, Clock, Plus, Thermometer, Droplets, Home as HomeIcon } from "lucide-react";
 import HouseMap from "@/components/house-map";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,10 +46,10 @@ function getMonth() {
   return new Date().toLocaleString("default", { month: "long" });
 }
 
-const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear"; label: string; icon: string; lifespan: [number, number]; category: string }> = [
-  { key: "roofInstalledYear", label: "Roof", icon: "🏠", lifespan: [20, 25], category: "roofing" },
-  { key: "hvacInstalledYear", label: "HVAC", icon: "❄️", lifespan: [15, 20], category: "hvac" },
-  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: "🚿", lifespan: [8, 12], category: "plumbing" },
+const MECHANICAL_FEATURES: Array<{ key: "roofInstalledYear" | "hvacInstalledYear" | "waterHeaterInstalledYear"; label: string; icon: React.ReactNode; lifespan: [number, number]; category: string }> = [
+  { key: "roofInstalledYear", label: "Roof", icon: <HomeIcon size={18} />, lifespan: [20, 25], category: "roofing" },
+  { key: "hvacInstalledYear", label: "HVAC", icon: <Thermometer size={18} />, lifespan: [15, 20], category: "hvac" },
+  { key: "waterHeaterInstalledYear", label: "Water Heater", icon: <Droplets size={18} />, lifespan: [8, 12], category: "plumbing" },
 ];
 
 type ContractorProposalSummary = {
@@ -573,6 +573,64 @@ export default function Home() {
   const onboardingReminder = unreadNotifications.find(
     (notification) => notification.type === "onboarding_reminder",
   );
+  const nextUpActions: Array<{
+    title: string;
+    detail: string;
+    href: string;
+    icon: React.ReactNode;
+  }> = [];
+  const pendingRecordCount = (pendingJobRecords as PendingJobRecord[]).filter(
+    (record) => !acceptedJobRecordIds.has(record.id) && !declinedJobRecordIds.has(record.id),
+  ).length;
+
+  if (pendingRecordCount > 0) {
+    nextUpActions.push({
+      title: "Review contractor records",
+      detail: `${pendingRecordCount} record${pendingRecordCount === 1 ? "" : "s"} ready to review`,
+      href: "/service-records",
+      icon: <CheckCircle2 size={18} />,
+    });
+  }
+  if (!isProfileComplete) {
+    nextUpActions.push({
+      title: "Complete your home profile",
+      detail: `${profileCompletePct}% complete`,
+      href: "/maintenance",
+      icon: <HomeIcon size={18} />,
+    });
+  }
+  if (tasksCount && tasksCount > 0) {
+    nextUpActions.push({
+      title: "Review maintenance work",
+      detail: `${tasksCount} task${tasksCount === 1 ? "" : "s"} in your plan`,
+      href: "/maintenance",
+      icon: <ClipboardList size={18} />,
+    });
+  }
+  if (primaryHouseScore !== undefined) {
+    nextUpActions.push({
+      title: "Improve your Wellness Score",
+      detail: `${primaryHouseScore} · ${getHomeWellnessScoreStatus(primaryHouseScore).label}`,
+      href: "/maintenance",
+      icon: <TrendingUp size={18} />,
+    });
+  }
+  if (nextUpActions.length < 3) {
+    nextUpActions.push({
+      title: "Strengthen your home record",
+      detail: "Add files, insurance details, or disclosures",
+      href: "/documents",
+      icon: <FileText size={18} />,
+    });
+  }
+  if (nextUpActions.length < 3) {
+    nextUpActions.push({
+      title: "Find a trusted pro",
+      detail: "Search by trade and location",
+      href: "/contractors",
+      icon: <Search size={18} />,
+    });
+  }
   const showOnboardingBanner =
     typedUser?.role === "homeowner" &&
     onboardingProgress !== undefined &&
@@ -597,84 +655,85 @@ export default function Home() {
 
       {/* ── DASHBOARD HEADER (homeowners only) ──────────────── */}
       {typedUser?.role === "homeowner" && (
-        <div className="dash-header">
-          <span className="dash-eyebrow">
-            {getGreeting()}{firstName ? `, ${firstName}` : ""}
-          </span>
-          <div className="dash-title">Your dashboard</div>
-          <div className="dash-subtitle">
-            {isLoadingHouses
-              ? "Loading your properties…"
-              : houses.length > 0
-              ? `${houses.length} ${houses.length === 1 ? "property" : "properties"} · ${totalSystems} systems tracked`
-              : "Start by adding your first property"}
+        <div className="bg-white border-b border-gray-200">
+          {/* Title Row + CTA */}
+          <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Your Home</h1>
+              <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">
+                {getGreeting()}{firstName ? `, ${firstName}` : ""}
+              </p>
+            </div>
+            <Button className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-sm font-semibold shadow-sm transition-all" onClick={() => setLocation('/maintenance?action=log')}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Log Work
+            </Button>
           </div>
 
+          {/* Compact Score Strip (Mobile only) */}
           {!isLoadingHouses && houses.length > 0 && (
-            <div className="dash-chips">
+            <div className="px-4 py-2.5 md:hidden bg-[#F9FAFB] border-t border-gray-100 flex items-center gap-3 overflow-x-auto hide-scrollbar">
               {houseScores.map(({ house, score }, i) => (
-                <button className="dash-chip dash-chip-btn" key={house.id} onClick={() => setHwsModalOpen(true)}>
-                  <div className={`dash-chip-num ${getScoreClass(score)}`}>
-                    {score !== undefined ? score : "—"}
-                  </div>
-                  <div className="dash-chip-label dash-chip-label-info">
-                    {houses.length === 1 ? "Home Wellness Score™" : `${house.name || `Property ${i + 1}`} · Home Wellness Score™`}
-                    <Info size={9} className="dash-chip-info-icon" />
-                  </div>
+                <button key={house.id} onClick={() => setHwsModalOpen(true)} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 flex-shrink-0 transition-transform hover:scale-[1.02] active:scale-95">
+                  <div className={`w-2 h-2 rounded-full ${getScoreClass(score) === 'good' ? 'bg-green-500' : getScoreClass(score) === 'warn' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                  <span className="text-sm font-bold text-[#2C0F5B]">{score !== undefined ? score : "—"}</span>
+                  <span className="text-xs font-semibold text-gray-500">Score</span>
                 </button>
               ))}
-              <button className="dash-chip dash-chip-btn" onClick={() => setTasksModalOpen(true)}>
-                <div className="dash-chip-num">
-                  {tasksCount !== null ? tasksCount : "—"}
-                </div>
-                <div className="dash-chip-label dash-chip-label-info">
-                  Tasks in maintenance plan
-                  <Info size={9} className="dash-chip-info-icon" />
-                </div>
+              <button onClick={() => setTasksModalOpen(true)} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-gray-200 flex-shrink-0 transition-transform hover:scale-[1.02] active:scale-95">
+                <span className="text-sm font-bold text-[#2C0F5B]">{tasksCount !== null ? tasksCount : "—"}</span>
+                <span className="text-xs font-semibold text-gray-500">Upcoming tasks</span>
               </button>
-              <button className="dash-chip dash-chip-btn" onClick={() => setSystemsModalOpen(true)}>
-                <div className="dash-chip-num">{totalSystems || "—"}</div>
-                <div className="dash-chip-label dash-chip-label-info">
-                  Systems tracked
-                  <Info size={9} className="dash-chip-info-icon" />
-                </div>
-              </button>
-              <Link
-                href="/maintenance"
-                className="dash-profile-progress-row dash-chip-full"
-                data-testid="dashboard-profile-progress"
-              >
-                <div className="dash-profile-progress-header">
-                  <span className={`dash-profile-progress-label${isProfileComplete ? " is-complete" : ""}`}>
-                    {isProfileComplete ? (
-                      <>
-                        <CheckCircle2 size={14} aria-hidden="true" />
-                        Complete
-                      </>
-                    ) : (
-                      `Profile ${profileCompletePct}% complete`
-                    )}
-                  </span>
-                  <ChevronRight size={14} className="dash-profile-progress-arrow" aria-hidden="true" />
-                </div>
-                <div
-                  className="dash-profile-progress-track"
-                  role="progressbar"
-                  aria-label="Home profile completion"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={profileCompletePct}
-                >
-                  <div
-                    className={`dash-profile-progress-fill${isProfileComplete ? " is-complete" : ""}`}
-                    style={{ width: `${profileCompletePct}%` }}
-                  />
-                </div>
-              </Link>
             </div>
           )}
-
         </div>
+      )}
+
+      {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && nextUpActions.length > 0 && (
+        <section className="border-b border-gray-200 bg-[#F9FAFB] px-4 py-4 md:px-6" aria-labelledby="next-up-heading">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 id="next-up-heading" className="text-xs font-extrabold uppercase tracking-[0.14em] text-[#65558F]">Next up</h2>
+              <Link href="/maintenance" className="hidden text-xs font-bold text-[#3C258E] hover:underline md:inline">
+                View all work
+              </Link>
+            </div>
+
+            <Link
+              href={nextUpActions[0].href}
+              className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-[#DED8F7] bg-white p-4 shadow-sm transition hover:border-[#3C258E] active:scale-[0.99] md:hidden"
+              data-testid="home-next-up-mobile"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+                {nextUpActions[0].icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-extrabold text-[#2C0F5B]">{nextUpActions[0].title}</span>
+                <span className="mt-1 block text-sm text-gray-500">{nextUpActions[0].detail}</span>
+              </span>
+              <span className="inline-flex min-h-11 items-center rounded-full bg-[#3C258E] px-4 text-sm font-bold text-white">Start</span>
+            </Link>
+
+            <div className="hidden grid-cols-3 gap-3 md:grid" data-testid="home-next-up-desktop">
+              {nextUpActions.slice(0, 3).map((action, index) => (
+                <Link
+                  key={`${action.title}-${index}`}
+                  href={action.href}
+                  className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#B6A6F4] hover:shadow-md"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+                    {action.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-bold leading-tight text-[#2C0F5B]">{action.title}</span>
+                    <span className="mt-1 block text-xs leading-5 text-gray-500">{action.detail}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3] transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
       {typedUser?.role === "homeowner" && !isLoadingQuizResult && (
@@ -760,11 +819,17 @@ export default function Home() {
 
       {/* ── MAIN DASHBOARD BODY ─────────────────────────────── */}
       {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (
-          <div className="dash-body">
+        <div className="bg-[#F9FAFB] p-4 md:p-6 lg:p-8 min-h-[calc(100vh-140px)]">
+          <div className="max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
-            {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
-            {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length > 0 && (
-              <div className="dash-light-card" style={{ borderLeft: '3px solid #7c3aed', marginBottom: 8 }} data-testid="pending-job-records-section">
+              {/* Left/Main Column: Next Actions */}
+              <div className="md:col-span-2 space-y-4 next-actions-container">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 hidden md:block">Next Actions</h2>
+
+                {/* ── NEEDS ATTENTION: Pending contractor job records ─── */}
+                {(pendingJobRecords as any[]).filter(r => !acceptedJobRecordIds.has(r.id) && !declinedJobRecordIds.has(r.id)).length > 0 && (
+                  <div className="dash-light-card" style={{ borderLeft: '3px solid #7c3aed', marginBottom: 0 }} data-testid="pending-job-records-section">
                 <div className="dash-light-card-row" style={{ marginBottom: 10 }}>
                   <div className="dash-light-card-icon" style={{ background: '#ede9fe' }}>
                     <CheckCircle2 size={18} style={{ color: '#7c3aed' }} />
@@ -810,7 +875,8 @@ export default function Home() {
                             )}
                             {Array.isArray(record.equipmentInfo) && record.equipmentInfo.length > 0 && (
                               <div style={{ fontSize: 11, color: '#7B6FA0', marginTop: 4 }}>
-                                🔧 {record.equipmentInfo.map((e: any) => e.name).join(', ')}
+                                <Wrench size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                                {record.equipmentInfo.map((e: any) => e.name).join(', ')}
                               </div>
                             )}
                           </div>
@@ -889,7 +955,7 @@ export default function Home() {
                         border: `1px solid ${f.tone === 'alert' ? '#fecaca' : '#fde68a'}`,
                         borderRadius: 8, padding: '8px 10px',
                       }}>
-                        <span style={{ fontSize: 20 }}>{f.icon}</span>
+                        <span className="flex items-center justify-center text-[#92400e]" style={f.tone === 'alert' ? { color: '#991b1b' } : {}}>{f.icon}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 600, fontSize: 13, color: f.tone === 'alert' ? '#991b1b' : '#92400e' }}>{f.label}</div>
                           <div style={{ fontSize: 11, color: f.tone === 'alert' ? '#b91c1c' : '#b45309', marginTop: 1 }}>{f.text}</div>
@@ -925,10 +991,14 @@ export default function Home() {
             )}
 
             {/* Property Cards */}
-            <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
-            <div data-tour-id="health-score">
-              {houses.map((house: House) => (
-                <div key={`map-${house.id}`} className="property-card">
+              </div>
+
+              {/* Right Column: Score & Properties */}
+              <div className="space-y-6">
+                <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
+                <div data-tour-id="health-score">
+                  {houses.map((house: House) => (
+                    <div key={`map-${house.id}`} className="property-card">
                   {(house.yearBuilt || house.squareFootage) && (
                     <div className="property-card-metadata" aria-label="Property details">
                       {house.yearBuilt && (
@@ -1056,9 +1126,11 @@ export default function Home() {
                             border: '1px dashed var(--purple-border)', borderRadius: 8,
                             padding: '7px 10px', fontSize: 13, cursor: 'pointer',
                             color: 'var(--purple-deep)', fontWeight: 500,
+                            display: 'flex', alignItems: 'center', gap: '8px'
                           }}
                         >
-                          {f.icon} {f.label} — tap to add install year
+                          <span className="flex items-center justify-center">{f.icon}</span>
+                          <span>{f.label} — tap to add install year</span>
                         </button>
                       )}
                     </div>
@@ -1341,7 +1413,10 @@ export default function Home() {
               </div>
             )}
 
+              </div>
+            </div>
           </div>
+        </div>
       )}
 
       {/* ── HWS SCORE MODAL ─────────────────────────────── */}
@@ -1392,14 +1467,14 @@ export default function Home() {
               <div className="hdm-factors">
                 <p className="hdm-tiers-label">What raises your score</p>
                 {[
-                  { icon: "🔧", text: "Systems logged and tracked" },
-                  { icon: "📅", text: "Install years recorded for roof, HVAC, water heater" },
-                  { icon: "📋", text: "Maintenance tasks completed" },
-                  { icon: "📄", text: "Inspection report on file" },
-                  { icon: "🧾", text: "Contractor invoices saved" },
+                  { icon: <Wrench size={16} />, text: "Systems logged and tracked" },
+                  { icon: <Calendar size={16} />, text: "Install years recorded for roof, HVAC, water heater" },
+                  { icon: <ClipboardList size={16} />, text: "Maintenance tasks completed" },
+                  { icon: <FileText size={16} />, text: "Inspection report on file" },
+                  { icon: <CheckCircle2 size={16} />, text: "Contractor invoices saved" },
                 ].map(f => (
                   <div key={f.text} className="hdm-factor-row">
-                    <span className="hdm-factor-icon">{f.icon}</span>
+                    <span className="hdm-factor-icon flex items-center justify-center text-[#2C0F5B]">{f.icon}</span>
                     <p className="hdm-factor-text">{f.text}</p>
                   </div>
                 ))}

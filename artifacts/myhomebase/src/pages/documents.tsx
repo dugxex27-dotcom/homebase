@@ -1,4 +1,5 @@
 import { useState, useRef, lazy, Suspense } from "react";
+import { Link, useLocation } from "wouter";
 const DisclosuresContent = lazy(() => import("./disclosures"));
 import { InsurancePrepTab } from "./insurance-prep-tab";
 import ErrorBoundary from "@/components/error-boundary";
@@ -17,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FileText, Upload, Download, Trash2, FolderOpen, Shield, AlertTriangle,
-  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search
+  CheckCircle, Clock, Info, Eye, Home, Pencil, X, Star, AlertCircle, Search, Plus
 } from "lucide-react";
 import "./home.css";
 import type { House, HomeDocument } from "@shared/schema";
@@ -110,7 +111,10 @@ export default function Documents() {
   const [pendingDocId, setPendingDocId] = useState<string | null>(null);
   const [editDoc, setEditDoc] = useState<{ fileName: string; notes: string; category: string } | null>(null);
   const [editingHouseId, setEditingHouseId] = useState<string | null>(null);
-  const [topSection, setTopSection] = useState<"documents" | "disclosures" | "insurance">("documents");
+  const [location] = useLocation();
+  const queryParams = new URLSearchParams(location.split('?')[1]);
+  const defaultTab = (queryParams.get('tab') as "documents" | "disclosures" | "insurance") || "documents";
+  const [topSection, setTopSection] = useState<"documents" | "disclosures" | "insurance">(defaultTab);
 
   const { data: documents = [], isLoading } = useQuery<HomeDocument[]>({
     queryKey: ["/api/home-documents"],
@@ -259,78 +263,67 @@ export default function Documents() {
   const monitorCount = deficiencies.filter(d => d.severity === "monitor").length;
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0" style={{ background: '#ffffff' }} data-tour-id="documents">
+    <div className="min-h-screen pb-20 lg:pb-0 bg-[#F9FAFB]" data-tour-id="documents">
 
       {/* ── PAGE HEADER ─────────────────────────── */}
-      <div className="dash-header">
-        <div className="dash-header-top">
-          {topSection === "documents" && (
-            <div className="dash-header-actions">
-              <button
-                onClick={() => setInspectionDialogOpen(true)}
-                className="dash-icon-btn"
-                style={{ width: 'auto', padding: '0 10px', fontSize: 11, fontWeight: 700, gap: 4 }}
-              >
-                + Inspection
-              </button>
-              <button
-                onClick={() => setUploadDialogOpen(true)}
-                className="dash-icon-btn"
-                style={{ width: 'auto', padding: '0 10px', fontSize: 11, fontWeight: 700, gap: 4 }}
-              >
-                + Upload
-              </button>
-            </div>
-          )}
-        </div>
-        <span className="dash-eyebrow">Secure Storage</span>
-        <div className="dash-title">Documents & Disclosures</div>
-        <div className="dash-subtitle">All your home records and disclosure forms in one place</div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${documents.length > 0 ? ' good' : ''}`}>{documents.length}</div>
-            <div className="dash-chip-label">Documents</div>
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold text-[#2C0F5B] tracking-tight">Records</h1>
+            <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">Service history, documents, and insurance records</p>
           </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num">{CATEGORIES.length}</div>
-            <div className="dash-chip-label">Categories</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${houses.length > 0 ? ' good' : ''}`}>{houses.length}</div>
-            <div className="dash-chip-label">Properties</div>
+          <div className="flex gap-2">
+            {topSection === "documents" && (
+              <>
+                <Button
+                  onClick={() => setInspectionDialogOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 rounded-full text-xs font-semibold shadow-sm border-gray-300 hidden sm:flex"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Inspection
+                </Button>
+                <Button
+                  onClick={() => setUploadDialogOpen(true)}
+                  size="sm"
+                  className="bg-[#3C258E] hover:bg-[#2C0F5B] text-white h-9 px-4 rounded-full text-xs font-semibold shadow-sm"
+                >
+                  <Upload className="w-4 h-4 mr-1.5" />
+                  Upload
+                </Button>
+              </>
+            )}
           </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 pt-4 pb-6">
-        {/* Top-level section switcher */}
-        <div className="flex gap-1 mb-6 overflow-x-auto" style={{ borderBottom: '1px solid #ede9f8' }}>
+        <div className="px-4 md:px-6 flex gap-6 overflow-x-auto hide-scrollbar border-t border-gray-100 mt-2">
+          <Link href="/service-records" className="border-b-2 border-transparent text-gray-500 hover:text-gray-800 font-medium py-3 text-sm whitespace-nowrap">Service History</Link>
           <button
             onClick={() => setTopSection("documents")}
-            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "documents" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
+            className={`border-b-2 font-medium py-3 text-sm whitespace-nowrap transition-colors ${topSection === "documents" ? 'border-[#3C258E] text-[#3C258E] font-semibold' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
             data-testid="tab-documents"
           >
-            Documents
+            Files
+          </button>
+          <button
+            onClick={() => setTopSection("insurance")}
+            className={`border-b-2 font-medium py-3 text-sm whitespace-nowrap transition-colors ${topSection === "insurance" ? 'border-[#3C258E] text-[#3C258E] font-semibold' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
+            data-testid="tab-insurance-prep"
+          >
+            Insurance
           </button>
           <button
             onClick={() => setTopSection("disclosures")}
-            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "disclosures" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
+            className={`border-b-2 font-medium py-3 text-sm whitespace-nowrap transition-colors ${topSection === "disclosures" ? 'border-[#3C258E] text-[#3C258E] font-semibold' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
             data-testid="tab-disclosures"
           >
             Disclosures
           </button>
-          <button
-            onClick={() => setTopSection("insurance")}
-            className="px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap"
-            style={topSection === "insurance" ? { borderColor: 'var(--theme-accent)', color: 'var(--theme-accent)' } : { borderColor: 'transparent', color: '#7c6fa0' }}
-            data-testid="tab-insurance-prep"
-          >
-            <InsurancePrepCountLabel houses={houses} enabled={!!(user as any)?.id} />
-          </button>
         </div>
+      </div>
 
+      <div className="max-w-6xl mx-auto px-4 pt-4 pb-6">
         {topSection === "disclosures" ? (
           <Suspense fallback={<div className="py-12 text-center text-gray-400">Loading disclosures…</div>}>
             <DisclosuresContent embedded />
