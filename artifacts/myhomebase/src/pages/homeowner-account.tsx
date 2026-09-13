@@ -47,6 +47,7 @@ import AddressAutocomplete from "@/components/address-autocomplete";
 import { Link } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
+import { fetchJsonWithTimeout } from "@/lib/fetch-json-with-timeout";
 import "./home.css";
 import instagramPostImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_25_05_PM_1766769919337.png';
 import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1766769329697.png';
@@ -108,8 +109,14 @@ export default function HomeownerAccount() {
   const {
     data: weatherForecastPreview,
     isLoading: isWeatherForecastPreviewLoading,
+    isError: isWeatherForecastPreviewError,
+    refetch: refetchWeatherForecastPreview,
   } = useQuery<WeatherForecastPreview>({
     queryKey: ['/api/homeowner/weather-forecast-preview'],
+    queryFn: () => fetchJsonWithTimeout<WeatherForecastPreview>(
+      '/api/homeowner/weather-forecast-preview',
+      { credentials: 'include' },
+    ),
     enabled: !!user,
   });
 
@@ -1017,6 +1024,13 @@ export default function HomeownerAccount() {
                       {isWeatherForecastPreviewLoading ? (
                         <p className="text-sm text-gray-500" data-testid="status-weather-preview-loading">
                           Checking your maintenance tasks…
+                        </p>
+                      ) : isWeatherForecastPreviewError ? (
+                        <p className="text-sm text-red-700" data-testid="status-weather-preview-error">
+                          We couldn’t check your maintenance tasks.{' '}
+                          <button type="button" className="font-semibold underline" onClick={() => refetchWeatherForecastPreview()}>
+                            Try again
+                          </button>
                         </p>
                       ) : weatherForecastPreview?.houses.some(house =>
                         house.triggers.some(trigger => trigger.tasks.length > 0)

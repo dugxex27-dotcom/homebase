@@ -3367,21 +3367,6 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     }
   };
 
-  // Map climate zones to regions in US_MAINTENANCE_DATA
-  const getRegionFromClimateZone = (zone: string): string => {
-    const mapping: { [key: string]: string } = {
-      'pacific-northwest': 'Pacific Northwest',
-      'northeast': 'Northeast',
-      'southeast': 'Southeast',
-      'midwest': 'Midwest',
-      'southwest': 'Southwest',
-      'mountain-west': 'Mountain West',
-      'california': 'West Coast',
-      'great-plains': 'Midwest'
-    };
-    return mapping[zone] || 'Midwest';
-  };
-
   // Map tasks to required home systems based on task title keywords
   const getSystemRequirementsForTask = (taskTitle: string): string[] | undefined => {
     const title = taskTitle.toLowerCase();
@@ -4255,7 +4240,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                 <div className="text-sm" style={{ color: 'var(--purple-deep)' }}>
                   <Building className="inline w-4 h-4 mr-1" style={{ color: 'var(--purple-deep)' }} />
-                  {houses.find((house: House) => house.id === selectedHouseId)?.name || 'Loading...'} •
+                  {(houses.find((house: House) => house.id === selectedHouseId) || houses[0])?.name || 'Property unavailable'} •
                   <Calendar className="inline w-4 h-4 ml-2 mr-1" style={{ color: 'var(--purple-deep)' }} />
                   {MONTHS[selectedMonth - 1]} • {CLIMATE_ZONES.find(z => z.value === selectedZone)?.label}
                 </div>

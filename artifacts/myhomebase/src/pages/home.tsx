@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import type { User as UserType, House } from "@shared/schema";
 import { Link, useLocation } from "wouter";
 import { useHomeownerSubscription } from "@/hooks/useHomeownerSubscription";
+import { getRegionFromClimateZone } from "@shared/location-maintenance-data";
 import { RESTART_HOMEOWNER_TOUR_EVENT } from "@/lib/guided-tour-events";
 import { notifyInvoiceBadgeChanged } from "@/lib/queryClient";
 import logoHomeowner from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
@@ -526,7 +527,9 @@ export default function Home() {
 
   const firstName = (typedUser as any)?.firstName || (typedUser as any)?.name?.split(" ")[0] || "";
   const selectedHouse = houses.find((house) => house.id === selectedHouseId) || houses.find((house) => house.isDefault) || houses[0];
-  const climateZone = selectedHouse?.climateZone || "your area";
+  const climateZone = selectedHouse?.climateZone
+    ? getRegionFromClimateZone(selectedHouse.climateZone)
+    : "your area";
 
   const getScoreClass = (s: number | undefined) =>
     s === undefined ? "" : getHomeWellnessScoreStatus(s).label === "Excellent" || getHomeWellnessScoreStatus(s).label === "Doing Well"

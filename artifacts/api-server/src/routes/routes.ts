@@ -11143,6 +11143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           total: quotes.length,
         },
         invoices: {
+          paid: invoices.filter(i => i.status === 'paid').length,
           unpaid: unpaidInvoices.length,
           overdue: overdueInvoices.length,
           totalOutstanding: totalOutstanding.toFixed(2),

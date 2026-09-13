@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Award, ChevronRight, Trophy } from "lucide-react";
 import { Link } from "wouter";
+import { fetchJsonWithTimeout } from "@/lib/fetch-json-with-timeout";
 
 export interface AchievementProgressItem {
   key: string;
@@ -27,12 +28,13 @@ export function AchievementProgressStrip({
   className = "",
   heading = "Achievements",
 }: AchievementProgressStripProps) {
-  const { data, isLoading, isError } = useQuery<AchievementsResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<AchievementsResponse>({
     queryKey: ["/api/achievements"],
     queryFn: async () => {
-      const response = await fetch("/api/achievements", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to load achievements");
-      return response.json();
+      return fetchJsonWithTimeout<AchievementsResponse>(
+        "/api/achievements",
+        { credentials: "include" },
+      );
     },
     staleTime: 60_000,
   });
@@ -65,7 +67,12 @@ export function AchievementProgressStrip({
           {isLoading ? (
             <p className="mt-0.5 text-xs text-gray-500">Loading your awards…</p>
           ) : isError ? (
-            <p className="mt-0.5 text-xs text-gray-500">Awards are temporarily unavailable.</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Awards are temporarily unavailable.{" "}
+              <button type="button" className="font-bold text-[#3C258E] underline" onClick={() => refetch()}>
+                Try again
+              </button>
+            </p>
           ) : achievements.length === 0 ? (
             <p className="mt-0.5 text-xs text-gray-500">Complete home-care actions to start earning awards.</p>
           ) : (

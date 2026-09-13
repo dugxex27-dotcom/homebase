@@ -189,14 +189,11 @@ interface SentJobRecord {
 type SentJobRecordStatusFilter = 'all' | SentJobRecord['status'];
 
 interface DashboardStats {
-  totalClients: number;
-  activeJobs: number;
-  pendingQuotes: number;
-  outstandingInvoices: number;
-  totalRevenue: string;
-  monthlyRevenue: string;
-  paidInvoices: number;
-  overdueInvoices: number;
+  clients: { total: number; active: number };
+  jobs: { scheduled: number; inProgress: number; completed: number; completedThisMonth: number; total: number };
+  quotes: { pending: number; accepted: number; totalValue: string; total: number };
+  invoices: { unpaid: number; overdue: number; totalOutstanding: string; paidThisMonth: string; total: number; paid: number };
+  revenue: { total: string; thisMonth: string };
 }
 
 interface CurrentUser {
@@ -2956,7 +2953,7 @@ export default function ContractorCRMPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="stat-total-clients">
-                      {needsUpgrade ? "24" : isLoadingDashboard ? "..." : dashboardStats?.totalClients || 0}
+                      {needsUpgrade ? "24" : isLoadingDashboard ? "…" : dashboardStats?.clients.total ?? 0}
                     </div>
                   </CardContent>
                 </Card>
@@ -2967,7 +2964,7 @@ export default function ContractorCRMPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="stat-active-jobs">
-                      {needsUpgrade ? "8" : isLoadingDashboard ? "..." : dashboardStats?.activeJobs || 0}
+                      {needsUpgrade ? "8" : isLoadingDashboard ? "…" : (dashboardStats?.jobs.scheduled ?? 0) + (dashboardStats?.jobs.inProgress ?? 0)}
                     </div>
                   </CardContent>
                 </Card>
@@ -2978,7 +2975,7 @@ export default function ContractorCRMPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="stat-pending-quotes">
-                      {needsUpgrade ? "5" : isLoadingDashboard ? "..." : dashboardStats?.pendingQuotes || 0}
+                      {needsUpgrade ? "5" : isLoadingDashboard ? "…" : dashboardStats?.quotes.pending ?? 0}
                     </div>
                   </CardContent>
                 </Card>
@@ -2989,7 +2986,7 @@ export default function ContractorCRMPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold" data-testid="stat-outstanding-invoices">
-                      {needsUpgrade ? "3" : isLoadingDashboard ? "..." : dashboardStats?.outstandingInvoices || 0}
+                      {needsUpgrade ? "3" : isLoadingDashboard ? "…" : dashboardStats?.invoices.unpaid ?? 0}
                     </div>
                   </CardContent>
                 </Card>
@@ -3008,13 +3005,13 @@ export default function ContractorCRMPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Total Revenue</span>
                         <span className="text-2xl font-bold" data-testid="stat-total-revenue">
-                          ${needsUpgrade ? "87,450.00" : isLoadingDashboard ? "..." : parseFloat(dashboardStats?.totalRevenue || "0").toFixed(2)}
+                          {needsUpgrade ? "$87,450.00" : isLoadingDashboard ? "…" : `$${parseFloat(dashboardStats?.revenue.total || "0").toFixed(2)}`}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Monthly Revenue</span>
                         <span className="text-xl font-semibold" data-testid="stat-monthly-revenue">
-                          ${needsUpgrade ? "12,350.00" : isLoadingDashboard ? "..." : parseFloat(dashboardStats?.monthlyRevenue || "0").toFixed(2)}
+                          {needsUpgrade ? "$12,350.00" : isLoadingDashboard ? "…" : `$${parseFloat(dashboardStats?.revenue.thisMonth || "0").toFixed(2)}`}
                         </span>
                       </div>
                     </div>
@@ -3035,7 +3032,7 @@ export default function ContractorCRMPage() {
                           Paid Invoices
                         </span>
                         <span className="font-semibold" data-testid="stat-paid-invoices">
-                          {needsUpgrade ? "42" : isLoadingDashboard ? "..." : dashboardStats?.paidInvoices || 0}
+                          {needsUpgrade ? "42" : isLoadingDashboard ? "…" : dashboardStats?.invoices.paid ?? 0}
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
@@ -3044,7 +3041,7 @@ export default function ContractorCRMPage() {
                           Overdue Invoices
                         </span>
                         <span className="font-semibold" data-testid="stat-overdue-invoices">
-                          {needsUpgrade ? "2" : isLoadingDashboard ? "..." : dashboardStats?.overdueInvoices || 0}
+                          {needsUpgrade ? "2" : isLoadingDashboard ? "…" : dashboardStats?.invoices.overdue ?? 0}
                         </span>
                       </div>
                     </div>

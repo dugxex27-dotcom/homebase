@@ -2022,10 +2022,22 @@ export function getRegionFromClimateZone(climateZone: string): string {
     '5': 'Midwest',
     '6': 'Mountain West',
     '7': 'Southwest',
-    '8': 'West Coast'
+    '8': 'West Coast',
+    'pacific-northwest': 'Pacific Northwest',
+    'pacific northwest': 'Pacific Northwest',
+    'mountain-west': 'Mountain West',
+    'mountain west': 'Mountain West',
+    'california': 'West Coast',
+    'great-plains': 'Midwest',
+    'midwest': 'Midwest',
+    'northeast': 'Northeast',
+    'southeast': 'Southeast',
+    'southwest': 'Southwest',
+    'west-coast': 'West Coast',
+    'west coast': 'West Coast',
   };
   
-  return regionMappings[climateZone] || 'Midwest';
+  return regionMappings[climateZone.trim().toLowerCase()] || 'Midwest';
 }
 
 // Project recurring/year-round tasks onto their explicit calendar cadence.
