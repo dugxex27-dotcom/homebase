@@ -439,6 +439,11 @@ export default function HomeownerServiceRecords() {
   useEffect(() => {
     if (!highlightedLogId) return;
 
+    setHomeAreaFilter("all");
+    setServiceRecordsHouseFilter("all");
+    setScoreHistoryFilter("all");
+    setShowAllRecords(true);
+
     let attempts = 0;
     const MAX_ATTEMPTS = 25;
     const RETRY_MS = 200;
@@ -803,25 +808,6 @@ export default function HomeownerServiceRecords() {
 
     if (!logId) return;
 
-    const matchedLog = maintenanceLogs?.find((log) => log.id === logId);
-    const hiddenByHomeArea = matchedLog
-      && homeAreaFilter !== "all"
-      && matchedLog.homeArea !== homeAreaFilter;
-    const hiddenByScoreHistory = matchedLog
-      && scoreHistoryFilter !== "all"
-      && (scoreHistoryFilter === "scoring") !== isScoringMaintenanceLog(matchedLog);
-
-    if (hiddenByHomeArea || hiddenByScoreHistory || !matchedLog) {
-      toast({
-        title: "Existing record is hidden",
-        description: "Clear your service record filters to view the matching record.",
-      });
-      return;
-    }
-
-    if (filteredLogs.findIndex((log) => log.id === logId) >= 2) {
-      setShowAllRecords(true);
-    }
     setHighlightedLogId(logId);
   };
   const scoringFilteredLogsCount = filteredLogs.filter((log) => isScoringMaintenanceLog(log)).length;
