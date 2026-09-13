@@ -4513,6 +4513,7 @@ describe("cross-process member-removal serialization via DB advisory lock", () =
     });
 
     await Promise.all([first, second]);
+    await Promise.resolve();
 
     expect(results.indexOf("first:end")).toBeLessThan(results.indexOf("second:start"));
     expect(seatUpdateLocks.size).toBe(0);
@@ -4549,6 +4550,7 @@ describe("cross-process member-removal serialization via DB advisory lock", () =
     });
 
     await Promise.all([runA, runB]);
+    await Promise.resolve();
 
     const aIdx = order.indexOf("A:work");
     const bIdx = order.indexOf("B:work");
