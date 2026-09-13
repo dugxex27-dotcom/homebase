@@ -44,7 +44,7 @@ import {
   Trophy
 } from "lucide-react";
 import AddressAutocomplete from "@/components/address-autocomplete";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import PushNotificationManager from "@/components/push-notification-manager";
 import { ActivatingPlanBanner } from "@/components/activating-plan-banner";
 import { fetchJsonWithTimeout } from "@/lib/fetch-json-with-timeout";
@@ -54,6 +54,39 @@ import instagramStoryImg from '@assets/ChatGPT_Image_Dec_26,_2025,_12_15_06_PM_1
 import facebookTwitterImg from '@assets/homebase-homeowner-referral_(2)_1766768136456.png';
 
 export default function HomeownerAccount() {
+  const [loc, setLoc] = useLocation();
+  const searchString = useSearch();
+  const searchParams = new URLSearchParams(searchString);
+  const rawTab = searchParams.get('tab');
+
+  const TABS = [
+    { id: 'profile', label: 'Profile' },
+    { id: 'security', label: 'Security' },
+    { id: 'billing', label: 'Billing' },
+    { id: 'notifications', label: 'Notifications' },
+    { id: 'referrals', label: 'Referrals' },
+    { id: 'properties', label: 'Properties' },
+    { id: 'account', label: 'Account' },
+  ];
+  const isValidTab = TABS.some(t => t.id === rawTab);
+  const currentTab = isValidTab ? (rawTab as string) : 'profile';
+
+  // Handle URL sync logic once only if needed
+  const shouldSync = !rawTab || !isValidTab;
+  useEffect(() => {
+    if (shouldSync) {
+      const newParams = new URLSearchParams(searchString);
+      newParams.set('tab', 'profile');
+      setLoc(`${loc}?${newParams.toString()}`, { replace: true });
+    }
+  }, [shouldSync, loc, searchString, setLoc]);
+
+  const handleTabChange = (tabId: string) => {
+    const newParams = new URLSearchParams(searchString);
+    newParams.set('tab', tabId);
+    setLoc(`${loc}?${newParams.toString()}`);
+  };
+
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -523,6 +556,41 @@ export default function HomeownerAccount() {
         <div className="space-y-4 max-w-2xl mx-auto">
           <ActivatingPlanBanner />
 
+          <div className="w-full mb-6 border-b border-gray-200">
+            <div
+              className="flex w-full touch-pan-x gap-6 overflow-x-auto overscroll-x-contain px-1 pb-1"
+              role="tablist"
+              aria-label="Account settings sections"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+            >
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  role="tab"
+                  aria-selected={currentTab === tab.id}
+                  aria-controls={`tabpanel-${tab.id}`}
+                  id={`tab-${tab.id}`}
+                  onClick={() => handleTabChange(tab.id)}
+                  data-testid={`tab-${tab.id}`}
+                  className={`shrink-0 pb-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#3C258E] focus-visible:ring-offset-2 ${
+                    currentTab === tab.id
+                      ? 'border-[#3C258E] text-[#3C258E]'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div
+            id="tabpanel-profile"
+            role="tabpanel"
+            aria-labelledby="tab-profile"
+            className={currentTab === 'profile' ? 'space-y-4 block' : 'hidden'}
+          >
+
           <Link
             href="/achievements"
             className="flex min-h-16 items-center gap-3 rounded-2xl border border-[#DED8F7] bg-white p-4 shadow-sm transition hover:border-[#3C258E] hover:shadow-md"
@@ -683,6 +751,14 @@ export default function HomeownerAccount() {
                 </form>
               </CardContent>
             </Card>
+          </div>
+
+          <div
+            id="tabpanel-security"
+            role="tabpanel"
+            aria-labelledby="tab-security"
+            className={currentTab === 'security' ? 'space-y-4 block' : 'hidden'}
+          >
 
             <p className="dash-section-label">Security</p>
 
@@ -736,6 +812,14 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <div
+            id="tabpanel-billing"
+            role="tabpanel"
+            aria-labelledby="tab-billing"
+            className={currentTab === 'billing' ? 'space-y-4 block' : 'hidden'}
+          >
 
           <p className="dash-section-label">Subscription</p>
 
@@ -856,6 +940,14 @@ export default function HomeownerAccount() {
               )}
             </CardContent>
           </Card>
+          </div>
+
+          <div
+            id="tabpanel-notifications"
+            role="tabpanel"
+            aria-labelledby="tab-notifications"
+            className={currentTab === 'notifications' ? 'space-y-4 block' : 'hidden'}
+          >
 
           <p className="dash-section-label">Notifications</p>
 
@@ -1084,6 +1176,14 @@ export default function HomeownerAccount() {
                 <PushNotificationManager userId={(user as any).id} />
               </div>
             )}
+          </div>
+
+          <div
+            id="tabpanel-referrals"
+            role="tabpanel"
+            aria-labelledby="tab-referrals"
+            className={currentTab === 'referrals' ? 'space-y-4 block' : 'hidden'}
+          >
 
             <p className="dash-section-label">Referral Rewards</p>
 
@@ -1327,6 +1427,14 @@ export default function HomeownerAccount() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <div
+            id="tabpanel-properties"
+            role="tabpanel"
+            aria-labelledby="tab-properties"
+            className={currentTab === 'properties' ? 'space-y-4 block' : 'hidden'}
+          >
 
             <p className="dash-section-label">Properties</p>
 
@@ -1570,7 +1678,14 @@ export default function HomeownerAccount() {
                 )}
               </CardContent>
             </Card>
+          </div>
 
+          <div
+            id="tabpanel-account"
+            role="tabpanel"
+            aria-labelledby="tab-account"
+            className={currentTab === 'account' ? 'space-y-4 block' : 'hidden'}
+          >
 
             <Card>
               <CardHeader>
@@ -1611,29 +1726,32 @@ export default function HomeownerAccount() {
                       Cancel My Account
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="w-[calc(100%-2rem)] max-w-lg overflow-x-hidden">
                     <DialogHeader>
                       <DialogTitle>Are you absolutely sure?</DialogTitle>
-                      <DialogDescription>
-                        This will permanently cancel your MyHomeBase™ account. Your subscription will be cancelled and you will lose access to:
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>All your properties and maintenance schedules</li>
-                          <li>Service records and contractor conversations</li>
-                          <li>Custom maintenance tasks and reminders</li>
-                          <li>Your referral rewards and achievements</li>
-                        </ul>
-                        <p className="mt-3 font-semibold text-red-600">
-                          This action cannot be undone.
-                        </p>
+                      <DialogDescription asChild>
+                        <div className="break-words">
+                          This will permanently cancel your MyHomeBase™ account. Your subscription will be cancelled and you will lose access to:
+                          <ul className="mt-2 list-outside list-disc space-y-1 pl-5">
+                            <li>All your properties and maintenance schedules</li>
+                            <li>Service records and contractor conversations</li>
+                            <li>Custom maintenance tasks and reminders</li>
+                            <li>Your referral rewards and achievements</li>
+                          </ul>
+                          <p className="mt-3 font-semibold text-red-600">
+                            This action cannot be undone.
+                          </p>
+                        </div>
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                       <DialogTrigger asChild>
-                        <Button variant="outline" data-testid="button-cancel-account-dialog-no">
+                        <Button className="w-full sm:w-auto" variant="outline" data-testid="button-cancel-account-dialog-no">
                           No, Keep My Account
                         </Button>
                       </DialogTrigger>
                       <Button 
+                        className="w-full sm:w-auto"
                         variant="destructive"
                         onClick={async () => {
                           try {
@@ -1686,6 +1804,7 @@ export default function HomeownerAccount() {
                 </a>
               </Button>
             </div>
+          </div>
         </div>
       </div>
 
