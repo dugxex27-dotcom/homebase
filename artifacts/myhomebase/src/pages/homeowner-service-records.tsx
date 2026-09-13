@@ -169,6 +169,7 @@ export default function HomeownerServiceRecords() {
   const [aiInvoiceOpen, setAiInvoiceOpen] = useState(false);
   const [aiStep, setAiStep] = useState<"upload" | "diy-verify" | "review" | "done" | "duplicate">("upload");
   const [aiDuplicateAnalysisId, setAiDuplicateAnalysisId] = useState<string | null>(null);
+  const [aiDuplicateCreatedAt, setAiDuplicateCreatedAt] = useState<string | null>(null);
   const [aiDiyVerifyFiles, setAiDiyVerifyFiles] = useState<{ before: File[]; after: File[]; receipt: File[] }>({ before: [], after: [], receipt: [] });
   const [aiDiyVerifying, setAiDiyVerifying] = useState(false);
   const [aiDiyVerifyResult, setAiDiyVerifyResult] = useState<{ diyVerified: boolean; verificationNotes: string | null } | null>(null);
@@ -475,6 +476,7 @@ export default function HomeownerServiceRecords() {
     setAiReceiptFiles([]);
     setAiAnalysis(null);
     setAiDuplicateAnalysisId(null);
+    setAiDuplicateCreatedAt(null);
     setAiDiyVerifyFiles({ before: [], after: [], receipt: [] });
     setAiDiyVerifyResult(null);
     setAiSelectedHouseId(houses[0]?.id || "");
@@ -567,6 +569,7 @@ export default function HomeownerServiceRecords() {
       if (!res.ok) {
         if (res.status === 409 && responseData?.code === "DUPLICATE_INVOICE") {
           setAiDuplicateAnalysisId(responseData.analysisId ?? null);
+          setAiDuplicateCreatedAt(responseData.createdAt ?? null);
           setAiStep("duplicate");
           setAiAnalyzing(false);
           return;
@@ -1670,6 +1673,15 @@ export default function HomeownerServiceRecords() {
                 <p className="text-sm text-muted-foreground">
                   This file has already been analyzed and saved to your service records. No need to scan it again.
                 </p>
+                {aiDuplicateCreatedAt && !Number.isNaN(Date.parse(aiDuplicateCreatedAt)) && (
+                  <p className="text-sm font-medium">
+                    Originally scanned {new Intl.DateTimeFormat("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    }).format(new Date(aiDuplicateCreatedAt))}
+                  </p>
+                )}
                 <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
                   {aiDuplicateAnalysisId && (
                     <Button
@@ -1686,6 +1698,7 @@ export default function HomeownerServiceRecords() {
                       setAiInvoiceFiles([]);
                       setAiReceiptFiles([]);
                       setAiDuplicateAnalysisId(null);
+                      setAiDuplicateCreatedAt(null);
                     }}
                   >
                     Scan a different invoice

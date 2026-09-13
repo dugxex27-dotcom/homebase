@@ -54,6 +54,7 @@ vi.mock("@/hooks/use-toast", () => ({
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/maintenance", vi.fn()],
+  useSearch: () => "",
   useRoute: () => [false, {}],
   Link: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
@@ -275,7 +276,11 @@ describe("Maintenance Page — AI invoice upload: 409 DUPLICATE_INVOICE", () => 
     global.fetch = vi.fn().mockResolvedValueOnce({
       status: 409,
       ok: false,
-      json: async () => ({ code: "DUPLICATE_INVOICE", analysisId: "ana-dup-002" }),
+      json: async () => ({
+        code: "DUPLICATE_INVOICE",
+        analysisId: "ana-dup-002",
+        createdAt: "2025-06-12T15:30:00.000Z",
+      }),
     } as Response);
 
     await renderAndWaitForHouse();
@@ -291,6 +296,7 @@ describe("Maintenance Page — AI invoice upload: 409 DUPLICATE_INVOICE", () => 
     expect(
       screen.getByText("You already scanned this invoice"),
     ).toBeDefined();
+    expect(screen.getByText("Originally scanned June 12, 2025")).toBeDefined();
 
     // The "Scan a different invoice" reset button must be present
     expect(

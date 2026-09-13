@@ -1881,7 +1881,13 @@ describe("POST /api/invoice-analyses/analyze — duplicate content-hash detectio
     // db.select: hash lookup finds an existing analysis
     mockDbSelect.mockReturnValueOnce({
       from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: ANALYSIS_ID, homeownerId: OWNER_ID, houseId: HOUSE_ID, status: "confirmed" }]),
+        where: vi.fn().mockResolvedValue([{
+          id: ANALYSIS_ID,
+          homeownerId: OWNER_ID,
+          houseId: HOUSE_ID,
+          status: "confirmed",
+          createdAt: new Date("2025-06-12T15:30:00.000Z"),
+        }]),
       }),
     });
 
@@ -1898,6 +1904,7 @@ describe("POST /api/invoice-analyses/analyze — duplicate content-hash detectio
     expect(res.status).toBe(409);
     expect(res.body.code).toBe("DUPLICATE_INVOICE");
     expect(res.body.analysisId).toBe(ANALYSIS_ID);
+    expect(res.body.createdAt).toBe("2025-06-12T15:30:00.000Z");
   });
 
   it("returns 409 with a clear message so the UI can show 'already confirmed this invoice'", async () => {

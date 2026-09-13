@@ -458,7 +458,11 @@ describe("Service Records — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
         return {
           status: 409,
           ok: false,
-          json: async () => ({ code: "DUPLICATE_INVOICE", analysisId: "ana-dup-001" }),
+          json: async () => ({
+            code: "DUPLICATE_INVOICE",
+            analysisId: "ana-dup-001",
+            createdAt: "2025-06-12T15:30:00.000Z",
+          }),
         } as Response;
       }
       return {
@@ -484,6 +488,7 @@ describe("Service Records — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
     expect(
       screen.getByText("You already scanned this invoice"),
     ).toBeDefined();
+    expect(screen.getByText("Originally scanned June 12, 2025")).toBeDefined();
 
     // The "Scan a different invoice" reset button must be present
     expect(

@@ -24180,6 +24180,7 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
             code: "DUPLICATE_INVOICE",
             message: "This invoice has already been scanned for this property.",
             analysisId: existingByHash.id,
+            createdAt: existingByHash.createdAt,
           });
         }
       }
@@ -24312,6 +24313,34 @@ IMPORTANT: Extract EVERY appliance and mechanical system mentioned in the report
       res.status(201).json(analysis);
     } catch (err: any) {
       if (err?.code === "23505" && err?.constraint === "uq_invoice_analyses_house_hash") {
+        const primaryHashFile = req.body?.invoiceFiles?.[0];
+        const houseId = req.body?.houseId;
+        if (primaryHashFile?.fileData && houseId) {
+          try {
+            const rawBase64 = primaryHashFile.fileData.includes("base64,")
+              ? primaryHashFile.fileData.split("base64,")[1]
+              : primaryHashFile.fileData;
+            const invoiceHash = createHash("sha256")
+              .update(Buffer.from(rawBase64, "base64"))
+              .digest("hex");
+            const [existingByHash] = await db.select().from(invoiceAnalyses).where(
+              and(eq(invoiceAnalyses.houseId, houseId), eq(invoiceAnalyses.invoiceHash as any, invoiceHash)),
+            );
+            if (existingByHash) {
+              return void res.status(409).json({
+                code: "DUPLICATE_INVOICE",
+                message: "This invoice has already been scanned for this property.",
+                analysisId: existingByHash.id,
+                createdAt: existingByHash.createdAt,
+              });
+            }
+          } catch (lookupError) {
+            req.log?.warn(
+              { lookupError, houseId },
+              "[INVOICE ANALYSIS] Could not load duplicate analysis metadata after constraint conflict",
+            );
+          }
+        }
         return void res.status(409).json({
           code: "DUPLICATE_INVOICE",
           message: "This invoice has already been scanned for this property.",
