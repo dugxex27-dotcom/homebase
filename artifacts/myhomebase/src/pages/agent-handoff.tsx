@@ -1,3 +1,4 @@
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -222,42 +223,30 @@ export default function AgentHandoff() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8 flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 sm:py-6 flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                {view !== "list" && (
-                  <button
-                    onClick={() => { setView("list"); setSelectedId(null); window.history.pushState({}, '', '/agent-handoff'); }}
-                    className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] sm:w-8 sm:h-8 sm:min-h-0 sm:min-w-0 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors mr-1 sm:mr-2"
-                  >
-                    <ChevronLeft className="w-5 h-5 sm:w-4 sm:h-4" />
-                  </button>
-                )}
-                <span className="text-[10px] font-bold text-[#09694A] uppercase tracking-wider">Real Estate Agent</span>
-              </div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                {view === "list" ? "Home Handoffs" : view === "create" ? "New Package" : detail?.propertyAddress || "Package Detail"}
-              </h1>
-            </div>
-
-            {view === "list" && (
-              <button
-                className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm w-full sm:w-auto"
-                onClick={() => { setForm({ propertyAddress: "", buyerName: "", buyerEmail: "", notes: "" }); setView("create"); window.history.pushState({}, '', '/agent-handoff?new=true'); }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                New Handoff
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+      <WorkspaceHeader
+        title={view === "list" ? "Home Handoffs" : view === "create" ? "New Package" : detail?.propertyAddress || "Package Detail"}
+        action={
+          view === "list" ? (
+            <button
+              className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm"
+              onClick={() => { setForm({ propertyAddress: "", buyerName: "", buyerEmail: "", notes: "" }); setView("create"); window.history.pushState({}, '', '/agent-handoff?new=true'); }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Handoff
+            </button>
+          ) : (
+            <button
+              onClick={() => { setView("list"); setSelectedId(null); window.history.pushState({}, '', '/agent-handoff'); }}
+              className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-white border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors shadow-sm"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Back to List
+            </button>
+          )
+        }
+      />
+      <WorkspaceContent>
 
         {/* LIST VIEW */}
         {view === "list" && (
@@ -733,7 +722,7 @@ export default function AgentHandoff() {
             </div>
           </div>
         )}
-      </main>
+      </WorkspaceContent>
     </div>
   );
 }

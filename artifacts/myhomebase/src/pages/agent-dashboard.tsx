@@ -1,3 +1,4 @@
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -86,24 +87,22 @@ export default function AgentDashboard() {
   const activePackages = packages.filter(p => p.status !== "claimed").slice(0, 5); // Show recent active
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8">
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 space-y-6 lg:space-y-8">
-
-        {/* Header & Primary CTA */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">Agent Dashboard</h1>
-            <p className="text-sm text-gray-500 mt-1">Manage your closing packages and client relationships</p>
-          </div>
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+      <WorkspaceHeader
+        title="Agent Dashboard"
+        subtitle="Manage your closing packages and client relationships"
+        action={
           <button
             onClick={() => setLocation("/agent-handoff?new=true")}
-            className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm w-full sm:w-auto"
+            className="inline-flex items-center justify-center min-h-[44px] px-6 rounded-xl bg-[#09694A] text-white text-sm font-semibold hover:bg-[#079669] transition-colors shadow-sm"
             data-testid="button-create-package"
           >
             <Plus className="w-4 h-4 mr-2" />
             Create closing package
           </button>
-        </div>
+        }
+      />
+      <WorkspaceContent>
 
         {/* Verification Banner */}
         {verificationStatus?.verificationStatus !== "approved" && (
@@ -296,7 +295,7 @@ export default function AgentDashboard() {
           </section>
         </div>
 
-      </main>
+      </WorkspaceContent>
     </div>
   );
 }

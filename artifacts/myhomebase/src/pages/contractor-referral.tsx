@@ -16,7 +16,7 @@ import facebookTwitterImg from '@assets/homebase-contractor-contractor-facebook-
 import homeownerFacebookTwitterImg from '@assets/homebase-contractor-homeowner-facebook-twitter_1768431701172.png';
 import homeownerInstagramStoryImg from '@assets/homebase-contractor-homeowner-ig-story_1768431505778.png';
 import homeownerInstagramPostImg from '@assets/homebase-contractor-homeowner-ig-post_1768431233148.png';
-import { PageHero } from "@/components/page-hero";
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 
 export default function ContractorReferral() {
   const { toast } = useToast();
@@ -111,20 +111,19 @@ export default function ContractorReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen">
-        <PageHero eyebrow="Contractor" title="Referral Program" subtitle="Loading..." />
+      <div className="min-h-screen bg-slate-50">
+        <WorkspaceHeader title="Referral Program" subtitle="Loading..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <PageHero
-        eyebrow="Contractor"
+    <div className="min-h-screen bg-slate-50">
+      <WorkspaceHeader
         title="Referral Program"
         subtitle="Share MyHomeBase™ and earn rewards"
       />
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <WorkspaceContent>
 
         <div className="space-y-6">
           {/* Referral Stats Card */}
@@ -457,7 +456,7 @@ export default function ContractorReferral() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </WorkspaceContent>
     </div>
   );
 }

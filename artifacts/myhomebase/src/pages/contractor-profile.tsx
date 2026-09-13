@@ -47,6 +47,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "wouter";
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 import "./home.css";
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 
 const AVAILABLE_SERVICES = [
   "Appliance Installation",
@@ -1186,36 +1187,15 @@ export default function ContractorProfile() {
   const planLabel      = hasActiveSubscription && !isInTrial ? planName : isInTrial ? 'Trial' : 'None';
 
   return (
-    <div className="min-h-screen" style={{ background: '#f8fafc' }}>
+    <div className="min-h-screen bg-slate-50">
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#1560A2' }}>
-        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>Contractor</span>
-        <div className="dash-title">My Profile</div>
-        <div className="dash-subtitle">Manage your business info and credentials</div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${profileRating > 0 ? ' good' : ''}`}>
-              {profileRating > 0 ? profileRating.toFixed(1) : '—'}
-            </div>
-            <div className="dash-chip-label">Rating</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${formData.reviewCount > 0 ? ' good' : ''}`}>{formData.reviewCount}</div>
-            <div className="dash-chip-label">Reviews</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${hasActiveSubscription ? ' good' : isInTrial ? ' warn' : ''}`}
-              style={{ fontSize: 13, paddingTop: 3 }}>
-              {planLabel}
-            </div>
-            <div className="dash-chip-label">Plan</div>
-          </div>
-        </div>
-      </div>
+      <WorkspaceHeader
+        title="My Profile"
+        subtitle="Manage your business info and credentials"
+      />
 
-      <div className="container mx-auto py-8 px-4 max-w-4xl">
-
+      <WorkspaceContent>
       {/* Subscription & Billing Card */}
       <Card style={{ backgroundColor: 'var(--gray-100)' }} className="mb-8">
         <CardHeader>
@@ -2426,7 +2406,7 @@ export default function ContractorProfile() {
         </Button>
       </div>
 
-      </div>
+      </WorkspaceContent>
     </div>
   );
 }

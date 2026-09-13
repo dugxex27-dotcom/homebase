@@ -968,8 +968,8 @@ body.native-shell [data-testid="bottom-nav"] {
 
   /* Active nav item — left purple bar via ::before */
   .sidebar-active-item {
-    background-color: var(--purple-tint, #EEEDFE) !important;
-    color: var(--purple, #3C258E) !important;
+    background-color: var(--theme-fill) !important;
+    color: var(--theme-accent) !important;
     font-weight: 600 !important;
     position: relative;
   }

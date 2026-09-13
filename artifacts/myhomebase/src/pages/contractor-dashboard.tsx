@@ -1,3 +1,4 @@
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import React from "react";
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1535,32 +1536,23 @@ export default function ContractorDashboard() {
       })()}
 
       {/* ── COMPACT COCKPIT HEADER ── */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-md bg-[#1560A2] text-white flex items-center justify-center font-bold text-sm shadow-sm">
-              {firstName.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-sm font-bold text-slate-900 leading-tight" data-testid="text-welcome-message">Dashboard</h1>
-              <p className="text-[11px] text-slate-500 font-medium">Welcome back, {firstName}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsCreateDialogOpen(true)}
-              data-testid="button-create-proposal"
-              className="bg-[#1560A2] hover:bg-[#0C3460] text-white h-8 text-xs px-3 rounded-md font-bold flex items-center transition-colors shadow-sm"
-            >
-              <Plus size={14} className="mr-1.5" />
-              New Job
-            </button>
-          </div>
-        </div>
-
+      <WorkspaceHeader
+        title="Dashboard"
+        subtitle={`Welcome back, ${firstName}`}
+        action={
+          <button
+            onClick={() => setIsCreateDialogOpen(true)}
+            data-testid="button-create-proposal"
+            className="bg-[#1560A2] hover:bg-[#0C3460] text-white min-h-[44px] px-6 rounded-xl text-sm font-semibold flex items-center transition-colors shadow-sm"
+          >
+            <Plus size={16} className="mr-2" />
+            New Job
+          </button>
+        }
+      >
         {/* ── Company admin tab navigation ── */}
         {isAdminRole && (
-          <div className="max-w-6xl mx-auto px-4 flex items-center gap-6 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
             {(['overview', 'team', 'invoices'] as const).map(tab => (
               <button
                 key={tab}
@@ -1581,14 +1573,15 @@ export default function ContractorDashboard() {
             ))}
           </div>
         )}
-      </header>
+      </WorkspaceHeader>
 
-      <ActivatingPlanBanner />
-      {isInTrial && <ContractorTrialBanner />}
-      <ContractorNoPlanBanner />
+      <WorkspaceContent className="py-6">
+        <ActivatingPlanBanner />
+        {isInTrial && <ContractorTrialBanner />}
+        <ContractorNoPlanBanner />
 
       {/* ── Dashboard Content Container ── */}
-      <div className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
+      <div className="flex flex-col gap-6">
 
       {/* ── TEAM TAB ── */}
       {isAdminRole && activeTab === 'team' && (
@@ -3385,6 +3378,7 @@ export default function ContractorDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
+      </WorkspaceContent>
     </div>
   );
 }

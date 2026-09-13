@@ -83,8 +83,8 @@ export default function Sidebar() {
     const active = isActive(path);
     return active
       ? {
-          backgroundColor: 'var(--purple-tint, #EEEDFE)',
-          color: 'var(--purple, #3C258E)',
+          backgroundColor: 'var(--theme-fill)',
+          color: 'var(--theme-accent)',
           fontWeight: 600,
           borderRadius: 8,
           position: 'relative',
@@ -128,7 +128,7 @@ export default function Sidebar() {
     const active = activeOverride !== undefined ? activeOverride : isActive(matchPaths);
     const cls = `w-full text-left py-[9px] px-3 rounded-[8px] flex items-center gap-[10px] text-[13px] transition-colors mb-[2px] ${active ? 'sidebar-active-item' : 'hover:bg-gray-100 hover:text-gray-900'}`;
     const sty = active
-      ? { backgroundColor: 'var(--purple-tint, #EEEDFE)', color: 'var(--purple, #3C258E)', fontWeight: 600, borderRadius: 8, position: 'relative' as const }
+      ? { backgroundColor: 'var(--theme-fill)', color: 'var(--theme-accent)', fontWeight: 600, borderRadius: 8, position: 'relative' as const }
       : { color: 'var(--gray-600, #4B5563)', fontWeight: 500 };
     if (external) {
       return (

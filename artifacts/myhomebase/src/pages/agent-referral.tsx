@@ -1,3 +1,4 @@
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,24 +107,19 @@ export default function AgentReferral() {
 
   if (!typedUser) {
     return (
-      <div className="min-h-screen" style={{ background: '#ffffff' }}>
-        <div className="dash-header" style={{ background: '#09694A' }}>
-          <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
-          <div className="dash-title">Referral Program</div>
-          <div className="dash-subtitle">Loading...</div>
-        </div>
+      <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+        <WorkspaceHeader title="Referral Program" subtitle="Loading..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#09694A' }}>
-        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
-        <div className="dash-title">Referral Program</div>
-        <div className="dash-subtitle">Share a thoughtful closing gift and stay connected with clients</div>
-      </div>
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+      <WorkspaceHeader
+        title="Referral Program"
+        subtitle="Share a thoughtful closing gift and stay connected with clients"
+      />
+      <WorkspaceContent>
 
         <div className="space-y-8">
           {/* Client relationship tools */}
@@ -441,7 +437,7 @@ export default function AgentReferral() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </WorkspaceContent>
     </div>
   );
 }

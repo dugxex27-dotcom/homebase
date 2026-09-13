@@ -1,3 +1,4 @@
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -345,28 +346,26 @@ export default function AgentAccount() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen" style={{ background: '#ffffff' }}>
-        <div className="dash-header" style={{ background: '#09694A' }}>
-          <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
-          <div className="dash-title">Account Settings</div>
-          <div className="dash-subtitle">Loading your profile...</div>
-        </div>
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" />
+      <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+        <WorkspaceHeader
+          title="Account Settings"
+          subtitle="Loading your profile..."
+        />
+        <WorkspaceContent />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
-      <div className="dash-header" style={{ background: '#09694A' }}>
-        <span className="dash-eyebrow" style={{ color: '#D4EBDE' }}>Real Estate Agent</span>
-        <div className="dash-title">Account Settings</div>
-        <div className="dash-subtitle">Keep your professional profile ready for every client relationship</div>
-      </div>
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-[100dvh] bg-gray-50 flex flex-col pb-24 lg:pb-0">
+      <WorkspaceHeader
+        title="Account Settings"
+        subtitle="Keep your professional profile ready for every client relationship"
+      />
+      <WorkspaceContent>
 
         {/* Profile Settings */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
+        <Card className="mb-6 rounded-xl border-emerald-200 bg-white shadow-sm dark:bg-gray-800">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Profile Settings</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -433,7 +432,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Contact Information */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
+        <Card className="mb-6 rounded-xl border-emerald-200 bg-white shadow-sm dark:bg-gray-800">
           <CardHeader>
             <CardTitle className="text-gray-900 dark:text-white">Contact Information</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -521,7 +520,7 @@ export default function AgentAccount() {
         </Card>
 
         {/* Status Banner */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
+        <Card className="mb-6 rounded-xl border-emerald-200 bg-white shadow-sm dark:bg-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -576,7 +575,7 @@ export default function AgentAccount() {
 
         {/* Verification Form */}
         {verificationStatus?.verificationStatus !== 'approved' && verificationStatus?.verificationStatus !== 'pending_review' && (
-          <Card className="bg-white dark:bg-gray-800 border-emerald-200 rounded-2xl shadow-lg">
+          <Card className="rounded-xl border-emerald-200 bg-white shadow-sm dark:bg-gray-800">
             <CardHeader>
               <CardTitle className="text-gray-900 dark:text-white">Submit Verification</CardTitle>
               <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -717,7 +716,7 @@ export default function AgentAccount() {
         )}
 
         {/* Cancel Account */}
-        <Card className="border-red-200 rounded-2xl shadow-lg">
+        <Card className="rounded-xl border-red-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-red-600">Cancel Account</CardTitle>
             <CardDescription className="text-gray-600 dark:text-gray-400">
@@ -805,7 +804,7 @@ export default function AgentAccount() {
             </a>
           </Button>
         </div>
-      </main>
+      </WorkspaceContent>
     </div>
   );
 }

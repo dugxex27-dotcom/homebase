@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { WorkspaceHeader } from "@/components/workspace";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -596,55 +597,86 @@ export default function Messages() {
   const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   return (
-    <div className="min-h-screen" style={{ background: '#ffffff' }}>
+    <div
+      className={
+        role === 'homeowner'
+          ? 'min-h-screen'
+          : 'flex min-h-[100dvh] flex-col bg-slate-50 pb-[80px] lg:pb-0'
+      }
+      style={role === 'homeowner' ? { background: '#ffffff' } : undefined}
+    >
 
       {/* ── PAGE HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: palette.bg }}>
-        <div className="dash-header-top">
-          <div className="dash-header-actions" data-testid="websocket-status">
-            {wsConnected ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span className="ai-status-dot" />
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Live</span>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,120,120,0.9)', display: 'inline-block' }} />
-                <span style={{ fontSize: 10, color: 'rgba(255,120,120,0.9)', fontWeight: 600 }}>Offline</span>
-              </div>
-            )}
-          </div>
-        </div>
-        <span className="dash-eyebrow" style={{ color: palette.eyebrow }}>{palette.label}</span>
-        <div className="dash-title">Messages</div>
-        <div className="dash-subtitle">
-          {role === 'homeowner' ? 'Chat in real-time with your contractors' :
-           role === 'contractor' ? 'Chat in real-time with homeowners' :
-           'Chat in real-time with clients & partners'}
-        </div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${conversations.length > 0 ? ' good' : ''}`}>{conversations.length}</div>
-            <div className="dash-chip-label">Conversations</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${totalUnread > 0 ? ' warn' : ''}`}>{totalUnread}</div>
-            <div className="dash-chip-label">Unread</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-              {wsConnected
-                ? <><span className="ai-status-dot" /><span>Live</span></>
-                : <span style={{ color: 'rgba(255,120,120,0.9)' }}>Off</span>
-              }
+      {role === 'homeowner' ? (
+        <div className="dash-header" style={{ background: palette.bg }}>
+          <div className="dash-header-top">
+            <div className="dash-header-actions" data-testid="websocket-status">
+              {wsConnected ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span className="ai-status-dot" />
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Live</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ width: 14, height: 14, borderRadius: '50%', background: 'rgba(255,120,120,0.9)', display: 'inline-block' }} />
+                  <span style={{ fontSize: 10, color: 'rgba(255,120,120,0.9)', fontWeight: 600 }}>Offline</span>
+                </div>
+              )}
             </div>
-            <div className="dash-chip-label">Connection</div>
+          </div>
+          <span className="dash-eyebrow" style={{ color: palette.eyebrow }}>{palette.label}</span>
+          <div className="dash-title">Messages</div>
+          <div className="dash-subtitle">Chat in real-time with your contractors</div>
+          <div className="dash-chips">
+            <div className="dash-chip">
+              <div className={`dash-chip-num${conversations.length > 0 ? ' good' : ''}`}>{conversations.length}</div>
+              <div className="dash-chip-label">Conversations</div>
+            </div>
+            <div className="dash-chip">
+              <div className={`dash-chip-num${totalUnread > 0 ? ' warn' : ''}`}>{totalUnread}</div>
+              <div className="dash-chip-label">Unread</div>
+            </div>
+            <div className="dash-chip">
+              <div className="dash-chip-num" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                {wsConnected
+                  ? <><span className="ai-status-dot" /><span>Live</span></>
+                  : <span style={{ color: 'rgba(255,120,120,0.9)' }}>Off</span>
+                }
+              </div>
+              <div className="dash-chip-label">Connection</div>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <WorkspaceHeader
+          title="Messages"
+          subtitle={role === 'contractor' ? 'Chat in real-time with homeowners' : 'Chat in real-time with clients & partners'}
+          action={
+            <div data-testid="websocket-status">
+              {wsConnected ? (
+                <div className="flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-3 py-1.5">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-green-700">Live</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-700">Offline</span>
+                </div>
+              )}
+            </div>
+          }
+        />
+      )}
 
       {/* Main Content - Two-Panel Messenger Layout */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-8">
+      <div
+        className={
+          role === 'homeowner'
+            ? 'mx-auto max-w-6xl px-4 pb-8 sm:px-6'
+            : 'mx-auto w-full max-w-[1400px] min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8'
+        }
+      >
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[600px] sm:h-[700px]">
           
           {/* Left Panel - Conversation List */}

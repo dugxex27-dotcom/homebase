@@ -29,6 +29,7 @@ import { ProFeatureGate, ProUpgradeBanner, ProBenefitsDialog } from "@/component
 import { StripeConnectOnboarding } from "@/components/stripe-connect-onboarding";
 import { CreditCard } from "lucide-react";
 import "./home.css";
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 
 // Types
 interface CrmLead {
@@ -1214,40 +1215,27 @@ export default function ContractorCRMPage() {
     <div className="min-h-screen" style={{ background: '#f8fafc' }}>
 
       {/* ── DASH HEADER ─────────────────────────── */}
-      <div className="dash-header" style={{ background: '#1560A2' }}>
-        <span className="dash-eyebrow" style={{ color: '#AFD6F9' }}>Contractor</span>
-        <div className="dash-title">CRM &amp; Clients</div>
-        <div className="dash-subtitle">Leads, jobs, quotes and invoices in one place</div>
-        {currentUser?.isDemoAccount === true && (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-4 border-white/60 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-            onClick={() => setResetDemoConfirmOpen(true)}
-            disabled={resetDemoMutation.isPending}
-            data-testid="button-reset-demo-data"
-          >
-            <RefreshCw className={`mr-2 h-4 w-4 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
-            {resetDemoMutation.isPending ? "Resetting Demo…" : "Reset Demo Data"}
-          </Button>
-        )}
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className={`dash-chip-num${(leads?.length ?? 0) > 0 ? ' good' : ''}`}>{leads?.length ?? 0}</div>
-            <div className="dash-chip-label">Leads</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${activeJobs > 0 ? ' good' : ''}`}>{activeJobs}</div>
-            <div className="dash-chip-label">Active Jobs</div>
-          </div>
-          <div className="dash-chip">
-            <div className={`dash-chip-num${openInvoices > 0 ? ' warn' : ''}`}>{openInvoices}</div>
-            <div className="dash-chip-label">Open Invoices</div>
-          </div>
-        </div>
-      </div>
+      <WorkspaceHeader
+        title="CRM & Clients"
+        subtitle="Leads, jobs, quotes and invoices in one place"
+        action={
+          currentUser?.isDemoAccount === true ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+              onClick={() => setResetDemoConfirmOpen(true)}
+              disabled={resetDemoMutation.isPending}
+              data-testid="button-reset-demo-data"
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${resetDemoMutation.isPending ? 'animate-spin' : ''}`} />
+              {resetDemoMutation.isPending ? "Resetting Demo…" : "Reset Demo Data"}
+            </Button>
+          ) : undefined
+        }
+      />
 
-    <div className="container mx-auto px-4 py-8">
+    <WorkspaceContent>
 
       {/* Pro Upgrade Banner for non-Pro users */}
       {needsUpgrade && (
@@ -3458,7 +3446,7 @@ export default function ContractorCRMPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </WorkspaceContent>
     </div>
   );
 }

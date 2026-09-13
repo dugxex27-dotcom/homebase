@@ -15,6 +15,7 @@ import {
   PauseCircle,
   Plus,
 } from "lucide-react";
+import { WorkspaceHeader, WorkspaceContent } from "@/components/workspace";
 import { format } from "date-fns";
 
 interface TechInvoice {
@@ -125,30 +126,14 @@ export function TechDashboard({ user }: TechDashboardProps) {
   }
 
   return (
-    <div>
+    <div className="min-h-[100dvh] bg-slate-50 flex flex-col pb-[80px] lg:pb-0">
       {/* Header */}
-      <div
-        className="dash-header"
-        style={{ background: "linear-gradient(135deg, #0C3460 0%, #1560A2 100%)" }}
-      >
-        <span className="dash-eyebrow" style={{ color: "#AFD6F9" }}>FIELD TECHNICIAN</span>
-        <div className="dash-title">Welcome back, {firstName}</div>
-        <div className="dash-subtitle">Upload your work invoices and track your submissions</div>
-        <div className="dash-chips">
-          <div className="dash-chip">
-            <div className="dash-chip-num good">{invoices.length}</div>
-            <div className="dash-chip-label">Invoices</div>
-          </div>
-          <div className="dash-chip">
-            <div className="dash-chip-num good">
-              {invoices.filter((i) => i.amount).length}
-            </div>
-            <div className="dash-chip-label">With Amount</div>
-          </div>
-        </div>
-      </div>
+      <WorkspaceHeader
+        title={`Welcome back, ${firstName}`}
+        subtitle="Upload your work invoices and track your submissions"
+      />
 
-      <div className="dash-body">
+      <WorkspaceContent>
         {/* Upload Action */}
         <span className="dash-section-label">Quick Actions</span>
         <button
@@ -251,7 +236,7 @@ export function TechDashboard({ user }: TechDashboardProps) {
             ))}
           </div>
         )}
-      </div>
+      </WorkspaceContent>
 
       {/* Upload Dialog */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
