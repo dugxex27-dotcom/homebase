@@ -58,3 +58,4 @@
 - [Homeowner activation before paywall](homeowner-activation-before-paywall.md) — first home, canonical score, and first task must deliver value before deeper or multi-home upgrade gates
 - [Work-first responsive page grammar](work-first-responsive-page-grammar.md) — authenticated role pages use compact headers, stable primary nav, and first-viewport work queues
 - [Legacy score-lock lookups](legacy-score-lock-lookups.md) — match legacy scored records using their stored date, never the requested replacement date
+- [Stale lazy chunks after publish](stale-lazy-chunks-after-publish.md) — old SPA shells request removed hashed chunks; catch preload failures and reload once before the route boundary renders
