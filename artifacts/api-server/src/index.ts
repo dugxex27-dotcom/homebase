@@ -235,19 +235,21 @@ app.get("/info/*path", proxyToSquarespace);
   // Startup recovery: re-run any seat sync that was interrupted by a crash.
   // A row in pending_seat_syncs means the previous process wrote the DB
   // update but didn't complete the Stripe API call before it died.
-  try {
-    const seatRecovery = await recoverPendingSeatSyncs();
-    if (seatRecovery.recovered.length > 0 || seatRecovery.failed.length > 0) {
-      logger.warn(seatRecovery, '[SeatRecovery] Recovered interrupted seat syncs on startup');
+  if (process.env.STRIPE_SECRET_KEY) {
+    try {
+      const seatRecovery = await recoverPendingSeatSyncs();
+      if (seatRecovery.recovered.length > 0 || seatRecovery.failed.length > 0) {
+        logger.warn(seatRecovery, '[SeatRecovery] Recovered interrupted seat syncs on startup');
+      }
+      if (seatRecovery.failed.length > 0) {
+        logger.error(
+          { failed: seatRecovery.failed },
+          '[SeatRecovery] Some seat syncs could not be recovered — Stripe seat counts may be stale',
+        );
+      }
+    } catch (err) {
+      logger.warn({ err }, '[SeatRecovery] Startup seat-sync recovery failed — continuing');
     }
-    if (seatRecovery.failed.length > 0) {
-      logger.error(
-        { failed: seatRecovery.failed },
-        '[SeatRecovery] Some seat syncs could not be recovered — Stripe seat counts may be stale',
-      );
-    }
-  } catch (err) {
-    logger.warn({ err }, '[SeatRecovery] Startup seat-sync recovery failed — continuing');
   }
 
   // Retry durable seat-sync checkpoints during normal uptime as well as on
