@@ -1086,6 +1086,8 @@ export interface IStorage {
 
   getPendingSeatSyncs(): Promise<string[]>;
 
+  pruneStalePendingSeatSyncs(olderThanMinutes: number): Promise<string[]>;
+
   getCrmInvoiceEvents(invoiceId: string): Promise<CrmInvoiceEvent[]>;
 }
 
@@ -8178,6 +8180,8 @@ export class MemStorage implements IStorage {
 
   async getPendingSeatSyncs(): Promise<string[]> { return []; }
 
+  async pruneStalePendingSeatSyncs(_olderThanMinutes: number): Promise<string[]> { return []; }
+
   private crmInvoiceEventsMap: Map<string, CrmInvoiceEvent[]>;
 
   async getCrmInvoiceEvents(invoiceId: string): Promise<CrmInvoiceEvent[]> {
@@ -11786,6 +11790,14 @@ export class DbStorage implements IStorage {
   async getPendingSeatSyncs(): Promise<string[]> {
     const rows = await db.select({ companyId: pendingSeatSyncs.companyId }).from(pendingSeatSyncs);
     return rows.map((r) => r.companyId);
+  }
+
+  async pruneStalePendingSeatSyncs(olderThanMinutes: number): Promise<string[]> {
+    const cutoff = new Date(Date.now() - olderThanMinutes * 60 * 1000);
+    const deleted = await db.delete(pendingSeatSyncs)
+      .where(lt(pendingSeatSyncs.createdAt, cutoff))
+      .returning({ companyId: pendingSeatSyncs.companyId });
+    return deleted.map((row) => row.companyId);
   }
 
   async getReferringAgentForHomeowner(homeownerId: string): Promise<{ firstName: string; lastName: string; email: string | null; phone: string | null; website: string | null; officeAddress: string | null; referralCode: string | null; profileImageUrl: string | null; } | undefined> {

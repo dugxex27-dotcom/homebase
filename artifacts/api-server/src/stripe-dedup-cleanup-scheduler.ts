@@ -6,6 +6,7 @@ import { storage } from "./storage";
 // processed a second time.  96 h gives a comfortable safety margin.
 const TTL_HOURS = 96;
 const INTERVAL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_PENDING_SEAT_SYNC_TTL_MINUTES = 60;
 export const STRIPE_DEDUP_HEALTH_PROBE_INTERVAL_MS = 6 * 60 * 60 * 1000;
 let initialRunTimer: NodeJS.Timeout | null = null;
 let schedulerInterval: NodeJS.Timeout | null = null;
@@ -16,6 +17,31 @@ let healthProbeInterval: NodeJS.Timeout | null = null;
 // Exceeding 1 000 rows signals that pruning has been silently failing or
 // that webhook volume has spiked unexpectedly.
 export const STRIPE_DEDUP_ROW_WARN_THRESHOLD = 1_000;
+
+export function getPendingSeatSyncTtlMinutes(): number {
+  const configured = Number(process.env.PENDING_SEAT_SYNC_TTL_MINUTES);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_PENDING_SEAT_SYNC_TTL_MINUTES;
+}
+
+export async function pruneStalePendingSeatSyncs(): Promise<void> {
+  const olderThanMinutes = getPendingSeatSyncTtlMinutes();
+  try {
+    const pendingCompanyIds = await storage.getPendingSeatSyncs();
+    if (pendingCompanyIds.length === 0) return;
+
+    const prunedCompanyIds = await storage.pruneStalePendingSeatSyncs(olderThanMinutes);
+    if (prunedCompanyIds.length > 0) {
+      logger.warn(
+        { companyIds: prunedCompanyIds, olderThanMinutes },
+        "[SEAT_SYNC] Permanently failed stale pending seat syncs were pruned",
+      );
+    }
+  } catch (err) {
+    logger.error({ err }, "[SEAT_SYNC] Failed to prune stale pending seat syncs");
+  }
+}
 
 export async function checkStripeDedupTableSize(): Promise<void> {
   try {
@@ -33,6 +59,8 @@ export async function checkStripeDedupTableSize(): Promise<void> {
 
 async function pruneStripeDedupTable(): Promise<void> {
   logger.info("[STRIPE-DEDUP] Running daily cleanup of stripe_processed_events...");
+  await pruneStalePendingSeatSyncs();
+
   try {
     // First, promote any lingering stale 'pending' rows (server crashed before processAction
     // ran, and no later retry ever superseded them) to a terminal 'failed' status. This keeps

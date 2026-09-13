@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   getStripeProcessedEventCount: vi.fn(),
   failStaleStripePendingEvents: vi.fn(),
   pruneOldStripeProcessedEvents: vi.fn(),
+  getPendingSeatSyncs: vi.fn(),
+  pruneStalePendingSeatSyncs: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
@@ -14,6 +16,8 @@ vi.mock("./storage", () => ({
     getStripeProcessedEventCount: mocks.getStripeProcessedEventCount,
     failStaleStripePendingEvents: mocks.failStaleStripePendingEvents,
     pruneOldStripeProcessedEvents: mocks.pruneOldStripeProcessedEvents,
+    getPendingSeatSyncs: mocks.getPendingSeatSyncs,
+    pruneStalePendingSeatSyncs: mocks.pruneStalePendingSeatSyncs,
   },
 }));
 
@@ -27,6 +31,7 @@ vi.mock("./lib/logger", () => ({
 
 import {
   checkStripeDedupTableSize,
+  pruneStalePendingSeatSyncs,
   STRIPE_DEDUP_HEALTH_PROBE_INTERVAL_MS,
   STRIPE_DEDUP_ROW_WARN_THRESHOLD,
   stripeDedupCleanupScheduler,
@@ -39,6 +44,9 @@ describe("Stripe dedup cleanup scheduler health probe", () => {
     mocks.getStripeProcessedEventCount.mockResolvedValue(0);
     mocks.failStaleStripePendingEvents.mockResolvedValue({ updated: 0 });
     mocks.pruneOldStripeProcessedEvents.mockResolvedValue({ deleted: 0, remaining: 0 });
+    mocks.getPendingSeatSyncs.mockResolvedValue([]);
+    mocks.pruneStalePendingSeatSyncs.mockResolvedValue([]);
+    delete process.env.PENDING_SEAT_SYNC_TTL_MINUTES;
   });
 
   afterEach(() => {
@@ -78,5 +86,20 @@ describe("Stripe dedup cleanup scheduler health probe", () => {
     expect(mocks.getStripeProcessedEventCount).toHaveBeenCalledTimes(1);
     expect(mocks.failStaleStripePendingEvents).toHaveBeenCalledTimes(1);
     expect(mocks.pruneOldStripeProcessedEvents).toHaveBeenCalledTimes(1);
+  });
+
+  it("prunes stale pending seat syncs using the configured TTL and warns operators", async () => {
+    process.env.PENDING_SEAT_SYNC_TTL_MINUTES = "90";
+    mocks.getPendingSeatSyncs.mockResolvedValue(["company-old", "company-new"]);
+    mocks.pruneStalePendingSeatSyncs.mockResolvedValue(["company-old"]);
+
+    await pruneStalePendingSeatSyncs();
+
+    expect(mocks.getPendingSeatSyncs).toHaveBeenCalledTimes(1);
+    expect(mocks.pruneStalePendingSeatSyncs).toHaveBeenCalledWith(90);
+    expect(mocks.warn).toHaveBeenCalledWith(
+      { companyIds: ["company-old"], olderThanMinutes: 90 },
+      expect.stringContaining("Permanently failed"),
+    );
   });
 });
