@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Info, Menu, UserCircle, X } from "lucide-react";
+import { Info, Menu, UserCircle, X, Activity, ClipboardList, MapPin, Shield, FolderOpen, Users, FileText, DollarSign, Home, Send, HeartHandshake, Star, Leaf, Snowflake, Wind, Wrench, LayoutTemplate } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
@@ -332,7 +332,7 @@ export default function Landing() {
               </div>
 
               <div className="mco-footer-note">
-                <span className="mco-footer-icon">💡</span>
+                <span className="mco-footer-icon"><Info size={14} /></span>
                 <p className="mco-footer-text">MyHomeBase™ costs $5/month. The average denied claim costs $18,311. Documentation is the difference.</p>
               </div>
 
@@ -693,10 +693,10 @@ export default function Landing() {
               <p className="mhb-role-modal-body">MyHomeBase™ is your home's permanent record book — built for the moment you need it most. Whether you're filing an insurance claim, selling your house, or just staying on top of seasonal maintenance, every document, every repair, every inspection lives here.</p>
               <div className="mhb-role-modal-features">
                 {[
-                  { icon: '📊', title: 'Home Wellness Score™', desc: 'A live score from 0–1,000 based on system age, maintenance history, and task completion. Know it. Improve it. Show it when you sell.' },
-                  { icon: '📋', title: 'Service Record Tracking', desc: 'Log every repair, inspection, and upgrade — dated, documented, and retrievable in seconds when an adjuster comes calling.' },
-                  { icon: '📍', title: 'Geo-Located Task List', desc: "Seasonal reminders built around your location and your home's specific systems — not a generic checklist." },
-                  { icon: '🔒', title: 'Claim Protection', desc: 'Build the paper trail insurers require. The #1 reason claims are denied is missing maintenance records. Fix that for $5/month.' },
+                  { icon: <Activity size={18} />, title: 'Home Wellness Score™', desc: 'A live score from 0–1,000 based on system age, maintenance history, and task completion. Know it. Improve it. Show it when you sell.' },
+                  { icon: <ClipboardList size={18} />, title: 'Service Record Tracking', desc: 'Log every repair, inspection, and upgrade — dated, documented, and retrievable in seconds when an adjuster comes calling.' },
+                  { icon: <MapPin size={18} />, title: 'Geo-Located Task List', desc: "Seasonal reminders built around your location and your home's specific systems — not a generic checklist." },
+                  { icon: <Shield size={18} />, title: 'Claim Protection', desc: 'Build the paper trail insurers require. The #1 reason claims are denied is missing maintenance records. Fix that for $5/month.' },
                 ].map(f => (
                   <div key={f.title} className="mhb-role-modal-feature">
                     <span className="mhb-role-modal-feature-icon">{f.icon}</span>
@@ -728,10 +728,10 @@ export default function Landing() {
               <p className="mhb-role-modal-body">MyHomeBase™ connects you with homeowners who are actively maintaining their properties. Get listed in a trusted directory, manage your client relationships, and grow your business through referrals.</p>
               <div className="mhb-role-modal-features">
                 {[
-                  { icon: '📂', title: 'Contractor Directory Listing', desc: 'Be found by homeowners who are already investing in their properties. Your profile appears alongside relevant service records.' },
-                  { icon: '👥', title: 'CRM & Lead Management', desc: 'Track your homeowner clients, manage active jobs, and follow up on leads — all in one place.' },
-                  { icon: '📄', title: 'Service Record Integration', desc: "When you complete a job, the record is logged directly into the homeowner's history. Builds trust and repeat business." },
-                  { icon: '💰', title: 'Referral Revenue', desc: 'Refer homeowners and earn $1/month off your plan for each one — refer 20 and your subscription is free.' },
+                  { icon: <FolderOpen size={18} />, title: 'Contractor Directory Listing', desc: 'Be found by homeowners who are already investing in their properties. Your profile appears alongside relevant service records.' },
+                  { icon: <Users size={18} />, title: 'CRM & Lead Management', desc: 'Track your homeowner clients, manage active jobs, and follow up on leads — all in one place.' },
+                  { icon: <FileText size={18} />, title: 'Service Record Integration', desc: "When you complete a job, the record is logged directly into the homeowner's history. Builds trust and repeat business." },
+                  { icon: <DollarSign size={18} />, title: 'Referral Revenue', desc: 'Refer homeowners and earn $1/month off your plan for each one — refer 20 and your subscription is free.' },
                 ].map(f => (
                   <div key={f.title} className="mhb-role-modal-feature">
                     <span className="mhb-role-modal-feature-icon">{f.icon}</span>
@@ -762,10 +762,10 @@ export default function Landing() {
               <p className="mhb-role-modal-body">MyHomeBase™ lets you offer your clients something no other agent can — a documented, scored home history that builds buyer confidence, reduces inspection surprises, and closes deals faster.</p>
               <div className="mhb-role-modal-features">
                 {[
-                  { icon: '🏡', title: 'Home Wellness Score™ for Listings', desc: 'Attach a verified Home Wellness Score to every listing. Buyers see it as transparency. Sellers see it as value.' },
-                  { icon: '📤', title: 'Handoff Reports', desc: 'Generate a comprehensive handoff report at closing — every maintenance record, every upgrade, verified and ready for the buyer.' },
-                  { icon: '🤝', title: 'Stay Top of Mind', desc: "Give homeowners a useful closing gift and stay connected through maintenance, listing prep, and every future move." },
-                  { icon: '⭐', title: 'Differentiate Your Services', desc: "Stand out in a crowded market. Offering a documented home history is a competitive advantage most agents don't have." },
+                  { icon: <Home size={18} />, title: 'Home Wellness Score™ for Listings', desc: 'Attach a verified Home Wellness Score to every listing. Buyers see it as transparency. Sellers see it as value.' },
+                  { icon: <Send size={18} />, title: 'Handoff Reports', desc: 'Generate a comprehensive handoff report at closing — every maintenance record, every upgrade, verified and ready for the buyer.' },
+                  { icon: <HeartHandshake size={18} />, title: 'Stay Top of Mind', desc: "Give homeowners a useful closing gift and stay connected through maintenance, listing prep, and every future move." },
+                  { icon: <Star size={18} />, title: 'Differentiate Your Services', desc: "Stand out in a crowded market. Offering a documented home history is a competitive advantage most agents don't have." },
                 ].map(f => (
                   <div key={f.title} className="mhb-role-modal-feature">
                     <span className="mhb-role-modal-feature-icon">{f.icon}</span>
@@ -1012,19 +1012,19 @@ export default function Landing() {
                   </div>
                   <div className="mhb-phone-header">
                     <span className="mhb-phone-header-title">My Task List</span>
-                    <span className="mhb-phone-header-address">📍 Seattle, WA · Fall Season</span>
+                    <span className="mhb-phone-header-address"><MapPin size={12} style={{display:'inline',marginRight:4}} /> Seattle, WA · Fall Season</span>
                   </div>
                   <div className="mhb-phone-tasks">
                     <div className="mhb-task-section-label">Due this month</div>
                     {[
-                      { emoji: '🍂', text: 'Clean gutters before fall rain', priority: 'High', done: false },
-                      { emoji: '❄️', text: 'Winterize exterior hose bibs', priority: 'High', done: false },
-                      { emoji: '🌿', text: 'HVAC filter replacement', priority: 'Med', done: false },
+                      { icon: <Leaf size={14} />, text: 'Clean gutters before fall rain', priority: 'High', done: false },
+                      { icon: <Snowflake size={14} />, text: 'Winterize exterior hose bibs', priority: 'High', done: false },
+                      { icon: <Wind size={14} />, text: 'HVAC filter replacement', priority: 'Med', done: false },
                     ].map(t => (
                       <div key={t.text} className="mhb-task-item">
                         <div className="mhb-task-checkbox" />
                         <div className="mhb-task-content">
-                          <span className="mhb-task-emoji">{t.emoji}</span>
+                          <span className="mhb-task-emoji">{t.icon}</span>
                           <span className="mhb-task-text">{t.text}</span>
                         </div>
                         <span className={`mhb-task-priority mhb-task-priority-${t.priority.toLowerCase()}`}>{t.priority}</span>
@@ -1032,13 +1032,13 @@ export default function Landing() {
                     ))}
                     <div className="mhb-task-section-label mhb-task-section-done">Completed</div>
                     {[
-                      { emoji: '🔧', text: 'Test smoke detectors', done: true },
-                      { emoji: '🪟', text: 'Seal window weatherstripping', done: true },
+                      { icon: <Wrench size={14} />, text: 'Test smoke detectors', done: true },
+                      { icon: <LayoutTemplate size={14} />, text: 'Seal window weatherstripping', done: true },
                     ].map(t => (
                       <div key={t.text} className="mhb-task-item mhb-task-item-done">
                         <div className="mhb-task-checkbox mhb-task-checkbox-done">✓</div>
                         <div className="mhb-task-content">
-                          <span className="mhb-task-emoji">{t.emoji}</span>
+                          <span className="mhb-task-emoji">{t.icon}</span>
                           <span className="mhb-task-text">{t.text}</span>
                         </div>
                       </div>

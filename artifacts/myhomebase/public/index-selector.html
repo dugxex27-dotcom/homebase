@@ -66,66 +66,56 @@ html,body{
 
 /* ── HERO ── */
 .hero{
-  background:linear-gradient(160deg,#0C0A1A 0%,#1A1040 50%,#0C1A30 100%);
-  padding:calc(84px + var(--safe-top)) 24px 60px;
+  background:#fff;
+  padding:calc(100px + var(--safe-top)) 24px 60px;
   text-align:center;
   position:relative;
-  overflow:hidden;
-}
-.hero::before{
-  content:'';
-  position:absolute;
-  top:50%;left:50%;
-  transform:translate(-50%,-50%);
-  width:600px;height:600px;
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(60,37,142,0.3) 0%,rgba(21,96,162,0.15) 40%,transparent 70%);
-  pointer-events:none;
+  border-bottom:1px solid var(--gray-200);
 }
 .hero-logo{
-  margin-bottom:36px;
-  position:relative;z-index:1;
+  margin-bottom:32px;
+  position:relative;
+  z-index:1;
 }
 .hero-logo a{display:inline-block;}
 .hero-logo img{
-  height:50px;
+  height:32px;
   width:auto;
+  filter:brightness(0) opacity(0.85);
 }
 .hero-eyebrow{
-  font-size:11px;
-  letter-spacing:3px;
+  font-size:12px;
+  letter-spacing:1px;
   text-transform:uppercase;
-  color:rgba(255,255,255,0.4);
-  margin-bottom:16px;
+  color:var(--gray-400);
+  font-weight:700;
+  margin-bottom:12px;
   position:relative;z-index:1;
 }
 .hero-headline{
   font-family:var(--font);
-  font-size:clamp(32px,7vw,52px);
-  font-weight:normal;
-  color:#fff;
-  line-height:1.15;
+  font-size:clamp(28px,6vw,44px);
+  font-weight:700;
+  color:var(--gray-900);
+  letter-spacing:-0.5px;
+  line-height:1.2;
   margin-bottom:16px;
   position:relative;z-index:1;
 }
-.hero-headline em{
-  font-style:italic;
-  color:var(--purple-light);
-}
 .hero-sub{
-  font-size:16px;
-  color:rgba(255,255,255,0.55);
-  line-height:1.7;
-  max-width:480px;
+  font-size:15px;
+  color:var(--gray-600);
+  line-height:1.6;
+  max-width:540px;
   margin:0 auto;
   position:relative;z-index:1;
 }
 
 /* ── CARDS SECTION ── */
 .cards-section{
-  padding:0 20px 60px;
+  padding:40px 20px 60px;
   max-width:1120px;
-  margin:-36px auto 0;
+  margin:0 auto;
   position:relative;
   z-index:2;
 }
@@ -133,89 +123,77 @@ html,body{
 .cards-grid{
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
-  gap:16px;
+  gap:24px;
 }
 
 /* ── ADVENTURE CARD ── */
 .adv-card{
-  border-radius:20px;
+  background:#fff;
+  border-radius:12px;
+  border:1px solid var(--gray-200);
   overflow:hidden;
   cursor:pointer;
   text-decoration:none;
   display:flex;
   flex-direction:column;
-  transform:translateY(20px);
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);
+  transition:transform 0.15s ease, box-shadow 0.15s ease;
   opacity:0;
-  animation:cardUp 0.5s ease forwards;
-  box-shadow:0 4px 24px rgba(0,0,0,0.12);
-  transition:transform 0.25s ease, box-shadow 0.25s ease;
+  animation:cardFade 0.4s ease forwards;
 }
 .adv-card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 16px 48px rgba(0,0,0,0.18);
+  transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
 }
-.adv-card:nth-child(1){animation-delay:0.1s;}
-.adv-card:nth-child(2){animation-delay:0.2s;}
-.adv-card:nth-child(3){animation-delay:0.3s;}
+.adv-card:nth-child(1){animation-delay:0.05s;}
+.adv-card:nth-child(2){animation-delay:0.1s;}
+.adv-card:nth-child(3){animation-delay:0.15s;}
 
-@keyframes cardUp{
-  to{opacity:1;transform:translateY(0);}
+@keyframes cardFade{
+  to{opacity:1;}
 }
 
 .card-visual{
-  padding:32px 28px 24px;
+  padding:24px 24px 20px;
   position:relative;
-  overflow:hidden;
-  min-height:220px;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-end;
+  border-bottom:1px solid var(--gray-200);
+  background:var(--off-white);
 }
-.card-visual::before{
-  content:'';
-  position:absolute;
-  top:-35px;right:-35px;
-  width:140px;height:140px;
-  border-radius:0;
-  clip-path:polygon(0% 52%, 50% 0%, 100% 52%, 100% 100%, 0% 100%);
-  opacity:0.2;
-}
-.card-visual.purple{background:linear-gradient(160deg,var(--purple-deep),var(--purple));}
-.card-visual.purple::before{background:var(--purple-light);}
-.card-visual.blue{background:linear-gradient(160deg,var(--blue-deep),var(--blue));}
-.card-visual.blue::before{background:var(--blue-light);}
-.card-visual.green{background:linear-gradient(160deg,var(--green-deep),var(--green));}
-.card-visual.green::before{background:var(--green-light);}
+.card-visual.purple{ border-top:4px solid var(--purple); }
+.card-visual.blue{ border-top:4px solid var(--blue); }
+.card-visual.green{ border-top:4px solid var(--green); }
 
 .card-tag{
   display:inline-block;
-  font-size:10px;
-  letter-spacing:2px;
+  font-size:11px;
+  letter-spacing:1px;
+  font-weight:700;
   text-transform:uppercase;
-  padding:4px 12px;
-  border-radius:20px;
-  background:rgba(255,255,255,0.15);
-  color:rgba(255,255,255,0.8);
   margin-bottom:12px;
-  width:fit-content;
 }
+.card-visual.purple .card-tag{ color:var(--purple); }
+.card-visual.blue .card-tag{ color:var(--blue); }
+.card-visual.green .card-tag{ color:var(--green); }
+
 .card-icon{
-  font-size:48px;
+  width:32px;
+  height:32px;
   position:absolute;
   top:24px;right:24px;
-  opacity:0.6;
+  color:var(--gray-400);
 }
 .card-name{
   font-family:var(--font);
-  font-size:24px;
-  color:#fff;
-  line-height:1.2;
-  margin-bottom:6px;
-  padding-right:72px;
+  font-size:20px;
+  font-weight:700;
+  color:var(--gray-900);
+  line-height:1.25;
+  margin-bottom:8px;
+  padding-right:40px;
 }
 .card-tagline{
   font-size:13px;
-  color:rgba(255,255,255,0.65);
+  color:var(--gray-600);
   line-height:1.5;
 }
 
@@ -333,16 +311,17 @@ html,body{
 }
 
 /* ── SIGN-IN BUTTON ── */
-.signin-wrap { position: absolute; top: calc(18px + var(--safe-top)); right: 24px; z-index: 100; flex-shrink: 0; }
+.signin-wrap { position: absolute; top: calc(24px + var(--safe-top)); right: 24px; z-index: 100; flex-shrink: 0; }
 .nav-signin-btn {
-  font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
+  font-size: 13px; font-weight: 600; color: var(--gray-600);
   background: none; border: none;
-  padding: 4px 0; transition: color .15s;
+  padding: 8px 16px; transition: color .15s, background .15s;
   cursor: pointer; font-family: inherit; text-decoration: none;
+  border-radius: 8px; border: 1px solid var(--gray-200);
 }
-.nav-signin-btn:hover { color: #fff; }
+.nav-signin-btn:hover { color: var(--gray-900); background: var(--gray-200); }
 @media (max-width: 767px) {
-  .signin-wrap { right: 16px; }
+  .signin-wrap { right: 16px; top: calc(16px + var(--safe-top)); }
 }
 </style>
 </head>
@@ -370,7 +349,7 @@ html,body{
     <div class="adv-card" onclick="window.location.href='/homeowner'" style="cursor:pointer;">
       <div class="card-visual purple">
         <div class="card-tag">Homeowner</div>
-        <div class="card-icon">🏠</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
         <div class="card-name">Your home has been keeping score. Have you?</div>
         <div class="card-tagline">Track, protect &amp; document everything — starting at $5/month.</div>
       </div>
@@ -396,7 +375,7 @@ html,body{
     <div class="adv-card" onclick="window.location.href='/contractor'" style="cursor:pointer;">
       <div class="card-visual blue">
         <div class="card-tag">Contractor</div>
-        <div class="card-icon">🔧</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
         <div class="card-name">Don't just win the job. Win the homeowner.</div>
         <div class="card-tagline">Connect with homeowners who already know what their home needs.</div>
       </div>
@@ -421,7 +400,7 @@ html,body{
     <div class="adv-card" onclick="window.location.href='/agent'" style="cursor:pointer;">
       <div class="card-visual green">
         <div class="card-tag">Real Estate Agent</div>
-        <div class="card-icon">🏡</div>
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-9a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v9"/><path d="M19 22V9a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v13"/><path d="M3 22h18"/><path d="M2.5 10.5 12 3l9.5 7.5"/></svg>
         <div class="card-name">Stop paying for visibility. Start earning loyalty.</div>
         <div class="card-tagline">The closing gift that follows your clients for the life of their home.</div>
       </div>
