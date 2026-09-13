@@ -359,6 +359,37 @@
   overflow: hidden;
 }
 
+.property-card-selectable {
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.property-card-selectable:hover {
+  border-color: var(--purple-light, #CECBF6);
+  box-shadow: 0 4px 16px rgba(60, 37, 142, 0.12);
+}
+
+.property-card-selectable:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--purple, #3C258E) 35%, transparent);
+  outline-offset: 3px;
+}
+
+.property-card-selected {
+  border-color: var(--purple, #3C258E);
+  box-shadow: 0 4px 18px rgba(60, 37, 142, 0.16);
+}
+
+.property-card-active-label {
+  border-radius: 999px;
+  background: var(--purple-tint, #EEEDFE);
+  color: var(--purple, #3C258E);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  text-transform: uppercase;
+}
+
 .property-card-metadata {
   display: flex;
   align-items: center;

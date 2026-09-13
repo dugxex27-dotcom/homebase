@@ -36,6 +36,7 @@ const flags = vi.hoisted(() => ({
   savedWaterHeaterYear: null as number | null,
   propertyYearBuilt: 2000 as number | null,
   propertySquareFootage: 2000 as number | null,
+  multipleHouses: false,
   // Captured from the install-year mutation in each render.
   patchOnSuccess: null as (() => void) | null,
   mutateSpy: vi.fn(),
@@ -165,10 +166,21 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
                 hvacInstalledYear: flags.savedHvacYear,
                 waterHeaterInstalledYear: flags.savedWaterHeaterYear,
               };
-          return {
-            data: [{ ...baseHouse, ...installYears }],
-            isLoading: false,
-          };
+          const primaryHouse = { ...baseHouse, ...installYears };
+          const houses = flags.multipleHouses
+            ? [
+                primaryHouse,
+                {
+                  ...primaryHouse,
+                  id: "house-2",
+                  name: "Lake House",
+                  address: "456 Oak Ave",
+                  climateZone: "Zone 5",
+                  isDefault: false,
+                },
+              ]
+            : [primaryHouse];
+          return { data: houses, isLoading: false };
         }
 
         if (queryKey.length === 3 && queryKey[2] === "health-scores") {
@@ -312,6 +324,7 @@ afterEach(() => {
   flags.savedWaterHeaterYear = null;
   flags.propertyYearBuilt = 2000;
   flags.propertySquareFootage = 2000;
+  flags.multipleHouses = false;
   flags.patchOnSuccess = null;
   flags.allInstallYearsDone = false;
   flags.healthScore = 55;
@@ -386,6 +399,25 @@ describe("Property card details", () => {
     renderHome();
 
     expect(screen.queryByLabelText("Property details")).toBeNull();
+  });
+
+  it("switches the active dashboard context when a property card is selected", async () => {
+    flags.multipleHouses = true;
+    const user = userEvent.setup();
+
+    renderHome();
+
+    const firstProperty = screen.getByTestId("property-card-house-1");
+    const secondProperty = screen.getByTestId("property-card-house-2");
+
+    expect(firstProperty.getAttribute("aria-pressed")).toBe("true");
+    expect(secondProperty.getAttribute("aria-pressed")).toBe("false");
+
+    await user.click(secondProperty);
+
+    expect(firstProperty.getAttribute("aria-pressed")).toBe("false");
+    expect(secondProperty.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText("456 Oak Ave")).toBeTruthy();
   });
 });
 

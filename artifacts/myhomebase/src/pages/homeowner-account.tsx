@@ -38,6 +38,7 @@ import {
   Image as ImageIcon,
   Check,
   CreditCard,
+  ChevronRight,
   ChevronUp,
   TrendingUp,
   Trophy
@@ -1303,6 +1304,32 @@ export default function HomeownerAccount() {
                     <strong>Tip:</strong> Download these graphics and share them on your social media. When friends sign up using your code, you'll earn $1 off your subscription for each referral!
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <p className="dash-section-label">Properties</p>
+
+            <Card>
+              <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+                    <Home className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-[#2C0F5B]">Manage Properties</h3>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Switch homes, add a property, or update property details.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/my-home"
+                  className="inline-flex min-h-[44px] flex-shrink-0 items-center justify-center rounded-xl bg-[#3C258E] px-5 text-sm font-bold text-white transition-colors hover:bg-[#2C0F5B]"
+                  data-testid="link-manage-properties"
+                >
+                  Manage Properties
+                  <ChevronRight className="ml-2 h-4 w-4" />
+                </Link>
               </CardContent>
             </Card>
 

@@ -229,6 +229,19 @@ export default function Home() {
     queryKey: ["/api/houses"],
     enabled: typedUser?.role === "homeowner",
   });
+  const [selectedHouseId, setSelectedHouseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (houses.length === 0) {
+      setSelectedHouseId(null);
+      return;
+    }
+
+    const selectedHouseStillExists = houses.some((house) => house.id === selectedHouseId);
+    if (!selectedHouseStillExists) {
+      setSelectedHouseId((houses.find((house) => house.isDefault) || houses[0]).id);
+    }
+  }, [houses, selectedHouseId]);
 
   // Health scores per house (for stat chips). Fetch every house in parallel
   // instead of limiting the dashboard to a fixed number of score queries.
@@ -512,7 +525,8 @@ export default function Home() {
     : null;
 
   const firstName = (typedUser as any)?.firstName || (typedUser as any)?.name?.split(" ")[0] || "";
-  const climateZone = houses[0]?.climateZone || "your area";
+  const selectedHouse = houses.find((house) => house.id === selectedHouseId) || houses.find((house) => house.isDefault) || houses[0];
+  const climateZone = selectedHouse?.climateZone || "your area";
 
   const getScoreClass = (s: number | undefined) =>
     s === undefined ? "" : getHomeWellnessScoreStatus(s).label === "Excellent" || getHomeWellnessScoreStatus(s).label === "Doing Well"
@@ -520,7 +534,7 @@ export default function Home() {
       : getHomeWellnessScoreStatus(s).label === "Progressing" ? "warn" : "alert";
 
   // Profile nudge: show inline-edit card when any install year is missing
-  const primaryHouse = houses[0] as House | undefined;
+  const primaryHouse = selectedHouse as House | undefined;
   const primaryHouseScore = primaryHouse ? scoresByHouseId[primaryHouse.id]?.score : undefined;
   const profileFields = primaryHouse
     ? [
@@ -1018,10 +1032,28 @@ export default function Home() {
                 {/* Property Cards */}
                 <span className="dash-section-label">Your {houses.length === 1 ? "property" : "properties"}</span>
                 <div data-tour-id="health-score">
-                  {houses.map((house: House) => (
-                    <div key={`map-${house.id}`} className="property-card">
+                  {houses.map((house: House) => {
+                    const isSelected = selectedHouse?.id === house.id;
+                    return (
+                    <div
+                      key={`map-${house.id}`}
+                      className={`property-card property-card-selectable${isSelected ? " property-card-selected" : ""}`}
+                      onClick={() => setSelectedHouseId(house.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedHouseId(house.id);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
+                      aria-label={`View ${house.name || house.address}`}
+                      data-testid={`property-card-${house.id}`}
+                    >
                   {(house.yearBuilt || house.squareFootage) && (
                     <div className="property-card-metadata" aria-label="Property details">
+                       {isSelected && <span className="property-card-active-label">Active home</span>}
                       {house.yearBuilt && (
                         <span data-testid={`property-year-built-${house.id}`}>
                           Built {house.yearBuilt}
@@ -1045,7 +1077,7 @@ export default function Home() {
                     checkedSystems={Array.isArray(house.homeSystems) ? house.homeSystems as string[] : []}
                   />
                 </div>
-              ))}
+                  )})}
             </div>
 
             {/* AI Maintenance Coach card */}
