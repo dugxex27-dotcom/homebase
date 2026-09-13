@@ -1,4 +1,5 @@
-import { useState, FormEvent } from "react";
+import { useEffect, useState, FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import logoWhite from "@assets/my-homebase-logo-tm-final-white_1777417516350.png";
 
@@ -19,11 +20,102 @@ const ROLE_LABEL: Record<Role, string> = {
 
 export default function DemoGate() {
   const role = getRoleFromSearch();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [zip, setZip] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [preparing, setPreparing] = useState(true);
+  const [prepareError, setPrepareError] = useState(false);
+  const [prepareAttempt, setPrepareAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function clearPreviousPersona() {
+      setPreparing(true);
+      setPrepareError(false);
+
+      await queryClient.cancelQueries();
+      queryClient.clear();
+
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (!response.ok) {
+          throw new Error('Could not clear the previous demo session');
+        }
+
+        queryClient.clear();
+        queryClient.setQueryData(['/api/auth/user'], null);
+        if (active) {
+          setPreparing(false);
+        }
+      } catch {
+        queryClient.clear();
+        queryClient.setQueryData(['/api/auth/user'], null);
+        if (active) {
+          setPreparing(false);
+          setPrepareError(true);
+        }
+      }
+    }
+
+    void clearPreviousPersona();
+    return () => {
+      active = false;
+    };
+  }, [queryClient, prepareAttempt]);
+
+  if (preparing || prepareError) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1a0a3e 0%, #2C0F5B 50%, #3C258E 100%)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        color: '#fff',
+        textAlign: 'center',
+      }}>
+        <img src={logoWhite} alt="MyHomeBase" style={{ height: 36, marginBottom: 28 }} />
+        {preparing ? (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Preparing your demo…</p>
+            <p style={{ color: 'rgba(255,255,255,0.7)', marginTop: 8 }}>Starting with a clean session.</p>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>We couldn’t prepare the demo</p>
+            <p style={{ color: 'rgba(255,255,255,0.7)', margin: '8px 0 20px' }}>
+              Your previous session was not cleared. Please try again.
+            </p>
+            <button
+              type="button"
+              onClick={() => setPrepareAttempt((attempt) => attempt + 1)}
+              style={{
+                minHeight: 44,
+                padding: '10px 22px',
+                border: 0,
+                borderRadius: 10,
+                background: '#fff',
+                color: '#2C0F5B',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Try again
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
 
   const launch = async (leadData?: { name: string; email: string; zipcode: string }) => {
     setSubmitting(true);

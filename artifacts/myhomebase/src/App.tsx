@@ -277,6 +277,12 @@ function Router() {
 
   // Set data-role attribute and theme class on body for role-based theming
   useEffect(() => {
+    if (currentPath === '/demo') {
+      document.body.removeAttribute('data-role');
+      document.body.classList.remove('theme-homeowner', 'theme-contractor', 'theme-agent');
+      return;
+    }
+
     const typedUser = user as { role?: string } | undefined;
     const role = typedUser?.role || 'homeowner';
     document.body.setAttribute('data-role', role);
@@ -287,7 +293,7 @@ function Router() {
       document.body.removeAttribute('data-role');
       document.body.classList.remove('theme-homeowner', 'theme-contractor', 'theme-agent');
     };
-  }, [user]);
+  }, [user, currentPath]);
 
   // After login (OAuth or email), claim any anonymous quiz result taken before
   // the visitor signed up. This fires once when isAuthenticated first becomes
@@ -312,6 +318,17 @@ function Router() {
       // Non-critical
     }
   }, [isAuthenticated]);
+
+  // The demo gate is always neutral. It must never inherit an authenticated
+  // role shell while it clears the previous persona's session.
+  if (currentPath === '/demo') {
+    return (
+      <>
+        <RobotsManager authenticated={false} />
+        <DemoGate />
+      </>
+    );
+  }
 
   // Show loading screen while checking authentication
   if (isLoading) {
@@ -374,7 +391,6 @@ function Router() {
           <Route path="/hws-modal" component={HwsModalPage} />
           <Route path="/contact" component={Contact} />
           <Route path="/faq" component={FAQ} />
-          <Route path="/demo" component={DemoGate} />
           <Route path="/pay/invoice/:invoiceId" component={PayInvoice} />
           <Route path="/pay/success" component={PaymentSuccess} />
           <Route path="/pay/cancelled" component={PaymentCancelled} />
@@ -469,7 +485,6 @@ function Router() {
         <Route path="/support" component={Support} />
         <Route path="/contact" component={Contact} />
         <Route path="/faq" component={FAQ} />
-        <Route path="/demo" component={DemoGate} />
         <Route path="/terms-of-service" component={TermsOfService} />
         <Route path="/privacy-policy" component={PrivacyPolicy} />
         <Route path="/legal-disclaimer" component={LegalDisclaimer} />
