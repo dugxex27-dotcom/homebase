@@ -5349,6 +5349,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
                   <Button
                     variant="outline"
                     onClick={() => {
+                      setAiAnalyzing(false);
                       setAiStep("upload");
                       setAiInvoiceFiles([]);
                       setAiReceiptFiles([]);

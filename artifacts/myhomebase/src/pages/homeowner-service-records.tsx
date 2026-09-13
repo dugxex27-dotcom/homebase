@@ -1680,6 +1680,7 @@ export default function HomeownerServiceRecords() {
                   <Button
                     variant="outline"
                     onClick={() => {
+                      setAiAnalyzing(false);
                       setAiStep("upload");
                       setAiInvoiceFiles([]);
                       setAiReceiptFiles([]);
