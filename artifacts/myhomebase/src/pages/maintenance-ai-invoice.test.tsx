@@ -272,6 +272,39 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("Maintenance Page — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
+  it("shows 'Already Scanned' for a contractor invoice uploaded through the file guard", async () => {
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      status: 409,
+      ok: false,
+      json: async () => ({
+        code: "DUPLICATE_INVOICE",
+        analysisId: "ana-contractor-dup-002",
+        createdAt: "2025-06-12T15:30:00.000Z",
+      }),
+    } as Response);
+
+    await renderAndWaitForHouse();
+    await openAiDialog();
+
+    const fileInput = screen.getByTestId("input-ai-invoice-file") as HTMLInputElement;
+    await userEvent.upload(
+      fileInput,
+      new File(["fake invoice bytes"], "contractor-invoice.jpg", { type: "image/jpeg" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: /analyze with ai/i }));
+
+    expect(screen.getByText("You already scanned this invoice")).toBeDefined();
+    expect(screen.getByText("Originally scanned June 12, 2025")).toBeDefined();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/invoice-analyses/analyze",
+      expect.objectContaining({ method: "POST" }),
+    );
+    const [, request] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse((request as RequestInit).body as string);
+    expect(body.completionMethod).toBe("contractor");
+    expect(body.invoiceFiles).toHaveLength(1);
+  });
+
   it("shows 'Already Scanned' state and does NOT show a destructive toast", async () => {
     global.fetch = vi.fn().mockResolvedValueOnce({
       status: 409,
