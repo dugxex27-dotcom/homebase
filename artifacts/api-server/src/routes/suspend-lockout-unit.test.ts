@@ -212,6 +212,7 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
     mockDbSelect.mockReset();
   });
   afterEach(() => {
+    vi.restoreAllMocks();
     suspendedUserIds.delete(USER_ID);
     evictStatusCache(USER_ID);
   });
@@ -310,5 +311,26 @@ describe("suspendedUserIds blocklist — requireNotSuspended middleware", () => 
 
     const allowed = await request(app).get("/protected");
     expect(allowed.status).toBe(200);
+  });
+
+  it("allows an active user after a suspended blocklist entry expires", async () => {
+    const now = Date.now();
+    const dateNow = vi.spyOn(Date, "now").mockReturnValue(now);
+    suspendedUserIds.add(USER_ID);
+    const app = buildApp(USER_ID);
+
+    const blocked = await request(app).get("/protected");
+    expect(blocked.status).toBe(401);
+
+    // The blocklist TTL is five minutes. Once it expires, the real middleware
+    // must consult the database and allow a user who is active again.
+    dateNow.mockReturnValue(now + 5 * 60 * 1000 + 1);
+    mockDbSelect
+      .mockReturnValueOnce(makeStatusChain("active"))
+      .mockReturnValueOnce(makeStatusChain("active"));
+
+    const allowed = await request(app).get("/protected");
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.ok).toBe(true);
   });
 });
