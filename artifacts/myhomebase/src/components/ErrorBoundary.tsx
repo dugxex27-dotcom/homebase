@@ -3,6 +3,7 @@ import { errorLogger } from '@/lib/errorLogger';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { AlertTriangle } from 'lucide-react';
+import { attemptStaleChunkRecovery } from '@/lib/stale-chunk-recovery';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,10 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    if (attemptStaleChunkRecovery(error)) {
+      return;
+    }
+
     // Always hide splash screen — even on crash
     try {
       import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide({ fadeOutDuration: 0 })).catch(() => {});

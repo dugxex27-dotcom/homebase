@@ -3,7 +3,10 @@ import { StrictMode } from "react";
 import { Capacitor } from "@capacitor/core";
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { installStaleChunkRecovery } from "./lib/stale-chunk-recovery";
 import "./index.css";
+
+installStaleChunkRecovery();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Failed to find the root element");

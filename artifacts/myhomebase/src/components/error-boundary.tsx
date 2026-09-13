@@ -1,6 +1,7 @@
 import { Component, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { AlertCircle } from 'lucide-react';
+import { attemptStaleChunkRecovery } from '@/lib/stale-chunk-recovery';
 
 interface Props {
   children: ReactNode;
@@ -23,6 +24,10 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
+    if (attemptStaleChunkRecovery(error)) {
+      return;
+    }
+
     console.error('ErrorBoundary caught an error:', error, errorInfo);
     try {
       fetch('/api/client-error', {
