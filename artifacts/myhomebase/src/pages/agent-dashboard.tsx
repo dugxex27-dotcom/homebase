@@ -13,6 +13,8 @@ interface AgentReferral {
   status: string;
   refereeName: string;
   refereeEmail: string;
+  referredUserRole?: string;
+  signupDate?: string;
 }
 
 interface HandoffPackage {
@@ -32,13 +34,35 @@ export default function AgentDashboard() {
   const [, setLocation] = useLocation();
   const [qrCodeUrl, setQrCodeUrl] = useState("");
 
-  const { data: referrals = [] } = useQuery<AgentReferral[]>({
+  const {
+    data: referrals = [],
+    isLoading: loadingReferrals,
+    isError: referralsError,
+  } = useQuery<AgentReferral[]>({
     queryKey: ["/api/agent/referrals"],
     enabled: !!typedUser,
   });
 
-  const { data: verificationStatus } = useQuery<{ verificationStatus: string; reviewNotes?: string }>({
+  const {
+    data: verificationStatus,
+    isLoading: loadingVerification,
+    isError: verificationError,
+    error: verificationQueryError,
+    refetch: refetchVerification,
+  } = useQuery<{ verificationStatus: string; reviewNotes?: string }>({
     queryKey: ["/api/agent/verification-status"],
+    queryFn: async () => {
+      const response = await fetch("/api/agent/verification-status", { credentials: "include" });
+      // A new agent has no verification record yet; that is an actionable
+      // required state, not a transport failure.
+      if (response.status === 404) {
+        return { verificationStatus: "not_submitted" };
+      }
+      if (!response.ok) {
+        throw new Error("Unable to load verification status");
+      }
+      return response.json();
+    },
     enabled: !!typedUser,
   });
 
@@ -72,7 +96,8 @@ export default function AgentDashboard() {
     if (status === "active") return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-[#F0FAF4] text-[#09694A]"><CheckCircle className="w-3 h-3 mr-1" />Active</span>;
     if (status === "trial") return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700"><Clock className="w-3 h-3 mr-1" />Trial</span>;
     if (status === "voided") return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700"><XCircle className="w-3 h-3 mr-1" />Voided</span>;
-    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800">{status}</span>;
+    const label = status.replace(/_/g, " ");
+    return <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-800">{label}</span>;
   };
 
   const getPackageStatusBadge = (status: string) => {
@@ -104,13 +129,73 @@ export default function AgentDashboard() {
       />
       <WorkspaceContent>
 
-        {/* Verification Banner */}
-        {verificationStatus?.verificationStatus !== "approved" && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex gap-3">
+        {/* Verification Banner. Only pending_review is actually in progress. */}
+        {!loadingVerification && verificationError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3" role="alert" data-testid="banner-verification-error">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-800">Unable to load verification status</h3>
+              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                Please try again.{" "}
+                <button
+                  type="button"
+                  onClick={() => refetchVerification()}
+                  className="font-semibold underline"
+                  data-testid="button-retry-verification"
+                >
+                  Retry
+                </button>
+              </p>
+              {verificationQueryError instanceof Error && verificationQueryError.message && (
+                <span className="sr-only">{verificationQueryError.message}</span>
+              )}
+            </div>
+          </div>
+        )}
+        {!loadingVerification && !verificationError && verificationStatus?.verificationStatus === "pending_review" && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3" data-testid="banner-verification-pending">
+            <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-800">License verification in progress</h3>
+              <p className="text-xs text-blue-700 mt-1 leading-relaxed">Our team is reviewing your verification. We'll notify you when it is complete.</p>
+            </div>
+          </div>
+        )}
+        {!loadingVerification && !verificationError && (!verificationStatus || verificationStatus.verificationStatus === "not_submitted") && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex gap-3" data-testid="banner-verification-required">
             <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-yellow-800">License verification in progress</h3>
-              <p className="text-xs text-yellow-700 mt-1 leading-relaxed">Complete verification to unlock all agent tools.</p>
+              <h3 className="text-sm font-semibold text-yellow-800">Verification required</h3>
+              <p className="text-xs text-yellow-700 mt-1 leading-relaxed">
+                Submit your license verification to unlock all agent tools.{" "}
+                <Link href="/agent-account" className="font-semibold underline">Submit verification</Link>
+              </p>
+            </div>
+          </div>
+        )}
+        {!loadingVerification && !verificationError && verificationStatus?.verificationStatus === "rejected" && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3" data-testid="banner-verification-rejected">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-800">Verification rejected</h3>
+              <p className="text-xs text-red-700 mt-1 leading-relaxed">
+                {verificationStatus.reviewNotes || "Your verification was rejected. Review your information and resubmit."}
+                {" "}
+                <Link href="/agent-account" className="font-semibold underline">Review and resubmit</Link>
+              </p>
+            </div>
+          </div>
+        )}
+        {!loadingVerification && !verificationError && verificationStatus?.verificationStatus === "resubmit_required" && (
+          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex gap-3" data-testid="banner-verification-resubmit">
+            <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-orange-800">Resubmission required</h3>
+              <p className="text-xs text-orange-700 mt-1 leading-relaxed">
+                {verificationStatus.reviewNotes || "Please update your verification information and resubmit it for review."}
+                {" "}
+                <Link href="/agent-account" className="font-semibold underline">Update and resubmit</Link>
+              </p>
             </div>
           </div>
         )}
@@ -266,7 +351,15 @@ export default function AgentDashboard() {
               </div>
             </div>
 
-            {referrals.length === 0 ? (
+            {loadingReferrals ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center h-[calc(100%-2.5rem)] min-h-[200px] flex items-center justify-center shadow-sm">
+                <span className="text-sm text-gray-500">Loading relationships…</span>
+              </div>
+            ) : referralsError ? (
+              <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center h-[calc(100%-2.5rem)] min-h-[200px] flex items-center justify-center shadow-sm">
+                <span className="text-sm text-red-600">Unable to load relationships.</span>
+              </div>
+            ) : referrals.length === 0 ? (
               <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center h-[calc(100%-2.5rem)] min-h-[200px] flex flex-col items-center justify-center shadow-sm">
                 <Users className="w-12 h-12 text-gray-300 mb-4" />
                 <h3 className="text-base font-semibold text-gray-900">No relationships yet</h3>

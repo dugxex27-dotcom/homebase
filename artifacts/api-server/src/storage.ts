@@ -38,6 +38,7 @@ const DEMO_ID_PREFIXES = [
   'maint-log-contractor-',
   'task-comp-demo-',
   'demo-lead-',
+  'agent-referral-',
 ];
 
 // Demo email domains - emails from these domains are considered demo accounts
@@ -47,6 +48,32 @@ const DEMO_EMAIL_DOMAINS = [
   '@qualityhome.com',
   '@precisionhvac.com',
 ];
+
+/** Paid invoices can appear twice when a contractor and its company both
+ * match the dashboard query. Keep one row per primary key and never let
+ * malformed money values turn dashboard totals into NaN. Invoice numbers are
+ * not unique across legitimate records. */
+function uniquePaidInvoices<T extends { id: string; amountPaid?: string | null; total?: string | null }>(
+  invoices: T[],
+): T[] {
+  const seen = new Set<string>();
+  return invoices.filter((invoice) => {
+    const key = invoice.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function finitePaidAmount(invoice: { amountPaid?: string | null; total?: string | null }): number {
+  const amountPaidValue = invoice.amountPaid;
+  const amountPaid = amountPaidValue == null || amountPaidValue.trim() === ""
+    ? Number.NaN
+    : Number(amountPaidValue);
+  if (Number.isFinite(amountPaid)) return amountPaid;
+  const total = Number(invoice.total);
+  return Number.isFinite(total) ? total : 0;
+}
 
 // Check if an ID belongs to a demo account
 export function isDemoId(id: string | null | undefined): boolean {
@@ -8068,11 +8095,11 @@ export class MemStorage implements IStorage {
     const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
     const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
 
-    const paidInvoices = invoices.filter(i => i.status === 'paid');
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const paidInvoices = uniquePaidInvoices(invoices.filter(i => i.status === 'paid'));
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + finitePaidAmount(i), 0);
 
     const paidThisMonth = paidInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= startOfMonth);
-    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + finitePaidAmount(i), 0);
 
     const jobsThisMonth = jobs.filter(j => j.createdAt && new Date(j.createdAt) >= startOfMonth).length;
 
@@ -12541,11 +12568,11 @@ export class DbStorage implements IStorage {
     const pendingQuotes = quotes.filter(q => q.status === 'draft' || q.status === 'sent').length;
     const outstandingInvoices = invoices.filter(i => i.status !== 'paid' && i.status !== 'cancelled').length;
 
-    const paidInvoices = invoices.filter(i => i.status === 'paid');
-    const totalRevenue = paidInvoices.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const paidInvoices = uniquePaidInvoices(invoices.filter(i => i.status === 'paid'));
+    const totalRevenue = paidInvoices.reduce((sum, i) => sum + finitePaidAmount(i), 0);
 
     const paidThisMonth = paidInvoices.filter(i => i.paidAt && new Date(i.paidAt) >= startOfMonth);
-    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+    const revenueThisMonth = paidThisMonth.reduce((sum, i) => sum + finitePaidAmount(i), 0);
 
     const jobsThisMonth = jobs.filter(j => j.createdAt && new Date(j.createdAt) >= startOfMonth).length;
 

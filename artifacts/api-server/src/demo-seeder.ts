@@ -11,7 +11,7 @@
  *  - returns { user, seedResults } — session handling stays in the route handler
  */
 
-import { eq, sql as drizzleSql, inArray } from "drizzle-orm";
+import { and, eq, sql as drizzleSql, inArray } from "drizzle-orm";
 import { storage } from "./storage";
 import { db } from "./db";
 import {
@@ -24,6 +24,8 @@ import {
   messages,
   affiliateReferrals,
   subscriptionCycleEvents,
+  agentProfiles,
+  agentVerificationAudits,
   users,
   houses,
   companies,
@@ -56,7 +58,19 @@ export interface SeedOutcome {
   seedResults: SeedResults;
 }
 
+export class DemoSeedFailure extends Error {
+  constructor(
+    readonly user: any,
+    readonly seedResults: SeedResults,
+  ) {
+    super("DEMO_SEED_FAILED");
+    this.name = "DemoSeedFailure";
+  }
+}
+
 export const DEMO_CONTRACTOR_ID = "demo-contractor-permanent-id";
+export const DEMO_AGENT_ID = "demo-agent-permanent-id";
+export const DEMO_AGENT_REFERRAL_CODE = "JESSICA2024";
 const CONTRACTOR_CRM_SECTIONS = ["leads", "clients", "jobs", "quotes", "invoices"] as const;
 
 /** Minimal subset of pino logger used inside the seeders. */
@@ -67,6 +81,44 @@ interface DemoLog {
 }
 
 type DemoDb = any;
+
+/**
+ * Fixture arrays intentionally contain only values that are written on insert;
+ * database-managed timestamps are not present on every fixture member. Keep
+ * omission in one typed helper instead of destructuring optional fields from a
+ * heterogeneous inferred union.
+ */
+function omitDemoFields<T extends object>(row: T, fields: readonly string[]): Partial<T> {
+  const result = { ...row } as T;
+  for (const field of fields) {
+    delete (result as Record<string, unknown>)[field];
+  }
+  return result;
+}
+
+class DemoOwnershipCollision extends Error {
+  constructor(
+    readonly section: string,
+    readonly rowId: string,
+  ) {
+    super(`DEMO_OWNERSHIP_COLLISION:${section}:${rowId}`);
+    this.name = "DemoOwnershipCollision";
+  }
+}
+
+async function assertDemoRowOwnership(
+  client: DemoDb,
+  table: any,
+  id: string,
+  section: string,
+  isOwned: (row: any) => boolean,
+  lookupColumn: any = table.id,
+): Promise<void> {
+  const [existing] = await client.select().from(table).where(eq(lookupColumn, id)).limit(1);
+  if (existing && !isOwned(existing)) {
+    throw new DemoOwnershipCollision(section, id);
+  }
+}
 
 function transactionStorage(client: DemoDb) {
   const first = async (query: Promise<any[]>) => (await query)[0];
@@ -117,21 +169,6 @@ export async function ensureDemoAccountFlag<T extends { id: string; isDemoAccoun
     return { ...user, isDemoAccount: true };
   }
   return user;
-}
-
-async function generateUniqueReferralCode(): Promise<string> {
-  const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let attempts = 0;
-  while (attempts < 10) {
-    let code = "";
-    for (let i = 0; i < 8; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    const existing = await storage.getUserByReferralCode(code);
-    if (!existing) return code;
-    attempts++;
-  }
-  throw new Error("Failed to generate unique referral code");
 }
 
 // ---------------------------------------------------------------------------
@@ -771,8 +808,21 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
   const demoEmail = "david.martinez@precisionhvac.com";
   const demoId = DEMO_CONTRACTOR_ID;
   const companyId = "demo-company-permanent-id";
+  const seedResults: SeedResults = {};
+  let user: any;
 
-  let user = await demoStorage.getUserByEmail(demoEmail);
+  try {
+  await assertDemoRowOwnership(
+    client,
+    users,
+    demoId,
+    "contractor-account",
+    (row) => row.email === demoEmail && row.role === "contractor",
+  );
+  user = await demoStorage.getUserByEmail(demoEmail);
+  if (user && user.id !== demoId && !user.isDemoAccount) {
+    throw new DemoOwnershipCollision("contractor-account", user.id);
+  }
   if (!user) {
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
     user = await demoStorage.upsertUser({
@@ -797,10 +847,10 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
     user = await ensureDemoAccountFlag(user, client);
   }
 
-  const seedResults: SeedResults = {};
-
-  try {
     let company = await demoStorage.getCompany(companyId);
+    if (company && company.ownerId !== user.id) {
+      throw new DemoOwnershipCollision("company", companyId);
+    }
     if (!company) {
       const threeYearsAgo = new Date();
       threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
@@ -883,17 +933,28 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-lead-4", contractorUserId: demoId, companyId, firstName: "Susan", lastName: "Williams", email: "swilliams@email.com", phone: "(206) 555-3456", projectType: "AC Installation", address: "7821 Greenwood Ave N, Seattle, WA 98103", status: "lost", priority: "low", estimatedValue: "4500.00", source: "advertisement", notes: "Got 3 quotes. Went with another company that was $500 cheaper. Price-focused customer.", followUpDate: null },
         { id: "demo-lead-5", contractorUserId: demoId, companyId, firstName: "David", lastName: "Park", email: "dpark@email.com", phone: "(206) 555-7890", projectType: "Plumbing Repair", address: "2156 Queen Anne Ave N, Seattle, WA 98109", status: "won", priority: "high", estimatedValue: "625.00", source: "other", notes: "Emergency leak repair. Job completed successfully last week. Customer very happy.", followUpDate: null },
       ];
-      const existingLead = await demoStorage.getCrmLead(leadSeed[0].id);
-      if (existingLead) {
-        log.info({ section: "leads", sentinelId: leadSeed[0].id }, "[DEMO] CRM leads already exist — skipping");
-        seedResults.leads = { ok: true, inserted: 0, expected: leadSeed.length, skipped: true };
-      } else {
-        for (const lead of leadSeed) {
-          await client.insert(crmLeads).values(lead as any)
-            .onConflictDoNothing({ target: crmLeads.id });
-        }
-        seedResults.leads = { ok: true, inserted: leadSeed.length, expected: leadSeed.length };
+      for (const lead of leadSeed) {
+        await assertDemoRowOwnership(
+          client,
+          crmLeads,
+          lead.id,
+          "leads",
+          (row) => row.contractorUserId === demoId && row.companyId === companyId,
+        );
+        // createdAt is intentionally refreshed only for the "new" lead.  This
+        // keeps the rolling dashboard card useful after an aged demo database
+        // is revisited, without making the historical leads look new.
+        const values = omitDemoFields(lead, ["id", "createdAt", "updatedAt", "followUpDate"]);
+        await client.insert(crmLeads).values(lead as any).onConflictDoUpdate({
+          target: crmLeads.id,
+          set: {
+            ...values,
+            ...(lead.status === "new" ? { createdAt: new Date() } : {}),
+            updatedAt: new Date(),
+          } as any,
+        });
       }
+      seedResults.leads = { ok: true, inserted: leadSeed.length, expected: leadSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "leads", error: msg }, "[DEMO] Error seeding CRM leads");
@@ -983,17 +1044,21 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-client-5", contractorUserId: demoId, companyId, firstName: "Sarah", lastName: "Johansson", email: "sjohansson@email.com", phone: "(206) 555-6655", address: "3301 Eastlake Ave E", city: "Seattle", state: "WA", postalCode: "98102", tags: ["HVAC"], preferredContactMethod: "email", totalJobsCompleted: 1, totalRevenue: "325.00", notes: "First-time customer. Furnace tune-up. Was happy with service — asked about our annual plans.", lastServiceDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000) },
         { id: "demo-client-6", contractorUserId: demoId, companyId, firstName: "Tony", lastName: "Vasquez", email: "tvasquez@email.com", phone: "(206) 555-7766", address: "912 E Union St", city: "Seattle", state: "WA", postalCode: "98122", tags: ["Plumbing", "HVAC"], preferredContactMethod: "phone", totalJobsCompleted: 4, totalRevenue: "2900.00", notes: "Rental property owner. 3-unit building. Good steady customer.", lastServiceDate: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000) },
       ];
-      const existingClient = await demoStorage.getCrmClient(clientSeed[0].id);
-      if (existingClient) {
-        log.info({ section: "clients", sentinelId: clientSeed[0].id }, "[DEMO] CRM clients already exist — skipping");
-        seedResults.clients = { ok: true, inserted: 0, expected: clientSeed.length, skipped: true };
-      } else {
-        for (const c of clientSeed) {
-          await client.insert(crmClients).values(c as any)
-            .onConflictDoNothing({ target: crmClients.id });
-        }
-        seedResults.clients = { ok: true, inserted: clientSeed.length, expected: clientSeed.length };
+      for (const c of clientSeed) {
+        await assertDemoRowOwnership(
+          client,
+          crmClients,
+          c.id,
+          "clients",
+          (row) => row.contractorUserId === demoId && row.companyId === companyId,
+        );
+        const values = omitDemoFields(c, ["id", "lastServiceDate", "createdAt", "updatedAt"]);
+        await client.insert(crmClients).values(c as any).onConflictDoUpdate({
+          target: crmClients.id,
+          set: { ...values, updatedAt: new Date() } as any,
+        });
       }
+      seedResults.clients = { ok: true, inserted: clientSeed.length, expected: clientSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "clients", error: msg }, "[DEMO] Error seeding CRM clients");
@@ -1019,17 +1084,29 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-job-11", contractorUserId: demoId, companyId, clientId: "demo-client-6", title: "Three-Unit Boiler Preventive Service — Tony Vasquez", description: "Annual boiler cleaning, combustion analysis, and zone-valve service for rental property.", serviceType: "HVAC Maintenance", status: "completed", priority: "normal", scheduledDate: new Date(nowMs - 71 * day), scheduledEndDate: new Date(nowMs - 71 * day + 6 * hr), actualStartTime: new Date(nowMs - 71 * day), actualEndTime: new Date(nowMs - 71 * day + 5.5 * hr), actualDuration: 330, estimatedDuration: 360, address: "912 E Union St", city: "Seattle", state: "WA", postalCode: "98122", laborCost: "1720.00", materialsCost: "1200.00", totalCost: "2920.00", completionNotes: "All three zones serviced. Replaced two worn actuators and documented combustion readings." },
         { id: "demo-job-12", contractorUserId: demoId, companyId, clientId: "demo-client-5", title: "Ductless Heat Pump Installation — Sarah Johansson", description: "Install a single-zone cold-climate ductless heat pump for the home office.", serviceType: "HVAC Installation", status: "completed", priority: "normal", scheduledDate: new Date(nowMs - 84 * day), scheduledEndDate: new Date(nowMs - 84 * day + 7 * hr), actualStartTime: new Date(nowMs - 84 * day), actualEndTime: new Date(nowMs - 84 * day + 6.5 * hr), actualDuration: 390, estimatedDuration: 420, address: "3301 Eastlake Ave E", city: "Seattle", state: "WA", postalCode: "98102", laborCost: "1166.45", materialsCost: "1800.00", totalCost: "2966.45", completionNotes: "System pressure-tested, commissioned, and connected to the customer's mobile app." },
       ];
-      const existingJob = await demoStorage.getCrmJob(jobSeed[0].id);
-      if (existingJob) {
-        log.info({ section: "jobs", sentinelId: jobSeed[0].id }, "[DEMO] CRM jobs already exist — skipping");
-        seedResults.jobs = { ok: true, inserted: 0, expected: jobSeed.length, skipped: true };
-      } else {
-        for (const j of jobSeed) {
-          await client.insert(crmJobs).values(j as any)
-            .onConflictDoNothing({ target: crmJobs.id });
-        }
-        seedResults.jobs = { ok: true, inserted: jobSeed.length, expected: jobSeed.length };
+      for (const j of jobSeed) {
+        await assertDemoRowOwnership(
+          client,
+          crmJobs,
+          j.id,
+          "jobs",
+          (row) => row.contractorUserId === demoId && row.companyId === companyId,
+        );
+        const values = omitDemoFields(j, [
+          "id",
+          "scheduledDate",
+          "scheduledEndDate",
+          "actualStartTime",
+          "actualEndTime",
+          "createdAt",
+          "updatedAt",
+        ]);
+        await client.insert(crmJobs).values(j as any).onConflictDoUpdate({
+          target: crmJobs.id,
+          set: { ...values, updatedAt: new Date() } as any,
+        });
       }
+      seedResults.jobs = { ok: true, inserted: jobSeed.length, expected: jobSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "jobs", error: msg }, "[DEMO] Error seeding CRM jobs");
@@ -1046,17 +1123,30 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-quote-3", contractorUserId: demoId, companyId, clientId: "demo-client-2", quoteNumber: "Q-DEMO-0003", title: "Annual Plumbing Inspection & Water Softener — Brian Okafor", description: "Annual whole-home plumbing inspection plus supply and install Pentair water softener.", serviceType: "Plumbing", status: "draft", lineItems: [{ description: "Annual plumbing inspection (14-point)", quantity: 1, unitPrice: "195.00", total: "195.00" }, { description: "Pentair Fleck 5600SXT 48,000 grain water softener", quantity: 1, unitPrice: "780.00", total: "780.00" }, { description: "Labor — softener installation & bypass valve", quantity: 1, unitPrice: "320.00", total: "320.00" }], subtotal: "1295.00", taxRate: "10.10", taxAmount: "130.80", discount: "0.00", total: "1425.80", validUntil: new Date(nowMs + 30 * day), notes: "Draft — pending customer confirmation on softener model preference." },
         { id: "demo-quote-4", contractorUserId: demoId, companyId, clientId: "demo-client-1", quoteNumber: "Q-DEMO-0004", title: "Carrier System Tune-Up & Coil Cleaning — Patricia Nguyen", description: "Extended annual maintenance visit including evaporator and condenser coil cleaning.", serviceType: "HVAC Maintenance", status: "declined", lineItems: [{ description: "Annual HVAC tune-up (standard)", quantity: 1, unitPrice: "145.00", total: "145.00" }, { description: "Evaporator coil cleaning", quantity: 1, unitPrice: "220.00", total: "220.00" }, { description: "Condenser coil cleaning", quantity: 1, unitPrice: "180.00", total: "180.00" }], subtotal: "545.00", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "545.00", validUntil: new Date(nowMs - 5 * day), sentAt: new Date(nowMs - 20 * day), declinedAt: new Date(nowMs - 12 * day), notes: "Customer opted for standard tune-up only this season. Follow up next spring for coil cleaning." },
       ];
-      const existingQuote = await demoStorage.getCrmQuote(quoteSeed[0].id);
-      if (existingQuote) {
-        log.info({ section: "quotes", sentinelId: quoteSeed[0].id }, "[DEMO] CRM quotes already exist — skipping");
-        seedResults.quotes = { ok: true, inserted: 0, expected: quoteSeed.length, skipped: true };
-      } else {
-        for (const q of quoteSeed) {
-          await client.insert(crmQuotes).values(q as any)
-            .onConflictDoNothing({ target: crmQuotes.id });
-        }
-        seedResults.quotes = { ok: true, inserted: quoteSeed.length, expected: quoteSeed.length };
+      for (const q of quoteSeed) {
+        await assertDemoRowOwnership(
+          client,
+          crmQuotes,
+          q.id,
+          "quotes",
+          (row) => row.contractorUserId === demoId && row.companyId === companyId,
+        );
+        const values = omitDemoFields(q, [
+          "id",
+          "validUntil",
+          "sentAt",
+          "viewedAt",
+          "acceptedAt",
+          "declinedAt",
+          "createdAt",
+          "updatedAt",
+        ]);
+        await client.insert(crmQuotes).values(q as any).onConflictDoUpdate({
+          target: crmQuotes.id,
+          set: { ...values, updatedAt: new Date() } as any,
+        });
       }
+      seedResults.quotes = { ok: true, inserted: quoteSeed.length, expected: quoteSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "quotes", error: msg }, "[DEMO] Error seeding CRM quotes");
@@ -1079,17 +1169,29 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         { id: "demo-invoice-9", contractorUserId: demoId, companyId, clientId: "demo-client-6", jobId: "demo-job-11", invoiceNumber: "INV-DEMO-0009", title: "Three-Unit Boiler Preventive Service", status: "paid", lineItems: [{ description: "Boiler service and zone repairs", quantity: 1, unitPrice: "2920.00", total: "2920.00" }], subtotal: "2920.00", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "2920.00", amountPaid: "2920.00", amountDue: "0.00", dueDate: new Date(nowMs - 64 * day), sentAt: new Date(nowMs - 70 * day), viewedAt: new Date(nowMs - 69 * day), paidAt: new Date(nowMs - 66 * day), paymentMethod: "check" },
         { id: "demo-invoice-10", contractorUserId: demoId, companyId, clientId: "demo-client-5", jobId: "demo-job-12", invoiceNumber: "INV-DEMO-0010", title: "Ductless Heat Pump Installation", status: "paid", lineItems: [{ description: "Ductless heat pump and installation", quantity: 1, unitPrice: "2966.45", total: "2966.45" }], subtotal: "2966.45", taxRate: "0.00", taxAmount: "0.00", discount: "0.00", total: "2966.45", amountPaid: "2966.45", amountDue: "0.00", dueDate: new Date(nowMs - 77 * day), sentAt: new Date(nowMs - 83 * day), viewedAt: new Date(nowMs - 82 * day), paidAt: new Date(nowMs - 79 * day), paymentMethod: "credit_card" },
       ];
-      const existingInvoice = await demoStorage.getCrmInvoice(invoiceSeed[0].id);
-      if (existingInvoice) {
-        log.info({ section: "invoices", sentinelId: invoiceSeed[0].id }, "[DEMO] CRM invoices already exist — skipping");
-        seedResults.invoices = { ok: true, inserted: 0, expected: invoiceSeed.length, skipped: true };
-      } else {
-        for (const inv of invoiceSeed) {
-          await client.insert(crmInvoices).values(inv as any)
-            .onConflictDoNothing({ target: crmInvoices.id });
-        }
-        seedResults.invoices = { ok: true, inserted: invoiceSeed.length, expected: invoiceSeed.length };
+      for (const inv of invoiceSeed) {
+        await assertDemoRowOwnership(
+          client,
+          crmInvoices,
+          inv.id,
+          "invoices",
+          (row) => row.contractorUserId === demoId && row.companyId === companyId,
+        );
+        const values = omitDemoFields(inv, [
+          "id",
+          "dueDate",
+          "sentAt",
+          "viewedAt",
+          "paidAt",
+          "createdAt",
+          "updatedAt",
+        ]);
+        await client.insert(crmInvoices).values(inv as any).onConflictDoUpdate({
+          target: crmInvoices.id,
+          set: { ...values, updatedAt: new Date() } as any,
+        });
       }
+      seedResults.invoices = { ok: true, inserted: invoiceSeed.length, expected: invoiceSeed.length };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log.warn({ section: "invoices", error: msg }, "[DEMO] Error seeding CRM invoices");
@@ -1138,12 +1240,23 @@ export async function seedContractorDemo(log: DemoLog, client: DemoDb = db): Pro
         const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
         log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
       });
-      throw new Error(`Contractor demo seeding failed: ${failedSections.join(", ")}`);
+      throw new DemoSeedFailure(user, seedResults);
     }
   } catch (companyError) {
+    if (companyError instanceof DemoSeedFailure) {
+      throw companyError;
+    }
     const msg = companyError instanceof Error ? companyError.message : String(companyError);
-    log.error({ error: msg }, "[DEMO] Error creating demo company or linking user");
-    throw companyError;
+    const section = companyError instanceof DemoOwnershipCollision
+      ? companyError.section
+      : "contractor-account";
+    seedResults[section] = { ok: false, error: msg };
+    log.error({ section, error: msg }, "[DEMO] Error creating demo company or linking user");
+    emailService.sendDemoSeedingFailureAlert(demoId, [section], seedResults).catch((alertErr: unknown) => {
+      const alertMsg = alertErr instanceof Error ? alertErr.message : String(alertErr);
+      log.error({ error: alertMsg }, "[DEMO] Failed to send demo seeding failure alert email");
+    });
+    throw new DemoSeedFailure(user ?? { id: demoId }, seedResults);
   }
 
   return { user, seedResults };
@@ -1194,9 +1307,30 @@ export async function resetContractorDemoCrm(
 
 export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
   const demoEmail = "jessica.roberts@ellisonrealty.com";
-  const demoId = "demo-agent-permanent-id";
+  const demoId = DEMO_AGENT_ID;
+  const seedResults: SeedResults = {};
+  let user: any;
 
-  let user = await storage.getUserByEmail(demoEmail);
+  try {
+  await assertDemoRowOwnership(
+    db,
+    users,
+    demoId,
+    "agent-account",
+    (row) => row.email === demoEmail && row.role === "agent",
+  );
+  const [referralCodeOwner] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.referralCode, DEMO_AGENT_REFERRAL_CODE))
+    .limit(1);
+  if (referralCodeOwner && referralCodeOwner.id !== demoId) {
+    throw new DemoOwnershipCollision("agent-referral-code", DEMO_AGENT_REFERRAL_CODE);
+  }
+  user = await storage.getUserByEmail(demoEmail);
+  if (user && user.id !== demoId && !user.isDemoAccount) {
+    throw new DemoOwnershipCollision("agent-account", user.id);
+  }
   if (!user) {
     user = await storage.upsertUser({
       id: demoId,
@@ -1215,88 +1349,17 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     user = await ensureDemoAccountFlag(user);
   }
 
-  const existingReferral = await db
-    .select({ referredUserId: affiliateReferrals.referredUserId })
-    .from(affiliateReferrals)
-    .where(eq(affiliateReferrals.agentId, demoId))
-    .limit(1);
-
-  if (existingReferral.length > 0) {
-    const referralUserIds = Array.from(
-      { length: 8 },
-      (_, index) => `agent-referral-${index + 1}`,
-    );
-    const expectedReferralUsers = referralUserIds.length;
-    const expectedReferralRecords = referralUserIds.length;
-    const expectedCycleEvents = 22;
-    const [
-      [{ count: referralUsers }],
-      [{ count: referralRecords }],
-      [{ count: cycleEvents }],
-    ] = await Promise.all([
-      db
-        .select({ count: drizzleSql<number>`count(*)` })
-        .from(users)
-        .where(inArray(users.id, referralUserIds)),
-      db
-        .select({ count: drizzleSql<number>`count(*)` })
-        .from(affiliateReferrals)
-        .where(eq(affiliateReferrals.agentId, demoId)),
-      db
-        .select({ count: drizzleSql<number>`count(*)` })
-        .from(subscriptionCycleEvents)
-        .where(inArray(subscriptionCycleEvents.userId, referralUserIds)),
-    ]);
-
-    const referralUserCount = Number(referralUsers);
-    const referralRecordCount = Number(referralRecords);
-    const cycleEventCount = Number(cycleEvents);
-
-    const seedResults: SeedResults = {
-      "agent-referral-users": {
-        ok: referralUserCount === expectedReferralUsers,
-        skipped: true,
-        expected: expectedReferralUsers,
-        healthCheck: { referralUsers: referralUserCount },
-      },
-      "agent-referral-records": {
-        ok: referralRecordCount === expectedReferralRecords,
-        skipped: true,
-        expected: expectedReferralRecords,
-        healthCheck: { referralRecords: referralRecordCount },
-      },
-      "agent-cycle-events": {
-        ok: cycleEventCount === expectedCycleEvents,
-        skipped: true,
-        expected: expectedCycleEvents,
-        healthCheck: { cycleEvents: cycleEventCount },
-      },
-    };
-
-    const failedSections = Object.entries(seedResults)
-      .filter(([, result]) => !result.ok)
-      .map(([section]) => section);
-    if (failedSections.length > 0) {
-      log.warn(
-        { seedResults, failedSections },
-        "[DEMO] Agent demo repeat-login health-check failed",
-      );
-      emailService
-        .sendDemoSeedingFailureAlert(user.id, failedSections, seedResults)
-        .catch((alertErr: unknown) => {
-          const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
-          log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
-        });
-    }
-
-    return { user, seedResults };
-  }
-
-  const agentUser = await storage.getUser(demoId);
-  let agentReferralCode = agentUser?.referralCode || "";
-  if (!agentUser?.referralCode) {
-    agentReferralCode = await generateUniqueReferralCode();
-  }
+  // The demo account is deliberately self-healing.  Older databases may have
+  // the user but no profile (or a profile stuck in not_submitted), so do not
+  // use the existence of a referral row as an early return.
+  const agentReferralCode = DEMO_AGENT_REFERRAL_CODE;
+  user = await storage.upsertUser({
+    ...user,
+    id: demoId,
+    role: "agent",
+    referralCode: agentReferralCode,
+    isDemoAccount: true,
+  });
 
   const referralData = [
     { id: "agent-referral-1", firstName: "Michael", lastName: "Stevens", email: "michael.stevens@email.com", zipCode: "98115", role: "homeowner", signupMonthsAgo: 6, subscriptionStatus: "active", plan: "base", monthlyAmount: "5.00", cyclesPaid: 6, qualified: true },
@@ -1309,9 +1372,6 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     { id: "agent-referral-8", firstName: "Rachel", lastName: "Kim", email: "rachel.kim@email.com", zipCode: "98117", role: "homeowner", signupMonthsAgo: 0.1, subscriptionStatus: "trialing", plan: "premium", monthlyAmount: "0.00", cyclesPaid: 0, qualified: false },
   ];
 
-  const seedResults: SeedResults = {};
-
-  try {
     const referralUserExpected = referralData.length;
     const referralRecordExpected = referralData.length;
     const cycleEventExpected = referralData.reduce((sum, r) => sum + r.cyclesPaid, 0);
@@ -1320,9 +1380,79 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     let cycleEventInserted = 0;
 
     await db.transaction(async (tx) => {
-      if (!agentUser?.referralCode) {
-        await tx.update(users).set({ referralCode: agentReferralCode }).where(eq(users.id, demoId));
+      await tx.update(users).set({
+        role: "agent",
+        referralCode: agentReferralCode,
+        isDemoAccount: true,
+      }).where(eq(users.id, demoId));
+
+      await assertDemoRowOwnership(
+        tx,
+        agentProfiles,
+        "demo-agent-profile-permanent-id",
+        "agent-profile",
+        (row) => row.agentId === demoId,
+      );
+      const [existingAgentProfile] = await tx
+        .select({ id: agentProfiles.id, agentId: agentProfiles.agentId })
+        .from(agentProfiles)
+        .where(eq(agentProfiles.agentId, demoId))
+        .limit(1);
+      if (existingAgentProfile && existingAgentProfile.agentId !== demoId) {
+        throw new DemoOwnershipCollision("agent-profile", existingAgentProfile.id);
       }
+
+      const [profile] = await tx.insert(agentProfiles).values({
+        id: "demo-agent-profile-permanent-id",
+        agentId: demoId,
+        phone: "(206) 555-0188",
+        website: "https://ellisonrealty.example.com",
+        officeAddress: "1200 5th Ave, Seattle, WA 98101",
+        licenseNumber: "WA-RE-2024-001",
+        licenseState: "WA",
+        licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        verificationStatus: "approved",
+        verificationRequestedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        verifiedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+        reviewNotes: "Demo agent verification approved.",
+      } as any).onConflictDoUpdate({
+        target: agentProfiles.agentId,
+        set: {
+          phone: "(206) 555-0188",
+          website: "https://ellisonrealty.example.com",
+          officeAddress: "1200 5th Ave, Seattle, WA 98101",
+          licenseNumber: "WA-RE-2024-001",
+          licenseState: "WA",
+          licenseExpiration: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          verificationStatus: "approved",
+          verificationRequestedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+          verifiedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+          reviewNotes: "Demo agent verification approved.",
+          updatedAt: new Date(),
+        },
+      }).returning();
+
+      // A stable audit id makes approval repair idempotent too.
+      await assertDemoRowOwnership(
+        tx,
+        agentVerificationAudits,
+        "demo-agent-verification-approved",
+        "agent-verification",
+        (row) => row.agentId === demoId && row.agentProfileId === (profile?.id ?? "demo-agent-profile-permanent-id"),
+      );
+      await tx.insert(agentVerificationAudits).values({
+        id: "demo-agent-verification-approved",
+        agentProfileId: profile?.id ?? "demo-agent-profile-permanent-id",
+        agentId: demoId,
+        action: "approved",
+        previousStatus: "pending_review",
+        newStatus: "approved",
+        reviewerEmail: "admin@homebase.example.com",
+        notes: "Demo agent verification approved.",
+      } as any).onConflictDoUpdate({
+        target: agentVerificationAudits.id,
+        set: { newStatus: "approved", action: "approved", notes: "Demo agent verification approved." },
+      });
 
       for (const referral of referralData) {
         const signupDate = new Date(Date.now() - referral.signupMonthsAgo * 30 * 24 * 60 * 60 * 1000);
@@ -1331,6 +1461,13 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
             ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
             : null;
 
+        await assertDemoRowOwnership(
+          tx,
+          users,
+          referral.id,
+          "agent-referral-users",
+          (row) => row.isDemoAccount === true,
+        );
         await tx
           .insert(users)
           .values({
@@ -1347,10 +1484,27 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
           })
           .onConflictDoUpdate({
             target: users.id,
-            set: { subscriptionStatus: referral.subscriptionStatus, trialEndsAt, isDemoAccount: true },
+            set: {
+              firstName: referral.firstName,
+              lastName: referral.lastName,
+              role: referral.role as "homeowner" | "contractor" | "agent",
+              zipCode: referral.zipCode,
+              subscriptionStatus: referral.subscriptionStatus,
+              trialEndsAt,
+              maxHousesAllowed: referral.role === "homeowner" ? 2 : null,
+              isDemoAccount: true,
+            },
           });
         referralUserInserted++;
 
+        await assertDemoRowOwnership(
+          tx,
+          affiliateReferrals,
+          referral.id,
+          "agent-referral-records",
+          (row) => row.agentId === demoId && row.referredUserId === referral.id,
+          affiliateReferrals.referredUserId,
+        );
         await tx
           .insert(affiliateReferrals)
           .values({
@@ -1361,13 +1515,32 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
             signupDate,
             status: referral.qualified ? "eligible" : "trial",
           })
-          .onConflictDoNothing({ target: affiliateReferrals.referredUserId });
+          .onConflictDoUpdate({
+            target: affiliateReferrals.referredUserId,
+            set: {
+              agentId: demoId,
+              referredUserRole: referral.role as "homeowner" | "contractor",
+              referralCode: agentReferralCode,
+              signupDate,
+              status: referral.qualified ? "eligible" : "trial",
+              updatedAt: new Date(),
+            },
+          });
         referralRecordInserted++;
 
         if (referral.cyclesPaid > 0) {
           for (let month = 0; month < referral.cyclesPaid; month++) {
             const cycleStart = new Date(signupDate.getTime() + (month * 30 + 14) * 24 * 60 * 60 * 1000);
             const cycleEnd = new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+            const stripeInvoiceId = `demo_inv_${referral.id}_${month + 1}`;
+            await assertDemoRowOwnership(
+              tx,
+              subscriptionCycleEvents,
+              stripeInvoiceId,
+              "agent-cycle-events",
+              (row) => row.userId === referral.id,
+              subscriptionCycleEvents.stripeInvoiceId,
+            );
             await tx
               .insert(subscriptionCycleEvents)
               .values({
@@ -1376,18 +1549,64 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
                 periodEnd: cycleEnd,
                 amount: referral.monthlyAmount,
                 status: "paid",
-                stripeInvoiceId: `demo_inv_${referral.id}_${month + 1}`,
+                stripeInvoiceId,
               })
-              .onConflictDoNothing({ target: subscriptionCycleEvents.stripeInvoiceId });
+              .onConflictDoUpdate({
+                target: subscriptionCycleEvents.stripeInvoiceId,
+                set: {
+                  userId: referral.id,
+                  periodStart: cycleStart,
+                  periodEnd: cycleEnd,
+                  amount: referral.monthlyAmount,
+                  status: "paid",
+                },
+              });
             cycleEventInserted++;
           }
         }
       }
     });
 
-    seedResults["agent-referral-users"] = { ok: true, inserted: referralUserInserted, expected: referralUserExpected };
-    seedResults["agent-referral-records"] = { ok: true, inserted: referralRecordInserted, expected: referralRecordExpected };
-    seedResults["agent-cycle-events"] = { ok: true, inserted: cycleEventInserted, expected: cycleEventExpected };
+    const referralUserIds = referralData.map((referral) => referral.id);
+    const [{ count: profileCount }] = await db
+      .select({ count: drizzleSql<number>`count(*)` })
+      .from(agentProfiles)
+      .where(eq(agentProfiles.agentId, demoId));
+    const [{ count: referralUserCount }] = await db
+      .select({ count: drizzleSql<number>`count(*)` })
+      .from(users)
+      .where(inArray(users.id, referralUserIds));
+    const [{ count: referralCount }] = await db
+      .select({ count: drizzleSql<number>`count(*)` })
+      .from(affiliateReferrals)
+      .where(and(eq(affiliateReferrals.agentId, demoId), inArray(affiliateReferrals.referredUserId, referralUserIds)));
+    const [{ count: cycleCount }] = await db
+      .select({ count: drizzleSql<number>`count(*)` })
+      .from(subscriptionCycleEvents)
+      .where(inArray(subscriptionCycleEvents.userId, referralUserIds));
+    seedResults["agent-profile"] = {
+      ok: Number(profileCount) === 1,
+      expected: 1,
+      healthCheck: { profiles: Number(profileCount), verificationStatus: "approved" },
+    };
+    seedResults["agent-referral-users"] = {
+      ok: Number(referralUserCount) === referralUserExpected,
+      inserted: referralUserInserted,
+      expected: referralUserExpected,
+      healthCheck: { referralUsers: Number(referralUserCount) },
+    };
+    seedResults["agent-referral-records"] = {
+      ok: Number(referralCount) === referralRecordExpected,
+      inserted: referralRecordInserted,
+      expected: referralRecordExpected,
+      healthCheck: { referralRecords: Number(referralCount) },
+    };
+    seedResults["agent-cycle-events"] = {
+      ok: Number(cycleCount) === cycleEventExpected,
+      inserted: cycleEventInserted,
+      expected: cycleEventExpected,
+      healthCheck: { cycleEvents: Number(cycleCount) },
+    };
 
     const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
     const countMismatches = Object.entries(seedResults)
@@ -1400,13 +1619,16 @@ export async function seedAgentDemo(log: DemoLog): Promise<SeedOutcome> {
     }
   } catch (seedError) {
     const msg = seedError instanceof Error ? seedError.message : String(seedError);
-    log.warn({ section: "agent-referrals", error: msg }, "[DEMO] Error seeding agent referral data — referral data may be missing");
-    seedResults["agent-referrals"] = { ok: false, error: msg };
+    const section = seedError instanceof DemoOwnershipCollision
+      ? seedError.section
+      : "agent-referrals";
+    log.warn({ section, error: msg }, "[DEMO] Error seeding agent referral data — referral data may be missing");
+    seedResults[section] = { ok: false, error: msg };
   }
 
   const failedSections = Object.entries(seedResults).filter(([, result]) => !result.ok).map(([section]) => section);
   if (failedSections.length > 0) {
-    emailService.sendDemoSeedingFailureAlert(user.id, failedSections, seedResults).catch((alertErr: unknown) => {
+    emailService.sendDemoSeedingFailureAlert(user?.id ?? demoId, failedSections, seedResults).catch((alertErr: unknown) => {
       const msg = alertErr instanceof Error ? alertErr.message : String(alertErr);
       log.error({ error: msg }, "[DEMO] Failed to send demo seeding failure alert email");
     });

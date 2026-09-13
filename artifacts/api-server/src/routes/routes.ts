@@ -38,7 +38,7 @@ import { notificationOrchestrator } from "../notification-orchestrator";
 import { sendEmail, emailService, sendCheckoutFailureEmail, sendCompanyOwnerTeamActionEmail, sendTeamMemberAccountUpdatedEmail, sendOwnershipTransferredEmail, type TeamMemberAccountChange, type TeamMemberSecurityAction } from "../email-service";
 import { verifyAndActivateAppleTransaction, handleAppleServerNotification, AppleIapError } from "../apple-iap";
 import { lookupByHIN } from "../hin-service";
-import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID } from "../demo-seeder";
+import { seedHomeownerDemo, seedContractorDemo, seedAgentDemo, topUpHomeownerTaskCompletions, ensureDemoAccountFlag, resetContractorDemoCrm, DEMO_CONTRACTOR_ID, DemoSeedFailure } from "../demo-seeder";
 import { parse as parseCsvSync, CsvError } from "csv-parse/sync";
 import { decidePhotoEvidence, hasDuplicatePhotoHash } from "../photo-evidence-decision";
 import { calculateHwsScore, getHwsScoreBand } from "../hws-scoring";
@@ -73,6 +73,31 @@ import {
   type ForecastTriggerResult,
 } from "../weather-forecast-service";
 import { logger } from "../lib/logger";
+
+function dedupePaidCrmInvoices<T extends {
+  id: string;
+  amountPaid?: string | null;
+  total?: string | null;
+  paidAt?: Date | string | null;
+}>(invoices: T[]): T[] {
+  const seen = new Set<string>();
+  return invoices.filter((invoice) => {
+    const key = invoice.id;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function paidCrmInvoiceAmount(invoice: { amountPaid?: string | null; total?: string | null }): number {
+  const amountPaidValue = invoice.amountPaid;
+  const amountPaid = amountPaidValue == null || amountPaidValue.trim() === ""
+    ? Number.NaN
+    : Number(amountPaidValue);
+  if (Number.isFinite(amountPaid)) return amountPaid;
+  const total = Number(invoice.total);
+  return Number.isFinite(total) ? total : 0;
+}
 
 const stripe = process.env.STRIPE_SECRET_KEY 
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2026-04-22.dahlia" })
@@ -6168,6 +6193,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     } catch (error) {
+      if (error instanceof DemoSeedFailure) {
+        const failedSections = Object.entries(error.seedResults)
+          .filter(([, result]) => !result.ok)
+          .map(([section]) => section);
+        return res.status(200).json({
+          success: false,
+          _seedStatus: { seedResults: error.seedResults, failedSections },
+        });
+      }
       const msg = error instanceof Error ? error.message : String(error);
       req.log.error({ error: msg }, "[DEMO] Error creating contractor demo user");
       res.status(500).json({ message: "Failed to create contractor account" });
@@ -6177,10 +6211,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET version — browser navigation, sets session and redirects
   app.get('/api/auth/contractor-demo-login', logDemoLoginAttempt('contractor'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
-      const demoEmail = 'david.martinez@precisionhvac.com';
-      let user = await storage.getUserByEmail(demoEmail);
-      if (!user) return res.redirect('/contractor?demo_error=1');
-      user = await ensureDemoAccountFlag(user);
+      // GET/revisit is a real demo entry point, not just a session shortcut:
+      // run the same idempotent repair as POST so aged/partial databases heal.
+      const { user } = await db.transaction((tx) => seedContractorDemo(req.log, tx));
       req.session.regenerate((err: any) => {
         if (err) return res.redirect('/contractor?demo_error=1');
         req.session.isAuthenticated = true;
@@ -6192,6 +6225,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
     } catch (error) {
+      if (error instanceof DemoSeedFailure) {
+        const failedSections = Object.entries(error.seedResults)
+          .filter(([, result]) => !result.ok)
+          .map(([section]) => section);
+        return res.redirect(`/contractor?demo_error=1&seed_section=${encodeURIComponent(failedSections.join(","))}`);
+      }
       console.error("Error in GET contractor demo login:", error);
       res.redirect('/contractor?demo_error=1');
     }
@@ -6340,6 +6379,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/agent-demo-login', logDemoLoginAttempt('agent'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
       const { user, seedResults } = await seedAgentDemo(req.log);
+      const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+      if (failedSections.length > 0) {
+        return res.status(200).json({
+          success: false,
+          _seedStatus: { seedResults, failedSections },
+        });
+      }
       // Regenerate session to prevent session fixation
       req.session.regenerate((err: any) => {
         if (err) {
@@ -6356,7 +6402,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             return res.status(500).json({ message: "Failed to save session" });
           }
           req.log.info({ userId: user.id }, '[DEMO LOGIN] Agent session saved successfully');
-          const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
           const responseBody: Record<string, unknown> = { success: true, user };
           if (process.env.NODE_ENV !== 'production') {
             responseBody._seedStatus = { seedResults, failedSections };
@@ -6374,10 +6419,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET version — browser navigation, sets session and redirects
   app.get('/api/auth/agent-demo-login', logDemoLoginAttempt('agent'), authLimiter, demoLoginLimiter, async (req: any, res: any) => {
     try {
-      const demoEmail = 'jessica.roberts@ellisonrealty.com';
-      let user = await storage.getUserByEmail(demoEmail);
-      if (!user) return res.redirect('/agent?demo_error=1');
-      user = await ensureDemoAccountFlag(user);
+      // Revisit/login must repair the full account, not merely set a session
+      // for an account that may have been partially seeded.
+      const { user, seedResults } = await seedAgentDemo(req.log);
+      const failedSections = Object.entries(seedResults).filter(([, v]) => !v.ok).map(([k]) => k);
+      if (failedSections.length > 0) {
+        return res.redirect(`/agent?demo_error=1&seed_section=${encodeURIComponent(failedSections.join(","))}`);
+      }
       req.session.regenerate((err: any) => {
         if (err) return res.redirect('/agent?demo_error=1');
         req.session.isAuthenticated = true;
@@ -11115,14 +11163,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalOutstanding = unpaidInvoices.reduce((sum, i) => 
         sum + parseFloat(i.amountDue), 0
       );
-      const totalPaidThisMonth = invoices
+      const uniquePaidInvoices = dedupePaidCrmInvoices(invoices.filter(i => i.status === 'paid'));
+      const paidThisMonth = uniquePaidInvoices
         .filter(i => i.paidAt && new Date(i.paidAt) >= thisMonth)
-        .reduce((sum, i) => sum + parseFloat(i.amountPaid || '0'), 0);
+        .reduce((sum, i) => sum + paidCrmInvoiceAmount(i), 0);
 
       // Revenue calculation
-      const totalRevenue = invoices
-        .filter(i => i.status === 'paid')
-        .reduce((sum, i) => sum + parseFloat(i.total), 0);
+      const totalRevenue = uniquePaidInvoices.reduce((sum, i) => sum + paidCrmInvoiceAmount(i), 0);
 
       res.json({
         clients: {
@@ -11147,12 +11194,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           unpaid: unpaidInvoices.length,
           overdue: overdueInvoices.length,
           totalOutstanding: totalOutstanding.toFixed(2),
-          paidThisMonth: totalPaidThisMonth.toFixed(2),
+          paidThisMonth: paidThisMonth.toFixed(2),
           total: invoices.length,
         },
         revenue: {
           total: totalRevenue.toFixed(2),
-          thisMonth: totalPaidThisMonth.toFixed(2),
+          thisMonth: paidThisMonth.toFixed(2),
         },
       });
     } catch (error) {

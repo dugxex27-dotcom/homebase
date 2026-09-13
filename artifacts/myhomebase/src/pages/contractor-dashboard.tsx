@@ -121,6 +121,19 @@ interface ContractorLeadSummary {
   createdAt: string | Date | null;
 }
 
+interface ContractorCrmClient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+}
+
+interface ContractorCrmDashboard {
+  revenue?: {
+    total?: string | number | null;
+  };
+}
+
 interface ContractorRatingSummary {
   averageRating: number;
   totalReviews: number;
@@ -1387,6 +1400,43 @@ export default function ContractorDashboard() {
     enabled: !!typedUser?.id,
   });
 
+  // Dashboard earnings and the read-only client relationship surface come from
+  // the CRM data set. Proposal creation intentionally remains on the legacy
+  // homeowner relationship endpoint because its payload requires users.id.
+  const {
+    data: crmDashboard,
+    isLoading: isLoadingCrmDashboard,
+    isError: isCrmDashboardError,
+  } = useQuery<ContractorCrmDashboard>({
+    queryKey: ["/api/crm/dashboard"],
+    enabled: !!typedUser?.id,
+  });
+
+  const {
+    data: crmClients = [],
+    isLoading: isLoadingCrmClients,
+    isError: isCrmClientsError,
+  } = useQuery<ContractorCrmClient[]>({
+    queryKey: ["/api/crm/clients"],
+    enabled: !!typedUser?.id,
+  });
+
+  const {
+    data: contactedHomeowners = [],
+    isLoading: isLoadingHomeowners,
+    isError: isContactedHomeownersError,
+  } = useQuery<ContactedHomeowner[]>({
+    queryKey: ["/api/contractors", typedUser?.id, "contacted-homeowners"],
+    queryFn: async () => {
+      const response = await fetch(`/api/contractors/${typedUser?.id}/contacted-homeowners`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch contacted homeowners');
+      return response.json();
+    },
+    enabled: !!typedUser?.id,
+  });
+
   const {
     data: contractorRating,
     isLoading: isLoadingContractorRating,
@@ -1398,18 +1448,6 @@ export default function ContractorDashboard() {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch contractor rating");
-      return response.json();
-    },
-    enabled: !!typedUser?.id,
-  });
-
-  const { data: contactedHomeowners = [], isLoading: isLoadingHomeowners } = useQuery<ContactedHomeowner[]>({
-    queryKey: ["/api/contractors", typedUser?.id, "contacted-homeowners"],
-    queryFn: async () => {
-      const response = await fetch(`/api/contractors/${typedUser?.id}/contacted-homeowners`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch contacted homeowners');
       return response.json();
     },
     enabled: !!typedUser?.id,
@@ -1503,7 +1541,8 @@ export default function ContractorDashboard() {
   const pendingProposals = proposals.filter(p => p.status === 'sent' || p.status === 'draft');
   const acceptedProposals = proposals.filter(p => p.status === 'accepted');
 
-  const totalEarnings = acceptedProposals.reduce((sum, p) => sum + parseFloat(p.estimatedCost || '0'), 0);
+  const crmTotalEarnings = Number.parseFloat(String(crmDashboard?.revenue?.total ?? ''));
+  const totalEarnings = Number.isFinite(crmTotalEarnings) ? crmTotalEarnings : 0;
 
   const now = new Date();
   const recentNewLeadCount = countRecentNewLeads(contractorLeads, now);
@@ -2857,7 +2896,9 @@ export default function ContractorDashboard() {
                <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">Total Earnings</div>
                  <div className={`text-xl lg:text-2xl font-black ${totalEarnings > 0 ? 'text-[#09694a]' : 'text-slate-900'}`} data-testid="text-all-time-earnings">
-                   ${totalEarnings.toLocaleString()}
+                    {isLoadingCrmDashboard || isCrmDashboardError
+                      ? '–'
+                      : `$${totalEarnings.toLocaleString()}`}
                  </div>
                </div>
                <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex flex-col justify-center">
@@ -2879,6 +2920,47 @@ export default function ContractorDashboard() {
                  </div>
                </div>
             </div>
+
+             {/* CRM client relationships — intentionally read-only. Proposal
+                 creation below uses users.id from contacted homeowners. */}
+             <section
+               className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+               data-testid="crm-client-relationships"
+             >
+               <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                 <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Recent Clients</h2>
+                 {!isLoadingCrmClients && !isCrmClientsError && (
+                   <span className="text-xs font-semibold text-slate-500">{crmClients.length} Total</span>
+                 )}
+               </div>
+               {isLoadingCrmClients ? (
+                 <div className="p-5 text-sm text-slate-500">Loading CRM clients…</div>
+               ) : isCrmClientsError ? (
+                 <div className="p-5 text-sm text-red-600">Unable to load CRM clients.</div>
+               ) : crmClients.length === 0 ? (
+                 <div className="p-5 text-sm text-slate-500">No CRM clients yet.</div>
+               ) : (
+                 <div className="divide-y divide-slate-100">
+                   {crmClients.slice(0, 5).map((client) => (
+                     <div
+                       key={client.id}
+                       className="px-5 py-3 flex items-center justify-between gap-4"
+                       data-testid={`crm-client-relationship-${client.id}`}
+                     >
+                       <div className="min-w-0">
+                         <div className="text-sm font-semibold text-slate-900 truncate">
+                           {[client.firstName, client.lastName].filter(Boolean).join(" ") || "Unnamed client"}
+                         </div>
+                         {client.email && <div className="text-xs text-slate-500 truncate">{client.email}</div>}
+                       </div>
+                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#1560A2] bg-[#EAF4FD] rounded-md px-2 py-1">
+                         CRM client
+                       </span>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </section>
 
             {/* Team Capacity Alert */}
             {isAdminRole && teamData && isTeamNearlyFull && !teamCapacityBannerDismissed && (
@@ -3122,11 +3204,17 @@ export default function ContractorDashboard() {
                         <SelectContent>
                           {isLoadingHomeowners ? (
                             <SelectItem value="loading" disabled>Loading customers...</SelectItem>
+                          ) : isContactedHomeownersError ? (
+                            <SelectItem value="error" disabled>Unable to load customers</SelectItem>
                           ) : contactedHomeowners.length === 0 ? (
                             <SelectItem value="none" disabled>No customers have messaged you yet</SelectItem>
                           ) : (
                             contactedHomeowners.map((homeowner) => (
-                              <SelectItem key={homeowner.id} value={homeowner.id}>
+                              <SelectItem
+                                key={homeowner.id}
+                                value={homeowner.id}
+                                data-testid={`homeowner-option-${homeowner.id}`}
+                              >
                                 {homeowner.firstName || homeowner.lastName
                                   ? `${homeowner.firstName || ''} ${homeowner.lastName || ''}`.trim()
                                   : homeowner.email || 'Unknown Customer'}

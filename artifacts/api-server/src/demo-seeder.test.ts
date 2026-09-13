@@ -98,6 +98,7 @@ import type { Server } from "http";
 import app from "./app";
 import { registerRoutes } from "./routes/routes";
 import { db, pool } from "./db";
+import { MemStorage } from "./storage";
 import {
   affiliateReferrals,
   subscriptionCycleEvents,
@@ -107,6 +108,10 @@ import {
   crmJobs,
   crmQuotes,
   crmInvoices,
+  agentProfiles,
+  agentVerificationAudits,
+  users,
+  companies,
   proposals,
   conversations,
   messages,
@@ -164,10 +169,8 @@ describe("contractor demo seeder", () => {
     }
   }, 60_000);
 
-  it("repeated login: existing-company path runs health-check and reports ok", async () => {
-    // Second login — the demo company already exists in the DB from the
-    // first test, so the seeder must take the else branch and emit a
-    // health-check entry instead of silently returning { ok: true }.
+  it("repeated login repairs/upserts canonical data and reports ok", async () => {
+    // A revisit must run the repair path even when every canonical row exists.
     const res = await request
       .post("/api/auth/contractor-demo-login")
       .set("Content-Type", "application/json")
@@ -177,7 +180,14 @@ describe("contractor demo seeder", () => {
     expect(res.body.success).toBe(true);
 
     const { seedResults } = res.body._seedStatus as {
-      seedResults: Record<string, { ok: boolean; healthCheck?: { teamMembers: number }; error?: string; skipped?: boolean }>;
+      seedResults: Record<string, {
+        ok: boolean;
+        healthCheck?: { teamMembers: number };
+        error?: string;
+        skipped?: boolean;
+        inserted?: number;
+        expected?: number;
+      }>;
       failedSections: string[];
     };
 
@@ -202,11 +212,16 @@ describe("contractor demo seeder", () => {
       ).toBe(true);
     }
 
-    for (const section of ["leads", "conversations", "team", "clients", "jobs", "quotes", "invoices", "proposals"]) {
+    for (const section of ["conversations", "team"]) {
       expect(
         seedResults[section]?.skipped,
-        `Section "${section}" should skip writes on repeat login`,
+        `Section "${section}" should retain idempotent skip behavior`,
       ).toBe(true);
+    }
+    for (const section of ["leads", "clients", "jobs", "quotes", "invoices"]) {
+      expect(seedResults[section]?.ok).toBe(true);
+      expect(seedResults[section]?.skipped).not.toBe(true);
+      expect(seedResults[section]?.inserted).toBe(seedResults[section]?.expected);
     }
   }, 60_000);
 
@@ -251,6 +266,10 @@ describe("contractor demo seeder", () => {
       .from(crmLeads)
       .where(eq(crmLeads.id, "demo-reset-test-extra-lead"));
     expect(extraLead).toHaveLength(0);
+    const [resetLead] = await db.select({ createdAt: crmLeads.createdAt })
+      .from(crmLeads).where(eq(crmLeads.id, "demo-lead-3"));
+    expect(Date.now() - new Date(resetLead.createdAt!).getTime())
+      .toBeLessThan(7 * 24 * 60 * 60 * 1000);
 
     const nonDemoResponse = await request
       .post("/api/demo/contractor/reset")
@@ -323,7 +342,150 @@ describe("contractor demo seeder", () => {
     expect(
       dashboardRes.body.jobs.scheduled + dashboardRes.body.jobs.inProgress
     ).toBeGreaterThanOrEqual(3);
-    expect(parseFloat(dashboardRes.body.revenue.total)).toBeGreaterThanOrEqual(21_000);
+    // Revenue must come from the paid amount, not the invoice total. Change a
+    // paid amount after login to make that distinction observable.
+    await db.update(crmInvoices)
+      .set({ amountPaid: "1.00" })
+      .where(eq(crmInvoices.id, "demo-invoice-5"));
+    const amountPaidDashboardRes = await agent
+      .get("/api/crm/dashboard")
+      .timeout(30_000);
+    expect(amountPaidDashboardRes.status).toBe(200);
+    expect(parseFloat(amountPaidDashboardRes.body.revenue.total)).toBeCloseTo(17_181, 2);
+  }, 60_000);
+
+  it("does not overwrite a non-demo CRM row occupying a canonical ID", async () => {
+    const realOwnerId = "real-crm-collision-owner";
+    await db.insert(users).values({
+      id: realOwnerId,
+      email: "real-crm-collision@example.com",
+      firstName: "Real",
+      lastName: "Owner",
+      role: "contractor",
+      isDemoAccount: false,
+    } as any).onConflictDoNothing({ target: users.id });
+    await db.update(crmClients)
+      .set({ contractorUserId: realOwnerId })
+      .where(eq(crmClients.id, "demo-client-1"));
+
+    try {
+      const res = await request
+        .post("/api/auth/contractor-demo-login")
+        .set("Content-Type", "application/json")
+        .timeout(30_000);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(false);
+      expect(res.body._seedStatus.failedSections).toContain("clients");
+      const [row] = await db.select({
+        contractorUserId: crmClients.contractorUserId,
+        firstName: crmClients.firstName,
+      }).from(crmClients).where(eq(crmClients.id, "demo-client-1"));
+      expect(row).toEqual({ contractorUserId: realOwnerId, firstName: "Patricia" });
+    } finally {
+      await db.update(crmClients)
+        .set({ contractorUserId: "demo-contractor-permanent-id" })
+        .where(eq(crmClients.id, "demo-client-1"));
+      await db.delete(users).where(eq(users.id, realOwnerId));
+    }
+  }, 60_000);
+
+  it("returns a controlled failure for a colliding contractor account", async () => {
+    const contractorId = "demo-contractor-permanent-id";
+    const [before] = await db.select({
+      email: users.email,
+      role: users.role,
+      isDemoAccount: users.isDemoAccount,
+    }).from(users).where(eq(users.id, contractorId));
+    await db.update(users).set({
+      email: "real-account-collision@example.com",
+      role: "contractor",
+      isDemoAccount: false,
+    }).where(eq(users.id, contractorId));
+    sendDemoSeedingFailureAlertMock.mockClear();
+
+    try {
+      const res = await request.post("/api/auth/contractor-demo-login").timeout(30_000);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(false);
+      expect(res.body._seedStatus.failedSections).toContain("contractor-account");
+      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalledTimes(1);
+      const [unchanged] = await db.select({
+        email: users.email,
+        role: users.role,
+        isDemoAccount: users.isDemoAccount,
+      }).from(users).where(eq(users.id, contractorId));
+      expect(unchanged).toEqual({
+        email: "real-account-collision@example.com",
+        role: "contractor",
+        isDemoAccount: false,
+      });
+    } finally {
+      await db.update(users).set({
+        email: before.email,
+        role: before.role,
+        isDemoAccount: before.isDemoAccount,
+      }).where(eq(users.id, contractorId));
+    }
+  }, 60_000);
+
+  it("returns a controlled failure for a colliding contractor company owner", async () => {
+    const realOwnerId = "real-company-owner-collision";
+    await db.insert(users).values({
+      id: realOwnerId,
+      email: "real-company-owner@example.com",
+      firstName: "Real",
+      lastName: "Owner",
+      role: "contractor",
+      isDemoAccount: false,
+    } as any).onConflictDoNothing({ target: users.id });
+    await db.update(companies)
+      .set({ ownerId: realOwnerId })
+      .where(eq(companies.id, "demo-company-permanent-id"));
+    sendDemoSeedingFailureAlertMock.mockClear();
+
+    try {
+      const res = await request.post("/api/auth/contractor-demo-login").timeout(30_000);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(false);
+      expect(res.body._seedStatus.failedSections).toContain("company");
+      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalledTimes(1);
+      const [unchanged] = await db.select({ ownerId: companies.ownerId })
+        .from(companies).where(eq(companies.id, "demo-company-permanent-id"));
+      expect(unchanged?.ownerId).toBe(realOwnerId);
+    } finally {
+      await db.update(companies)
+        .set({ ownerId: "demo-contractor-permanent-id" })
+        .where(eq(companies.id, "demo-company-permanent-id"));
+      await db.delete(users).where(eq(users.id, realOwnerId));
+    }
+  }, 60_000);
+
+  it("counts distinct paid invoices that share an invoice number", async () => {
+    const memoryStorage = new MemStorage();
+    const contractorId = "invoice-number-regression-contractor";
+    await memoryStorage.upsertUser({
+      id: contractorId,
+      email: "invoice-number-regression@example.com",
+      firstName: "Invoice",
+      lastName: "Regression",
+      role: "contractor",
+      isDemoAccount: false,
+    } as any);
+    const invoice = {
+      contractorUserId: contractorId,
+      invoiceNumber: "INV-SHARED-NUMBER",
+      title: "Shared invoice number",
+      status: "paid",
+      lineItems: [],
+      subtotal: "100.00",
+      total: "100.00",
+      amountDue: "0.00",
+      paidAt: new Date(),
+    } as any;
+    await memoryStorage.createCrmInvoice({ ...invoice, amountPaid: "40.00" });
+    await memoryStorage.createCrmInvoice({ ...invoice, amountPaid: "60.00" });
+    const stats = await memoryStorage.getCrmDashboardStats(contractorId);
+    expect(stats.totalRevenue).toBe("100.00");
   }, 60_000);
 });
 
@@ -342,6 +504,20 @@ describe("contractor read-path", () => {
       `Demo login failed with ${loginRes.status}: ${JSON.stringify(loginRes.body)}`
     ).toBe(200);
     expect(loginRes.body.success).toBe(true);
+
+    const aged = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await db.update(crmLeads)
+      .set({ createdAt: aged, updatedAt: aged })
+      .where(eq(crmLeads.id, "demo-lead-3"));
+    const revisitRes = await agent
+      .get("/api/auth/contractor-demo-login")
+      .redirects(0)
+      .timeout(30_000);
+    expect(revisitRes.status).toBe(302);
+    const [freshLead] = await db.select({ createdAt: crmLeads.createdAt })
+      .from(crmLeads).where(eq(crmLeads.id, "demo-lead-3"));
+    expect(Date.now() - new Date(freshLead.createdAt!).getTime())
+      .toBeLessThan(7 * 24 * 60 * 60 * 1000);
 
     const companyRes = await agent
       .get(`/api/companies/${companyId}`)
@@ -567,17 +743,17 @@ describe("agent demo seeder", () => {
 
     expect(seedResults["agent-referral-users"]).toMatchObject({
       ok: true,
-      skipped: true,
+      inserted: EXPECTED_REFERRALS,
       healthCheck: { referralUsers: EXPECTED_REFERRALS },
     });
     expect(seedResults["agent-referral-records"]).toMatchObject({
       ok: true,
-      skipped: true,
+      inserted: EXPECTED_REFERRALS,
       healthCheck: { referralRecords: EXPECTED_REFERRALS },
     });
     expect(seedResults["agent-cycle-events"]).toMatchObject({
       ok: true,
-      skipped: true,
+      inserted: EXPECTED_CYCLE_EVENTS,
       healthCheck: { cycleEvents: EXPECTED_CYCLE_EVENTS },
     });
 
@@ -610,46 +786,159 @@ describe("agent demo seeder", () => {
     expect(Number(cycleCount)).toBe(EXPECTED_CYCLE_EVENTS);
   }, 60_000);
 
-  it("alerts when repeat-login health-checks find missing data", async () => {
+  it("repairs aged and partially removed canonical contractor and agent data", async () => {
     const DEMO_AGENT_ID = "demo-agent-permanent-id";
-    const missingInvoiceId = "demo_inv_agent-referral-1_1";
+    const aged = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    await db
-      .delete(subscriptionCycleEvents)
-      .where(eq(subscriptionCycleEvents.stripeInvoiceId, missingInvoiceId));
-    sendDemoSeedingFailureAlertMock.mockClear();
+    await db.update(crmLeads)
+      .set({ createdAt: aged, updatedAt: aged })
+      .where(eq(crmLeads.id, "demo-lead-3"));
+    // Deleting a client cascades its dependent jobs, quotes, and invoices;
+    // the contractor seeder must restore the complete canonical set later.
+    await db.delete(crmClients).where(eq(crmClients.id, "demo-client-6"));
+    await db.delete(affiliateReferrals)
+      .where(eq(affiliateReferrals.referredUserId, "agent-referral-1"));
+    await db.delete(agentProfiles).where(eq(agentProfiles.agentId, DEMO_AGENT_ID));
+    await db.delete(subscriptionCycleEvents)
+      .where(eq(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_agent-referral-1_1"));
+
+    const contractorRes = await request
+      .post("/api/auth/contractor-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+    expect(contractorRes.status).toBe(200);
+    expect(contractorRes.body._seedStatus.failedSections).toEqual([]);
+
+    const res = await request
+      .post("/api/auth/agent-demo-login")
+      .set("Content-Type", "application/json")
+      .timeout(30_000);
+
+    expect(res.status).toBe(200);
+    expect(res.body._seedStatus.failedSections).toEqual([]);
+
+    const [repairedLead] = await db.select({
+      id: crmLeads.id,
+      createdAt: crmLeads.createdAt,
+    }).from(crmLeads).where(eq(crmLeads.id, "demo-lead-3"));
+    expect(repairedLead).toBeDefined();
+    expect(Date.now() - new Date(repairedLead.createdAt!).getTime())
+      .toBeLessThan(7 * 24 * 60 * 60 * 1000);
+
+    expect(await db.select({ id: crmClients.id }).from(crmClients)
+      .where(eq(crmClients.id, "demo-client-6"))).toHaveLength(1);
+    expect(await db.select({
+      id: agentProfiles.id,
+      verificationStatus: agentProfiles.verificationStatus,
+    }).from(agentProfiles).where(eq(agentProfiles.agentId, DEMO_AGENT_ID)))
+      .toMatchObject([{ verificationStatus: "approved" }]);
+    expect(await db.select({ id: agentVerificationAudits.id })
+      .from(agentVerificationAudits).where(eq(agentVerificationAudits.agentId, DEMO_AGENT_ID)))
+      .toHaveLength(1);
+
+    const [{ referralCount }] = await db.select({ referralCount: count() })
+      .from(affiliateReferrals).where(eq(affiliateReferrals.agentId, DEMO_AGENT_ID));
+    const [{ cycleCount }] = await db.select({ cycleCount: count() })
+      .from(subscriptionCycleEvents)
+      .where(like(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_%"));
+    expect(Number(referralCount)).toBe(8);
+    expect(Number(cycleCount)).toBe(22);
+  }, 60_000);
+
+  it("does not reassign a referral owned by another agent", async () => {
+    const DEMO_AGENT_ID = "demo-agent-permanent-id";
+    const realAgentId = "real-referral-collision-agent";
+    await db.insert(users).values({
+      id: realAgentId,
+      email: "real-referral-collision@example.com",
+      firstName: "Real",
+      lastName: "Agent",
+      role: "agent",
+      isDemoAccount: false,
+    } as any).onConflictDoNothing({ target: users.id });
+    await db.update(affiliateReferrals)
+      .set({ agentId: realAgentId })
+      .where(eq(affiliateReferrals.referredUserId, "agent-referral-1"));
 
     try {
       const res = await request
         .post("/api/auth/agent-demo-login")
         .set("Content-Type", "application/json")
         .timeout(30_000);
-
       expect(res.status).toBe(200);
-      expect(res.body._seedStatus.failedSections).toContain("agent-cycle-events");
-      expect(
-        res.body._seedStatus.seedResults["agent-cycle-events"],
-      ).toMatchObject({
-        ok: false,
-        expected: 22,
-        healthCheck: { cycleEvents: 21 },
-      });
-      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalledWith(
-        DEMO_AGENT_ID,
-        ["agent-cycle-events"],
-        expect.objectContaining({
-          "agent-cycle-events": expect.objectContaining({ ok: false }),
-        }),
-      );
+      expect(res.body._seedStatus.failedSections).toContain("agent-referral-records");
+      const [row] = await db.select({ agentId: affiliateReferrals.agentId })
+        .from(affiliateReferrals)
+        .where(eq(affiliateReferrals.referredUserId, "agent-referral-1"));
+      expect(row?.agentId).toBe(realAgentId);
+      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalled();
     } finally {
-      await db
-        .delete(affiliateReferrals)
-        .where(eq(affiliateReferrals.agentId, DEMO_AGENT_ID));
-      const restoreRes = await request
+      await db.update(affiliateReferrals)
+        .set({ agentId: DEMO_AGENT_ID })
+        .where(eq(affiliateReferrals.referredUserId, "agent-referral-1"));
+    }
+
+    // The same protection applies to the deterministic cycle-event key.
+    await db.update(subscriptionCycleEvents)
+      .set({ userId: realAgentId })
+      .where(eq(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_agent-referral-1_1"));
+    try {
+      const cycleCollision = await request
         .post("/api/auth/agent-demo-login")
         .set("Content-Type", "application/json")
         .timeout(30_000);
-      expect(restoreRes.status).toBe(200);
+      expect(cycleCollision.status).toBe(200);
+      expect(cycleCollision.body._seedStatus.failedSections).toContain("agent-cycle-events");
+      const [row] = await db.select({ userId: subscriptionCycleEvents.userId })
+        .from(subscriptionCycleEvents)
+        .where(eq(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_agent-referral-1_1"));
+      expect(row?.userId).toBe(realAgentId);
+    } finally {
+      await db.update(subscriptionCycleEvents)
+        .set({ userId: "agent-referral-1" })
+        .where(eq(subscriptionCycleEvents.stripeInvoiceId, "demo_inv_agent-referral-1_1"));
+      await db.delete(users).where(eq(users.id, realAgentId));
+    }
+  }, 60_000);
+
+  it("returns a controlled failure for a colliding agent referral code", async () => {
+    const demoAgentId = "demo-agent-permanent-id";
+    const realOwnerId = "real-referral-code-collision";
+    await db.insert(users).values({
+      id: realOwnerId,
+      email: "real-referral-code@example.com",
+      firstName: "Real",
+      lastName: "Code Owner",
+      role: "agent",
+      referralCode: "REAL-CODE",
+      isDemoAccount: false,
+    } as any).onConflictDoNothing({ target: users.id });
+    await db.update(users).set({ referralCode: null })
+      .where(eq(users.id, demoAgentId));
+    await db.update(users).set({ referralCode: "JESSICA2024" })
+      .where(eq(users.id, realOwnerId));
+    sendDemoSeedingFailureAlertMock.mockClear();
+
+    try {
+      const res = await request.post("/api/auth/agent-demo-login").timeout(30_000);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(false);
+      expect(res.body._seedStatus.failedSections).toContain("agent-referral-code");
+      expect(sendDemoSeedingFailureAlertMock).toHaveBeenCalledTimes(1);
+      const [unchanged] = await db.select({
+        email: users.email,
+        isDemoAccount: users.isDemoAccount,
+        referralCode: users.referralCode,
+      }).from(users).where(eq(users.id, realOwnerId));
+      expect(unchanged).toEqual({
+        email: "real-referral-code@example.com",
+        isDemoAccount: false,
+        referralCode: "JESSICA2024",
+      });
+    } finally {
+      await db.delete(users).where(eq(users.id, realOwnerId));
+      await db.update(users).set({ referralCode: "JESSICA2024" })
+        .where(eq(users.id, demoAgentId));
     }
   }, 60_000);
 });
@@ -683,6 +972,12 @@ describe("agent read-path", () => {
       firstName: "Jessica",
       lastName: "Roberts",
     });
+
+    const verificationRes = await agent
+      .get("/api/agent/verification-status")
+      .timeout(30_000);
+    expect(verificationRes.status).toBe(200);
+    expect(verificationRes.body.verificationStatus).toBe("approved");
   }, 60_000);
 });
 
