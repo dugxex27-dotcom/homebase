@@ -60,3 +60,4 @@
 - [Legacy score-lock lookups](legacy-score-lock-lookups.md) — match legacy scored records using their stored date, never the requested replacement date
 - [Stale lazy chunks after publish](stale-lazy-chunks-after-publish.md) — old SPA shells request removed hashed chunks; catch preload failures and reload once before the route boundary renders
 - [Notification occurrence idempotency](notification-occurrence-idempotency.md) — in-app notifications use explicit stable occurrence IDs and atomic DB conflicts; never rely on read-before-write checks
+- [Regional maintenance content classification](regional-maintenance-content-classification.md) — classify by title action/object before descriptions; passive monitoring carries explicit no-cost metadata

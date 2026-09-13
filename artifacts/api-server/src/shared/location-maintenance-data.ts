@@ -46,6 +46,12 @@ export interface MaintenanceTaskItem {
   actionSummary?: string; // Single sentence action summary (e.g., "Do these 3 quick checks to winterize your home")
   steps?: string[]; // Bullet point steps to complete the task
   toolsAndSupplies?: string[]; // Tools and supplies needed checklist
+  estimatedTime?: string; // Typical hands-on time for the task
+  difficulty?: 'easy' | 'moderate' | 'difficult';
+  intentFamily?: string;
+  fallbackUsed?: boolean;
+  monitoringOnly?: boolean;
+  costApplicability?: 'costable' | 'monitoring_only';
   costEstimate?: CostEstimate; // Optional professional cost estimate and DIY materials cost
   impact?: string; // What happens if this task is not completed
   impactCost?: string; // Potential costs if task is not done

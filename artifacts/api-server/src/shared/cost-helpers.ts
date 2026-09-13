@@ -3,7 +3,7 @@
 import { getCostEstimate, CostEstimate } from './cost-baselines';
 import { MaintenanceTaskItem } from './location-maintenance-data';
 import { getTaskPriority, TaskPriority } from './priority-classifier';
-import { generateTaskContent } from './task-content-generator';
+import { generateTaskContent, isMonitoringOnlyTask } from './task-content-generator';
 
 /**
  * Infer category from task title and description
@@ -11,6 +11,18 @@ import { generateTaskContent } from './task-content-generator';
  */
 export function inferTaskCategory(title: string, description: string): string {
   const text = `${title} ${description}`.toLowerCase();
+
+  // Safety and air-quality work should not fall through to a generic home
+  // repair range.  Monitoring tasks are handled separately below and receive
+  // no fabricated contractor estimate.
+  if (text.includes('wildfire') || text.includes('defensible space') || text.includes('evacuation') ||
+      text.includes('fire danger') || text.includes('red flag')) {
+    return 'fire_safety';
+  }
+  if (text.includes('aqi') || text.includes('air quality') || text.includes('air purifier') ||
+      text.includes('air filtration') || text.includes('hepa')) {
+    return 'ventilation';
+  }
   
   // HVAC and Heating
   if (text.includes('hvac') || text.includes('air conditioning') || text.includes('furnace') || 
@@ -178,9 +190,14 @@ export function enrichTaskWithCost(
   // Infer category and difficulty from task content
   const category = inferTaskCategory(task.title, task.description);
   const difficulty = inferTaskDifficulty(task.title, task.description);
+  const generated = generateTaskContent(task.title, task.description);
+  const monitoringOnly = task.monitoringOnly ?? generated.monitoringOnly ?? isMonitoringOnlyTask(task.title, task.description);
   
   // Get cost estimate (only if not already present)
-  const costEstimate = task.costEstimate || getCostEstimate(category, difficulty, region);
+  // A catalog-authored estimate always wins. Otherwise, monitoring-only work
+  // intentionally has no cost; it is observation rather than a billable job.
+  const costEstimate = task.costEstimate
+    ?? (monitoringOnly ? undefined : getCostEstimate(category, difficulty, region));
   
   // Get priority using classifier (respects existing priority, checks overrides, then classifies)
   const priority = getTaskPriority(task, fallbackPriority);
@@ -190,11 +207,10 @@ export function enrichTaskWithCost(
   let steps = task.steps;
   let toolsAndSupplies = task.toolsAndSupplies;
   
-  if (!actionSummary || !steps || !toolsAndSupplies) {
-    const generated = generateTaskContent(task.title, task.description);
-    actionSummary = task.actionSummary || generated.actionSummary;
-    steps = task.steps || generated.steps;
-    toolsAndSupplies = task.toolsAndSupplies || generated.toolsAndSupplies;
+  if (!actionSummary || !steps || !toolsAndSupplies || !task.estimatedTime || !task.difficulty) {
+    actionSummary = task.actionSummary ?? generated.actionSummary;
+    steps = task.steps ?? generated.steps;
+    toolsAndSupplies = task.toolsAndSupplies ?? generated.toolsAndSupplies;
   }
   
   return {
@@ -204,6 +220,12 @@ export function enrichTaskWithCost(
     actionSummary,
     steps,
     toolsAndSupplies,
+    estimatedTime: task.estimatedTime ?? generated.estimatedTime,
+    difficulty: task.difficulty ?? generated.difficulty,
+    intentFamily: task.intentFamily ?? generated.intentFamily,
+    fallbackUsed: task.fallbackUsed ?? generated.fallbackUsed,
+    monitoringOnly,
+    costApplicability: task.costApplicability ?? (monitoringOnly ? 'monitoring_only' : 'costable'),
   };
 }
 

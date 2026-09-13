@@ -74,7 +74,90 @@ interface MaintenanceTask {
   impact?: string; // What happens if not completed
   impactCost?: string; // Potential costs if not done
   legacyTitles?: string[];
+  intentFamily?: string;
+  fallbackUsed?: boolean;
+  monitoringOnly?: boolean;
+  costApplicability?: "costable" | "monitoring_only";
 }
+
+// The regional task data is enriched before it reaches this page. Keep the
+// fields that enrichment adds here so the display does not replace them with
+// page-level defaults while adapting the shared task shape.
+type EnrichedRegionalTask = {
+  id: string;
+  title: string;
+  description: string;
+  actionSummary?: string;
+  steps?: string[];
+  toolsAndSupplies?: string[];
+  estimatedTime?: string;
+  difficulty?: string;
+  category?: string;
+  tools?: string[] | null;
+  priority?: string;
+  cost?: string | null;
+  costEstimate?: CostEstimate;
+  impact?: string;
+  impactCost?: string;
+  legacyTitles?: string[];
+  intentFamily?: string;
+  fallbackUsed?: boolean;
+  monitoringOnly?: boolean;
+  costApplicability?: "costable" | "monitoring_only";
+};
+
+const getRegionalTaskCost = (
+  task: EnrichedRegionalTask,
+  sourceTasks: readonly EnrichedRegionalTask[],
+): CostEstimate | undefined => {
+  const sourceTask = sourceTasks.find((source) =>
+    (source.id && source.id === task.id) || source.title === task.title
+  );
+  const hasExplicitCost = sourceTask?.costEstimate !== undefined;
+  const monitoringOnly = task.monitoringOnly
+    ?? sourceTask?.monitoringOnly
+    ?? (task.costApplicability === "monitoring_only" || sourceTask?.costApplicability === "monitoring_only");
+  if (monitoringOnly && !hasExplicitCost) {
+    return undefined;
+  }
+  // Prefer the source value when one was authored so enrichment can never
+  // replace an explicit catalog estimate with a generated baseline.
+  return hasExplicitCost ? sourceTask?.costEstimate : task.costEstimate;
+};
+
+const toMaintenanceTask = (
+  taskItem: EnrichedRegionalTask,
+  month: number,
+  climateZones: string[],
+  fallbackCategory: string,
+  fallbackPriority: string,
+  sourceTasks: readonly EnrichedRegionalTask[],
+  systemRequirements?: string[],
+): MaintenanceTask => ({
+  id: taskItem.id,
+  title: taskItem.title,
+  description: taskItem.description,
+  actionSummary: taskItem.actionSummary,
+  steps: taskItem.steps,
+  toolsAndSupplies: taskItem.toolsAndSupplies,
+  month,
+  climateZones,
+  priority: taskItem.priority ?? fallbackPriority,
+  estimatedTime: taskItem.estimatedTime ?? "30-60 minutes",
+  difficulty: taskItem.difficulty ?? "easy",
+  category: taskItem.category ?? fallbackCategory,
+  tools: taskItem.tools ?? null,
+  cost: taskItem.cost ?? null,
+  systemRequirements,
+  costEstimate: getRegionalTaskCost(taskItem, sourceTasks),
+  impact: taskItem.impact,
+  impactCost: taskItem.impactCost,
+  legacyTitles: taskItem.legacyTitles,
+  intentFamily: taskItem.intentFamily,
+  fallbackUsed: taskItem.fallbackUsed,
+  monitoringOnly: taskItem.monitoringOnly,
+  costApplicability: taskItem.costApplicability,
+});
 
 interface TaskCompletionRecord {
   taskId?: string | null;
@@ -3474,56 +3557,34 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
     const enrichedSeasonalTasks = enrichTasksWithCosts(monthData.seasonal, regionName);
 
     // Convert seasonal tasks to MaintenanceTask objects
-    enrichedSeasonalTasks.forEach((taskItem, index) => {
-      tasks.push({
-        id: taskItem.id,
-        title: taskItem.title,
-        description: taskItem.description,
-        actionSummary: taskItem.actionSummary,
-        steps: taskItem.steps,
-        toolsAndSupplies: taskItem.toolsAndSupplies,
-        month: month,
-        climateZones: allClimateZones,
-        priority: taskItem.priority || monthData.priority, // Use task priority or fall back to month priority
-        estimatedTime: "30-60 minutes",
-        difficulty: "easy",
-        category: "General Maintenance",
-        tools: null,
-        cost: null,
-        systemRequirements: getSystemRequirementsForTask(taskItem.title),
-        costEstimate: taskItem.costEstimate,
-        impact: taskItem.impact,
-        impactCost: taskItem.impactCost,
-        legacyTitles: taskItem.legacyTitles,
-      });
+    enrichedSeasonalTasks.forEach((taskItem) => {
+      const enrichedTask = taskItem as EnrichedRegionalTask;
+      tasks.push(toMaintenanceTask(
+        enrichedTask,
+        month,
+        allClimateZones,
+        "General Maintenance",
+        monthData.priority,
+        monthData.seasonal as EnrichedRegionalTask[],
+        getSystemRequirementsForTask(enrichedTask.title),
+      ));
     });
 
     // Enrich weather-specific tasks with cost estimates
     const enrichedWeatherTasks = enrichTasksWithCosts(monthData.weatherSpecific, regionName);
 
     // Convert weather-specific tasks to MaintenanceTask objects
-    enrichedWeatherTasks.forEach((taskItem, index) => {
-      tasks.push({
-        id: taskItem.id,
-        title: taskItem.title,
-        description: taskItem.description,
-        actionSummary: taskItem.actionSummary,
-        steps: taskItem.steps,
-        toolsAndSupplies: taskItem.toolsAndSupplies,
-        month: month,
-        climateZones: allClimateZones,
-        priority: taskItem.priority || monthData.priority, // Use task priority or fall back to month priority
-        estimatedTime: "30-60 minutes",
-        difficulty: "easy",
-        category: "Weather-Specific",
-        tools: null,
-        cost: null,
-        systemRequirements: getSystemRequirementsForTask(taskItem.title),
-        costEstimate: taskItem.costEstimate,
-        impact: taskItem.impact,
-        impactCost: taskItem.impactCost,
-        legacyTitles: taskItem.legacyTitles,
-      });
+    enrichedWeatherTasks.forEach((taskItem) => {
+      const enrichedTask = taskItem as EnrichedRegionalTask;
+      tasks.push(toMaintenanceTask(
+        enrichedTask,
+        month,
+        allClimateZones,
+        "Weather-Specific",
+        monthData.priority,
+        monthData.weatherSpecific as EnrichedRegionalTask[],
+        getSystemRequirementsForTask(enrichedTask.title),
+      ));
     });
 
     // Tasks are now loaded from US_MAINTENANCE_DATA above

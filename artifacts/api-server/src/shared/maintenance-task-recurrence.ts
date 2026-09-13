@@ -6,6 +6,7 @@ import type {
   MaintenanceTaskItem,
   RawLocationMaintenanceData,
 } from './location-maintenance-data';
+import { generateTaskContent } from './task-content-generator';
 
 type TaskDraft = Omit<MaintenanceTaskItem, 'id' | 'recurrence'> & {
   id?: string;
@@ -379,11 +380,37 @@ function normalizeRegion(region: string, raw: RawLocationMaintenanceData): Locat
     return true;
   });
 
+  const addGeneratedContent = (value: MaintenanceTaskItem): MaintenanceTaskItem => {
+    const generated = generateTaskContent(value.title, value.description, region);
+    return {
+      ...value,
+      // Nullish checks intentionally preserve catalog-authored values, even
+      // when an editor deliberately supplied an empty checklist.
+      actionSummary: value.actionSummary ?? generated.actionSummary,
+      steps: value.steps ?? generated.steps,
+      toolsAndSupplies: value.toolsAndSupplies ?? generated.toolsAndSupplies,
+      estimatedTime: value.estimatedTime ?? generated.estimatedTime,
+      difficulty: value.difficulty ?? generated.difficulty,
+      intentFamily: value.intentFamily ?? generated.intentFamily,
+      fallbackUsed: value.fallbackUsed ?? generated.fallbackUsed,
+      monitoringOnly: value.monitoringOnly ?? generated.monitoringOnly,
+      costApplicability: value.costApplicability ?? generated.costApplicability,
+      costEstimate: value.costEstimate ?? generated.costEstimate,
+    };
+  };
+
   return {
     region: raw.region,
     climateZone: raw.climateZone,
-    monthlyTasks,
-    yearRoundTasks,
+    monthlyTasks: Object.fromEntries(Object.entries(monthlyTasks).map(([month, monthData]) => [
+      month,
+      {
+        ...monthData,
+        seasonal: monthData.seasonal.map(addGeneratedContent),
+        weatherSpecific: monthData.weatherSpecific.map(addGeneratedContent),
+      },
+    ])),
+    yearRoundTasks: yearRoundTasks.map(addGeneratedContent),
     specialConsiderations: raw.specialConsiderations,
   };
 }
