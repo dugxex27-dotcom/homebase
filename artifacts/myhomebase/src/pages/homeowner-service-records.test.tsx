@@ -24,6 +24,30 @@ const flags = vi.hoisted(() => ({
   apiRequestSpy: vi.fn(),
   invoiceAnalyses: [] as Array<Record<string, unknown>>,
   maintenanceLogs: [] as Array<Record<string, unknown>>,
+  houses: [
+    {
+      id: "house-1",
+      userId: "user-001",
+      name: "My Home",
+      address: "123 Main St",
+      city: "Springfield",
+      state: "IL",
+      zip: "62701",
+      homeType: "single-family",
+      yearBuilt: 2000,
+      squareFootage: 2000,
+      bedrooms: 3,
+      bathrooms: 2,
+      roofType: null,
+      hvacType: null,
+      homeSystems: [],
+      climateZone: "mixed",
+      lat: "39.7817",
+      lon: "-89.6501",
+      createdAt: "2024-01-01T00:00:00.000Z",
+      updatedAt: "2024-01-01T00:00:00.000Z",
+    },
+  ] as Array<Record<string, unknown>>,
 }));
 
 // ---------------------------------------------------------------------------
@@ -101,33 +125,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
     useQuery: vi.fn(({ queryKey }: { queryKey: readonly unknown[] }) => {
       const key0 = queryKey[0];
       if (key0 === "/api/houses") {
-        return {
-          data: [
-            {
-              id: "house-1",
-              userId: "user-001",
-              name: "My Home",
-              address: "123 Main St",
-              city: "Springfield",
-              state: "IL",
-              zip: "62701",
-              homeType: "single-family",
-              yearBuilt: 2000,
-              squareFootage: 2000,
-              bedrooms: 3,
-              bathrooms: 2,
-              roofType: null,
-              hvacType: null,
-              homeSystems: [],
-              climateZone: "mixed",
-              lat: "39.7817",
-              lon: "-89.6501",
-              createdAt: "2024-01-01T00:00:00.000Z",
-              updatedAt: "2024-01-01T00:00:00.000Z",
-            },
-          ],
-          isLoading: false,
-        };
+        return { data: flags.houses, isLoading: false };
       }
       if (key0 === "/api/invoice-analyses") {
         return { data: flags.invoiceAnalyses, isLoading: false, isError: false };
@@ -223,6 +221,7 @@ afterEach(() => {
   cleanup();
   flags.invoiceAnalyses = [];
   flags.maintenanceLogs = [];
+  flags.houses = [flags.houses[0]];
   flags.toastSpy.mockClear();
   flags.invalidateQueriesSpy.mockClear();
   flags.setQueryDataSpy.mockClear();
@@ -503,6 +502,103 @@ describe("Service Records — AI invoice upload: 409 DUPLICATE_INVOICE", () => {
       "/api/invoice-analyses/analyze",
       expect.objectContaining({ method: "POST" }),
     );
+  });
+
+  it("expands older records, then scrolls to and highlights the existing record", async () => {
+    flags.invoiceAnalyses = [{
+      id: "ana-dup-001",
+      maintenanceLogId: "existing-record",
+      houseId: "house-1",
+      status: "confirmed",
+    }];
+    flags.maintenanceLogs = [
+      {
+        id: "newest-record",
+        homeownerId: "user-001",
+        houseId: "house-1",
+        serviceDescription: "Newest service",
+        serviceDate: new Date().toISOString(),
+        homeArea: "hvac",
+        serviceType: "maintenance",
+      },
+      {
+        id: "second-record",
+        homeownerId: "user-001",
+        houseId: "house-1",
+        serviceDescription: "Second service",
+        serviceDate: new Date().toISOString(),
+        homeArea: "plumbing",
+        serviceType: "repair",
+      },
+      {
+        id: "existing-record",
+        homeownerId: "user-001",
+        houseId: "house-1",
+        serviceDescription: "Existing roof repair",
+        serviceDate: new Date().toISOString(),
+        homeArea: "roof",
+        serviceType: "repair",
+      },
+    ];
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => ({
+      status: String(input) === "/api/invoice-analyses/analyze" ? 409 : 200,
+      ok: String(input) !== "/api/invoice-analyses/analyze",
+      json: async () => String(input) === "/api/invoice-analyses/analyze"
+        ? { code: "DUPLICATE_INVOICE", analysisId: "ana-dup-001" }
+        : {},
+    } as Response));
+
+    renderPage();
+    expect(document.querySelector('[data-log-id="existing-record"]')).toBeNull();
+    await openAiDialog();
+    await userEvent.click(screen.getByRole("button", { name: /diy/i }));
+    await userEvent.click(screen.getByRole("button", { name: /analyze with ai/i }));
+    await userEvent.click(screen.getByRole("button", { name: /view existing record/i }));
+
+    await waitFor(() => expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "center" }));
+    const record = document.querySelector('[data-log-id="existing-record"]');
+    expect(record).toHaveClass("service-record-highlight");
+  });
+
+  it("explains when an active home-area filter hides the existing record", async () => {
+    flags.invoiceAnalyses = [{
+      id: "ana-dup-001",
+      maintenanceLogId: "existing-record",
+      houseId: "house-1",
+      status: "confirmed",
+    }];
+    flags.maintenanceLogs = [{
+      id: "existing-record",
+      homeownerId: "user-001",
+      houseId: "house-1",
+      serviceDescription: "Existing roof repair",
+      serviceDate: new Date().toISOString(),
+      homeArea: "roof",
+      serviceType: "repair",
+    }];
+    global.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL) => ({
+      status: String(input) === "/api/invoice-analyses/analyze" ? 409 : 200,
+      ok: String(input) !== "/api/invoice-analyses/analyze",
+      json: async () => String(input) === "/api/invoice-analyses/analyze"
+        ? { code: "DUPLICATE_INVOICE", analysisId: "ana-dup-001" }
+        : {},
+    } as Response));
+
+    renderPage();
+    await userEvent.selectOptions(screen.getByTestId("mock-select"), "hvac");
+    expect(document.querySelector('[data-log-id="existing-record"]')).toBeNull();
+
+    await openAiDialog();
+    await userEvent.click(screen.getByRole("button", { name: /diy/i }));
+    await userEvent.click(screen.getByRole("button", { name: /analyze with ai/i }));
+    await userEvent.click(screen.getByRole("button", { name: /view existing record/i }));
+
+    expect(flags.toastSpy).toHaveBeenCalledWith({
+      title: "Existing record is hidden",
+      description: "Clear your service record filters to view the matching record.",
+    });
   });
 });
 

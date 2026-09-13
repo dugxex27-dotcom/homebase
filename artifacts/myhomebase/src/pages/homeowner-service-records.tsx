@@ -792,6 +792,35 @@ export default function HomeownerServiceRecords() {
 
     return matchesHomeArea && matchesScoreHistory;
   }) || [];
+  const viewDuplicateRecord = (analysisId: string) => {
+    const match = invoiceAnalyses.find((analysis) => analysis.id === analysisId);
+    const logId = match?.maintenanceLogId ?? null;
+    setAiInvoiceOpen(false);
+    setAiDuplicateAnalysisId(null);
+
+    if (!logId) return;
+
+    const matchedLog = maintenanceLogs?.find((log) => log.id === logId);
+    const hiddenByHomeArea = matchedLog
+      && homeAreaFilter !== "all"
+      && matchedLog.homeArea !== homeAreaFilter;
+    const hiddenByScoreHistory = matchedLog
+      && scoreHistoryFilter !== "all"
+      && (scoreHistoryFilter === "scoring") !== isScoringMaintenanceLog(matchedLog);
+
+    if (hiddenByHomeArea || hiddenByScoreHistory || !matchedLog) {
+      toast({
+        title: "Existing record is hidden",
+        description: "Clear your service record filters to view the matching record.",
+      });
+      return;
+    }
+
+    if (filteredLogs.findIndex((log) => log.id === logId) >= 2) {
+      setShowAllRecords(true);
+    }
+    setHighlightedLogId(logId);
+  };
   const scoringFilteredLogsCount = filteredLogs.filter((log) => isScoringMaintenanceLog(log)).length;
 
   // Stat chip computations
@@ -1644,15 +1673,7 @@ export default function HomeownerServiceRecords() {
                 <div className="flex flex-col sm:flex-row gap-2 justify-center pt-2">
                   {aiDuplicateAnalysisId && (
                     <Button
-                      onClick={() => {
-                        const match = invoiceAnalyses.find((a) => a.id === aiDuplicateAnalysisId);
-                        const logId = match?.maintenanceLogId ?? null;
-                        setAiInvoiceOpen(false);
-                        setAiDuplicateAnalysisId(null);
-                        if (logId) {
-                          setHighlightedLogId(logId);
-                        }
-                      }}
+                      onClick={() => viewDuplicateRecord(aiDuplicateAnalysisId)}
                       style={{ backgroundColor: 'var(--purple)', color: '#fff' }}
                     >
                       View existing record
