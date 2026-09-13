@@ -421,6 +421,32 @@ describe("Property card details", () => {
   });
 });
 
+describe("Profile Nudge placement", () => {
+  it("renders the profile nudge card only once and inside the Next Up section", () => {
+    renderHome();
+
+    // Verify it exists and there's exactly one
+    const nudgeCards = screen.getAllByTestId("profile-nudge-card");
+    expect(nudgeCards).toHaveLength(1);
+
+    // Verify it is inside the Next Up section
+    const nextUpHeading = screen.getByText("Next up", { exact: false });
+    const section = nextUpHeading.closest("section");
+    expect(section?.contains(nudgeCards[0])).toBe(true);
+
+    // Ensure it's not inside the main grid or the rail
+    const grid = screen.getByTestId("home-dashboard-grid");
+    expect(grid.contains(nudgeCards[0])).toBe(false);
+  });
+
+  it("adds sticky positioning to the dashboard rail for desktop layouts", () => {
+    renderHome();
+    const rail = screen.getByTestId("home-dashboard-rail");
+    expect(rail.className).toContain("lg:sticky");
+    expect(rail.className).toMatch(/lg:top-\[\d+px\]/);
+  });
+});
+
 describe("Homeowner onboarding tour banner", () => {
   it("shows for incomplete onboarding and hides after dismissing the matching reminder", async () => {
     flags.onboardingProgress = { completedAt: null };

@@ -539,22 +539,7 @@ export default function Home() {
   // Profile nudge: show inline-edit card when any install year is missing
   const primaryHouse = selectedHouse as House | undefined;
   const primaryHouseScore = primaryHouse ? scoresByHouseId[primaryHouse.id]?.score : undefined;
-  const profileFields = primaryHouse
-    ? [
-        primaryHouse.yearBuilt,
-        primaryHouse.squareFootage,
-        primaryHouse.roofInstalledYear,
-        primaryHouse.hvacInstalledYear,
-        primaryHouse.waterHeaterInstalledYear,
-      ]
-    : [];
-  const completedProfileFields = profileFields.filter(
-    (value) => value !== null && value !== undefined,
-  ).length;
-  const profileCompletePct = profileFields.length > 0
-    ? Math.round((completedProfileFields / profileFields.length) * 100)
-    : 0;
-  const isProfileComplete = profileCompletePct === 100;
+
   const isLowScore = primaryHouseScore !== undefined && primaryHouseScore < 30;
   const profileNudgeMissing = primaryHouse
     ? MECHANICAL_FEATURES.filter(f => !primaryHouse[f.key as keyof House])
@@ -609,14 +594,7 @@ export default function Home() {
       icon: <CheckCircle2 size={18} />,
     });
   }
-  if (!isProfileComplete) {
-    nextUpActions.push({
-      title: "Complete your home profile",
-      detail: `${profileCompletePct}% complete`,
-      href: "/maintenance",
-      icon: <HomeIcon size={18} />,
-    });
-  }
+
   if (tasksCount && tasksCount > 0) {
     nextUpActions.push({
       title: "Review maintenance work",
@@ -709,7 +687,7 @@ export default function Home() {
         </div>
       )}
 
-      {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && nextUpActions.length > 0 && (
+      {typedUser?.role === "homeowner" && !isLoadingHouses && houses.length > 0 && (nextUpActions.length > 0 || showProfileNudge) && (
         <section className="border-b border-gray-200 bg-[#F9FAFB] px-4 py-4 md:px-6" aria-labelledby="next-up-heading">
           <div className="home-dashboard-width">
             <div className="mb-2 flex items-center justify-between">
@@ -719,55 +697,156 @@ export default function Home() {
               </Link>
             </div>
 
-            <Link
-              href={nextUpActions[0].href}
-              className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-[#DED8F7] bg-white p-4 shadow-sm transition hover:border-[#3C258E] active:scale-[0.99] md:hidden"
-              data-testid="home-next-up-mobile"
-            >
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
-                {nextUpActions[0].icon}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-extrabold text-[#2C0F5B]">{nextUpActions[0].title}</span>
-                <span className="mt-1 block text-sm text-gray-500">{nextUpActions[0].detail}</span>
-              </span>
-              <span className="inline-flex min-h-11 items-center rounded-full bg-[#3C258E] px-4 text-sm font-bold text-white">Start</span>
-            </Link>
-
-            {nextUpActions.length > 1 && (
-              <div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-3 md:hidden" aria-label="Upcoming work">
-                {nextUpActions.slice(1, 3).map((action, index) => (
-                  <Link
-                    key={`${action.title}-mobile-upcoming-${index}`}
-                    href={action.href}
-                    className="flex min-h-11 items-center gap-2 py-2.5 text-sm font-semibold text-[#2C0F5B]"
+            {/* Profile nudge card — inline install-year entry */}
+            {showProfileNudge && (
+              <div className="dash-light-card" data-testid="profile-nudge-card" style={{ marginBottom: 8 }}>
+                <div className="dash-light-card-row">
+                  <div className="dash-light-card-icon">
+                    <Wrench size={18} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="dash-light-card-title">Complete your home profile</div>
+                    <div className="dash-light-card-sub">Add install years to raise your Home Wellness Score™</div>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={isLowScore ? "Hide for this visit" : "Dismiss profile nudge"}
+                    data-testid="button-dismiss-profile-nudge"
+                    onClick={handleDismissProfileNudge}
+                    title={isLowScore ? "This will reappear on your next visit until your score improves" : undefined}
+                    style={{ background: "none", border: 0, cursor: "pointer", padding: 4 }}
                   >
-                    <span className="text-[#65558F]">{action.icon}</span>
-                    <span className="min-w-0 flex-1 truncate">{action.title}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3]" />
-                  </Link>
-                ))}
+                    <XIcon size={16} />
+                  </button>
+                </div>
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {profileNudgeMissing.map(f => (
+                    <div key={f.key}>
+                      {activeNudge === f.key ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 13, flex: 1, minWidth: 0 }}>{f.icon} {f.label}</span>
+                            <input
+                              data-testid={`input-install-year-${f.key}`}
+                              type="number"
+                              placeholder="e.g. 2010"
+                              value={nudgeYear}
+                              onChange={e => setNudgeYear(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') handleNudgeSave(f.key);
+                                if (e.key === 'Escape') { setActiveNudge(null); setNudgeYear(""); }
+                              }}
+                              style={{
+                                width: 90, padding: '4px 8px', fontSize: 13,
+                                border: '1px solid var(--purple-border)', borderRadius: 6,
+                                outline: 'none',
+                              }}
+                            />
+                            <button
+                              data-testid={`button-save-install-year-${f.key}`}
+                              disabled={!nudgeYearValid || patchInstallYearMutation.isPending}
+                              onClick={() => handleNudgeSave(f.key)}
+                              style={{
+                                padding: '4px 10px', fontSize: 12, fontWeight: 700,
+                                background: nudgeYearValid ? 'var(--purple)' : '#ccc',
+                                color: '#fff', border: 'none', borderRadius: 6, cursor: nudgeYearValid ? 'pointer' : 'default',
+                              }}
+                            >
+                              Save
+                            </button>
+                            <button
+                              data-testid={`button-cancel-install-year-${f.key}`}
+                              onClick={() => { nudgeSavingRef.current = false; setActiveNudge(null); setNudgeYear(""); }}
+                              style={{
+                                padding: '4px 8px', fontSize: 12, fontWeight: 600,
+                                background: 'none', border: '1px solid var(--purple-border)',
+                                borderRadius: 6, cursor: 'pointer', color: 'var(--purple-deep)',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          {patchInstallYearMutation.isError && (
+                            <p style={{ fontSize: 11, color: '#dc2626', margin: 0 }}>
+                              Couldn't save — please try again.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          data-testid={`button-nudge-${f.key}`}
+                          onClick={() => { setActiveNudge(f.key); setNudgeYear(""); patchInstallYearMutation.reset(); }}
+                          style={{
+                            width: '100%', textAlign: 'left', background: 'var(--purple-tint)',
+                            border: '1px dashed var(--purple-border)', borderRadius: 8,
+                            padding: '7px 10px', fontSize: 13, cursor: 'pointer',
+                            color: 'var(--purple-deep)', fontWeight: 500,
+                            display: 'flex', alignItems: 'center', gap: '8px'
+                          }}
+                        >
+                          <span className="flex items-center justify-center">{f.icon}</span>
+                          <span>{f.label} — tap to add install year</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            <div className="hidden grid-cols-3 gap-3 md:grid" data-testid="home-next-up-desktop">
-              {nextUpActions.slice(0, 3).map((action, index) => (
+            {nextUpActions.length > 0 && (
+              <>
                 <Link
-                  key={`${action.title}-${index}`}
-                  href={action.href}
-                  className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#B6A6F4] hover:shadow-md"
+                  href={nextUpActions[0].href}
+                  className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-[#DED8F7] bg-white p-4 shadow-sm transition hover:border-[#3C258E] active:scale-[0.99] md:hidden"
+                  data-testid="home-next-up-mobile"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
-                    {action.icon}
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+                    {nextUpActions[0].icon}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-bold leading-tight text-[#2C0F5B]">{action.title}</span>
-                    <span className="mt-1 block text-xs leading-5 text-gray-500">{action.detail}</span>
+                    <span className="block font-extrabold text-[#2C0F5B]">{nextUpActions[0].title}</span>
+                    <span className="mt-1 block text-sm text-gray-500">{nextUpActions[0].detail}</span>
                   </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3] transition-transform group-hover:translate-x-0.5" />
+                  <span className="inline-flex min-h-11 items-center rounded-full bg-[#3C258E] px-4 text-sm font-bold text-white">Start</span>
                 </Link>
-              ))}
-            </div>
+
+                {nextUpActions.length > 1 && (
+                  <div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 bg-white px-3 md:hidden" aria-label="Upcoming work">
+                    {nextUpActions.slice(1, 3).map((action, index) => (
+                      <Link
+                        key={`${action.title}-mobile-upcoming-${index}`}
+                        href={action.href}
+                        className="flex min-h-11 items-center gap-2 py-2.5 text-sm font-semibold text-[#2C0F5B]"
+                      >
+                        <span className="text-[#65558F]">{action.icon}</span>
+                        <span className="min-w-0 flex-1 truncate">{action.title}</span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3]" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+
+                <div className="hidden grid-cols-3 gap-3 md:grid" data-testid="home-next-up-desktop">
+                  {nextUpActions.slice(0, 3).map((action, index) => (
+                    <Link
+                      key={`${action.title}-${index}`}
+                      href={action.href}
+                      className="group flex min-h-[92px] items-center gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#B6A6F4] hover:shadow-md"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EEEDFE] text-[#3C258E]">
+                        {action.icon}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-bold leading-tight text-[#2C0F5B]">{action.title}</span>
+                        <span className="mt-1 block text-xs leading-5 text-gray-500">{action.detail}</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[#8B7DB3] transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -1098,102 +1177,7 @@ export default function Home() {
               </button>
             </Link>
 
-            {/* Profile nudge card — inline install-year entry */}
-            {showProfileNudge && (
-              <div className="dash-light-card" data-testid="profile-nudge-card" style={{ marginBottom: 8 }}>
-                <div className="dash-light-card-row">
-                  <div className="dash-light-card-icon">
-                    <Wrench size={18} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="dash-light-card-title">Complete your home profile</div>
-                    <div className="dash-light-card-sub">Add install years to raise your Home Wellness Score™</div>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label={isLowScore ? "Hide for this visit" : "Dismiss profile nudge"}
-                    data-testid="button-dismiss-profile-nudge"
-                    onClick={handleDismissProfileNudge}
-                    title={isLowScore ? "This will reappear on your next visit until your score improves" : undefined}
-                    style={{ background: "none", border: 0, cursor: "pointer", padding: 4 }}
-                  >
-                    <XIcon size={16} />
-                  </button>
-                </div>
-                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {profileNudgeMissing.map(f => (
-                    <div key={f.key}>
-                      {activeNudge === f.key ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: 13, flex: 1, minWidth: 0 }}>{f.icon} {f.label}</span>
-                            <input
-                              data-testid={`input-install-year-${f.key}`}
-                              type="number"
-                              placeholder="e.g. 2010"
-                              value={nudgeYear}
-                              onChange={e => setNudgeYear(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') handleNudgeSave(f.key);
-                                if (e.key === 'Escape') { setActiveNudge(null); setNudgeYear(""); }
-                              }}
-                              style={{
-                                width: 90, padding: '4px 8px', fontSize: 13,
-                                border: '1px solid var(--purple-border)', borderRadius: 6,
-                                outline: 'none',
-                              }}
-                            />
-                            <button
-                              data-testid={`button-save-install-year-${f.key}`}
-                              disabled={!nudgeYearValid || patchInstallYearMutation.isPending}
-                              onClick={() => handleNudgeSave(f.key)}
-                              style={{
-                                padding: '4px 10px', fontSize: 12, fontWeight: 700,
-                                background: nudgeYearValid ? 'var(--purple)' : '#ccc',
-                                color: '#fff', border: 'none', borderRadius: 6, cursor: nudgeYearValid ? 'pointer' : 'default',
-                              }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              data-testid={`button-cancel-install-year-${f.key}`}
-                              onClick={() => { nudgeSavingRef.current = false; setActiveNudge(null); setNudgeYear(""); }}
-                              style={{
-                                padding: '4px 8px', fontSize: 12, fontWeight: 600,
-                                background: 'none', border: '1px solid var(--purple-border)',
-                                borderRadius: 6, cursor: 'pointer', color: 'var(--purple-deep)',
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                          {patchInstallYearMutation.isError && (
-                            <p style={{ fontSize: 11, color: '#dc2626', margin: 0 }}>
-                              Couldn't save — please try again.
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <button
-                          data-testid={`button-nudge-${f.key}`}
-                          onClick={() => { setActiveNudge(f.key); setNudgeYear(""); patchInstallYearMutation.reset(); }}
-                          style={{
-                            width: '100%', textAlign: 'left', background: 'var(--purple-tint)',
-                            border: '1px dashed var(--purple-border)', borderRadius: 8,
-                            padding: '7px 10px', fontSize: 13, cursor: 'pointer',
-                            color: 'var(--purple-deep)', fontWeight: 500,
-                            display: 'flex', alignItems: 'center', gap: '8px'
-                          }}
-                        >
-                          <span className="flex items-center justify-center">{f.icon}</span>
-                          <span>{f.label} — tap to add install year</span>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
 
             {/* Inspection Summary (if present) */}
             {inspectionSummary && (
@@ -1471,7 +1455,7 @@ export default function Home() {
 
               </div>
               {/* Right Column: Score & Actions to Improve */}
-              <aside className="home-dashboard-rail space-y-6" data-testid="home-dashboard-rail">
+              <aside className="home-dashboard-rail space-y-6 lg:sticky lg:top-[90px]" data-testid="home-dashboard-rail">
                 <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                   <div className="p-5 border-b border-gray-100 bg-[#F9FAFB]">
                     <h3 className="text-sm font-bold text-[#2C0F5B] mb-3">Home Wellness Score™</h3>
@@ -1493,15 +1477,7 @@ export default function Home() {
                   <div className="p-5">
                     <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Actions to Improve</h4>
                     <div className="space-y-3">
-                      {showProfileNudge && (
-                        <div className="flex items-start gap-3 p-3 bg-[#EEEDFE] rounded-xl border border-[#DED8F7]">
-                           <Wrench className="w-4 h-4 text-[#3C258E] mt-0.5 shrink-0" />
-                           <div>
-                             <p className="text-xs font-bold text-[#2C0F5B]">Add install years</p>
-                             <p className="text-[11px] text-[#4C3B6E] mt-0.5 leading-snug">Add age for roof or HVAC to boost score</p>
-                           </div>
-                        </div>
-                      )}
+
                       {!inspectionSummary && (
                         <Link href="/documents?upload=inspection" className="flex items-start gap-3 p-3 bg-[#F9FAFB] rounded-xl border border-gray-100 hover:border-[#DED8F7] transition cursor-pointer">
                            <FileText className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
