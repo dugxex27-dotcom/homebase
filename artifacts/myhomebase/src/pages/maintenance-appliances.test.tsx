@@ -25,6 +25,7 @@ vi.mock("@/hooks/useHomeownerSubscription", () => ({
 vi.mock("@/hooks/use-toast", () => ({ useToast: () => ({ toast: fixtures.toast }) }));
 vi.mock("wouter", () => ({
   useLocation: () => ["/maintenance", vi.fn()],
+  useSearch: () => "",
   useRoute: () => [false, {}],
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
@@ -128,6 +129,28 @@ afterEach(() => {
 });
 
 describe("maintenance appliance manuals", () => {
+  it("shows property loading instead of the empty-home onboarding", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "/api/houses") {
+        return await new Promise<Response>(() => {});
+      }
+      return json([]);
+    }));
+
+    renderPage();
+
+    expect(await screen.findByTestId("maintenance-properties-loading")).toBeInTheDocument();
+    expect(screen.queryByText("Add Your First Property to Get Started")).not.toBeInTheDocument();
+  });
+
+  it("shows the seeded demo property instead of zero-property onboarding", async () => {
+    installApiMock();
+    renderPage();
+
+    expect(await screen.findByText("My Home")).toBeInTheDocument();
+    expect(screen.queryByText("Add Your First Property to Get Started")).not.toBeInTheDocument();
+  });
+
   it("creates, reloads, edits, deletes a manual, then removes its appliance", async () => {
     installApiMock();
     const user = userEvent.setup();

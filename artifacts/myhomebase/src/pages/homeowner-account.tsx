@@ -63,7 +63,9 @@ export default function HomeownerAccount() {
     trialDaysRemaining,
     needsUpgrade,
     currentPlan,
-    maxHouses: subscriptionMaxHouses
+    maxHouses: subscriptionMaxHouses,
+    isLoading: subscriptionLoading,
+    isError: subscriptionError,
   } = useHomeownerSubscription();
 
   // Form state for basic profile information
@@ -400,7 +402,7 @@ export default function HomeownerAccount() {
   };
 
   // House transfer queries and mutations
-  const { data: houses } = useQuery<any>({
+  const { data: houses, isLoading: housesLoading, isError: housesError } = useQuery<any>({
     queryKey: ['/api/houses'],
     queryFn: async () => {
       const res = await apiRequest('/api/houses', 'GET');
@@ -477,10 +479,11 @@ export default function HomeownerAccount() {
     }
   });
 
-  const planLabel = isPaidSubscriber
+  const confirmedPlanLabel = isPaidSubscriber
     ? (currentPlan === 'premium_plus' ? 'Premium+' : currentPlan === 'premium' ? 'Premium' : 'Basic')
     : isInTrial ? 'Trial' : 'Free';
-  const housesCount = Array.isArray(houses) ? (houses as any[]).length : 0;
+  const planLabel = subscriptionLoading ? 'Loading…' : subscriptionError ? 'Unavailable' : confirmedPlanLabel;
+  const housesCount = Array.isArray(houses) ? (houses as any[]).length : null;
 
   return (
     <div className="min-h-screen" style={{ background: '#ffffff' }}>
@@ -492,14 +495,14 @@ export default function HomeownerAccount() {
         <div className="dash-subtitle">Manage your profile and preferences</div>
         <div className="dash-chips">
           <div className="dash-chip">
-            <div className={`dash-chip-num ${isPaidSubscriber ? 'good' : isInTrial ? 'warn' : ''}`}>
+            <div className={`dash-chip-num ${!subscriptionLoading && !subscriptionError && isPaidSubscriber ? 'good' : !subscriptionLoading && !subscriptionError && isInTrial ? 'warn' : ''}`}>
               {planLabel}
             </div>
             <div className="dash-chip-label">Current plan</div>
           </div>
           <div className="dash-chip">
-            <div className="dash-chip-num">{housesCount}</div>
-            <div className="dash-chip-label">Properties</div>
+            <div className="dash-chip-num">{housesLoading ? '—' : housesError ? '!' : housesCount}</div>
+            <div className="dash-chip-label">{housesLoading ? 'Loading properties' : housesError ? 'Properties unavailable' : 'Properties'}</div>
           </div>
           <div className="dash-chip">
             <div className="dash-chip-num">{isLoadingReferral ? '—' : referralCount}</div>
@@ -746,7 +749,11 @@ export default function HomeownerAccount() {
                   <div>
                     <h4 className="font-medium" style={{ color: '#2c0f5b' }}>Current Plan</h4>
                     <div className="flex items-center gap-2 mt-1">
-                      {isPaidSubscriber ? (
+                      {subscriptionLoading ? (
+                        <Badge className="bg-gray-100 text-gray-700">Loading plan…</Badge>
+                      ) : subscriptionError ? (
+                        <Badge className="bg-red-100 text-red-700">Plan unavailable</Badge>
+                      ) : isPaidSubscriber ? (
                         <Badge className="bg-green-100 text-green-700">
                           <Check className="w-3 h-3 mr-1" />
                           Active - {currentPlan === 'premium_plus' ? 'Premium Plus' : currentPlan === 'premium' ? 'Premium' : 'Basic'}
@@ -772,7 +779,7 @@ export default function HomeownerAccount() {
                 </div>
 
 
-                {isPaidSubscriber && (
+                {!subscriptionLoading && !subscriptionError && isPaidSubscriber && (
                   <div className="text-sm text-gray-600">
                     <p className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
@@ -790,7 +797,7 @@ export default function HomeownerAccount() {
                 )}
 
 
-                {isFreeUser && (
+                {!subscriptionLoading && !subscriptionError && isFreeUser && (
                   <div className="mt-3 p-3 rounded-lg border" style={{ background: 'var(--purple-tint)', borderColor: 'var(--purple-border)' }}>
                     <p className="text-sm" style={{ color: 'var(--hw-primary)' }}>
                       Upgrade to unlock maintenance tracking, Home Wellness Score™, DIY savings tracker, and more!
@@ -1568,7 +1575,9 @@ export default function HomeownerAccount() {
                 </div>
                 <div className="text-sm">
                   <span className="text-gray-600">Properties:</span>
-                  <span className="ml-2 font-medium">{housesCount} Active</span>
+                  <span className="ml-2 font-medium">
+                    {housesLoading ? 'Loading…' : housesError ? 'Unable to load' : `${housesCount} Active`}
+                  </span>
                 </div>
               </CardContent>
             </Card>

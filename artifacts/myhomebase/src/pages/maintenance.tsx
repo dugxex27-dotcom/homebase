@@ -1722,7 +1722,7 @@ export default function Maintenance() {
   const isContractor = userRole === 'contractor';
 
   // Fetch houses for the authenticated user (only for homeowners)
-  const { data: houses = [], isLoading: housesLoading } = useQuery({
+  const { data: houses = [], isLoading: housesLoading, isError: housesError, refetch: refetchHouses } = useQuery({
     queryKey: ['/api/houses'],
     queryFn: async () => {
       const response = await fetch('/api/houses');
@@ -4017,6 +4017,25 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 text-center">Setup & Maintain Your Home</h2>
           <p className="text-gray-600 max-w-xl mb-4 text-center mx-auto">Add your property, document systems and features, log appliances, and record maintenance — everything that keeps your home healthy and up to date.</p>
 
+          {userRole === 'homeowner' && housesLoading && (
+            <Card className="mb-6" data-testid="maintenance-properties-loading">
+              <CardContent className="py-10 text-center">
+                <p className="font-semibold text-gray-900">Loading your property…</p>
+                <p className="text-sm text-gray-600 mt-1">Getting your systems and maintenance schedule ready.</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {userRole === 'homeowner' && !housesLoading && housesError && (
+            <Card className="mb-6 border-red-200" data-testid="maintenance-properties-error">
+              <CardContent className="py-10 text-center">
+                <p className="font-semibold text-red-800">We couldn’t load your property</p>
+                <p className="text-sm text-gray-600 mt-1 mb-4">Your property has not been removed. Please try loading it again.</p>
+                <Button variant="outline" onClick={() => refetchHouses()}>Try again</Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Contractor No Properties Onboarding */}
           {userRole === 'contractor' && houses.length === 0 && (
             <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--purple-light)' }}>
@@ -4068,7 +4087,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           )}
 
           {/* Homeowner No Properties Onboarding */}
-          {userRole === 'homeowner' && houses.length === 0 && (
+          {userRole === 'homeowner' && !housesLoading && !housesError && houses.length === 0 && (
             <Card className="mb-6 border-2 border-dashed" style={{ backgroundColor: '#f8fafc', borderColor: 'var(--purple-light)' }}>
               <CardHeader className="text-center pb-4">
                 <div className="mx-auto mb-4 p-3 rounded-full" style={{ backgroundColor: 'var(--purple-deep)' }}>
@@ -4131,7 +4150,7 @@ type ApplianceManualFormData = z.infer<typeof applianceManualFormSchema>;
           )}
 
           {/* Property Selector Card - Only show when properties exist */}
-          {houses.length > 0 && (
+          {!housesLoading && !housesError && houses.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 shadow-sm">
               <div className="flex flex-col gap-4 items-center text-center">
                 <div className="w-full max-w-md">
