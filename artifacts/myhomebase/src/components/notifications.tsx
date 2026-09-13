@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Notification, User as UserType } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
+import { useUnreadNotifications } from "@/components/unread-notifications-provider";
 
 interface NotificationsProps {
   homeownerId?: string;
@@ -25,11 +26,7 @@ export function Notifications({ homeownerId }: NotificationsProps) {
   const { user } = useAuth();
   const typedUser = user as UserType | undefined;
 
-  // Fetch unread notifications
-  const { data: unreadNotifications = [], isLoading } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications/unread'],
-    refetchInterval: 30000, // Check for new notifications every 30 seconds
-  });
+  const { unreadNotifications, isLoading } = useUnreadNotifications();
 
   // Fetch all notifications when popover is open
   const { data: allNotifications = [] } = useQuery<Notification[]>({

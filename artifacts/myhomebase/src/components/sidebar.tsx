@@ -6,10 +6,10 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient } from "@/lib/queryClient";
-import type { User, Notification } from "@shared/schema";
-import { useQuery } from "@tanstack/react-query";
+import type { User } from "@shared/schema";
 import { useState, useEffect } from "react";
 import logoColor from '@assets/my-homebase-logo-tm-final-purple_1777948438665.png';
+import { useUnreadNotifications } from "@/components/unread-notifications-provider";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -26,11 +26,7 @@ export default function Sidebar() {
 
   const isAdmin = (typedUser as any)?.isAdmin === true;
 
-  const { data: unreadNotifications = [] } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications/unread'],
-    enabled: isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
-    refetchInterval: 30000,
-  });
+  const { unreadNotifications } = useUnreadNotifications();
 
 
   const hasNotif = (tab: string) => {

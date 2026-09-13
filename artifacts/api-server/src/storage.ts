@@ -2,6 +2,24 @@ import { type Contractor, type InsertContractor, type Company, type InsertCompan
 import { houseDisclosures, type HouseDisclosure, type InsertHouseDisclosure, insuranceClaimPackages, type InsuranceClaimPackage, type InsertInsuranceClaimPackage, insuranceEmailLogs, type InsuranceEmailLog, type InsertInsuranceEmailLog, stripeProcessedEvents, pendingSeatSyncs, invoiceAnalyses } from "@workspace/db";
 import { contracts, type Contract, type InsertContract } from "@workspace/db";
 import { randomUUID, randomBytes } from "crypto";
+import { createNotificationOccurrenceId, getIdempotentNotificationId } from "./notification-idempotency";
+
+function dedupeNotificationRows(rows: Notification[]): Notification[] {
+  const seen = new Set<string>();
+  return rows.filter((notification) => {
+    const key = [
+      notification.homeownerId,
+      notification.houseId ?? "",
+      notification.type,
+      notification.title.trim().toLowerCase(),
+      notification.message.trim().toLowerCase(),
+      notification.scheduledFor.slice(0, 7),
+    ].join("\u001f");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 import bcrypt from "bcryptjs";
 import { db } from "./db";
 import { eq, ne, isNotNull, and, or, isNull, not, desc, asc, gte, lt, sql, count, ilike, inArray, type SQL } from "drizzle-orm";
@@ -2619,7 +2637,9 @@ export class MemStorage implements IStorage {
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const id = randomUUID();
+    const id = getIdempotentNotificationId(notification);
+    const existing = this.notifications.get(id);
+    if (existing) return existing;
     const newNotification: Notification = {
       ...notification,
       id,
@@ -2786,6 +2806,13 @@ export class MemStorage implements IStorage {
         }
         
         await this.createNotification({
+          id: createNotificationOccurrenceId([
+            "maintenance-task",
+            homeownerId,
+            task.id,
+            now.getFullYear(),
+            currentMonth,
+          ]),
           homeownerId,
           appointmentId: null,
           maintenanceTaskId: task.id,
@@ -13236,11 +13263,11 @@ export class DbStorage implements IStorage {
   // Notification methods — DATABASE BACKED for persistence
   async getNotifications(homeownerId?: string): Promise<Notification[]> {
     if (homeownerId) {
-      return await db.select().from(notifications)
+      return dedupeNotificationRows(await db.select().from(notifications)
         .where(eq(notifications.homeownerId, homeownerId))
-        .orderBy(desc(notifications.createdAt));
+        .orderBy(desc(notifications.createdAt)));
     }
-    return await db.select().from(notifications).orderBy(desc(notifications.createdAt));
+    return dedupeNotificationRows(await db.select().from(notifications).orderBy(desc(notifications.createdAt)));
   }
 
   async getNotification(id: string): Promise<Notification | undefined> {
@@ -13249,8 +13276,15 @@ export class DbStorage implements IStorage {
   }
 
   async createNotification(notification: InsertNotification): Promise<Notification> {
-    const result = await db.insert(notifications).values(notification).returning();
-    return result[0];
+    const id = getIdempotentNotificationId(notification);
+    const result = await db.insert(notifications)
+      .values({ ...notification, id })
+      .onConflictDoNothing({ target: notifications.id })
+      .returning();
+    if (result[0]) return result[0];
+    const existing = await this.getNotification(id);
+    if (!existing) throw new Error("Notification idempotency conflict could not be resolved");
+    return existing;
   }
 
   async updateNotification(id: string, notification: Partial<InsertNotification>): Promise<Notification | undefined> {
@@ -13266,9 +13300,9 @@ export class DbStorage implements IStorage {
   }
 
   async getUnreadNotifications(homeownerId: string): Promise<Notification[]> {
-    return await db.select().from(notifications)
+    return dedupeNotificationRows(await db.select().from(notifications)
       .where(and(eq(notifications.homeownerId, homeownerId), eq(notifications.isRead, false)))
-      .orderBy(asc(notifications.scheduledFor));
+      .orderBy(asc(notifications.scheduledFor)));
   }
 
   async getContractorNotifications(contractorId: string): Promise<Notification[]> {
@@ -13278,7 +13312,7 @@ export class DbStorage implements IStorage {
       .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
       .where(eq(contractorAppointments.contractorId, contractorId))
       .orderBy(desc(notifications.createdAt));
-    return rows.map(r => r.notification);
+    return dedupeNotificationRows(rows.map(r => r.notification));
   }
 
   async getUnreadContractorNotifications(contractorId: string): Promise<Notification[]> {
@@ -13287,7 +13321,7 @@ export class DbStorage implements IStorage {
       .from(notifications)
       .innerJoin(contractorAppointments, eq(notifications.appointmentId, contractorAppointments.id))
       .where(and(eq(contractorAppointments.contractorId, contractorId), eq(notifications.isRead, false)));
-    return rows.map(r => r.notification);
+    return dedupeNotificationRows(rows.map(r => r.notification));
   }
 
   async markNotificationAsRead(id: string): Promise<boolean> {
@@ -13302,6 +13336,7 @@ export class DbStorage implements IStorage {
     const twentyFourHour = new Date(appointmentDateTime.getTime() - 24 * 60 * 60 * 1000);
     if (twentyFourHour > now) {
       await this.createNotification({
+        id: createNotificationOccurrenceId(["appointment", appointment.id, "24_hour"]),
         homeownerId: appointment.homeownerId,
         houseId: appointment.houseId ?? null,
         appointmentId: appointment.id,
@@ -13321,6 +13356,7 @@ export class DbStorage implements IStorage {
     const fourHour = new Date(appointmentDateTime.getTime() - 4 * 60 * 60 * 1000);
     if (fourHour > now) {
       await this.createNotification({
+        id: createNotificationOccurrenceId(["appointment", appointment.id, "4_hour"]),
         homeownerId: appointment.homeownerId,
         houseId: appointment.houseId ?? null,
         appointmentId: appointment.id,
@@ -13340,6 +13376,7 @@ export class DbStorage implements IStorage {
     const oneHour = new Date(appointmentDateTime.getTime() - 60 * 60 * 1000);
     if (oneHour > now) {
       await this.createNotification({
+        id: createNotificationOccurrenceId(["appointment", appointment.id, "1_hour"]),
         homeownerId: appointment.homeownerId,
         houseId: appointment.houseId ?? null,
         appointmentId: appointment.id,
@@ -13609,7 +13646,14 @@ export class DbStorage implements IStorage {
           message = `${task.title} is overdue! Only ${daysUntilEndOfMonth} days left this month. Estimated time: ${task.estimatedTime}.`;
         }
 
-        await db.insert(notifications).values({
+        await this.createNotification({
+          id: createNotificationOccurrenceId([
+            "maintenance-task",
+            homeownerId,
+            task.id,
+            now.getFullYear(),
+            currentMonth,
+          ]),
           homeownerId,
           appointmentId: null,
           maintenanceTaskId: task.id,
@@ -13622,7 +13666,7 @@ export class DbStorage implements IStorage {
           sentAt: null,
           priority,
           actionUrl: "/maintenance",
-        }).onConflictDoNothing();
+        });
       }
     }
   }

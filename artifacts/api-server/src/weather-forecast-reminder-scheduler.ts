@@ -16,6 +16,7 @@ import {
 import { sendWeatherForecastReminderEmail } from './email-service';
 import { smsService } from './sms-service';
 import { pushNotificationService } from './push-notification-service';
+import { createNotificationOccurrenceId } from './notification-idempotency';
 
 interface HouseRow {
   id: string;
@@ -162,7 +163,7 @@ export async function createForecastNotification(
   const now = new Date().toISOString();
 
   try {
-    await db.insert(notifications).values({
+    const notification = {
       homeownerId,
       houseId: house.id,
       type: `weather_forecast_${triggerResult.trigger}`,
@@ -173,8 +174,21 @@ export async function createForecastNotification(
       sentAt: now,
       priority: 'high',
       actionUrl: '/maintenance',
-    });
-    return true;
+    };
+    const inserted = await db.insert(notifications)
+      .values({
+        ...notification,
+        id: createNotificationOccurrenceId([
+          'weather-forecast',
+          homeownerId,
+          house.id,
+          triggerResult.trigger,
+          triggerResult.expectedDate,
+        ]),
+      })
+      .onConflictDoNothing({ target: notifications.id })
+      .returning({ id: notifications.id });
+    return inserted.length > 0;
   } catch (error) {
     console.error('[FORECAST] Error creating in-app forecast notification:', error);
     return false;

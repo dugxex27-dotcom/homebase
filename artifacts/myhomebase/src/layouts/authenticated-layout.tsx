@@ -7,6 +7,7 @@ import BottomNav from '@/components/bottom-nav';
 import LoadingFallback from '@/components/loading-fallback';
 import ErrorBoundary from '@/components/error-boundary';
 import BackToTop from '@/components/back-to-top';
+import { UnreadNotificationsProvider } from '@/components/unread-notifications-provider';
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
   const [location] = useLocation();
 
   return (
+    <UnreadNotificationsProvider>
     <div
       className="mhb-app-shell"
       style={{
@@ -62,5 +64,6 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       {/* Back-to-top scrolls within the motion.main above */}
       <BackToTop bottom={88} />
     </div>
+    </UnreadNotificationsProvider>
   );
 }

@@ -242,7 +242,9 @@ describe('sendForecastReminder', () => {
 
 describe('createForecastNotification', () => {
   it('creates a persistent weather bell notification with trigger, task count, and maintenance link', async () => {
-    const values = vi.fn().mockResolvedValue(undefined);
+    const returning = vi.fn().mockResolvedValue([{ id: 'weather-notification-id' }]);
+    const onConflictDoNothing = vi.fn().mockReturnValue({ returning });
+    const values = vi.fn().mockReturnValue({ onConflictDoNothing });
     const insert = vi.fn().mockReturnValue({ values });
     (db as any).insert = insert;
 
@@ -265,6 +267,7 @@ describe('createForecastNotification', () => {
     expect(created).toBe(true);
     expect(insert).toHaveBeenCalledWith(notifications);
     expect(values).toHaveBeenCalledWith(expect.objectContaining({
+      id: expect.stringMatching(/^notif_/),
       homeownerId: 'homeowner-1',
       houseId: 'house-1',
       type: 'weather_forecast_heavy_rain',
@@ -273,6 +276,29 @@ describe('createForecastNotification', () => {
       message: '3 maintenance tasks need attention before friday.',
       actionUrl: '/maintenance',
     }));
+
+    delete (db as any).insert;
+  });
+
+  it('reports an existing weather occurrence as already claimed', async () => {
+    const returning = vi.fn().mockResolvedValue([]);
+    const onConflictDoNothing = vi.fn().mockReturnValue({ returning });
+    (db as any).insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({ onConflictDoNothing }),
+    });
+
+    await expect(createForecastNotification(
+      'homeowner-1',
+      {
+        id: 'house-1',
+        name: 'Main Home',
+        address: '123 Main St',
+        latitude: '40',
+        longitude: '-75',
+      },
+      { trigger: 'heavy_rain' as any, expectedDate: 'Friday' },
+      3,
+    )).resolves.toBe(false);
 
     delete (db as any).insert;
   });

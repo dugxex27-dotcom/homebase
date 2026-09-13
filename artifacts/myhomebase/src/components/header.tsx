@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Notifications } from "@/components/notifications";
 import { useAuth } from "@/hooks/useAuth";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { User, Notification } from "@shared/schema";
+import type { User } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import logoWhite from '@assets/my-homebase-logo-tm-final-white_1777417516350.png';
 import logoColor from '@assets/my-homebase-logo-tm-final_1776295160061.png';
@@ -100,6 +100,9 @@ export default function Header() {
   const typedUser = user as User | undefined;
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  );
 
   const adminEmails = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
   const isAdmin = typedUser?.email && adminEmails.includes(typedUser.email.toLowerCase());
@@ -113,16 +116,17 @@ export default function Header() {
     enabled: !!user && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
   });
 
-  const { data: unreadNotifications = [] } = useQuery<Notification[]>({
-    queryKey: ['/api/notifications/unread'],
-    enabled: isAuthenticated && (typedUser?.role === 'homeowner' || typedUser?.role === 'contractor'),
-    refetchInterval: 30000,
-  });
-
   const trialEndsAt = userData?.trialEndsAt ? new Date(userData.trialEndsAt) : null;
   const now = new Date();
   const isTrialActive = trialEndsAt && trialEndsAt > now && userData?.subscriptionStatus === 'trialing';
   const daysRemaining = trialEndsAt ? Math.ceil((trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const update = () => setIsDesktop(media.matches);
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
 
   useEffect(() => {
     if (window.matchMedia('(display-mode: standalone)').matches) { setIsInstallable(false); return; }
@@ -184,7 +188,7 @@ export default function Header() {
                 </button>
               </Link>
               <div className="flex items-center gap-2">
-                {(role === 'homeowner' || role === 'contractor') && <Notifications />}
+                {!isDesktop && (role === 'homeowner' || role === 'contractor') && <Notifications />}
                 {isInstallable && (
                   <button
                     onClick={async () => {
@@ -248,7 +252,7 @@ export default function Header() {
                 <Download className="w-3.5 h-3.5" />Install App
               </button>
             )}
-            {(role === 'homeowner' || role === 'contractor') && <Notifications />}
+            {isDesktop && (role === 'homeowner' || role === 'contractor') && <Notifications />}
             {typedUser && (
               <div
                 className="flex items-center justify-center text-xs font-bold flex-shrink-0"

@@ -16695,7 +16695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Add special considerations
               regionData.specialConsiderations.forEach((consideration, index) => {
                 regionalNotifications.push({
-                  id: `regional-consideration-${homeownerId}-${currentMonth}-${index}`,
+                  id: `regional-consideration-${house.id}-${now.getFullYear()}-${currentMonth}-${index}`,
                   homeownerId,
                   houseId: house.id,
                   type: "maintenance_task",
