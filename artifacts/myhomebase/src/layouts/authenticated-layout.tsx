@@ -1,4 +1,4 @@
-import { ReactNode, Suspense } from 'react';
+import { ReactNode, Suspense, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation } from 'wouter';
 import Header from '@/components/header';
@@ -15,6 +15,7 @@ interface AuthenticatedLayoutProps {
 
 export default function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const [location] = useLocation();
+  const scrollContainerRef = useRef<HTMLElement>(null);
 
   return (
     <UnreadNotificationsProvider>
@@ -41,13 +42,15 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
         {/* Scrollable page content */}
         <AnimatePresence mode="wait">
           <motion.main
+            ref={scrollContainerRef}
             key={location}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
+            data-scroll-container="authenticated"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: 'easeInOut' }}
             style={{ flex: 1, width: '100%', minWidth: 0, overflowY: 'auto', overflowX: 'hidden' }}
-            className="pb-16 lg:pb-0"
+            className="pb-[calc(4rem+1px+var(--native-safe-bottom))] md:pb-0"
           >
             <ErrorBoundary>
               <Suspense fallback={<LoadingFallback variant="inline" />}>
@@ -62,7 +65,7 @@ export default function AuthenticatedLayout({ children }: AuthenticatedLayoutPro
       </div>
 
       {/* Back-to-top scrolls within the motion.main above */}
-      <BackToTop bottom={88} />
+      <BackToTop bottom={88} scrollContainerRef={scrollContainerRef} />
     </div>
     </UnreadNotificationsProvider>
   );

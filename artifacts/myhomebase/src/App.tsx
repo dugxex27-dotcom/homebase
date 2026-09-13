@@ -156,7 +156,12 @@ function ScrollToTop() {
   const [location] = useLocation();
   
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    const authenticatedScroller = document.querySelector<HTMLElement>('[data-scroll-container="authenticated"]');
+    if (authenticatedScroller) {
+      authenticatedScroller.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    } else {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    }
   }, [location]);
   
   return null;

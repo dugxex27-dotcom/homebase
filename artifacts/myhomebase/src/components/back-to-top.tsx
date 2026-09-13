@@ -1,24 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type RefObject } from "react";
 import { ChevronUp } from "lucide-react";
 
 interface BackToTopProps {
   bottom?: number;
+  scrollContainerRef?: RefObject<HTMLElement | null>;
 }
 
-export default function BackToTop({ bottom = 24 }: BackToTopProps) {
+export default function BackToTop({ bottom = 24, scrollContainerRef }: BackToTopProps) {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setShow(window.scrollY > 300);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    const scrollTarget = scrollContainerRef?.current ?? window;
+    const onScroll = () => {
+      const scrollTop = scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop;
+      setShow(scrollTop > 300);
+    };
+
+    onScroll();
+    scrollTarget.addEventListener("scroll", onScroll, { passive: true });
+    return () => scrollTarget.removeEventListener("scroll", onScroll);
+  }, [scrollContainerRef]);
 
   if (!show) return null;
 
   return (
     <button
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={() => (scrollContainerRef?.current ?? window).scrollTo({ top: 0, behavior: "smooth" })}
       aria-label="Back to top"
       data-testid="button-back-to-top"
       style={{

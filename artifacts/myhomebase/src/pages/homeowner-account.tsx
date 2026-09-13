@@ -558,10 +558,10 @@ export default function HomeownerAccount() {
 
           <div className="w-full mb-6 border-b border-gray-200">
             <div
-              className="flex w-full touch-pan-x gap-6 overflow-x-auto overscroll-x-contain px-1 pb-1"
+              className="flex w-full gap-6 overflow-x-auto px-1 pb-1"
               role="tablist"
               aria-label="Account settings sections"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {TABS.map(tab => (
                 <button

@@ -172,7 +172,7 @@ export default function Header() {
 
   return (
     <header
-      className="sticky top-0 z-50 mhb-authed-header"
+      className="relative z-50 mhb-authed-header"
       style={!isAuthenticated ? { backgroundColor: '#ffffff', borderBottom: '1px solid var(--theme-border)' } : undefined}
     >
 

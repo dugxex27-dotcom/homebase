@@ -210,7 +210,7 @@ export default function BottomNav() {
         style={{
           borderTop: '1px solid var(--theme-border)',
           boxShadow: '0 -2px 16px rgba(0,0,0,0.08)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+          paddingBottom: 'var(--native-safe-bottom)',
         }}
         aria-label="Bottom navigation"
         data-testid="bottom-nav"
